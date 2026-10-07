@@ -26,6 +26,9 @@ The app is **in development and not yet available in the App Store or Google Pla
 
 Saved sessions are stored locally on your device. There is no account or cloud sync in the current app. Links to the conference website open in your browser.
 
+Read the [privacy policy](https://jfversluis.dev/dotnetconf-privacy-policy.html),
+also available from the app's About tab.
+
 ## About the project
 
 Built with [.NET MAUI](https://dotnet.microsoft.com/apps/maui) and .NET 11 preview technology, with styling inspired by the .NET Conf website. This is an unofficial project, not an official Microsoft conference app.
@@ -33,3 +36,8 @@ Built with [.NET MAUI](https://dotnet.microsoft.com/apps/maui) and .NET 11 previ
 The rocket-bot artwork is used with permission. That permission does not grant a general license to reuse the artwork; bundled third-party notices include its provenance and font licenses.
 
 Want to help build the app? See [the contributor guide](CONTRIBUTING.md) for setup, development tools, and verification details.
+
+Pull requests validate the Core tests and Android/iOS Release builds. Store uploads
+are manual and target Google Play internal testing and TestFlight only; see
+[CI and release setup](docs/CI.md) for the required accounts, signing secrets, and
+manual promotion instructions.

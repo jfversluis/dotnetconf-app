@@ -1,0 +1,221 @@
+name: Release to test tracks
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Store lane
+        type: choice
+        options: [both, android, ios]
+        default: both
+        required: true
+      version:
+        description: Display version (three numeric components, e.g. 0.1.0)
+        type: string
+        required: true
+      build_number:
+        description: New integer greater than every previously uploaded build on both stores
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+
+jobs:
+  validate:
+    name: Validate release and test Core
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Check release inputs and branch
+        env:
+          VERSION: ${{ inputs.version }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main || { echo "::error::Test releases must run from main."; exit 1; }
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Use a numeric major.minor.patch version."; exit 1; }
+          [[ "$BUILD_NUMBER" =~ ^[1-9][0-9]{0,8}$ ]] || { echo "::error::Build number must be a positive integer of at most nine digits."; exit 1; }
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+      - run: dotnet test tests/DotNetConf.Core.Tests/DotNetConf.Core.Tests.csproj -c Release
+
+  android:
+    name: Google Play internal testing
+    needs: validate
+    if: inputs.platform == 'android' || inputs.platform == 'both'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: google-play-internal
+    concurrency:
+      group: release-google-play-internal
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Check Android configuration
+        env:
+          APP_ID: ${{ vars.ANDROID_APPLICATION_ID }}
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          SERVICE_ACCOUNT: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import sys
+          required = ("APP_ID", "KEYSTORE", "KEY_ALIAS", "KEY_PASSWORD", "STORE_PASSWORD", "SERVICE_ACCOUNT")
+          missing = [name for name in required if not os.environ.get(name)]
+          if missing:
+              print(f"::error::Missing Android configuration: {', '.join(missing)} (see docs/CI.md).")
+              sys.exit(1)
+          PY
+      - uses: ./.github/actions/setup-mobile
+        with:
+          platform: android
+      - name: Publish signed Android App Bundle
+        env:
+          APP_ID: ${{ vars.ANDROID_APPLICATION_ID }}
+          VERSION: ${{ inputs.version }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          signing_dir="$(mktemp -d "$RUNNER_TEMP/android-signing.XXXXXX")"
+          trap 'rm -f "$signing_dir/upload.keystore" "$signing_dir/key-password" "$signing_dir/store-password"; rmdir "$signing_dir"' EXIT
+          printf '%s' "$KEYSTORE" | base64 --decode > "$signing_dir/upload.keystore"
+          printf '%s' "$KEY_PASSWORD" > "$signing_dir/key-password"
+          printf '%s' "$STORE_PASSWORD" > "$signing_dir/store-password"
+          dotnet publish src/DotNetConf.App/DotNetConf.App.csproj -c Release \
+            -f net11.0-android -p:MobileTargetFramework=net11.0-android \
+            "-p:ApplicationId=$APP_ID" "-p:ApplicationDisplayVersion=$VERSION" "-p:ApplicationVersion=$BUILD_NUMBER" \
+            -p:AndroidPackageFormats=aab -p:AndroidKeyStore=true \
+            "-p:AndroidSigningKeyStore=$signing_dir/upload.keystore" "-p:AndroidSigningKeyAlias=$KEY_ALIAS" \
+            "-p:AndroidSigningKeyPass=file:$signing_dir/key-password" "-p:AndroidSigningStorePass=file:$signing_dir/store-password"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: android-${{ inputs.version }}-${{ inputs.build_number }}
+          path: src/DotNetConf.App/bin/Release/net11.0-android/publish/*-Signed.aab
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload to internal testing only
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: ${{ vars.ANDROID_APPLICATION_ID }}
+          releaseFiles: src/DotNetConf.App/bin/Release/net11.0-android/publish/*-Signed.aab
+          track: internal
+          status: completed
+
+  ios:
+    name: TestFlight upload
+    needs: validate
+    if: inputs.platform == 'ios' || inputs.platform == 'both'
+    runs-on: macos-26
+    timeout-minutes: 60
+    environment: app-store-testflight
+    concurrency:
+      group: release-app-store-testflight
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Check iOS configuration
+        env:
+          APP_ID: ${{ vars.IOS_APPLICATION_ID }}
+          SIGNING_IDENTITY: ${{ vars.IOS_CODESIGN_KEY }}
+          CERTIFICATE: ${{ secrets.IOS_DISTRIBUTION_P12_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_P12_PASSWORD }}
+          PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          ISSUER: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import sys
+          required = ("APP_ID", "SIGNING_IDENTITY", "CERTIFICATE", "CERTIFICATE_PASSWORD", "PROFILE", "ISSUER", "KEY_ID", "PRIVATE_KEY")
+          missing = [name for name in required if not os.environ.get(name)]
+          if missing:
+              print(f"::error::Missing iOS configuration: {', '.join(missing)} (see docs/CI.md).")
+              sys.exit(1)
+          PY
+      - uses: ./.github/actions/setup-mobile
+        with:
+          platform: ios
+      - id: signing
+        uses: apple-actions/import-codesign-certs@63fff01cd422d4b7b855d40ca1e9d34d2de9427d # v3
+        with:
+          p12-file-base64: ${{ secrets.IOS_DISTRIBUTION_P12_BASE64 }}
+          p12-password: ${{ secrets.IOS_DISTRIBUTION_P12_PASSWORD }}
+      - name: Publish signed IPA
+        env:
+          APP_ID: ${{ vars.IOS_APPLICATION_ID }}
+          SIGNING_IDENTITY: ${{ vars.IOS_CODESIGN_KEY }}
+          PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          VERSION: ${{ inputs.version }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          profile_dir="$(mktemp -d "$RUNNER_TEMP/ios-profile.XXXXXX")"
+          installed_profile="$HOME/Library/MobileDevice/Provisioning Profiles/dotnetconf-$GITHUB_RUN_ID.mobileprovision"
+          trap 'rm -f "$installed_profile" "$profile_dir/profile.mobileprovision" "$profile_dir/profile.plist"; rmdir "$profile_dir"' EXIT
+          printf '%s' "$PROFILE" | base64 --decode > "$profile_dir/profile.mobileprovision"
+          security cms -D -i "$profile_dir/profile.mobileprovision" > "$profile_dir/profile.plist"
+          profile_uuid=$(/usr/libexec/PlistBuddy -c 'Print UUID' "$profile_dir/profile.plist")
+          mkdir -p "$(dirname "$installed_profile")"
+          cp "$profile_dir/profile.mobileprovision" "$installed_profile"
+          dotnet publish src/DotNetConf.App/DotNetConf.App.csproj -c Release \
+            -f net11.0-ios -p:MobileTargetFramework=net11.0-ios -p:RuntimeIdentifier=ios-arm64 \
+            "-p:ApplicationId=$APP_ID" "-p:ApplicationDisplayVersion=$VERSION" "-p:ApplicationVersion=$BUILD_NUMBER" \
+            -p:ArchiveOnBuild=true "-p:CodesignKey=$SIGNING_IDENTITY" "-p:CodesignProvision=$profile_uuid" \
+            "-p:CodesignKeychain=$HOME/Library/Keychains/signing_temp.keychain-db"
+          ipa_dir=src/DotNetConf.App/bin/Release/net11.0-ios/ios-arm64/publish
+          shopt -s nullglob
+          ipas=("$ipa_dir"/*.ipa)
+          test "${#ipas[@]}" -eq 1 || { echo "::error::Expected exactly one IPA."; exit 1; }
+          echo "IPA_PATH=${ipas[0]}" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ios-${{ inputs.version }}-${{ inputs.build_number }}
+          path: ${{ env.IPA_PATH }}
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload to TestFlight only
+        uses: apple-actions/upload-testflight-build@9fd28d4e690396e43caca69cef54cccccce77034 # v3
+        with:
+          app-path: ${{ env.IPA_PATH }}
+          app-type: ios
+          issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          api-key-id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          api-private-key: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+      - name: Remove temporary signing keychain
+        if: always() && steps.signing.outcome != 'skipped'
+        shell: bash
+        run: |
+          keychain="$HOME/Library/Keychains/signing_temp.keychain-db"
+          if test -f "$keychain"; then
+            security delete-keychain "$keychain"
+          fi

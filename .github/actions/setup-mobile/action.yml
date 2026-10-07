@@ -1,0 +1,42 @@
+name: Set up pinned mobile toolchain
+description: Install the SDK and mobile workload selected by global.json.
+inputs:
+  platform:
+    description: android or ios
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      with:
+        global-json-file: global.json
+    - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+      if: inputs.platform == 'android'
+      with:
+        distribution: temurin
+        java-version: '21'
+    - name: Install pinned workload
+      shell: bash
+      env:
+        PLATFORM: ${{ inputs.platform }}
+      run: |
+        set -euo pipefail
+        case "$PLATFORM" in android|ios) ;; *) echo "::error::Unknown mobile platform"; exit 1 ;; esac
+        dotnet workload install "maui-$PLATFORM" --version "$(jq -r '.workload.version' global.json)"
+    - name: Select Xcode 26.6
+      if: inputs.platform == 'ios'
+      shell: bash
+      run: |
+        set -euo pipefail
+        developer_dir=/Applications/Xcode_26.6.app/Contents/Developer
+        test -d "$developer_dir" || { echo "::error::Xcode 26.6 is required by the pinned workload."; exit 1; }
+        echo "DEVELOPER_DIR=$developer_dir" >> "$GITHUB_ENV"
+        DEVELOPER_DIR="$developer_dir" xcodebuild -version
+    - name: Install workload-required Android SDK packages
+      if: inputs.platform == 'android'
+      shell: bash
+      run: |
+        dotnet build src/DotNetConf.App/DotNetConf.App.csproj \
+          -t:InstallAndroidDependencies -f net11.0-android -p:MobileTargetFramework=net11.0-android \
+          "-p:AndroidSdkDirectory=$ANDROID_HOME" "-p:JavaSdkDirectory=$JAVA_HOME" \
+          -p:AcceptAndroidSdkLicenses=true
