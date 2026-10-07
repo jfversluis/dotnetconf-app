@@ -1,0 +1,10 @@
+{
+  "contentHash": "e61381c27507748f0e8750fe5d928a6e0791a815db464c35b413dad70334911b",
+  "resolvedCommit": "c2c5f0d0a46031f22976c13964052e928509cd5b",
+  "name": "xamarin-forms-migration",
+  "commit": "a90865a2da0513b3f16c5317e455af7c12566d5c",
+  "branch": "c2c5f0d0a46031f22976c13964052e928509cd5b",
+  "updatedAt": "2026-10-07T14:31:58.6011010Z",
+  "source": "dotnet/maui-labs",
+  "pluginPath": "plugins/dotnet-maui/skills/xamarin-forms-migration"
+}

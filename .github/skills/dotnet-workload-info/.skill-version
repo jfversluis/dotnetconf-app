@@ -1,0 +1,10 @@
+{
+  "contentHash": "f3fd35323cabae03f0931531f2f6d923238930e5f342e4c6afb394906fdd5f7d",
+  "resolvedCommit": "c2c5f0d0a46031f22976c13964052e928509cd5b",
+  "name": "dotnet-workload-info",
+  "commit": "a90865a2da0513b3f16c5317e455af7c12566d5c",
+  "branch": "c2c5f0d0a46031f22976c13964052e928509cd5b",
+  "updatedAt": "2026-10-07T14:31:58.6714920Z",
+  "source": "dotnet/maui-labs",
+  "pluginPath": "plugins/dotnet-maui-tooling/skills/dotnet-workload-info"
+}

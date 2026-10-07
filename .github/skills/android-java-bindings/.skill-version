@@ -1,0 +1,10 @@
+{
+  "contentHash": "a7f3c164d85e2ed1a57480a4bfe1d16098c328ba0478473832a0723e2eec3d29",
+  "resolvedCommit": "c2c5f0d0a46031f22976c13964052e928509cd5b",
+  "name": "android-java-bindings",
+  "commit": "57eb4df3e5af488fc0ec594a6f05a5c849fa697f",
+  "branch": "c2c5f0d0a46031f22976c13964052e928509cd5b",
+  "updatedAt": "2026-10-07T14:31:58.6172080Z",
+  "source": "dotnet/maui-labs",
+  "pluginPath": "plugins/dotnet-maui-tooling/skills/android-java-bindings"
+}

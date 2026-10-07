@@ -1,0 +1,25 @@
+<ContentView x:Class="DotNetConf.App.Controls.SpeakerRow"
+             xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
+             x:DataType="vm:SpeakerViewModel">
+    <Grid Padding="0,16" MinimumHeightRequest="88">
+    <Grid ColumnDefinitions="56,*,16" ColumnSpacing="16" InputTransparent="True"
+          AutomationProperties.ExcludedWithChildren="True">
+        <Border HeightRequest="56" WidthRequest="56" StrokeThickness="0" StrokeShape="RoundRectangle 28"
+                Background="{AppThemeBinding Light={StaticResource ConferenceGradient}, Dark={StaticResource ConferenceDarkGradient}}">
+            <Label Text="{Binding Initials}" FontFamily="OpenSansSemibold" FontSize="20"
+                   TextColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Midnight}}"
+                   HorizontalOptions="Center" VerticalOptions="Center" />
+        </Border>
+        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="4">
+            <Label Text="{Binding Name}" FontFamily="OpenSansSemibold" FontSize="18"
+                   TextColor="{AppThemeBinding Light={StaticResource Midnight}, Dark={StaticResource White}}" />
+            <Label Text="{Binding Tagline}" Style="{StaticResource Secondary}" FontSize="13" />
+        </VerticalStackLayout>
+        <Image Grid.Column="2" Source="{StaticResource ChevronIcon}" WidthRequest="16" HeightRequest="16" />
+    </Grid>
+    <Button Command="{Binding OpenCommand}" BackgroundColor="Transparent" BorderWidth="0"
+            AutomationId="{Binding AutomationId}"
+            SemanticProperties.Description="{Binding Name, StringFormat='View speaker: {0}'}"
+            SemanticProperties.Hint="{Binding Tagline}" />
+    </Grid>
+</ContentView>

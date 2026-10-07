@@ -1,0 +1,10 @@
+{
+  "contentHash": "ab21a29d0bb8af4bffe7055168d1a9f214276851a6a02df0025f7c04cfbd669e",
+  "resolvedCommit": "c2c5f0d0a46031f22976c13964052e928509cd5b",
+  "name": "android-slim-bindings",
+  "commit": "57eb4df3e5af488fc0ec594a6f05a5c849fa697f",
+  "branch": "c2c5f0d0a46031f22976c13964052e928509cd5b",
+  "updatedAt": "2026-10-07T14:31:58.6493260Z",
+  "source": "dotnet/maui-labs",
+  "pluginPath": "plugins/dotnet-maui-tooling/skills/android-slim-bindings"
+}

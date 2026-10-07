@@ -1,0 +1,38 @@
+<ResourceDictionary x:Class="DotNetConf.App.Resources.Styles.Colors">
+    <Color x:Key="Purple">#512BD4</Color>
+    <Color x:Key="Midnight">#190649</Color>
+    <Color x:Key="Magenta">#D600AA</Color>
+    <Color x:Key="Lavender">#B9AAEE</Color>
+    <Color x:Key="LavenderLight">#EEEAFB</Color>
+    <Color x:Key="LightBackground">#FAFAFA</Color>
+    <Color x:Key="LightSurface">#FFFFFF</Color>
+    <Color x:Key="LightText">#333333</Color>
+    <Color x:Key="LightSecondary">#616161</Color>
+    <Color x:Key="LightOutline">#E0E0E0</Color>
+    <Color x:Key="DarkBackground">#1F1F1F</Color>
+    <Color x:Key="DarkSurface">#292929</Color>
+    <Color x:Key="DarkText">#E5E5E5</Color>
+    <Color x:Key="DarkSecondary">#BDBDBD</Color>
+    <Color x:Key="DarkOutline">#474747</Color>
+    <Color x:Key="LightError">#9E202E</Color>
+    <Color x:Key="DarkError">#FFB4BD</Color>
+    <Color x:Key="White">#FFFFFF</Color>
+    <LinearGradientBrush x:Key="ConferenceGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#512BD4" Offset="0" />
+        <GradientStop Color="#D600AA" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="ConferenceDarkGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#9780E5" Offset="0" />
+        <GradientStop Color="#DE33BB" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="HeroLightGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#EEEAFB" Offset="0" />
+        <GradientStop Color="#FBE5F6" Offset="0.65" />
+        <GradientStop Color="#FAFAFA" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="HeroDarkGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#190649" Offset="0" />
+        <GradientStop Color="#400033" Offset="0.65" />
+        <GradientStop Color="#1F1F1F" Offset="1" />
+    </LinearGradientBrush>
+</ResourceDictionary>

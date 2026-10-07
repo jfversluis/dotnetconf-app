@@ -1,0 +1,5 @@
+<ContentView x:Class="DotNetConf.App.Controls.StatusBanner"
+             xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
+             x:DataType="vm:ConferenceViewModel" IsVisible="{Binding IsBusy}">
+    <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" AutomationId="agenda-loading" />
+</ContentView>

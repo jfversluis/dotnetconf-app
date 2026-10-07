@@ -1,0 +1,92 @@
+using DotNetConf.App.Pages;
+using DotNetConf.App.Services;
+using DotNetConf.App.ViewModels;
+using DotNetConf.Core;
+using IconFont.Maui.FluentIcons;
+using DotNetConf.App.Controls;
+using CommunityToolkit.Maui;
+#if ANDROID
+using Microsoft.Maui.Platform;
+#endif
+#if DEBUG
+using Microsoft.Extensions.Logging;
+using Microsoft.Maui.DevFlow.Agent;
+#endif
+
+namespace DotNetConf.App;
+
+public static class MauiProgram
+{
+    public static MauiApp CreateMauiApp()
+    {
+        var builder = MauiApp.CreateBuilder();
+        builder.UseMauiApp<App>()
+            .UseMauiCommunityToolkit()
+            .UseFluentIconsRegular()
+            .UseFluentIconsFilled()
+            .ConfigureMauiHandlers(handlers => handlers.AddHandler<AgendaPicker, AgendaPickerHandler>())
+            .ConfigureFonts(fonts =>
+            {
+                fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
+                fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
+                fonts.AddFont("SpaceGrotesk-Bold.ttf", "SpaceGroteskBold");
+            });
+
+#if ANDROID
+        Microsoft.Maui.Handlers.EntryHandler2.Mapper.AppendToMapping(nameof(IEntry.Placeholder), (handler, view) =>
+        {
+            if (view is not SearchEntry)
+                return;
+
+            var layout = handler.PlatformView;
+            layout.BoxBackgroundMode = Google.Android.Material.TextField.TextInputLayout.BoxBackgroundNone;
+            layout.HintEnabled = false;
+            layout.SetPadding(0, 0, 0, 0);
+            layout.Background = null;
+            layout.SetGravity((layout.Gravity & ~Android.Views.GravityFlags.VerticalGravityMask)
+                | Android.Views.GravityFlags.CenterVertical);
+            if (layout.EditText is { } input)
+            {
+                input.SetPadding(0, 0, 0, 0);
+                input.Background = null;
+                input.Hint = view.Placeholder;
+                input.Gravity = (input.Gravity & ~Android.Views.GravityFlags.VerticalGravityMask)
+                    | Android.Views.GravityFlags.CenterVertical;
+            }
+        });
+        Microsoft.Maui.Handlers.EntryHandler2.Mapper.AppendToMapping(nameof(IEntry.PlaceholderColor), (handler, view) =>
+        {
+            if (view is SearchEntry && handler.PlatformView.EditText is { } input && view.PlaceholderColor is { } color)
+                input.SetHintTextColor(color.ToPlatform());
+        });
+#elif IOS
+        Microsoft.Maui.Handlers.EntryHandler.Mapper.AppendToMapping("AgendaSearch", (handler, view) =>
+        {
+            if (view is not SearchEntry)
+                return;
+
+            handler.PlatformView.BorderStyle = UIKit.UITextBorderStyle.None;
+        });
+#endif
+
+        builder.Services.AddSingleton<IConferenceDataSource, BundledConferenceDataSource>();
+        builder.Services.AddSingleton<IScheduleStore>(_ =>
+            new JsonScheduleStore(Path.Combine(FileSystem.AppDataDirectory, "schedule.json")));
+        builder.Services.AddSingleton<ScheduleService>();
+        builder.Services.AddSingleton<DetailNavigationService>();
+        builder.Services.AddSingleton<ConferenceViewModel>();
+        builder.Services.AddSingleton<AppShell>();
+        builder.Services.AddTransient<HomePage>();
+        builder.Services.AddTransient<SessionsPage>();
+        builder.Services.AddTransient<SpeakersPage>();
+        builder.Services.AddTransient<SchedulePage>();
+        builder.Services.AddTransient<AboutPage>();
+        builder.Services.AddTransient<SessionDetailPage>();
+        builder.Services.AddTransient<SpeakerDetailPage>();
+#if DEBUG
+        builder.Logging.AddDebug();
+        builder.AddMauiDevFlowAgent();
+#endif
+        return builder.Build();
+    }
+}

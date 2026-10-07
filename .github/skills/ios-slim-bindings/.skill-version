@@ -1,0 +1,10 @@
+{
+  "contentHash": "e60112ec8127366b436b9eb221a77f88058bd27a9b9d52f67e29e4fac4809022",
+  "resolvedCommit": "c2c5f0d0a46031f22976c13964052e928509cd5b",
+  "name": "ios-slim-bindings",
+  "commit": "a90865a2da0513b3f16c5317e455af7c12566d5c",
+  "branch": "c2c5f0d0a46031f22976c13964052e928509cd5b",
+  "updatedAt": "2026-10-07T14:31:58.6842960Z",
+  "source": "dotnet/maui-labs",
+  "pluginPath": "plugins/dotnet-maui-tooling/skills/ios-slim-bindings"
+}

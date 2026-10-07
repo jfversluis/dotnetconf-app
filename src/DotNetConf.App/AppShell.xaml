@@ -1,0 +1,17 @@
+<Shell x:Class="DotNetConf.App.AppShell"
+       FlyoutBehavior="Disabled"
+       Shell.NavBarHasShadow="False"
+       Shell.BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}"
+       Shell.ForegroundColor="{AppThemeBinding Light={StaticResource Midnight}, Dark={StaticResource LavenderLight}}"
+       Shell.TitleColor="{AppThemeBinding Light={StaticResource Midnight}, Dark={StaticResource LavenderLight}}"
+       Shell.TabBarBackgroundColor="Transparent"
+       Shell.TabBarForegroundColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
+       Shell.TabBarUnselectedColor="{AppThemeBinding Light={StaticResource LightSecondary}, Dark={StaticResource DarkSecondary}}">
+    <TabBar>
+        <ShellContent x:Name="HomeTab" Title="Home" Route="home" Icon="{StaticResource HomeIcon}" />
+        <ShellContent x:Name="SessionsTab" Title="Sessions" Route="sessions" Icon="{StaticResource SessionsIcon}" />
+        <ShellContent x:Name="SpeakersTab" Title="Speakers" Route="speakers" Icon="{StaticResource SpeakersIcon}" />
+        <ShellContent x:Name="ScheduleTab" Title="My Schedule" Route="schedule" Icon="{StaticResource ScheduleIcon}" />
+        <ShellContent x:Name="AboutTab" Title="About" Route="about" Icon="{StaticResource AboutIcon}" />
+    </TabBar>
+</Shell>

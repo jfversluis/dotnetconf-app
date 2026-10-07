@@ -1,0 +1,10 @@
+{
+  "contentHash": "a8710eca594b769a35c266402cf5d9b978dbb6b453cbeee91fcf9d684c1af623",
+  "resolvedCommit": "c2c5f0d0a46031f22976c13964052e928509cd5b",
+  "name": "maui-ai-tool-bindings",
+  "commit": "a90865a2da0513b3f16c5317e455af7c12566d5c",
+  "branch": "c2c5f0d0a46031f22976c13964052e928509cd5b",
+  "updatedAt": "2026-10-07T14:31:58.4681120Z",
+  "source": "dotnet/maui-labs",
+  "pluginPath": "plugins/dotnet-maui/skills/maui-ai-tool-bindings"
+}

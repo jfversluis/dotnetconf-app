@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "isMock": true,
+  "name": ".NET Conf 2026",
+  "description": "A free, virtual celebration of .NET 11, bringing developers and the .NET community together to learn and build what is next.",
+  "websiteUrl": "https://www.dotnetconf.net/",
+  "speakers": [
+    { "id": "alex-rivera", "name": "Alex Rivera", "tagline": "Mobile developer · Fictional speaker", "bio": "Alex builds accessible mobile experiences and enjoys exploring native UI. This biography is fictional sample content." },
+    { "id": "sam-taylor", "name": "Sam Taylor", "tagline": "Language enthusiast · Fictional speaker", "bio": "Sam likes turning language features into practical, readable code. This biography is fictional sample content." },
+    { "id": "morgan-chen", "name": "Morgan Chen", "tagline": "Cross-platform developer · Fictional speaker", "bio": "Morgan explores cross-platform UI and desktop experiences. This biography is fictional sample content." },
+    { "id": "jordan-patel", "name": "Jordan Patel", "tagline": "Community organizer · Fictional speaker", "bio": "" }
+  ],
+  "sessions": [
+    { "id": "building-with-maui", "title": "Building thoughtful mobile apps with .NET MAUI", "description": "Explore native navigation, accessible interfaces, and the fundamentals of a dependable mobile experience. This is a fictional session, not an announced talk.", "startsAt": "2026-11-10T16:00:00Z", "endsAt": "2026-11-10T16:45:00Z", "speakerIds": ["alex-rivera"], "topics": [".NET MAUI", "Mobile"] },
+    { "id": "language-features", "title": "Language features you can put to work", "description": "A sample tour of expressive C# and clearer everyday code. This is a fictional session.", "startsAt": "2026-11-10T17:00:00Z", "endsAt": "2026-11-10T17:45:00Z", "speakerIds": ["sam-taylor"], "topics": ["C#", "Languages"] },
+    { "id": "avalonia-ui", "title": "Exploring cross-platform UI with Avalonia", "description": "A fictional look at UI composition and cross-platform experiences, with two sample speakers.", "startsAt": "2026-11-10T17:15:00Z", "endsAt": "2026-11-10T18:00:00Z", "speakerIds": ["morgan-chen", "alex-rivera"], "topics": ["Avalonia", "UI"] },
+    { "id": "accessible-by-design", "title": "Accessible by design: making a conference app work for everyone, on every screen", "description": "A fictional deep dive into screen readers, large text, theme contrast, and adaptive layouts.", "startsAt": "2026-11-11T16:00:00Z", "endsAt": "2026-11-11T16:45:00Z", "speakerIds": ["alex-rivera", "morgan-chen"], "topics": [".NET MAUI", "Accessibility"] },
+    { "id": "community-stories", "title": "Stories from the .NET community", "description": "", "startsAt": "2026-11-11T23:30:00Z", "endsAt": "2026-11-12T00:15:00Z", "speakerIds": ["jordan-patel"], "topics": ["Community"] },
+    { "id": "local-ai", "title": "A practical introduction to on-device AI", "description": "A fictional session about privacy, capability detection, and helpful local experiences.", "startsAt": "2026-11-12T16:00:00Z", "endsAt": "2026-11-12T16:45:00Z", "speakerIds": ["sam-taylor", "morgan-chen"], "topics": ["AI", "Mobile"] }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "contentHash": "0e0b140a6980baf8e64d822876d6b33e4e36219e5ca8b32a57fa279463f43473",
+  "resolvedCommit": "c2c5f0d0a46031f22976c13964052e928509cd5b",
+  "name": "maui-notifications-deep-links",
+  "commit": "a90865a2da0513b3f16c5317e455af7c12566d5c",
+  "branch": "c2c5f0d0a46031f22976c13964052e928509cd5b",
+  "updatedAt": "2026-10-07T14:31:58.5470900Z",
+  "source": "dotnet/maui-labs",
+  "pluginPath": "plugins/dotnet-maui/skills/maui-notifications-deep-links"
+}

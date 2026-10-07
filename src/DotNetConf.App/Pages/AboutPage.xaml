@@ -1,0 +1,42 @@
+<pages:ConferencePage x:Class="DotNetConf.App.Pages.AboutPage"
+                      xmlns:pages="clr-namespace:DotNetConf.App.Pages"
+                      xmlns:controls="clr-namespace:DotNetConf.App.Controls"
+                      xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
+                      x:DataType="vm:ConferenceViewModel" Title="About">
+    <ScrollView SafeAreaEdges="Default" AutomationId="about-scroll">
+        <VerticalStackLayout Padding="24" Spacing="24" MaximumWidthRequest="720" HorizontalOptions="Center" SafeAreaEdges="None">
+            <Label Text="A celebration of .NET" Style="{StaticResource Heading}" />
+            <Label Text="{Binding ConferenceDescription}" />
+            <controls:StatusBanner />
+            <VerticalStackLayout Spacing="12" IsVisible="{Binding IsMock}">
+                <Label Text="About the sample agenda" Style="{StaticResource Subheading}" />
+                <Label Text="All sessions and speakers in this preview are fictional examples, not the confirmed conference lineup."
+                       Style="{StaticResource Secondary}" AutomationId="mock-data-disclosure" />
+            </VerticalStackLayout>
+            <VerticalStackLayout Spacing="12">
+                <Label Text="A community companion" Style="{StaticResource Subheading}" />
+                <Label Text="This app is unofficial and is not affiliated with or endorsed by Microsoft or the .NET Conf organizers."
+                       Style="{StaticResource Secondary}" />
+                <Label Text="For confirmed dates, registration, and announcements, use the official website."
+                       Style="{StaticResource Secondary}" />
+                <Button Text="Visit the official website" Command="{Binding OpenWebsiteCommand}"
+                        Style="{StaticResource QuietButton}" ImageSource="{StaticResource WebsiteIcon}" AutomationId="about-website" />
+            </VerticalStackLayout>
+            <BoxView HeightRequest="1" />
+            <VerticalStackLayout Spacing="12">
+                <Label Text="Your schedule stays here" Style="{StaticResource Subheading}" />
+                <Label Text="No account or app-managed cloud sync. Bookmarks are stored in the app's private storage on this device; operating-system backups may include app data. Opening the official website uses your browser and that site's privacy policy."
+                       Style="{StaticResource Secondary}" />
+                <Label Text="Development builds include local DevFlow inspection. The inspection agent is excluded from Release builds."
+                       Style="{StaticResource Secondary}" />
+            </VerticalStackLayout>
+            <VerticalStackLayout Spacing="12">
+                <Label Text="Built with .NET MAUI 11" Style="{StaticResource Subheading}" />
+                <Label Text="Native mobile UI, CoreCLR, source-generated XAML, and Fluent icons. Maps, reminders, local AI, and partner video integration are future additions."
+                       Style="{StaticResource Secondary}" />
+                <Label Text="Fluent UI System Icons and IconFont.Maui.FluentIcons are MIT licensed. Open Sans is Apache 2.0 licensed; Space Grotesk uses the SIL Open Font License. License notices are included with the app."
+                       Style="{StaticResource Secondary}" />
+            </VerticalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</pages:ConferencePage>

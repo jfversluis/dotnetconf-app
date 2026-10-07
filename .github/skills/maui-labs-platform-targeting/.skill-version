@@ -1,0 +1,10 @@
+{
+  "contentHash": "84565cc46104683aec34bb0dc7300a7c2d43551d1585def7574230df31eaf199",
+  "resolvedCommit": "c2c5f0d0a46031f22976c13964052e928509cd5b",
+  "name": "maui-labs-platform-targeting",
+  "commit": "a90865a2da0513b3f16c5317e455af7c12566d5c",
+  "branch": "c2c5f0d0a46031f22976c13964052e928509cd5b",
+  "updatedAt": "2026-10-07T14:31:58.5303330Z",
+  "source": "dotnet/maui-labs",
+  "pluginPath": "plugins/dotnet-maui/skills/maui-labs-platform-targeting"
+}

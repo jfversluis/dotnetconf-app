@@ -1,0 +1,35 @@
+<ContentPage x:Class="DotNetConf.App.Pages.SpeakerDetailPage"
+             x:Name="Page"
+             xmlns:controls="clr-namespace:DotNetConf.App.Controls"
+             xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
+             x:DataType="vm:SpeakerViewModel" Title="Speaker">
+    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="16" SafeAreaEdges="None">
+        <controls:StatusBanner x:Name="Status" Margin="24,0" />
+        <Label x:Name="NotFound" Grid.Row="1" Text="Speaker not found. Go back to the directory and choose a speaker."
+               AutomationId="speaker-not-found" Margin="24,0" />
+        <CollectionView x:Name="Details" Grid.Row="2" ItemsSource="{Binding Sessions}" SelectionMode="None"
+                        IsVisible="False" AutomationId="speaker-session-list">
+            <CollectionView.Footer>
+                <controls:SafeAreaFooter Page="{x:Reference Page}" />
+            </CollectionView.Footer>
+            <CollectionView.Header>
+                <VerticalStackLayout Spacing="16" Padding="24,16" SafeAreaEdges="None">
+                    <Label Text="{Binding Name}" Style="{StaticResource Heading}" AutomationId="speaker-detail-name" />
+                    <Label Text="{Binding Tagline}" Style="{StaticResource Secondary}" />
+                    <Label Text="{Binding Bio}" />
+                    <Label Text="Sessions" Style="{StaticResource Subheading}" />
+                </VerticalStackLayout>
+            </CollectionView.Header>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:SessionViewModel">
+                    <Grid Padding="24,0">
+                        <controls:SessionRow />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+            <CollectionView.EmptyView>
+                <Label Text="No sessions announced for this speaker yet." Style="{StaticResource Secondary}" Margin="24,0" />
+            </CollectionView.EmptyView>
+        </CollectionView>
+    </Grid>
+</ContentPage>

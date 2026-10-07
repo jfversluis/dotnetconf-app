@@ -1,0 +1,10 @@
+{
+  "contentHash": "2bab13dd58f641ea0aae2d644ea27326cc2b8f575c9247570ea27c4e2633375f",
+  "resolvedCommit": "c2c5f0d0a46031f22976c13964052e928509cd5b",
+  "name": "maui-platform-invoke",
+  "commit": "a90865a2da0513b3f16c5317e455af7c12566d5c",
+  "branch": "c2c5f0d0a46031f22976c13964052e928509cd5b",
+  "updatedAt": "2026-10-07T14:31:58.5625000Z",
+  "source": "dotnet/maui-labs",
+  "pluginPath": "plugins/dotnet-maui/skills/maui-platform-invoke"
+}

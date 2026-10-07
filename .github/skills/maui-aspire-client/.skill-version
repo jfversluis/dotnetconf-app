@@ -1,0 +1,10 @@
+{
+  "contentHash": "59de9ec8cdcf514526aa054455cff38882d34a168494f5e2e29484d85711f37c",
+  "resolvedCommit": "c2c5f0d0a46031f22976c13964052e928509cd5b",
+  "name": "maui-aspire-client",
+  "commit": "a90865a2da0513b3f16c5317e455af7c12566d5c",
+  "branch": "c2c5f0d0a46031f22976c13964052e928509cd5b",
+  "updatedAt": "2026-10-07T14:31:58.4867120Z",
+  "source": "dotnet/maui-labs",
+  "pluginPath": "plugins/dotnet-maui/skills/maui-aspire-client"
+}

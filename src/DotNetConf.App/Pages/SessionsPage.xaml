@@ -1,0 +1,56 @@
+<pages:ConferencePage x:Class="DotNetConf.App.Pages.SessionsPage"
+                      x:Name="Page"
+                      xmlns:pages="clr-namespace:DotNetConf.App.Pages"
+                      xmlns:controls="clr-namespace:DotNetConf.App.Controls"
+                      xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
+                      x:DataType="vm:ConferenceViewModel" Title="Sessions">
+    <Grid RowDefinitions="Auto,*" SafeAreaEdges="None">
+        <VerticalStackLayout Padding="24,16,24,8" Spacing="16">
+            <Label Text="Find your next idea" Style="{StaticResource Heading}" />
+            <controls:AgendaSearchField Text="{Binding SessionQuery}" ApplyQueryCommand="{Binding SearchSessionsCommand}"
+                                        Placeholder="Talks, topics, or speakers"
+                                        SearchDescription="Search sessions by talk, topic, or speaker"
+                                        SearchAutomationId="session-search" ClearAutomationId="session-search-clear" />
+        </VerticalStackLayout>
+    <CollectionView Grid.Row="1" ItemsSource="{Binding Sessions}" SelectionMode="None" AutomationId="session-list">
+        <CollectionView.Footer>
+            <controls:SafeAreaFooter Page="{x:Reference Page}" AutomationId="session-safe-area-footer" />
+        </CollectionView.Footer>
+        <CollectionView.Header>
+            <VerticalStackLayout Spacing="16" Padding="24,16,24,8" SafeAreaEdges="None">
+                <controls:StatusBanner AutomationId="sessions-status" />
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                    <Border StrokeShape="RoundRectangle 8" Padding="12,0"
+                            BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}">
+                    <controls:AgendaPicker Title="Day" ItemsSource="{Binding Days}" SelectedItem="{Binding SelectedDay}"
+                            AutomationId="day-filter" SemanticProperties.Description="Filter sessions by local day" />
+                    </Border>
+                    <Border Grid.Column="1" StrokeShape="RoundRectangle 8" Padding="12,0"
+                            BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}">
+                    <controls:AgendaPicker Title="Topic" ItemsSource="{Binding Topics}" SelectedItem="{Binding SelectedTopic}"
+                            AutomationId="topic-filter" SemanticProperties.Description="Filter sessions by topic" />
+                    </Border>
+                </Grid>
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <Label Text="{Binding TimeZoneLabel}" Style="{StaticResource Secondary}" FontSize="12" VerticalOptions="Center" />
+                    <Button Grid.Column="1" Text="Reset" Command="{Binding ResetFiltersCommand}" Style="{StaticResource QuietButton}"
+                            AutomationId="reset-filters" />
+                </Grid>
+            </VerticalStackLayout>
+        </CollectionView.Header>
+        <CollectionView.ItemTemplate>
+            <DataTemplate x:DataType="vm:SessionViewModel">
+                <Grid Padding="24,0">
+                    <controls:SessionRow />
+                </Grid>
+            </DataTemplate>
+        </CollectionView.ItemTemplate>
+        <CollectionView.EmptyView>
+            <VerticalStackLayout Padding="40,32" Spacing="12">
+                <Label Text="No sessions to show" Style="{StaticResource Subheading}" />
+                <Label Text="Try another search, reset the filters, or retry if the agenda couldn't load." Style="{StaticResource Secondary}" />
+            </VerticalStackLayout>
+        </CollectionView.EmptyView>
+    </CollectionView>
+    </Grid>
+</pages:ConferencePage>

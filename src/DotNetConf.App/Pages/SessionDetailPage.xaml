@@ -1,0 +1,48 @@
+<ContentPage x:Class="DotNetConf.App.Pages.SessionDetailPage"
+             xmlns:controls="clr-namespace:DotNetConf.App.Controls"
+             xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
+             x:DataType="vm:SessionViewModel" Title="Session">
+    <ScrollView SafeAreaEdges="Default" AutomationId="session-detail-scroll">
+        <VerticalStackLayout Padding="24" Spacing="24" MaximumWidthRequest="720" HorizontalOptions="Center" SafeAreaEdges="None">
+            <controls:StatusBanner x:Name="Status" />
+            <Label x:Name="NotFound" Text="Session not found. Go back to the agenda and choose a session."
+                   AutomationId="session-not-found" />
+            <VerticalStackLayout x:Name="Details" Spacing="24" IsVisible="False">
+                <VerticalStackLayout Spacing="12">
+                    <Grid ColumnDefinitions="*,48" ColumnSpacing="12">
+                        <Label Text="{Binding Title}" Style="{StaticResource Heading}" AutomationId="session-detail-title" />
+                        <ImageButton Grid.Column="1" Source="{StaticResource HeartOutlineIcon}" Command="{Binding ToggleSaveCommand}"
+                                     Style="{StaticResource IconButton}" VerticalOptions="Start"
+                                     AutomationId="detail-save" SemanticProperties.Description="{Binding SaveHint}">
+                            <ImageButton.Triggers>
+                                <DataTrigger TargetType="ImageButton" Binding="{Binding IsSaved}" Value="True">
+                                    <Setter Property="Source" Value="{StaticResource HeartFilledIcon}" />
+                                </DataTrigger>
+                            </ImageButton.Triggers>
+                        </ImageButton>
+                    </Grid>
+                    <Label Text="{Binding TopicLabel}" Style="{StaticResource Secondary}" />
+                    <Label Text="{Binding DateLabel}" FontFamily="OpenSansSemibold" />
+                    <Label Text="{Binding TimeLabel}" />
+                    <Label x:Name="TimeZone" Style="{StaticResource Secondary}" FontSize="12" />
+                    <Label Text="Overlaps another saved session" IsVisible="{Binding HasConflict}"
+                           TextColor="{AppThemeBinding Light={StaticResource LightError}, Dark={StaticResource DarkError}}" />
+                </VerticalStackLayout>
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="About this session" Style="{StaticResource Subheading}" />
+                    <Label Text="{Binding Description}" />
+                </VerticalStackLayout>
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Speakers" Style="{StaticResource Subheading}" />
+                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding Speakers}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SpeakerViewModel">
+                                <controls:SpeakerRow />
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

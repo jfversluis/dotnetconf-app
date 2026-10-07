@@ -1,0 +1,32 @@
+IconFont.Maui.FluentIcons 1.1.1
+Copyright (c) 2026 IconFontPack Contributors
+https://github.com/jfversluis/IconFont.Maui.FluentIcons
+MIT license: LICENSE-FluentIcons.txt
+
+CommunityToolkit.Maui and CommunityToolkit.Maui.Core 15.0.1
+Copyright (c) .NET Foundation and Contributors
+https://github.com/CommunityToolkit/Maui
+MIT license: LICENSE-MauiToolkit.txt
+
+Fluent UI System Icons (Regular and Filled fonts, redistributed by the package)
+Copyright (c) 2020 Microsoft Corporation
+https://github.com/microsoft/fluentui-system-icons
+MIT license: LICENSE-FluentSystemIcons.txt
+
+Open Sans Regular and Semibold (from the .NET MAUI app template)
+Digitized data copyright (c) 2010-2011 Google Corporation.
+Licensed under the Apache License, Version 2.0: LICENSE-OpenSans.txt
+
+Space Grotesk Bold
+Copyright 2020 The Space Grotesk Project Authors
+https://github.com/floriankarsten/space-grotesk
+SIL Open Font License 1.1: LICENSE-SpaceGrotesk.txt
+
+.NET Conf two-robots-on-a-rocket artwork
+Source: https://www.dotnetconf.net/img/conf-hero.b21gztz2hl.svg
+Used in launcher and splash assets with redistribution permission confirmed by
+the project owner (Microsoft employee) on October 7, 2026.
+Adaptations: transparent crop retaining the website SVG's mirrored/rotated
+orientation, launcher safe-zone sizing, monochrome silhouette.
+This permission is not a general open-source license for the artwork.
+No speaker photographs are bundled.

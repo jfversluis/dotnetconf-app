@@ -1,0 +1,36 @@
+<ResourceDictionary x:Class="DotNetConf.App.Resources.Styles.Icons"
+                    xmlns:icons="clr-namespace:IconFont.Maui.FluentIcons;assembly=IconFont.Maui.FluentIcons">
+    <FontImageSource x:Key="HomeIcon" Glyph="{x:Static icons:FluentIconsRegular.Home24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
+                     Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+    <FontImageSource x:Key="SessionsIcon" Glyph="{x:Static icons:FluentIconsRegular.CalendarAgenda24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
+                     Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+    <FontImageSource x:Key="SpeakersIcon" Glyph="{x:Static icons:FluentIconsRegular.People24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
+                     Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+    <FontImageSource x:Key="ScheduleIcon" Glyph="{x:Static icons:FluentIconsRegular.Heart24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
+                     Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+    <FontImageSource x:Key="AboutIcon" Glyph="{x:Static icons:FluentIconsRegular.Info24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
+                     Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+    <FontImageSource x:Key="WebsiteIcon" Glyph="{x:Static icons:FluentIconsRegular.Open24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
+                     Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+    <FontImageSource x:Key="HeartOutlineIcon" Glyph="{x:Static icons:FluentIconsRegular.Heart24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
+                     Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+    <FontImageSource x:Key="HeartFilledIcon" Glyph="{x:Static icons:FluentIconsFilled.Heart24}"
+                     FontFamily="{x:Static icons:FluentIconsFilled.FontFamily}" Size="24"
+                     Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+    <FontImageSource x:Key="SearchIcon" Glyph="{x:Static icons:FluentIconsRegular.Search24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
+                     Color="{AppThemeBinding Light={StaticResource LightSecondary}, Dark={StaticResource DarkSecondary}}" />
+    <FontImageSource x:Key="ClearIcon" Glyph="{x:Static icons:FluentIconsRegular.Dismiss24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="20"
+                     Color="{AppThemeBinding Light={StaticResource LightSecondary}, Dark={StaticResource DarkSecondary}}" />
+    <FontImageSource x:Key="ChevronIcon" Glyph="{x:Static icons:FluentIconsRegular.ChevronRight24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="16"
+                     Color="{AppThemeBinding Light={StaticResource LightSecondary}, Dark={StaticResource DarkSecondary}}" />
+</ResourceDictionary>

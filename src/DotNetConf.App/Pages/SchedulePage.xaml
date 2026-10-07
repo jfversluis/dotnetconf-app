@@ -1,0 +1,36 @@
+<pages:ConferencePage x:Class="DotNetConf.App.Pages.SchedulePage"
+                      x:Name="Page"
+                      xmlns:pages="clr-namespace:DotNetConf.App.Pages"
+                      xmlns:controls="clr-namespace:DotNetConf.App.Controls"
+                      xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
+                      x:DataType="vm:ConferenceViewModel" Title="My Schedule">
+    <CollectionView ItemsSource="{Binding SavedSessions}" SelectionMode="None" AutomationId="saved-session-list">
+        <CollectionView.Footer>
+            <controls:SafeAreaFooter Page="{x:Reference Page}" />
+        </CollectionView.Footer>
+        <CollectionView.Header>
+            <VerticalStackLayout Spacing="12" Padding="24,16,24,8" SafeAreaEdges="None">
+                <Label Text="Your conference, your way" Style="{StaticResource Heading}" />
+                <controls:StatusBanner AutomationId="schedule-status" />
+                <Label Text="{Binding ScheduleSummary}" FontFamily="OpenSansSemibold" AutomationId="saved-count" />
+                <Label Text="{Binding TimeZoneLabel}" Style="{StaticResource Secondary}" FontSize="12" />
+            </VerticalStackLayout>
+        </CollectionView.Header>
+        <CollectionView.ItemTemplate>
+            <DataTemplate x:DataType="vm:SessionViewModel">
+                <Grid Padding="24,0">
+                    <controls:SessionRow />
+                </Grid>
+            </DataTemplate>
+        </CollectionView.ItemTemplate>
+        <CollectionView.EmptyView>
+            <VerticalStackLayout Padding="40,32" Spacing="16">
+                <Image Source="{StaticResource HeartOutlineIcon}" WidthRequest="32" HeightRequest="32"
+                       HorizontalOptions="Start" AutomationProperties.IsInAccessibleTree="False" />
+                <Label Text="Save a session from the agenda to build your personal viewing schedule. Your choices stay on this device."
+                       Style="{StaticResource Secondary}" />
+                <Button Text="Find a session" Command="{Binding BrowseSessionsCommand}" AutomationId="schedule-browse" />
+            </VerticalStackLayout>
+        </CollectionView.EmptyView>
+    </CollectionView>
+</pages:ConferencePage>

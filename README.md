@@ -1,2 +1,35 @@
-# dotnetconf-app
-The unofficial .NET Conf mobile app
+# .NET Conf companion
+
+[![Save the date! .NET Conf 2026, November 10-13](https://www.dotnetconf.net/img/conf-og-metadata.png)](https://www.dotnetconf.net/)
+
+Your .NET Conf, in your pocket. An **unofficial companion app for iOS and Android**, built to help you discover talks, meet the speakers, and plan what you want to watch.
+
+**Join us at [.NET Conf 2026](https://www.dotnetconf.net/), November 10-13!** Celebrate the launch of .NET 11, learn what's new, and connect with the community at this free virtual event. [Register now](https://aka.ms/dotnetconf2026) and save the date.
+
+## Explore the conference
+
+- **Find your next idea.** Browse sessions and search by title, topic, or speaker. Filter the agenda by day or topic.
+- **Meet the speakers.** Read their biographies and explore their talks, with easy navigation between speakers and sessions.
+- **Build your schedule.** Tap a heart to save a session. Your choices stay on your device, and overlapping sessions are highlighted.
+- **See times that make sense to you.** Session times use your device's local time zone.
+- **Feel at home.** The app follows your light or dark appearance and supports larger text.
+
+The bundled agenda is available offline, so you can browse it and manage your saved sessions without an account.
+
+## Availability
+
+The app is **in development and not yet available in the App Store or Google Play**. We're aiming for a first release in November 2026.
+
+**The current sessions and speakers are fictional examples**, not the announced .NET Conf lineup. The app's agenda will be updated when the official schedule is available. For official announcements and event information, visit [dotnetconf.net](https://www.dotnetconf.net/).
+
+## Your data
+
+Saved sessions are stored locally on your device. There is no account or cloud sync in the current app. Links to the conference website open in your browser.
+
+## About the project
+
+Built with [.NET MAUI](https://dotnet.microsoft.com/apps/maui) and .NET 11 preview technology, with styling inspired by the .NET Conf website. This is an unofficial project, not an official Microsoft conference app.
+
+The rocket-bot artwork is used with permission. That permission does not grant a general license to reuse the artwork; bundled third-party notices include its provenance and font licenses.
+
+Want to help build the app? See [the contributor guide](CONTRIBUTING.md) for setup, development tools, and verification details.

@@ -1,0 +1,39 @@
+<pages:ConferencePage x:Class="DotNetConf.App.Pages.SpeakersPage"
+                      x:Name="Page"
+                      xmlns:pages="clr-namespace:DotNetConf.App.Pages"
+                      xmlns:controls="clr-namespace:DotNetConf.App.Controls"
+                      xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
+                      x:DataType="vm:ConferenceViewModel" Title="Speakers">
+    <Grid RowDefinitions="Auto,*" SafeAreaEdges="None">
+        <VerticalStackLayout Padding="24,16,24,8" Spacing="16">
+            <Label Text="Meet the community" Style="{StaticResource Heading}" />
+            <controls:AgendaSearchField Text="{Binding SpeakerQuery}" ApplyQueryCommand="{Binding SearchSpeakersCommand}"
+                                        Placeholder="Find a speaker"
+                                        SearchDescription="Search speakers by name or expertise"
+                                        SearchAutomationId="speaker-search" ClearAutomationId="speaker-search-clear" />
+        </VerticalStackLayout>
+    <CollectionView Grid.Row="1" ItemsSource="{Binding Speakers}" SelectionMode="None" AutomationId="speaker-list">
+        <CollectionView.Footer>
+            <controls:SafeAreaFooter Page="{x:Reference Page}" />
+        </CollectionView.Footer>
+        <CollectionView.Header>
+            <VerticalStackLayout Spacing="16" Padding="24,16,24,8" SafeAreaEdges="None">
+                <controls:StatusBanner AutomationId="speakers-status" />
+            </VerticalStackLayout>
+        </CollectionView.Header>
+        <CollectionView.ItemTemplate>
+            <DataTemplate x:DataType="vm:SpeakerViewModel">
+                <Grid Padding="24,0">
+                    <controls:SpeakerRow />
+                </Grid>
+            </DataTemplate>
+        </CollectionView.ItemTemplate>
+        <CollectionView.EmptyView>
+            <VerticalStackLayout Padding="40,32" Spacing="12">
+                <Label Text="No speakers to show" Style="{StaticResource Subheading}" />
+                <Label Text="Try a different name or clear your search." Style="{StaticResource Secondary}" />
+            </VerticalStackLayout>
+        </CollectionView.EmptyView>
+    </CollectionView>
+    </Grid>
+</pages:ConferencePage>

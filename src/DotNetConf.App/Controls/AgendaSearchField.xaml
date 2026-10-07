@@ -1,0 +1,31 @@
+<ContentView x:Class="DotNetConf.App.Controls.AgendaSearchField"
+             xmlns:controls="clr-namespace:DotNetConf.App.Controls"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             x:Name="Control" x:DataType="controls:AgendaSearchField">
+    <Border x:Name="Outline" StrokeShape="RoundRectangle 12" Padding="12,0,0,0"
+            BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}">
+        <Border.GestureRecognizers>
+            <TapGestureRecognizer Tapped="OnFieldTapped" />
+        </Border.GestureRecognizers>
+        <Grid ColumnDefinitions="24,*,Auto" ColumnSpacing="8" SafeAreaEdges="None">
+            <Image Source="{StaticResource SearchIcon}" WidthRequest="20" HeightRequest="20"
+                   VerticalOptions="Center" AutomationProperties.IsInAccessibleTree="False" />
+            <controls:SearchEntry x:Name="SearchInput" Grid.Column="1"
+                   Text="{Binding Text, Source={x:Reference Control}, Mode=TwoWay}"
+                   Placeholder="{Binding Placeholder, Source={x:Reference Control}}"
+                   AutomationId="{Binding SearchAutomationId, Source={x:Reference Control}}"
+                   SemanticProperties.Description="{OnPlatform Android={x:Null}, iOS={Binding SearchDescription, Source={x:Reference Control}}}"
+                   ReturnType="Search" Completed="OnCompleted" Focused="OnFocusChanged" Unfocused="OnFocusChanged">
+                <controls:SearchEntry.Behaviors>
+                    <toolkit:UserStoppedTypingBehavior StoppedTypingTimeThreshold="300" MinimumLengthThreshold="0"
+                        ShouldDismissKeyboardAutomatically="False"
+                        Command="{Binding ApplyQueryCommand, Source={x:Reference Control}}" />
+                </controls:SearchEntry.Behaviors>
+            </controls:SearchEntry>
+            <ImageButton Grid.Column="2" Source="{StaticResource ClearIcon}" Style="{StaticResource IconButton}"
+                         IsVisible="{Binding HasQuery, Source={x:Reference Control}}" Clicked="OnClearClicked"
+                         AutomationId="{Binding ClearAutomationId, Source={x:Reference Control}}"
+                         SemanticProperties.Description="Clear search" />
+        </Grid>
+    </Border>
+</ContentView>

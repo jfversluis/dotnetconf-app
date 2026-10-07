@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DotNetConf.App/DotNetConf.App.csproj" />
+    <Project Path="src/DotNetConf.Core/DotNetConf.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DotNetConf.Core.Tests/DotNetConf.Core.Tests.csproj" />
+  </Folder>
+</Solution>
