@@ -8,7 +8,7 @@ The official website's purple/magenta identity is adapted to an agenda-first, na
 
 Home has an expressive, full-width lavender-to-pink wash (midnight-to-magenta in dark appearance), Space Grotesk display type, and a short purple-to-magenta rule. The website's dark accent gradient is `#9780E5` to `#DE33BB`. Speaker initials reuse the accent gradient; list bodies stay quiet. Text uses contrast-safe solid colors, not gradient lettering. Use `AppThemeBinding` for semantic light/dark pairs.
 
-The app follows system appearance. Status-bar icon contrast follows the app theme. Android opts into MAUI 11 RC1's native Material 3 controls with `UseMaterial3=true`. The website's two-robot rocket provides the launcher and light/dark splash artwork. A lavender launcher background separates the purple rocket from its surroundings. The launcher artwork is rendered at width 340 on its 456-unit canvas (up from 292); iOS uses an additional MAUI `ForegroundScale` of 1.15. Android keeps the unscaled foreground to fit its circular adaptive-icon mask. The monochrome launcher layer uses the same enlarged silhouette. Splash artwork is unchanged.
+The app defaults to system appearance; Settings offers a persisted System/Light/Dark choice. Status-bar icon contrast follows the app theme. Android opts into MAUI 11 RC1's native Material 3 controls with `UseMaterial3=true`. The website's two-robot rocket provides the launcher and light/dark splash artwork. A lavender launcher background separates the purple rocket from its surroundings. The launcher artwork is rendered at width 340 on its 456-unit canvas (up from 292); iOS uses an additional MAUI `ForegroundScale` of 1.15. Android keeps the unscaled foreground to fit its circular adaptive-icon mask. The monochrome launcher layer uses the same enlarged silhouette. Splash artwork is unchanged.
 
 ## Typography and layout
 
@@ -28,11 +28,49 @@ On iOS, pages use `SafeAreaEdges=None`, scrolling reading pages retain `ScrollVi
 
 Use only `IconFont.Maui.FluentIcons` for app-owned UI icons. `Icons.xaml` holds typed Regular/Filled glyph resources with theme-aware colors. Search uses the same icon family; back controls remain native. Launcher and splash icons are image assets, not font glyphs. Permission to redistribute the official two-robots-on-a-rocket graphic was confirmed by the project owner, a Microsoft employee, on October 7, 2026. Preserve its provenance notice; this is not a general open-source artwork license.
 
-Five Shell destinations: Home, Sessions, Speakers, My Schedule, About. Android's compact tab label is "Schedule" to avoid truncation; the page is still My Schedule. Sessions and speakers use ID-based details. A detail link returns to the matching page already in the active tab's navigation stack, preserving that page and its scroll position; otherwise it pushes a new page. Links to the current detail are no-ops, and navigation is serialized across session/speaker commands. Other tabs' histories are not searched or disturbed. My Schedule displays a live saved-session badge; zero hides it. Counts and saved state are also visible text, never badge-only information.
+Five Shell destinations: Home, Sessions, Speakers, My Schedule, Community. Android's compact tab label is "Schedule" to avoid truncation; the page is still My Schedule. Sessions and speakers use ID-based details. A detail link returns to the matching page already in the active tab's navigation stack, preserving that page and its scroll position; otherwise it pushes a new page. Links to the current detail are no-ops, and navigation is serialized across session/speaker commands. Other tabs' histories are not searched or disturbed. My Schedule displays a live saved-session badge; zero hides it. Counts and saved state are also visible text, never badge-only information.
 
 ## Content and states
 
+Sessions exposes a borderless Clear filters action only while a search, day, or
+topic filter is active. It clears all three without changing saved sessions.
+
+Community replaces the About tab; Home's Fluent settings gear opens Settings.
+Settings includes appearance, device-time-zone information, and an About action
+preserving access to disclosure and app information through native back navigation.
+Community's overview leads with a restrained branded introduction, gathering
+formats, an honest fictional-data disclosure, and one primary Explore event map
+action. Editorial sections explain the accessible list alternative and how to
+start a local gathering; no invented community statistics or organizer workflow.
+List-only builds label the primary action Browse community events instead of
+promising a map. Fictional event website actions explicitly say Open example website.
+The pushed explorer hides tabs with MAUI Shell, retains native back navigation,
+and gives the map the full available width and height. A compact opaque legend
+and bottom Show all / Event list controls leave the provider attribution visible.
+On iOS, the map background extends through the bottom safe area; a separate
+safe-area-aware layer keeps the legend, controls, list, and preview above system chrome.
+Unused overlay space does not intercept map gestures. Native counted clusters
+keep dense locations legible. White-outlined teardrop pins use typed Fluent video and
+presenter symbols to distinguish purple watch parties from deep-magenta in-person
+talks. A matching text legend explains both types without relying on color.
+The 24 fictional locations include four dense, mixed-type city hubs and seven
+standalone city examples. All event locations are framed initially; “Show all”
+restores that view. Pin taps select details without forced recentering, while
+list selections focus their location for a subsequent map switch. A themed,
+dismissible preview exposes the event name, kind, and city. Event details opens
+a native reading page with the venue, website, and explicit fiction disclosure;
+back preserves the explorer's viewport and selection. Preview and legend heights
+are bounded relative to the viewport and scroll for larger text. The list supplies
+a non-map selection path, also directly reachable from the overview.
+Unconfigured Android builds omit the map switch and show an honest availability
+statement alongside the usable list, not API-key setup instructions.
+
 About discloses fictional sample data while `IsMock` is true. Fictional people use initials instead of implied real photographs. Loading, empty results, no bookmarks, and invalid IDs retain their content states; operation errors are presented in native dialogs. Overlaps are persistent session attributes, not notification banners or restrictions. Optional showcases must not replace these core affordances.
+
+About's Third-party dependencies page uses simple, full-width reading rows with
+names and license/version details. Tapping a row opens a bundled, offline license;
+the final action exposes all notices and artwork credits. Native back navigation
+preserves the reading stack.
 
 ## Review basis
 

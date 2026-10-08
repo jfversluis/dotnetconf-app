@@ -1,0 +1,123 @@
+<ContentPage x:Class="DotNetConf.App.Pages.CommunityEventsPage"
+             x:Name="EventPage"
+             xmlns:pages="clr-namespace:DotNetConf.App.Pages"
+             xmlns:core="clr-namespace:DotNetConf.Core;assembly=DotNetConf.Core"
+             x:DataType="pages:CommunityEventsPage"
+             Title="{Binding ExplorerTitle}" SafeAreaEdges="{OnPlatform iOS=None, Default=All}" Shell.TabBarIsVisible="False">
+    <Grid RowDefinitions="*,Auto" SafeAreaEdges="None">
+        <Grid x:Name="MapHost" IsVisible="{Binding ShowMap}" SafeAreaEdges="None"
+              AutomationId="community-map-host" />
+        <Grid SafeAreaEdges="All" InputTransparent="True" CascadeInputTransparent="False">
+        <Grid InputTransparent="True" CascadeInputTransparent="False">
+            <Border Margin="12" Padding="12,10" StrokeShape="RoundRectangle 12"
+                    VerticalOptions="Start" IsVisible="{Binding ShowMap}"
+                    BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}">
+                <ScrollView MaximumHeightRequest="{Binding LegendHeight}" SafeAreaEdges="None">
+                    <VerticalStackLayout Spacing="8">
+                        <FlexLayout Wrap="Wrap" AlignItems="Center">
+                            <HorizontalStackLayout Spacing="6" Margin="0,0,16,0">
+                                <Image Source="{Binding WatchPartyPin}" WidthRequest="22" HeightRequest="28"
+                                       AutomationProperties.IsInAccessibleTree="False" />
+                                <Label Text="Watch party" FontSize="14" VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                            <HorizontalStackLayout Spacing="6">
+                                <Image Source="{Binding InPersonPin}" WidthRequest="22" HeightRequest="28"
+                                       AutomationProperties.IsInAccessibleTree="False" />
+                                <Label Text="In-person talks" FontSize="14" VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                        </FlexLayout>
+                        <Label Text="Fictional example events" FontSize="12" IsVisible="{Binding Conference.IsMock}"
+                               Style="{StaticResource Secondary}" AutomationId="community-mock-disclosure" />
+                        <Label Text="Tap a pin for a preview. Tap a number to zoom." FontSize="12"
+                               Style="{StaticResource Secondary}" />
+                    </VerticalStackLayout>
+                </ScrollView>
+            </Border>
+            <Grid Margin="12,0,12,44" ColumnDefinitions="*,*" ColumnSpacing="8"
+                  VerticalOptions="End" IsVisible="{Binding ShowMap}">
+                <Button Text="Show all" ImageSource="{StaticResource ShowAllIcon}" Clicked="OnShowAllClicked"
+                        Style="{StaticResource QuietButton}" AutomationId="community-show-all"
+                        BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}"
+                        SemanticProperties.Hint="Zoom out to all event locations" />
+                <Button Grid.Column="1" Text="Event list" ImageSource="{StaticResource EventListIcon}" Clicked="OnListClicked"
+                        Style="{StaticResource QuietButton}" AutomationId="community-list-mode"
+                        BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}"
+                        SemanticProperties.Hint="Browse the same events without using the map" />
+            </Grid>
+            <Grid RowDefinitions="Auto,*" IsVisible="{Binding ShowList}">
+                <VerticalStackLayout Padding="24,20,24,12" Spacing="10">
+                    <Label Text="Find a gathering" Style="{StaticResource Subheading}" />
+                    <Label Text="{Binding ListHelp}" Style="{StaticResource Secondary}" FontSize="14"
+                           AutomationId="community-map-help" />
+                    <Label Text="Fictional events and venues. Website links open example.com."
+                           IsVisible="{Binding Conference.IsMock}" Style="{StaticResource Secondary}"
+                           FontSize="14" AutomationId="community-list-disclosure" />
+                    <Button Text="View map" ImageSource="{StaticResource MapIcon}" Clicked="OnMapClicked"
+                            IsVisible="{Binding HasAvailableMap}" Style="{StaticResource QuietButton}"
+                            AutomationId="community-map-mode" />
+                </VerticalStackLayout>
+                <CollectionView Grid.Row="1" ItemsSource="{Binding Conference.CommunityEvents}" SelectionMode="Single"
+                                SelectedItem="{Binding SelectedEvent, Mode=TwoWay}" AutomationId="community-event-list">
+                    <CollectionView.EmptyView>
+                        <Label Text="No community events are available yet. Check back for updates." Padding="24"
+                               Style="{StaticResource Secondary}" />
+                    </CollectionView.EmptyView>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="core:CommunityEvent">
+                            <Grid>
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal">
+                                            <VisualState.Setters>
+                                                <Setter Property="BackgroundColor" Value="Transparent" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Selected">
+                                            <VisualState.Setters>
+                                                <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource LavenderLight}, Dark={StaticResource DarkSurface}}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                                <VerticalStackLayout Padding="24,16" Spacing="6" InputTransparent="True"
+                                                     AutomationProperties.ExcludedWithChildren="True">
+                                    <Label Text="{Binding Name}" FontFamily="OpenSansSemibold" />
+                                    <Label Text="{Binding KindLabel}" FontSize="14" Style="{StaticResource Secondary}" />
+                                    <Label Text="{Binding LocationLabel}" FontSize="14" Style="{StaticResource Secondary}" />
+                                    <BoxView HeightRequest="1" Margin="0,8,0,0" />
+                                </VerticalStackLayout>
+                                <Button Command="{Binding SelectEventCommand, Source={x:Reference EventPage}, x:DataType=pages:CommunityEventsPage}"
+                                        CommandParameter="{Binding .}" BackgroundColor="Transparent" BorderWidth="0"
+                                        AutomationId="{Binding Id}" SemanticProperties.Description="{Binding AccessibilityLabel}"
+                                        SemanticProperties.Hint="Select this event for a preview" />
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Grid>
+            <ActivityIndicator IsRunning="{Binding Conference.IsBusy}" IsVisible="{Binding Conference.IsBusy}"
+                               HorizontalOptions="Center" VerticalOptions="Center" />
+        </Grid>
+        </Grid>
+        <Border Grid.Row="1" IsVisible="{Binding HasSelection}" StrokeThickness="0" SafeAreaEdges="All"
+                BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}">
+            <ScrollView MaximumHeightRequest="{Binding DetailHeight}" SafeAreaEdges="None"
+                        AutomationId="community-preview-scroll">
+                <VerticalStackLayout Padding="24,12,24,16" Spacing="6">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="{Binding SelectedEvent.Name}" FontFamily="OpenSansSemibold" VerticalOptions="Center"
+                               AutomationId="community-selected-name" />
+                        <ImageButton Grid.Column="1" Source="{StaticResource ClearIcon}" Style="{StaticResource IconButton}"
+                                     Clicked="OnDismissClicked" SemanticProperties.Description="Dismiss event preview"
+                                     AutomationId="community-dismiss" />
+                    </Grid>
+                    <Label Text="{Binding SelectedEvent.KindLabel}" FontSize="14" Style="{StaticResource Secondary}" />
+                    <Label Text="{Binding SelectedEvent.City}" FontSize="14" Style="{StaticResource Secondary}" />
+                    <Button Text="Event details" Command="{Binding Conference.OpenCommunityEventCommand}"
+                            CommandParameter="{Binding SelectedEvent}" Style="{StaticResource QuietButton}"
+                            AutomationId="community-event-details" />
+                </VerticalStackLayout>
+            </ScrollView>
+        </Border>
+    </Grid>
+</ContentPage>

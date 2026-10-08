@@ -1,6 +1,6 @@
 # Contributing to the .NET Conf companion
 
-An **unofficial**, native .NET MAUI app for iOS and Android. This first slice includes five Shell tabs, session/speaker details, search and day/topic filters, local-time agenda display, persistent My Schedule bookmarks, overlap warnings, and website links.
+An **unofficial**, native .NET MAUI app for iOS and Android. This first slice includes five Shell tabs, session/speaker details, search and day/topic filters, local-time agenda display, persistent My Schedule bookmarks, overlap warnings, community-event maps, and website links.
 
 **All bundled speakers and sessions are fictional sample data.** The real lineup and the authoritative event date range still need to be confirmed. This is a development foundation, not a store-ready release.
 
@@ -122,13 +122,90 @@ The app-development and specialist skills were installed using an isolated night
 
 Session/speaker links reuse a matching detail already in the active Shell tab's navigation stack, popping back to that page rather than building circular history. New IDs still push normal details; the other tabs' histories remain independent. Native list scroll viewports span the page, while content templates retain 24-unit gutters, so scrollbars stay at the outer edge.
 
-The next data stage replaces the bundled source with a validated HTTPS feed and last-known-good offline cache. Do not just flip `isMock` on fictional content. Maps, reminders, local AI, Avalonia-owned video integration, and desktop targets are intentionally deferred. PR build validation and manual Google Play internal-testing/TestFlight release lanes are described in [CI and release setup](docs/CI.md); production promotion remains manual and store credentials must be configured by the owner.
+The next data stage replaces the bundled source with a validated HTTPS feed and last-known-good offline cache. Do not just flip `isMock` on fictional content. Reminders, local AI, Avalonia-owned video integration, and desktop targets are intentionally deferred. PR build validation and manual Google Play internal-testing/TestFlight release lanes are described in [CI and release setup](docs/CI.md); production promotion remains manual and store credentials must be configured by the owner.
 
 App-owned icons use [IconFont.Maui.FluentIcons](https://github.com/jfversluis/IconFont.Maui.FluentIcons). Website-matched Space Grotesk headings and Open Sans body fonts, gradients, Entry-based search, and heart save actions are documented in `DESIGN.md`. iOS uses MAUI safe-area controls and native automatic scroll insets to scroll beneath the system tab material without fixed offsets.
 
 Launcher and light/dark splash screens use the website's two-robots-on-a-rocket graphic, with redistribution permission confirmed by the project owner on October 7, 2026. Android's themed launcher uses a matching monochrome silhouette. Artwork provenance and font licenses/notices are bundled under `Resources/Raw`; the artwork permission is not a general open-source license. The app follows the system theme and preserves native navigation. Its Android package name and iOS bundle ID are both `dev.jfversluis.dotnetconf`.
 
 iOS caches launch-screen snapshots across same-version reinstalls. Increment `ApplicationVersion` when changing splash artwork (the rocket replacement was build 2; the enlarged launcher is build 3); rebuilding or restarting the simulator alone may still show the previous image. Install the new build rather than deleting the app and its saved schedule.
+
+## Community maps
+
+Community is the fifth Shell tab. Home's typed Fluent settings gear opens Settings,
+which contains System/Light/Dark appearance, device-time-zone information, and a
+link to the separate About page. Appearance persists in platform Preferences and
+is restored before window creation; System maps to `AppTheme.Unspecified`.
+Changing appearance uses MAUI's effective `RequestedTheme` and existing theme
+events so status-bar styling and tab icons follow the user selection. Map pin
+colors stay consistent with their legend in both themes.
+The Community overview explains gathering formats and links to the pushed
+`community-map` explorer, optionally with `mode=list`. The explorer and
+`community-event` detail route hide the tab bar through `Shell.TabBarIsVisible`;
+native back restores the overview. Trim-safe `IQueryAttributable` handles route
+parameters. Event details return to the existing explorer, retaining its viewport,
+list mode, and selection. The edge-to-edge map has a labeled legend, Show all and
+Event list controls, and a compact dismissible preview; long text in overlays
+scrolls within viewport-relative bounds.
+`Microsoft.Maui.Controls.Maps` is pinned to the same
+RC1 version as Controls. `UseMauiMaps()` enables native MapKit/Google Maps handlers.
+MAUI 11's `IsClusteringEnabled` and `Pin.ImageSource` APIs supply native clustering,
+default cluster-tap zoom, and custom pin images; no custom map handler or
+third-party clustering implementation is used. MAUI's `MapSpan.FromLocations`
+frames the bundled regional examples, with extra zoom-out padding to keep marker
+images away from the viewport edges. Map and list selections expose the
+same event details and website action. The map starts with all event locations in
+view; selecting from the list focuses that location.
+
+`communityEvents` is an optional addition to schema version 1 (older documents
+default to an empty list). Each event requires a stable `id`, `name`, `kind`
+(`watch-party` or `community-conference`), `venue`, `city`, `country`, finite
+`latitude`/`longitude` within geographic bounds, and an absolute HTTPS `websiteUrl`.
+The 24 bundled events and venues are fictional; their websites intentionally
+use `example.com`. Mixed watch-party/presentation hubs in Amsterdam, London,
+Paris, and Berlin exercise clustering at different zoom levels. Seven isolated
+city examples keep individual pins visible. `community-conference` is the data
+contract name for in-person talks presenting the latest .NET Conf materials.
+
+`CommunityPinImages` draws a white-outlined teardrop using MAUI Graphics and typed
+Fluent video/presenter glyphs. Density-aware PNGs are cached in app cache storage,
+with retina file naming on iOS. Purple identifies watch parties; deep magenta
+identifies in-person talks. Distinct symbols and a labeled legend avoid relying
+on color alone. No separate graphics dependency or map sizing override is used.
+
+About links to Third-party dependencies. Dependency rows open the bundled license
+in a native reading page; notices and artwork credits are also available offline.
+Keep this list and `THIRD-PARTY-NOTICES.txt` aligned with package/font updates.
+DevFlow and Debug logging entries are compiled out of the Release dependency list.
+
+iOS needs no map API key. Android builds accept `GoogleMapsApiKey` as an MSBuild
+property or environment variable, substituted into `com.google.android.geo.API_KEY`.
+Without it, the app does not create a native map and presents the event list
+instead. Configure a Maps SDK for Android key restricted to
+`dev.jfversluis.dotnetconf` (or the build's overridden application ID) and the
+appropriate signing certificate SHA-1. Prefer an environment variable populated
+by your secret manager over a command-line literal. Never commit keys to the
+project, manifest, or launch settings. Test-track builds accept the optional
+`GOOGLE_MAPS_ANDROID_API_KEY` environment secret described in [docs/CI.md](docs/CI.md).
+An invalid/restricted key can still prevent map tiles from loading; the Event list
+control remains available. A configured Android map and its clustering must be
+verified before release.
+
+No GPS permission is requested and `IsShowingUser` is false. Map tiles use the
+platform provider's network services; offline availability applies to the bundled
+event list, not the basemap.
+
+The October 8 verification covered the Community overview, full-screen explorer,
+direct list entry, compact selection preview, and event-detail/back navigation.
+iOS native cluster zoom and custom-pin selection were checked through the map's
+overlay-free canvas; Android's keyless build used its honest list fallback.
+Both platforms were checked in light/dark themes with larger text, including
+native overview scrolling and footer reachability. Prior checks covered event
+website opening, native About navigation, and retained session-search focus.
+Configured Android map tiles and marker interactions remain
+pending the owner-supplied key. The current regional fixture fits MAUI's
+`MapSpan.FromLocations` bounds; verify world-spanning and date-line datasets when
+the real event feed becomes available.
 
 ## Android verification
 

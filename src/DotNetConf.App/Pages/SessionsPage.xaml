@@ -33,8 +33,10 @@
                 </Grid>
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                     <Label Text="{Binding TimeZoneLabel}" Style="{StaticResource Secondary}" FontSize="12" VerticalOptions="Center" />
-                    <Button Grid.Column="1" Text="Reset" Command="{Binding ResetFiltersCommand}" Style="{StaticResource QuietButton}"
-                            AutomationId="reset-filters" />
+                    <Button Grid.Column="1" Text="Clear filters" Command="{Binding ResetFiltersCommand}"
+                            Style="{StaticResource QuietButton}" BorderWidth="0" Padding="8,0"
+                            IsVisible="{Binding HasSessionFilters}" AutomationId="reset-filters"
+                            SemanticProperties.Hint="Clear search and show all days and topics" />
                 </Grid>
             </VerticalStackLayout>
         </CollectionView.Header>
@@ -48,7 +50,7 @@
         <CollectionView.EmptyView>
             <VerticalStackLayout Padding="40,32" Spacing="12">
                 <Label Text="No sessions to show" Style="{StaticResource Subheading}" />
-                <Label Text="Try another search, reset the filters, or retry if the agenda couldn't load." Style="{StaticResource Secondary}" />
+                <Label Text="Try another search, clear the filters, or retry if the agenda couldn't load." Style="{StaticResource Secondary}" />
             </VerticalStackLayout>
         </CollectionView.EmptyView>
     </CollectionView>

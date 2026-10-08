@@ -1,0 +1,12 @@
+<ContentPage x:Class="DotNetConf.App.Pages.LicensePage"
+             xmlns:pages="clr-namespace:DotNetConf.App.Pages"
+             x:DataType="pages:LicensePage" Title="{Binding LicenseTitle}">
+    <ScrollView SafeAreaEdges="Default" AutomationId="license-scroll">
+        <VerticalStackLayout Padding="24" Spacing="16" MaximumWidthRequest="720"
+                             HorizontalOptions="Center" SafeAreaEdges="None">
+            <Label Text="{Binding LicenseTitle}" Style="{StaticResource Subheading}" />
+            <ActivityIndicator IsRunning="{Binding IsLoading}" IsVisible="{Binding IsLoading}" />
+            <Label Text="{Binding LicenseText}" AutomationId="license-text" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

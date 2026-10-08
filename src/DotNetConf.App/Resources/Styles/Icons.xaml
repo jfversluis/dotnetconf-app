@@ -3,6 +3,30 @@
     <FontImageSource x:Key="HomeIcon" Glyph="{x:Static icons:FluentIconsRegular.Home24}"
                      FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
                      Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+    <FontImageSource x:Key="CommunityIcon" Glyph="{x:Static icons:FluentIconsRegular.People24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
+                     Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+    <FontImageSource x:Key="MapIcon" Glyph="{x:Static icons:FluentIconsRegular.Map24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
+                     Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+    <FontImageSource x:Key="PrimaryMapIcon" Glyph="{x:Static icons:FluentIconsRegular.Map24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
+                     Color="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Midnight}}" />
+    <FontImageSource x:Key="PrimaryEventListIcon" Glyph="{x:Static icons:FluentIconsRegular.List24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
+                     Color="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Midnight}}" />
+    <FontImageSource x:Key="EventListIcon" Glyph="{x:Static icons:FluentIconsRegular.List24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
+                     Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+    <FontImageSource x:Key="ShowAllIcon" Glyph="{x:Static icons:FluentIconsRegular.ArrowExpand24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
+                     Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+    <FontImageSource x:Key="WatchPartyIcon" Glyph="{x:Static icons:FluentIconsRegular.VideoClip24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
+                     Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+    <FontImageSource x:Key="InPersonIcon" Glyph="{x:Static icons:FluentIconsRegular.Presenter24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
+                     Color="{AppThemeBinding Light={StaticResource Magenta}, Dark={StaticResource Lavender}}" />
     <FontImageSource x:Key="SessionsIcon" Glyph="{x:Static icons:FluentIconsRegular.CalendarAgenda24}"
                      FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
                      Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
@@ -13,6 +37,9 @@
                      FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
                      Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
     <FontImageSource x:Key="AboutIcon" Glyph="{x:Static icons:FluentIconsRegular.Info24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
+                     Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+    <FontImageSource x:Key="SettingsIcon" Glyph="{x:Static icons:FluentIconsRegular.Settings24}"
                      FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
                      Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
     <FontImageSource x:Key="WebsiteIcon" Glyph="{x:Static icons:FluentIconsRegular.Open24}"

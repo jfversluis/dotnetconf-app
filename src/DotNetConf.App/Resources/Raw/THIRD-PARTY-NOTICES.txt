@@ -1,3 +1,23 @@
+Microsoft.Maui.Controls, Controls.Maps, Core, Essentials, Graphics 11.0.0-rc.1.26451.6
+Copyright (c) .NET Foundation and Contributors
+https://github.com/dotnet/maui
+MIT license: LICENSE-DotNetFoundation.txt
+
+CommunityToolkit.Mvvm 8.4.2
+Copyright © .NET Foundation and Contributors
+https://github.com/CommunityToolkit/dotnet
+MIT license: LICENSE-MvvmToolkit.txt
+
+Microsoft.Maui.DevFlow.Agent 0.1.0-preview.12.26421.1 (Debug builds only)
+Copyright (c) .NET Foundation and Contributors
+https://github.com/dotnet/maui-labs
+MIT license: LICENSE-DotNetFoundation.txt
+
+Microsoft.Extensions.Logging.Debug 11.0.0-rc.1.26425.128 (Debug builds only)
+Copyright (c) .NET Foundation and Contributors
+https://github.com/dotnet/runtime
+MIT license: LICENSE-DotNetFoundation.txt
+
 IconFont.Maui.FluentIcons 1.1.1
 Copyright (c) 2026 IconFontPack Contributors
 https://github.com/jfversluis/IconFont.Maui.FluentIcons

@@ -19,8 +19,78 @@ public sealed class ConferenceTests
         Assert.True(document.IsMock);
         Assert.Equal(6, document.Sessions.Count);
         Assert.Equal(4, document.Speakers.Count);
+        Assert.Equal(24, document.CommunityEvents.Count);
         Assert.Contains(document.Sessions, session => session.SpeakerIds.Count > 1);
         Assert.Contains(document.Sessions, session => session.StartsAt.Date != session.EndsAt.Date);
+    }
+
+    [Fact]
+    public async Task CommunityEventsHaveLocationsWebsitesAndBothKinds()
+    {
+        var document = await LoadAsync();
+        Assert.Equal(5, document.CommunityEvents.Count(e => e.City == "Amsterdam"));
+        Assert.Contains(document.CommunityEvents, e => e.Kind == "watch-party");
+        Assert.Contains(document.CommunityEvents, e => e.Kind == "community-conference");
+        Assert.All(document.CommunityEvents, e =>
+        {
+            Assert.Contains(e.City, e.LocationLabel);
+            Assert.Equal("example.com", new Uri(e.WebsiteUrl).Host);
+        });
+    }
+
+    [Fact]
+    public async Task CommunityExamplesIncludeDenseMixedHubsAndIsolatedEvents()
+    {
+        var document = await LoadAsync();
+        var cities = document.CommunityEvents.GroupBy(e => e.City).ToArray();
+        Assert.Equal(4, cities.Count(city => city.Count() >= 4));
+        Assert.True(cities.Count(city => city.Count() == 1) >= 5);
+        foreach (var city in cities.Where(city => city.Count() >= 4))
+        {
+            Assert.Contains(city, e => e.Kind == "watch-party");
+            Assert.Contains(city, e => e.Kind == "community-conference");
+            Assert.True(city.Max(e => e.Latitude) - city.Min(e => e.Latitude) < 0.05);
+            Assert.True(city.Max(e => e.Longitude) - city.Min(e => e.Longitude) < 0.1);
+        }
+        Assert.All(document.CommunityEvents, e => Assert.False(string.IsNullOrWhiteSpace(e.KindDescription)));
+    }
+
+    [Fact]
+    public async Task InvalidCommunityEventsAreRejected()
+    {
+        var document = await LoadAsync();
+        var example = document.CommunityEvents[0];
+        Assert.Throws<InvalidDataException>(() => ConferenceJson.Validate(document with { CommunityEvents = null! }));
+        Assert.Throws<InvalidDataException>(() => ConferenceJson.Validate(document with { CommunityEvents = [example, example] }));
+        foreach (var invalid in new[]
+        {
+            example with { Id = "" }, example with { Name = "" }, example with { Venue = "" },
+            example with { City = "" }, example with { Country = "" }, example with { Kind = "unknown" },
+            example with { Latitude = 91 }, example with { Latitude = double.NaN },
+            example with { Longitude = -181 }, example with { Longitude = double.PositiveInfinity },
+            example with { WebsiteUrl = "http://example.com" }, example with { WebsiteUrl = "/relative" }
+        })
+            Assert.Throws<InvalidDataException>(() => ConferenceJson.Validate(document with { CommunityEvents = [invalid] }));
+    }
+
+    [Fact]
+    public async Task MissingCommunityCoordinatesAreNotInterpretedAsZero()
+    {
+        var document = await LoadAsync();
+        var json = JsonSerializer.Serialize(document, ConferenceJsonContext.Default.ConferenceDocument);
+        var missingLatitude = json.Replace("\"latitude\":52.3702,", "", StringComparison.Ordinal);
+        Assert.NotEqual(json, missingLatitude);
+        await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(missingLatitude));
+        await Assert.ThrowsAsync<JsonException>(() => ConferenceJson.ReadAsync(stream));
+    }
+
+    [Fact]
+    public async Task OlderDocumentsWithoutCommunityEventsRemainValid()
+    {
+        await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(
+            """{"schemaVersion":1,"name":"Test","description":"Test","websiteUrl":"https://example.com","speakers":[],"sessions":[]}"""));
+        var document = await ConferenceJson.ReadAsync(stream);
+        Assert.Empty(document.CommunityEvents);
     }
 
     [Fact]

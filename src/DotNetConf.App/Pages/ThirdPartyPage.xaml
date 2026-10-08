@@ -1,0 +1,44 @@
+<ContentPage x:Class="DotNetConf.App.Pages.ThirdPartyPage"
+             xmlns:pages="clr-namespace:DotNetConf.App.Pages"
+             x:Name="NoticesPage" x:DataType="pages:ThirdPartyPage" Title="Third-party dependencies" SafeAreaEdges="All">
+    <CollectionView ItemsSource="{Binding Dependencies}" SelectionMode="None"
+                    AutomationId="third-party-list">
+        <CollectionView.Header>
+            <VerticalStackLayout Padding="24,24,24,12" Spacing="12">
+                <Label Text="Built with the community" Style="{StaticResource Heading}" />
+                <Label Text="Libraries and fonts used by this app. Tap a name to read its bundled license offline."
+                       Style="{StaticResource Secondary}" />
+            </VerticalStackLayout>
+        </CollectionView.Header>
+        <CollectionView.ItemTemplate>
+            <DataTemplate x:DataType="pages:DependencyNotice">
+                <Grid>
+                    <Grid Padding="24,16" RowDefinitions="Auto,Auto" ColumnDefinitions="*,16"
+                          ColumnSpacing="16" RowSpacing="16" InputTransparent="True"
+                          AutomationProperties.ExcludedWithChildren="True">
+                        <VerticalStackLayout Spacing="6" VerticalOptions="Center">
+                            <Label Text="{Binding Name}" FontFamily="OpenSansSemibold" />
+                            <Label Text="{Binding Details}" FontSize="14" Style="{StaticResource Secondary}" />
+                        </VerticalStackLayout>
+                        <Image Grid.Column="1" Source="{StaticResource ChevronIcon}"
+                               WidthRequest="16" HeightRequest="16" />
+                        <BoxView Grid.Row="1" Grid.ColumnSpan="2" HeightRequest="1" />
+                    </Grid>
+                    <Button BackgroundColor="Transparent" BorderWidth="0"
+                            Command="{Binding ReadLicenseCommand, Source={x:Reference NoticesPage}, x:DataType=pages:ThirdPartyPage}"
+                            CommandParameter="{Binding .}" AutomationId="{Binding Name}"
+                            SemanticProperties.Description="{Binding AccessibilityLabel}"
+                            SemanticProperties.Hint="Read bundled license" />
+                </Grid>
+            </DataTemplate>
+        </CollectionView.ItemTemplate>
+        <CollectionView.Footer>
+            <VerticalStackLayout Padding="24,12,24,24" Spacing="12">
+                <Label Text="Framework components include MAUI Core, Essentials, Graphics, and Maps. CommunityToolkit.Maui includes its Core library."
+                       Style="{StaticResource Secondary}" />
+                <Button Text="All notices and artwork credits" Style="{StaticResource QuietButton}"
+                        Command="{Binding ReadNoticesCommand}" AutomationId="third-party-notices" />
+            </VerticalStackLayout>
+        </CollectionView.Footer>
+    </CollectionView>
+</ContentPage>

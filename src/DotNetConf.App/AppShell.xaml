@@ -12,6 +12,6 @@
         <ShellContent x:Name="SessionsTab" Title="Sessions" Route="sessions" Icon="{StaticResource SessionsIcon}" />
         <ShellContent x:Name="SpeakersTab" Title="Speakers" Route="speakers" Icon="{StaticResource SpeakersIcon}" />
         <ShellContent x:Name="ScheduleTab" Title="My Schedule" Route="schedule" Icon="{StaticResource ScheduleIcon}" />
-        <ShellContent x:Name="AboutTab" Title="About" Route="about" Icon="{StaticResource AboutIcon}" />
+        <ShellContent x:Name="CommunityTab" Title="Community" Route="community" Icon="{StaticResource CommunityIcon}" />
     </TabBar>
 </Shell>
