@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net11.0-android;net11.0-ios</TargetFrameworks>
+    <TargetFrameworks Condition="'$(MobileTargetFramework)' != ''">$(MobileTargetFramework)</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <RootNamespace>DotNetConf.App</RootNamespace>
     <UseMaui>true</UseMaui>
@@ -11,7 +12,7 @@
     <MauiXamlInflator>SourceGen</MauiXamlInflator>
     <MauiEnableXamlCBindingWithSourceCompilation>true</MauiEnableXamlCBindingWithSourceCompilation>
     <ApplicationTitle>.NET Conf</ApplicationTitle>
-    <ApplicationId>net.jfversluis.dotnetconf</ApplicationId>
+    <ApplicationId>dev.jfversluis.dotnetconf</ApplicationId>
     <ApplicationDisplayVersion>0.1.0</ApplicationDisplayVersion>
     <ApplicationVersion>3</ApplicationVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
