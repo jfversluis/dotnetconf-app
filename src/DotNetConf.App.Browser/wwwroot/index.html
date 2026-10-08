@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>.NET Conf</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="./splash.png" />
+    <style>
+        html,
+        body,
+        #out {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* Shown until the app has loaded. splash.png is a copy of DotNetConf.App/Resources/Splash/splash.png,
+           with the MauiSplashScreen colors. */
+        .avalonia-splash {
+            position: absolute;
+            height: 100%;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+            background: #EEEAFB;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .avalonia-splash {
+                background: #190649;
+            }
+        }
+
+        .avalonia-splash.splash-close {
+            transition: opacity 200ms, display 200ms;
+            display: none;
+            opacity: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="out">
+        <div class="avalonia-splash">
+            <img src="./splash.png" width="256" height="256" alt="">
+        </div>
+    </div>
+    <script type="module" src="./main.js"></script>
+</body>
+
+</html>

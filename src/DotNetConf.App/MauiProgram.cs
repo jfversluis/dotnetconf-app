@@ -6,12 +6,15 @@ using IconFont.Maui.FluentIcons;
 using DotNetConf.App.Controls;
 using CommunityToolkit.Maui;
 using Syncfusion.Maui.Toolkit.Hosting;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 #if ANDROID
 using Microsoft.Maui.Platform;
 #endif
 #if DEBUG
 using Microsoft.Extensions.Logging;
+#if !AVALONIA
 using Microsoft.Maui.DevFlow.Agent;
+#endif
 #endif
 
 namespace DotNetConf.App;
@@ -22,12 +25,16 @@ public static class MauiProgram
     {
         var builder = MauiApp.CreateBuilder();
         builder.UseMauiApp<App>()
+#if AVALONIA
+            .UseAvaloniaHost()
+#else
             .UseMauiCommunityToolkit()
             .UseMauiMaps()
             .ConfigureSyncfusionToolkit()
+            .ConfigureMauiHandlers(handlers => handlers.AddHandler<AgendaPicker, AgendaPickerHandler>())
+#endif
             .UseFluentIconsRegular()
             .UseFluentIconsFilled()
-            .ConfigureMauiHandlers(handlers => handlers.AddHandler<AgendaPicker, AgendaPickerHandler>())
             .ConfigureFonts(fonts =>
             {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -73,10 +80,14 @@ public static class MauiProgram
 #endif
 
         builder.Services.AddSingleton<IConferenceDataSource, BundledConferenceDataSource>();
-        builder.Services.AddSingleton<IScheduleStore>(_ =>
-            new JsonScheduleStore(Path.Combine(FileSystem.AppDataDirectory, "schedule.json")));
+        // Files do not survive a page reload in the browser, where preferences are kept in local storage.
+        builder.Services.AddSingleton<IScheduleStore>(_ => OperatingSystem.IsBrowser()
+            ? new ValueScheduleStore(() => Preferences.Default.Get<string?>("schedule", null),
+                json => Preferences.Default.Set("schedule", json))
+            : new JsonScheduleStore(Path.Combine(FileSystem.AppDataDirectory, "schedule.json")));
         builder.Services.AddSingleton<ScheduleService>();
         builder.Services.AddSingleton<DetailNavigationService>();
+        builder.Services.TryAddSingleton(Browser.Default);
         builder.Services.AddSingleton<ConferenceViewModel>();
         builder.Services.AddSingleton<AppShell>();
         builder.Services.AddTransient<HomePage>();
@@ -96,7 +107,9 @@ public static class MauiProgram
         builder.Services.AddTransient<SpeakerDetailPage>();
 #if DEBUG
         builder.Logging.AddDebug();
+#if !AVALONIA
         builder.AddMauiDevFlowAgent();
+#endif
 #endif
         return builder.Build();
     }

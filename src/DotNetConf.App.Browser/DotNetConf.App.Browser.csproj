@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+  <PropertyGroup>
+    <TargetFramework>net11.0-browser</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../DotNetConf.App/DotNetConf.App.csproj" />
+    <PackageReference Include="Avalonia.Browser" Version="12.1.2" />
+  </ItemGroup>
+</Project>

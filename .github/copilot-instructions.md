@@ -1,6 +1,6 @@
 # .NET Conf companion
 
-Use the SDK/workload versions pinned in global.json. This is a native MAUI app targeting iOS and Android; desktop and optional showcase integrations are deferred.
+Use the SDK/workload versions pinned in global.json. This is a native MAUI app targeting iOS and Android. The same project also builds for Linux desktop (`net11.0`) and the browser (`net11.0-browser` plus `src/DotNetConf.App.Browser`) through Avalonia.Controls.Maui; code for those targets sits behind `AVALONIA` or in `Platforms/Avalonia`. Optional showcase integrations are deferred.
 
 Keep conference/search/schedule logic in DotNetConf.Core and presentation in DotNetConf.App. Preserve typed compiled XAML bindings, native navigation, semantic light/dark tokens, font scaling, and visible error states. All app-owned UI icons use IconFont.Maui.FluentIcons typed glyphs. All bundled agenda data is fictional and must remain visibly labeled.
 

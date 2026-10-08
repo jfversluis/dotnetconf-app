@@ -15,12 +15,8 @@ public sealed class JsonScheduleStore(string path) : IScheduleStore
         try
         {
             await using var stream = File.OpenRead(path);
-            var ids = await JsonSerializer.DeserializeAsync(
-                stream, ConferenceJsonContext.Default.StringArray, cancellationToken)
-                ?? throw new InvalidDataException("The saved schedule is empty or invalid.");
-            if (ids.Any(string.IsNullOrWhiteSpace))
-                throw new InvalidDataException("The saved schedule contains invalid session IDs.");
-            return ids.Distinct(StringComparer.Ordinal).ToArray();
+            return Validate(await JsonSerializer.DeserializeAsync(
+                stream, ConferenceJsonContext.Default.StringArray, cancellationToken));
         }
         catch (FileNotFoundException)
         {
@@ -30,6 +26,15 @@ public sealed class JsonScheduleStore(string path) : IScheduleStore
         {
             return [];
         }
+    }
+
+    internal static IReadOnlyCollection<string> Validate(string[]? ids)
+    {
+        if (ids is null)
+            throw new InvalidDataException("The saved schedule is empty or invalid.");
+        if (ids.Any(string.IsNullOrWhiteSpace))
+            throw new InvalidDataException("The saved schedule contains invalid session IDs.");
+        return ids.Distinct(StringComparer.Ordinal).ToArray();
     }
 
     public async Task WriteAsync(IReadOnlyCollection<string> sessionIds, CancellationToken cancellationToken = default)
@@ -52,6 +57,24 @@ public sealed class JsonScheduleStore(string path) : IScheduleStore
             if (File.Exists(temporaryPath))
                 File.Delete(temporaryPath);
         }
+    }
+}
+
+public sealed class ValueScheduleStore(Func<string?> read, Action<string> write) : IScheduleStore
+{
+    public Task<IReadOnlyCollection<string>> ReadAsync(CancellationToken cancellationToken = default)
+    {
+        var json = read();
+        return Task.FromResult<IReadOnlyCollection<string>>(json is null
+            ? []
+            : JsonScheduleStore.Validate(JsonSerializer.Deserialize(json, ConferenceJsonContext.Default.StringArray)));
+    }
+
+    public Task WriteAsync(IReadOnlyCollection<string> sessionIds, CancellationToken cancellationToken = default)
+    {
+        write(JsonSerializer.Serialize(
+            sessionIds.Order(StringComparer.Ordinal).ToArray(), ConferenceJsonContext.Default.StringArray));
+        return Task.CompletedTask;
     }
 }
 

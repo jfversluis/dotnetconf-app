@@ -1,8 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net11.0-android;net11.0-ios</TargetFrameworks>
+    <!-- The iOS workload is not available on Linux. -->
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('linux'))">net11.0-android</TargetFrameworks>
     <TargetFrameworks Condition="'$(MobileTargetFramework)' != ''">$(MobileTargetFramework)</TargetFrameworks>
-    <OutputType>Exe</OutputType>
+    <!-- net11.0 is the Avalonia-drawn Linux desktop app; net11.0-browser is hosted by DotNetConf.App.Browser. -->
+    <TargetFrameworks>$(TargetFrameworks);net11.0;net11.0-browser</TargetFrameworks>
+    <OutputType Condition="'$(TargetFramework)' != 'net11.0-browser'">Exe</OutputType>
     <RootNamespace>DotNetConf.App</RootNamespace>
     <UseMaui>true</UseMaui>
     <UseMaterial3>true</UseMaterial3>
@@ -19,6 +23,11 @@
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net11.0' or '$(TargetFramework)' == 'net11.0-browser'">
+    <UseAvalonia>true</UseAvalonia>
+    <DefineConstants>$(DefineConstants);AVALONIA</DefineConstants>
+    <AssemblyTitle>$(ApplicationTitle)</AssemblyTitle>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
     <EnableMauiIncrementalHotReload>true</EnableMauiIncrementalHotReload>
     <MtouchLink Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">None</MtouchLink>
@@ -30,13 +39,16 @@
   <PropertyGroup Condition="'$(Configuration)' == 'Debug' and $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
   </PropertyGroup>
-  <ItemGroup>
+  <!-- The browser head has no launcher icon or splash screen, and would resolve their file metadata from its own folder. -->
+  <ItemGroup Condition="'$(TargetFramework)' != 'net11.0-browser'">
     <MauiIcon Include="Resources/AppIcon/appicon.svg" ForegroundFile="Resources/AppIcon/appiconfg.png"
               MonochromeFile="Resources/AppIcon/appiconmonochrome.png" Color="#EEEAFB" />
     <MauiIcon Update="Resources/AppIcon/appicon.svg" ForegroundScale="1.15"
               Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" />
     <MauiSplashScreen Include="Resources/Splash/splash.png" Color="#EEEAFB"
                      DarkFile="Resources/Splash/splash.png" DarkColor="#190649" BaseSize="256,256" />
+  </ItemGroup>
+  <ItemGroup>
     <MauiImage Include="Resources/Images/*" />
     <MauiFont Include="Resources/Fonts/*" />
     <MauiAsset Include="Resources/Raw/**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
@@ -48,6 +60,22 @@
     <PackageReference Include="IconFont.Maui.FluentIcons" Version="1.1.1" />
     <PackageReference Include="Syncfusion.Maui.Toolkit" Version="1.0.11" />
   </ItemGroup>
+  <ItemGroup Condition="'$(UseAvalonia)' == 'true'">
+    <MauiPlatformSpecificFolder Include="Platforms/Avalonia" />
+    <Compile Remove="Controls/AgendaPickerHandler.cs" />
+    <PackageReference Include="Avalonia.Controls.Maui" Version="11.0.0-rc.1.26252.343" />
+    <PackageReference Include="Avalonia.Controls.Maui.Essentials" Version="11.0.0-rc.1.26252.343" />
+    <PackageReference Include="Avalonia.Controls.Maui.Desktop" Version="11.0.0-rc.1.26252.343"
+                      Condition="'$(TargetFramework)' == 'net11.0'" />
+    <AvaloniaResource Include="Resources/Splash/splash.png" Link="windowicon.png"
+                      Condition="'$(TargetFramework)' == 'net11.0'" />
+    <!-- IconFont.Maui.FluentIcons 1.1.1 brings its fonts to these targets but no assembly, so the typed glyphs
+         come from DotNetConf.FluentIcons. -->
+    <ProjectReference Include="../DotNetConf.FluentIcons/DotNetConf.FluentIcons.csproj" />
+  </ItemGroup>
+  <!-- Avalonia only embeds resources that exist when it registers them; the package converts fonts and raw assets after that. -->
+  <Target Name="ConvertMauiResourcesForAvalonia" BeforeTargets="ResolveReferences" Condition="'$(UseAvalonia)' == 'true'"
+          DependsOnTargets="ConvertMauiFontsToAvaloniaResources;ConvertMauiAssetsToAvaloniaResources" />
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="11.0.0-rc.2.26504.105" />
     <PackageReference Include="Microsoft.Maui.DevFlow.Agent" Version="0.1.0-preview.13.26512.5" />

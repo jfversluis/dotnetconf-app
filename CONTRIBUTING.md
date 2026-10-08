@@ -1,6 +1,6 @@
 # Contributing to the .NET Conf companion
 
-An **unofficial**, native .NET MAUI app for iOS and Android. This first slice includes five Shell tabs, session/speaker details, search and day/topic filters, local-time agenda display, persistent My Schedule bookmarks, overlap warnings, community-event maps, and website links.
+An **unofficial**, native .NET MAUI app for iOS and Android. The same project also runs on Linux desktop and in the browser, where [Avalonia.Controls.Maui](https://github.com/AvaloniaUI/Avalonia.Controls.Maui) draws the controls. This first slice includes five Shell tabs, session/speaker details, search and day/topic filters, local-time agenda display, persistent My Schedule bookmarks, overlap warnings, community-event maps, and website links.
 
 **All bundled speakers and sessions are fictional sample data.** The real lineup and the authoritative event date range still need to be confirmed. This is a development foundation, not a store-ready release.
 
@@ -14,16 +14,20 @@ Versions are deliberately pinned:
 | Mobile workload set | `11.0.100-rc.2.26513.2` |
 | MAUI Controls | `11.0.0-rc.2.26505.5` |
 | DevFlow CLI / agent | `0.1.0-preview.13.26512.5` |
+| Avalonia.Controls.Maui, Desktop, Essentials | `11.0.0-rc.1.26252.343` |
+| Avalonia.Browser | `12.1.2` |
 | IconFont.Maui.FluentIcons | `1.1.1` |
 | Syncfusion.Maui.Toolkit | `1.0.11` |
 
 Install the SDK selected by `global.json`, then:
 
 ```sh
-dotnet workload install maui-android maui-ios --version 11.0.100-rc.2.26513.2
+dotnet workload install maui-android maui-ios wasm-tools --version 11.0.100-rc.2.26513.2
 dotnet tool restore
 dotnet test tests/DotNetConf.Core.Tests
 ```
+
+On Linux, omit `maui-ios`; the project drops the iOS target there.
 
 iOS builds require a Mac and Xcode 27.0, as required by the pinned RC2 workload's iOS 27 bindings. Android requires the workload's Android SDK dependencies, including API 37.0 tooling, and JDK 21. Deployment minimums are iOS 15 and Android API 24. These are different from the build SDK versions. See [MAUI release requirements](https://github.com/dotnet/maui/wiki/Release-Versions).
 
@@ -40,13 +44,17 @@ After changing the scene manifest, clean and rebuild the iOS target and inspect 
 ```sh
 dotnet run --project src/DotNetConf.App -f net11.0-ios -p:RuntimeIdentifier=iossimulator-arm64
 dotnet run --project src/DotNetConf.App -f net11.0-android
+dotnet run --project src/DotNetConf.App -f net11.0
+dotnet run --project src/DotNetConf.App.Browser
 ```
 
-The .NET 11 CLI can prompt for a target device. For a build without launching:
+The .NET 11 CLI can prompt for a target device. `net11.0` is the Linux desktop app; the browser head serves the WebAssembly build at `http://localhost:5235`. For a build without launching:
 
 ```sh
 dotnet build src/DotNetConf.App -f net11.0-ios -p:RuntimeIdentifier=iossimulator-arm64
 dotnet build src/DotNetConf.App -f net11.0-android
+dotnet build src/DotNetConf.App -f net11.0
+dotnet build src/DotNetConf.App.Browser
 ```
 
 The app uses source-generated XAML with compiled bindings and Debug-only incremental XAML Hot Reload. Runtime selection is left to the SDK, with `PublishAot=true` in the project and no configuration-specific overrides. MAUI 11 RC2's Android Material 3 controls are explicitly enabled with `UseMaterial3=true`; scoped search and picker customizations use `EntryHandler2` and `PickerHandler2`, while iOS keeps its existing handlers. The pinned MAUI Controls package is updated with the workload. `dotnet watch --project src/DotNetConf.App -f net11.0-ios` uses the Debug-only no-linking setting; release linking is not disabled.
@@ -82,6 +90,20 @@ the RC1-only daily-feed mapping is no longer needed.
 Android NativeAOT is experimental in this workload (`XA1040`) and is not yet
 suitable for production use. Do not suppress compatibility warnings. A Debug
 build is not a substitute for a Release NativeAOT publish and runtime verification.
+
+## Linux desktop and browser
+
+`net11.0` and `net11.0-browser` use Avalonia.Controls.Maui in full-hosting mode; Android and iOS keep their native handlers and package graph. Both Avalonia targets define `AVALONIA`. Their setup lives in `Platforms/Avalonia` (`UseAvaloniaHost`), which the project registers as a `MauiPlatformSpecificFolder`. The browser entry point is `src/DotNetConf.App.Browser`: the WebAssembly SDK cannot be combined with the MAUI single project, so that small head only starts the app, which `DotNetConf.App` builds as a `net11.0-browser` library.
+
+Differences from the mobile apps:
+
+- IconFont.Maui.FluentIcons 1.1.1 brings its fonts to every target but has no platform-neutral assembly. `src/DotNetConf.FluentIcons` supplies the missing types with the same assembly name and API, limited to the glyphs in use. Add a glyph there when `Icons.xaml` starts using one, and remove the project once the package targets plain .NET.
+- DevFlow and the CommunityToolkit.Maui initializer are mobile-only. `UserStoppedTypingBehavior` still drives search. The save toast does nothing, so the heart and saved count are the confirmation, and tab badges are not drawn.
+- Saved sessions are kept in `~/.config/DotNetConf.App/schedule.json` on Linux and in the browser's local storage (through `Preferences`) on the web.
+- Website links go through Avalonia's launcher: `xdg-open` on Linux, a new tab in the browser.
+- The Linux window icon is `Resources/Splash/splash.png`. The browser's page icon and loading screen use `wwwroot/splash.png`, a copy of that file with the `MauiSplashScreen` colors; update both together.
+
+`AvaloniaHost` and the app project also carry workarounds for Avalonia.Controls.Maui `11.0.0-rc.1.26252.343`, each commented in place: font icons on buttons and Shell tabs, `EmptyView` overlapping a `CollectionView` header, an empty `FileSystem.AppDataDirectory` when `~/.config` does not exist, and fonts and raw assets missing from the assembly when the target has no images. Recheck them when updating the package.
 
 ## Inspect with Copilot and MAUI DevFlow
 
@@ -146,13 +168,16 @@ The app-development and specialist skills were installed using an isolated night
 ## Structure and data
 
 - `src/DotNetConf.App`: native pages, shared view models, theme/resources, platform assets, Debug-only DevFlow.
+- `src/DotNetConf.App.Browser`: WebAssembly entry point and static page for the browser build.
 - `src/DotNetConf.Core`: conference contract/validation, search/timezone/conflict logic, and atomic local bookmark storage.
+- `src/DotNetConf.FluentIcons`: Fluent icon glyphs for the Avalonia targets.
 - `tests/DotNetConf.Core.Tests`: contract, search, date-boundary/DST, overlap, persistence, concurrency, and failure-path tests.
 
 `Resources/Raw/conference.mock.json` is versioned, explicitly marked `isMock`, and loaded through `IConferenceDataSource`. Times are offset-aware instants converted using the device timezone. Multiple speakers and overlapping sessions are supported. Bookmarks are stored by stable ID in private app storage, independently of the agenda. Invalid data or storage failures are shown rather than silently discarded; corrupt bookmark files are never overwritten.
 
 Session/speaker links reuse a matching detail already in the active Shell tab's navigation stack, popping back to that page rather than building circular history. New IDs still push normal details; the other tabs' histories remain independent. Native list scroll viewports span the page, while content templates retain 24-unit gutters, so scrollbars stay at the outer edge.
 
+<<<<<<< HEAD
 Sessions uses the MIT-licensed Syncfusion Toolkit `SfTabView`, registered with
 `ConfigureSyncfusionToolkit()`, for equal-width, two-line local-day headers.
 All days remains available. The index adapter maps to the existing `SelectedDay`
@@ -182,6 +207,9 @@ them alone to announce the active count. Do not add a custom badge renderer for
 older iOS.
 
 The next data stage replaces the bundled source with a validated HTTPS feed and last-known-good offline cache. Do not just flip `isMock` on fictional content. Reminders, local AI, Avalonia-owned video integration, and desktop targets are intentionally deferred. PR build validation and manual Google Play internal-testing/TestFlight release lanes are described in [CI and release setup](docs/CI.md); production promotion remains manual and store credentials must be configured by the owner.
+=======
+The next data stage replaces the bundled source with a validated HTTPS feed and last-known-good offline cache. Do not just flip `isMock` on fictional content. Maps, reminders, local AI, Avalonia-owned video integration, and store/CI/signing are intentionally deferred.
+>>>>>>> e4e30ca (Add Linux and WebAssembly targets with Avalonia.Controls.Maui)
 
 App-owned icons use [IconFont.Maui.FluentIcons](https://github.com/jfversluis/IconFont.Maui.FluentIcons). Website-matched Space Grotesk headings and Open Sans body fonts, gradients, Entry-based search, and heart save actions are documented in `DESIGN.md`. iOS uses MAUI safe-area controls and native automatic scroll insets to scroll beneath the system tab material without fixed offsets.
 
@@ -298,3 +326,7 @@ the real event feed becomes available.
 The October 7, 2026 pass used an Android 16 / API 36 ARM64 emulator. Debug checks covered all five tabs, session/speaker details, debounced search with native keystrokes and retained focus, clear/no-match states, day/topic filters, heart actions and toasts, saved-count badges, overlaps, bookmark persistence across relaunch/reinstall, and native load-error Retry recovery. Light/dark themes, rocket splash screens, 1.5x text scaling, and a 320 dp-wide viewport were also checked. Release was installed separately and cold-started in both themes, with search and existing bookmarks confirmed; its DevFlow endpoint was unavailable as intended. The 18 core tests passed.
 
 Native pickers can temporarily publish a null selection when their items change. The view model models that lifecycle explicitly and restores the day selection after rebuilding local dates; topic selection is initialized after populating its items. Loading controls collapse when idle instead of reserving empty header space. Physical-device, TalkBack, and minimum-supported-Android checks remain release gates.
+
+## Linux and browser verification
+
+The October 8, 2026 pass ran a `linux-arm64` build in an Ubuntu 24.04 container under Xvfb, and the WebAssembly build in Chrome. Both covered all five tabs, session/speaker details, search-as-you-type, clear/no-match states, the day filter, heart actions, the saved count, and bookmark persistence across a restart or page reload. The website link opened a new tab in the browser; the container has no `xdg-open`, so Linux showed the "Couldn't open the website" alert instead. Light and dark themes and the loading screen were checked in the browser only. A clean checkout also built and launched inside the container with the target frameworks limited to `net11.0`. The Android build and the 23 core tests passed; the iOS simulator build passed only with `ValidateXcodeVersion=false` on Xcode 27.0, which is not the supported pairing. Neither mobile app was relaunched.

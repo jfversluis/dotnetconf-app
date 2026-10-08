@@ -71,6 +71,40 @@ public sealed class ScheduleTests : IDisposable
         await Assert.ThrowsAsync<InvalidDataException>(() => new JsonScheduleStore(FilePath).ReadAsync());
     }
 
+    [Fact]
+    public async Task ValueStoreSavesAndRemovesAcrossRestarts()
+    {
+        string? value = null;
+        ValueScheduleStore Store() => new(() => value, json => value = json);
+        var service = new ScheduleService(Store());
+        Assert.True(await service.ToggleAsync("two"));
+        Assert.True(await service.ToggleAsync("one"));
+        Assert.Equal("[\"one\",\"two\"]", value);
+        var restarted = new ScheduleService(Store());
+        await restarted.InitializeAsync();
+        Assert.True(restarted.IsSaved("one"));
+        Assert.False(await restarted.ToggleAsync("one"));
+        Assert.Equal(["two"], await Store().ReadAsync());
+    }
+
+    [Fact]
+    public async Task CorruptValueIsNotOverwritten()
+    {
+        var value = "corrupt";
+        var service = new ScheduleService(new ValueScheduleStore(() => value, json => value = json));
+        await Assert.ThrowsAsync<JsonException>(() => service.ToggleAsync("one"));
+        Assert.Equal("corrupt", value);
+    }
+
+    [Theory]
+    [InlineData("null")]
+    [InlineData("[\"\"]")]
+    [InlineData("[null]")]
+    public async Task InvalidIdsInValueAreRejected(string json)
+    {
+        await Assert.ThrowsAsync<InvalidDataException>(() => new ValueScheduleStore(() => json, _ => { }).ReadAsync());
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(directory))

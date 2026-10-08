@@ -37,7 +37,7 @@ offline under Settings → About → Third-party dependencies.
 
 ## About the project
 
-Built with [.NET MAUI](https://dotnet.microsoft.com/apps/maui) and .NET 11 RC2 technology, with styling inspired by the .NET Conf website. This is an unofficial project, not an official Microsoft conference app.
+Built with [.NET MAUI](https://dotnet.microsoft.com/apps/maui) and .NET 11 RC2 technology, with styling inspired by the .NET Conf website. The same app also runs on Linux desktop and in the browser, drawn by [Avalonia.Controls.Maui](https://github.com/AvaloniaUI/Avalonia.Controls.Maui). This is an unofficial project, not an official Microsoft conference app.
 
 The rocket-bot artwork is used with permission. That permission does not grant a general license to reuse the artwork; bundled third-party notices include its provenance and font licenses.
 

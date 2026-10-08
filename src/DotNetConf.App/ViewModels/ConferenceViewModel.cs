@@ -17,7 +17,7 @@ public sealed record DayFilter(string Label, DateOnly? Day)
 
 public partial class ConferenceViewModel(
     IConferenceDataSource dataSource, ScheduleService schedule, DetailNavigationService navigation,
-    ILogger<ConferenceViewModel> logger) : ObservableObject
+    IBrowser browser, ILogger<ConferenceViewModel> logger) : ObservableObject
 {
     private readonly SemaphoreSlim loadGate = new(1, 1);
     private ConferenceDocument? document;
@@ -93,7 +93,7 @@ public partial class ConferenceViewModel(
         string? error;
         while ((error = await LoadAsync()) is not null)
         {
-            if (!await MainThread.InvokeOnMainThreadAsync(() =>
+            if (!await Shell.Current.Dispatcher.DispatchAsync(() =>
                 Shell.Current.DisplayAlertAsync("Couldn't load the agenda", error, "Retry", "Not now")))
                 return;
         }
@@ -221,7 +221,7 @@ public partial class ConferenceViewModel(
     {
         try
         {
-            if (!await Browser.OpenAsync(document?.WebsiteUrl ?? "https://www.dotnetconf.net/", BrowserLaunchMode.SystemPreferred))
+            if (!await browser.OpenAsync(document?.WebsiteUrl ?? "https://www.dotnetconf.net/", BrowserLaunchMode.SystemPreferred))
                 await ShowErrorAsync("Couldn't open the website",
                     "Please visit https://www.dotnetconf.net/ in your browser.");
         }
@@ -257,7 +257,7 @@ public partial class ConferenceViewModel(
 
         try
         {
-            await MainThread.InvokeOnMainThreadAsync(() =>
+            await Shell.Current.Dispatcher.DispatchAsync(() =>
                 Toast.Make(session.IsSaved ? "Added to My Schedule" : "Removed from My Schedule",
                     ToastDuration.Short).Show());
         }
@@ -270,7 +270,7 @@ public partial class ConferenceViewModel(
     }
 
     private static Task ShowErrorAsync(string title, string message) =>
-        MainThread.InvokeOnMainThreadAsync(() => Shell.Current.DisplayAlertAsync(title, message, "OK"));
+        Shell.Current.Dispatcher.DispatchAsync(() => Shell.Current.DisplayAlertAsync(title, message, "OK"));
 
     public void RefreshLocalTimes()
     {

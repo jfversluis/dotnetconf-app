@@ -8,10 +8,12 @@ public partial class AppShell : Shell
     public AppShell(IServiceProvider services, ConferenceViewModel conference)
     {
         InitializeComponent();
-#if ANDROID
+#if ANDROID || AVALONIA
         this.SetAppThemeColor(TabBarBackgroundColorProperty,
             (Color)Application.Current!.Resources["LightSurface"],
             (Color)Application.Current.Resources["DarkSurface"]);
+#endif
+#if ANDROID
         ScheduleTab.Title = "Schedule";
 #endif
         RefreshTabIcons();
