@@ -4,7 +4,7 @@
 
 `.github/workflows/ci.yml` runs on pull requests, pushes to `main`, and manual
 dispatch. It runs the Core tests and independent Android and iOS **Release**
-builds. Android builds an AAB; iOS builds an unsigned ARM64 simulator app.
+builds. Android publishes a NativeAOT AAB; iOS builds an unsigned ARM64 simulator app.
 Neither build needs store credentials. Fork PRs are supported without secrets.
 This is compilation validation, not a device/UI test or proof of store acceptance.
 

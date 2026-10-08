@@ -58,7 +58,7 @@ jobs:
           platform: ${{ matrix.platform }}
       - name: Android Release build
         if: matrix.platform == 'android'
-        run: dotnet build src/DotNetConf.App/DotNetConf.App.csproj -c Release -f net11.0-android -p:MobileTargetFramework=net11.0-android -p:AndroidPackageFormats=aab
+        run: dotnet publish src/DotNetConf.App/DotNetConf.App.csproj -c Release -f net11.0-android -p:MobileTargetFramework=net11.0-android -p:AndroidPackageFormats=aab
       - name: iOS Release simulator build (no signing credentials)
         if: matrix.platform == 'ios'
         run: dotnet build src/DotNetConf.App/DotNetConf.App.csproj -c Release -f net11.0-ios -p:MobileTargetFramework=net11.0-ios -p:RuntimeIdentifier=iossimulator-arm64 -p:EnableCodeSigning=false

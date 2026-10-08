@@ -7,6 +7,7 @@
     <UseMaui>true</UseMaui>
     <UseMaterial3>true</UseMaterial3>
     <SingleProject>true</SingleProject>
+    <PublishAot>true</PublishAot>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <MauiXamlInflator>SourceGen</MauiXamlInflator>
