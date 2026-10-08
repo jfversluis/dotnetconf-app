@@ -21,21 +21,26 @@
                        Style="{StaticResource Secondary}" />
                 <Button Text="Visit the official website" Command="{Binding OpenWebsiteCommand}"
                         Style="{StaticResource QuietButton}" ImageSource="{StaticResource WebsiteIcon}" AutomationId="about-website" />
+                <Button Text="Explore community events" Command="{Binding BrowseCommunityEventsCommand}"
+                        Style="{StaticResource QuietButton}" ImageSource="{StaticResource CommunityIcon}" AutomationId="about-community" />
             </VerticalStackLayout>
             <BoxView HeightRequest="1" />
             <VerticalStackLayout Spacing="12">
                 <Label Text="Your schedule stays here" Style="{StaticResource Subheading}" />
-                <Label Text="No account or app-managed cloud sync. Bookmarks are stored in the app's private storage on this device; operating-system backups may include app data. Opening the official website uses your browser and that site's privacy policy."
+                <Label Text="No account or app-managed cloud sync. Bookmarks and your appearance preference are stored on this device; operating-system backups may include app data. Opening the official website uses your browser and that site's privacy policy."
                        Style="{StaticResource Secondary}" />
                 <Label Text="Development builds include local DevFlow inspection. The inspection agent is excluded from Release builds."
                        Style="{StaticResource Secondary}" />
             </VerticalStackLayout>
             <VerticalStackLayout Spacing="12">
                 <Label Text="Built with .NET MAUI 11" Style="{StaticResource Subheading}" />
-                <Label Text="Native mobile UI, CoreCLR, source-generated XAML, and Fluent icons. Maps, reminders, local AI, and partner video integration are future additions."
+                <Label Text="Native mobile UI, CoreCLR, source-generated XAML, Fluent icons, and native maps with clustered custom pins. Reminders, local AI, and partner video integration are future additions."
                        Style="{StaticResource Secondary}" />
                 <Label Text="Fluent UI System Icons and IconFont.Maui.FluentIcons are MIT licensed. Open Sans is Apache 2.0 licensed; Space Grotesk uses the SIL Open Font License. License notices are included with the app."
                        Style="{StaticResource Secondary}" />
+                <Button Text="Third-party dependencies" ImageSource="{StaticResource AboutIcon}"
+                        Style="{StaticResource QuietButton}" Clicked="OnDependenciesClicked"
+                        AutomationId="about-dependencies" />
             </VerticalStackLayout>
         </VerticalStackLayout>
     </ScrollView>

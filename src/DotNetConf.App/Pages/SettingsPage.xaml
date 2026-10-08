@@ -1,0 +1,43 @@
+<ContentPage x:Class="DotNetConf.App.Pages.SettingsPage"
+             xmlns:pages="clr-namespace:DotNetConf.App.Pages"
+             xmlns:controls="clr-namespace:DotNetConf.App.Controls"
+             x:DataType="pages:SettingsPage" Title="Settings">
+    <ScrollView SafeAreaEdges="Default" AutomationId="settings-scroll">
+        <VerticalStackLayout Padding="24" Spacing="28" MaximumWidthRequest="720"
+                             HorizontalOptions="Center" SafeAreaEdges="None">
+            <VerticalStackLayout Spacing="12">
+                <Label Text="Make it yours" Style="{StaticResource Heading}" />
+                <Label Text="Choose how the app looks. Your preference stays on this device."
+                       Style="{StaticResource Secondary}" />
+            </VerticalStackLayout>
+            <VerticalStackLayout Spacing="12">
+                <Label Text="Appearance" Style="{StaticResource Subheading}" />
+                <Border StrokeShape="RoundRectangle 8" Padding="12,0">
+                    <controls:AgendaPicker x:Name="AppearancePicker" Title="Appearance"
+                                           ItemsSource="{Binding AppearanceChoices}"
+                                           SelectedIndexChanged="OnAppearanceChanged"
+                                           AutomationId="settings-appearance"
+                                           SemanticProperties.Description="App appearance" />
+                </Border>
+                <Label Text="System follows your device's light or dark appearance."
+                       Style="{StaticResource Secondary}" />
+            </VerticalStackLayout>
+            <BoxView HeightRequest="1" />
+            <VerticalStackLayout Spacing="12">
+                <Label Text="Agenda times" Style="{StaticResource Subheading}" />
+                <Label Text="{Binding TimeZoneLabel}" AutomationId="settings-time-zone" />
+                <Label Text="Session times follow your device's time zone, including daylight saving time. To change it, use your device settings."
+                       Style="{StaticResource Secondary}" />
+            </VerticalStackLayout>
+            <BoxView HeightRequest="1" />
+            <VerticalStackLayout Spacing="12">
+                <Label Text="About this app" Style="{StaticResource Subheading}" />
+                <Label Text="Conference information, sample-data disclosure, privacy, and acknowledgments."
+                       Style="{StaticResource Secondary}" />
+                <Button Text="About .NET Conf companion" ImageSource="{StaticResource AboutIcon}"
+                        Style="{StaticResource QuietButton}" Clicked="OnAboutClicked"
+                        AutomationId="settings-about" />
+            </VerticalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

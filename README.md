@@ -10,9 +10,10 @@ Your .NET Conf, in your pocket. An **unofficial companion app for iOS and Androi
 
 - **Find your next idea.** Browse sessions and search by title, topic, or speaker. Filter the agenda by day or topic.
 - **Meet the speakers.** Read their biographies and explore their talks, with easy navigation between speakers and sessions.
+- **Find your community.** Discover ways to watch together, meet local presenters, or organize a gathering. Open the full-screen event map or browse the event list, then see an event's location and website. Distinct pins and numbered clusters help you explore. The 24 community events and venues are currently fictional examples.
 - **Build your schedule.** Tap a heart to save a session. Your choices stay on your device, and overlapping sessions are highlighted.
 - **See times that make sense to you.** Session times use your device's local time zone.
-- **Feel at home.** The app follows your light or dark appearance and supports larger text.
+- **Feel at home.** Follow your device's appearance or choose Light or Dark in Settings. The app supports larger text.
 
 The bundled agenda is available offline, so you can browse it and manage your saved sessions without an account.
 
@@ -24,10 +25,15 @@ The app is **in development and not yet available in the App Store or Google Pla
 
 ## Your data
 
-Saved sessions are stored locally on your device. There is no account or cloud sync in the current app. Links to the conference website open in your browser.
+Saved sessions and your appearance preference are stored locally on your device. There is no account or cloud sync in the current app. Links to the conference website open in your browser.
+
+Community maps use Apple Maps on iOS and Google Maps on Android, with an internet connection for map tiles. The app does not request your location. The event list remains available without map tiles; Android builds without a configured Maps key use the list.
 
 Read the [privacy policy](https://jfversluis.dev/dotnetconf-privacy-policy.html),
-also available from the app's About tab.
+also available under Settings → About.
+
+Third-party dependencies, their licenses, and artwork credits are available
+offline under Settings → About → Third-party dependencies.
 
 ## About the project
 

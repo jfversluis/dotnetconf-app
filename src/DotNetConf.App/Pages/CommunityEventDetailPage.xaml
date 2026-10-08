@@ -1,0 +1,32 @@
+<ContentPage x:Class="DotNetConf.App.Pages.CommunityEventDetailPage"
+             xmlns:pages="clr-namespace:DotNetConf.App.Pages"
+             x:DataType="pages:CommunityEventDetailPage" Title="Community event" Shell.TabBarIsVisible="False">
+    <ScrollView SafeAreaEdges="Default" AutomationId="community-detail-scroll">
+        <VerticalStackLayout Padding="24" Spacing="24" MaximumWidthRequest="720"
+                             HorizontalOptions="Center" SafeAreaEdges="None">
+            <VerticalStackLayout Spacing="12" IsVisible="{Binding HasEvent}">
+                <Label Text="{Binding Event.Name}" Style="{StaticResource Heading}" AutomationId="community-detail-name" />
+                <Label Text="{Binding Event.KindLabel}" FontFamily="OpenSansSemibold" />
+                <Label Text="{Binding Event.KindDescription}" Style="{StaticResource Secondary}" />
+                <BoxView HeightRequest="1" Margin="0,12" />
+                <Label Text="Where we'll meet" Style="{StaticResource Subheading}" />
+                <Label Text="{Binding Event.LocationLabel}" AutomationId="community-detail-location" />
+                <Label Text="This event and venue are fictional examples, not a confirmed gathering. The website opens example.com."
+                       IsVisible="{Binding Conference.IsMock}" Style="{StaticResource Secondary}"
+                       AutomationId="community-detail-disclosure" />
+                <Button Text="Visit event website" ImageSource="{StaticResource WebsiteIcon}" Style="{StaticResource QuietButton}"
+                        Command="{Binding Conference.OpenCommunityWebsiteCommand}" CommandParameter="{Binding Event}"
+                        AutomationId="community-event-website">
+                    <Button.Triggers>
+                        <DataTrigger TargetType="Button" Binding="{Binding Conference.IsMock}" Value="True">
+                            <Setter Property="Text" Value="Open example website" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+            </VerticalStackLayout>
+            <Label Text="This community event couldn't be found. Go back to explore other events."
+                   IsVisible="{Binding IsMissing}" Style="{StaticResource Secondary}" AutomationId="community-event-missing" />
+            <ActivityIndicator IsVisible="{Binding Conference.IsBusy}" IsRunning="{Binding Conference.IsBusy}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

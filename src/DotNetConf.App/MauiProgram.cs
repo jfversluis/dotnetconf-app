@@ -22,6 +22,7 @@ public static class MauiProgram
         var builder = MauiApp.CreateBuilder();
         builder.UseMauiApp<App>()
             .UseMauiCommunityToolkit()
+            .UseMauiMaps()
             .UseFluentIconsRegular()
             .UseFluentIconsFilled()
             .ConfigureMauiHandlers(handlers => handlers.AddHandler<AgendaPicker, AgendaPickerHandler>())
@@ -81,6 +82,13 @@ public static class MauiProgram
         builder.Services.AddTransient<SpeakersPage>();
         builder.Services.AddTransient<SchedulePage>();
         builder.Services.AddTransient<AboutPage>();
+        builder.Services.AddTransient<SettingsPage>();
+        builder.Services.AddTransient<ThirdPartyPage>();
+        builder.Services.AddTransient<LicensePage>();
+        builder.Services.AddSingleton<IPreferences>(Preferences.Default);
+        builder.Services.AddTransient<CommunityEventsPage>();
+        builder.Services.AddTransient<CommunityPage>();
+        builder.Services.AddTransient<CommunityEventDetailPage>();
         builder.Services.AddTransient<SessionDetailPage>();
         builder.Services.AddTransient<SpeakerDetailPage>();
 #if DEBUG

@@ -87,6 +87,7 @@ jobs:
           platform: android
       - name: Publish signed Android App Bundle
         env:
+          GoogleMapsApiKey: ${{ secrets.GOOGLE_MAPS_ANDROID_API_KEY }}
           APP_ID: ${{ vars.ANDROID_APPLICATION_ID }}
           VERSION: ${{ inputs.version }}
           BUILD_NUMBER: ${{ inputs.build_number }}

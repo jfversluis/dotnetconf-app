@@ -22,8 +22,25 @@ public static class ConferenceJson
             throw new InvalidDataException("Conference name and description are required.");
         if (!Uri.TryCreate(document.WebsiteUrl, UriKind.Absolute, out var website) || website.Scheme != Uri.UriSchemeHttps)
             throw new InvalidDataException("The conference website must be an absolute HTTPS URL.");
-        if (document.Speakers is null || document.Sessions is null)
-            throw new InvalidDataException("Session and speaker collections are required.");
+        if (document.Speakers is null || document.Sessions is null || document.CommunityEvents is null)
+            throw new InvalidDataException("Session, speaker, and community event collections are required.");
+
+        var eventIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var communityEvent in document.CommunityEvents)
+        {
+            if (communityEvent is null || string.IsNullOrWhiteSpace(communityEvent.Id) ||
+                string.IsNullOrWhiteSpace(communityEvent.Name) || !eventIds.Add(communityEvent.Id) ||
+                string.IsNullOrWhiteSpace(communityEvent.Venue) || string.IsNullOrWhiteSpace(communityEvent.City) ||
+                string.IsNullOrWhiteSpace(communityEvent.Country) ||
+                communityEvent.Kind is not ("watch-party" or "community-conference"))
+                throw new InvalidDataException("Community events require unique IDs, names, locations, and a supported kind.");
+            if (!double.IsFinite(communityEvent.Latitude) || communityEvent.Latitude is < -90 or > 90 ||
+                !double.IsFinite(communityEvent.Longitude) || communityEvent.Longitude is < -180 or > 180)
+                throw new InvalidDataException($"Community event '{communityEvent.Id}' has invalid coordinates.");
+            if (!Uri.TryCreate(communityEvent.WebsiteUrl, UriKind.Absolute, out var eventWebsite) ||
+                eventWebsite.Scheme != Uri.UriSchemeHttps)
+                throw new InvalidDataException($"Community event '{communityEvent.Id}' requires an absolute HTTPS website.");
+        }
 
         var speakerIds = new HashSet<string>(StringComparer.Ordinal);
         foreach (var speaker in document.Speakers)

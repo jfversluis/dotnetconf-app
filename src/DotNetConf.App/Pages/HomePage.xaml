@@ -3,6 +3,10 @@
                       xmlns:controls="clr-namespace:DotNetConf.App.Controls"
                       xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
                       x:DataType="vm:ConferenceViewModel" Title=".NET Conf">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Settings" IconImageSource="{StaticResource SettingsIcon}"
+                     Command="{Binding BrowseSettingsCommand}" AutomationId="home-settings" />
+    </ContentPage.ToolbarItems>
     <ScrollView SafeAreaEdges="Default" AutomationId="home-scroll">
         <VerticalStackLayout Spacing="0" MaximumWidthRequest="720" HorizontalOptions="Center" SafeAreaEdges="None">
             <Grid Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}"
@@ -39,6 +43,10 @@
             </VerticalStackLayout>
             <VerticalStackLayout Spacing="8">
                 <Label Text="From the community, for the community" Style="{StaticResource Subheading}" />
+                <Label Text="Find ways to connect through watch parties and in-person community talks. For now, event locations are fictional examples."
+                       Style="{StaticResource Secondary}" />
+                <Button Text="Explore community events" Command="{Binding BrowseCommunityEventsCommand}"
+                        Style="{StaticResource QuietButton}" ImageSource="{StaticResource CommunityIcon}" AutomationId="home-community" />
                 <Label Text="This is an unofficial companion. Visit the official website for confirmed event dates, registration, and announcements."
                        Style="{StaticResource Secondary}" />
                 <Button Text="Visit dotnetconf.net" Command="{Binding OpenWebsiteCommand}" Style="{StaticResource QuietButton}"

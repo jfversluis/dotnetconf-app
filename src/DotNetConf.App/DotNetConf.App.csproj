@@ -22,6 +22,10 @@
     <EnableMauiIncrementalHotReload>true</EnableMauiIncrementalHotReload>
     <MtouchLink Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">None</MtouchLink>
   </PropertyGroup>
+  <PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+    <GoogleMapsApiKey Condition="'$(GoogleMapsApiKey)' == ''">NOT_CONFIGURED</GoogleMapsApiKey>
+    <AndroidManifestPlaceholders>$(AndroidManifestPlaceholders);googleMapsApiKey=$(GoogleMapsApiKey)</AndroidManifestPlaceholders>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug' and $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
   </PropertyGroup>
@@ -37,6 +41,7 @@
     <MauiAsset Include="Resources/Raw/**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
     <ProjectReference Include="../DotNetConf.Core/DotNetConf.Core.csproj" />
     <PackageReference Include="Microsoft.Maui.Controls" Version="11.0.0-rc.1.26451.6" />
+    <PackageReference Include="Microsoft.Maui.Controls.Maps" Version="11.0.0-rc.1.26451.6" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="CommunityToolkit.Maui" Version="15.0.1" />
     <PackageReference Include="IconFont.Maui.FluentIcons" Version="1.1.1" />

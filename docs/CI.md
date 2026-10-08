@@ -43,6 +43,16 @@ chat. Variables are non-secret GitHub environment variables.
 | Secret | `ANDROID_KEY_PASSWORD` | Upload key password |
 | Secret | `ANDROID_KEYSTORE_PASSWORD` | Keystore password |
 | Secret | `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | Raw service-account JSON, not base64 |
+| Secret | `GOOGLE_MAPS_ANDROID_API_KEY` | Optional restricted Maps SDK for Android key; without it Community uses the event list |
+
+Enable **Maps SDK for Android** for the map key's Google Cloud project. Restrict the
+key to that API and to the application ID plus signing certificate SHA-1. Builds
+delivered by Google Play use the **Play app-signing certificate**, not the upload
+certificate. Configure debug/local signing certificates separately when needed.
+The publish step passes the key through the `GoogleMapsApiKey` environment property;
+the map key is embedded in the installed manifest and must not be treated as a
+server credential. Do not print it or commit it. See the community-map section
+in [CONTRIBUTING.md](../CONTRIBUTING.md) for local configuration.
 
 You need a Google Play developer account, an app record with that package name,
 Play App Signing enrollment, and an internal testing track with testers configured.

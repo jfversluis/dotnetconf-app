@@ -28,24 +28,43 @@ public partial class ConferenceViewModel(
     [ObservableProperty] public partial IReadOnlyList<SessionViewModel> Sessions { get; set; } = [];
     public ObservableCollection<SessionViewModel> SavedSessions { get; } = [];
     [ObservableProperty] public partial IReadOnlyList<SpeakerViewModel> Speakers { get; set; } = [];
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CommunityEventSummary))]
+    public partial IReadOnlyList<CommunityEvent> CommunityEvents { get; set; } = [];
     public ObservableCollection<DayFilter> Days { get; } = [new("All days", null)];
     public ObservableCollection<string> Topics { get; } = ["All topics"];
 
     [ObservableProperty] public partial bool IsBusy { get; set; }
-    [ObservableProperty] public partial bool IsMock { get; set; } = true;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CommunityEventSummary))]
+    public partial bool IsMock { get; set; } = true;
     [ObservableProperty] public partial string ConferenceName { get; set; } = ".NET Conf 2026";
     [ObservableProperty] public partial string ConferenceDescription { get; set; } =
         "The .NET community comes together to celebrate, learn, and build what is next.";
-    [ObservableProperty] public partial string SessionQuery { get; set; } = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSessionFilters))]
+    public partial string SessionQuery { get; set; } = "";
     [ObservableProperty] public partial string SpeakerQuery { get; set; } = "";
-    [ObservableProperty] public partial DayFilter? SelectedDay { get; set; }
-    [ObservableProperty] public partial string? SelectedTopic { get; set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSessionFilters))]
+    public partial DayFilter? SelectedDay { get; set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSessionFilters))]
+    public partial string? SelectedTopic { get; set; }
     [ObservableProperty] public partial string TimeZoneLabel { get; set; } = $"Times shown in {TimeZoneInfo.Local.DisplayName}";
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ScheduleSummary))]
     public partial int SavedCount { get; set; }
 
     public string ScheduleSummary => SavedCount == 1 ? "1 saved session" : $"{SavedCount} saved sessions";
+    public bool HasSessionFilters => !string.IsNullOrWhiteSpace(SessionQuery)
+        || SelectedDay?.Day is not null
+        || (SelectedTopic is not null && SelectedTopic != Topics[0]);
+    public string CommunityEventSummary => CommunityEvents.Count == 0
+        ? "Community events will appear here when they're available."
+        : IsMock
+            ? $"Explore {CommunityEvents.Count} fictional gatherings across {CommunityEvents.Select(e => e.City).Distinct().Count()} cities. These are examples, not events you can attend."
+            : "Explore watch parties and in-person talks, with venue details and links to the organizers.";
     public event EventHandler? ScheduleChanged;
 
     public async Task InitializeAsync()
@@ -76,6 +95,7 @@ public partial class ConferenceViewModel(
             ConferenceName = loaded.Name;
             ConferenceDescription = loaded.Description;
             IsMock = loaded.IsMock;
+            CommunityEvents = loaded.CommunityEvents;
             allSpeakers.AddRange(loaded.Speakers.Select(speaker => new SpeakerViewModel(speaker, this)));
             allSessions.AddRange(loaded.Sessions.OrderBy(session => session.StartsAt)
                 .Select(session => new SessionViewModel(session, allSpeakers, schedule.IsSaved(session.Id), this)));
@@ -116,6 +136,43 @@ public partial class ConferenceViewModel(
 
     [RelayCommand]
     private Task BrowseScheduleAsync() => Shell.Current.GoToAsync("//schedule");
+
+    [RelayCommand]
+    private Task BrowseCommunityEventsAsync() => Shell.Current.GoToAsync("//community");
+
+    [RelayCommand]
+    private Task ExploreCommunityMapAsync() => Shell.Current.GoToAsync("community-map");
+
+    [RelayCommand]
+    private Task BrowseCommunityListAsync() => Shell.Current.GoToAsync("community-map?mode=list");
+
+    [RelayCommand]
+    private Task OpenCommunityEventAsync(CommunityEvent? communityEvent) => communityEvent is null
+        ? Task.CompletedTask
+        : Shell.Current.GoToAsync($"community-event?id={Uri.EscapeDataString(communityEvent.Id)}");
+
+    [RelayCommand]
+    private Task BrowseAboutAsync() => Shell.Current.GoToAsync("about");
+
+    [RelayCommand]
+    private Task BrowseSettingsAsync() => Shell.Current.GoToAsync("settings");
+
+    [RelayCommand]
+    private async Task OpenCommunityWebsiteAsync(CommunityEvent? communityEvent)
+    {
+        if (communityEvent is null)
+            return;
+        try
+        {
+            if (!await Browser.OpenAsync(communityEvent.WebsiteUrl, BrowserLaunchMode.SystemPreferred))
+                await ShowErrorAsync("Couldn't open the event website", $"Please visit {communityEvent.WebsiteUrl} in your browser.");
+        }
+        catch (Exception exception) when (exception is FeatureNotSupportedException or UriFormatException)
+        {
+            logger.LogError(exception, "Could not open community event website for {EventId}.", communityEvent.Id);
+            await ShowErrorAsync("Couldn't open the event website", $"Please visit {communityEvent.WebsiteUrl} in your browser.");
+        }
+    }
 
     [RelayCommand]
     private async Task OpenWebsiteAsync()
