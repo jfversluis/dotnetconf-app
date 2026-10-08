@@ -29,8 +29,6 @@
                        Style="{StaticResource Secondary}" />
                 <Label Text="Development builds include local DevFlow inspection. The inspection agent is excluded from Release builds."
                        Style="{StaticResource Secondary}" />
-                <Button Text="Privacy policy" Command="{Binding OpenPrivacyPolicyCommand}"
-                        Style="{StaticResource QuietButton}" ImageSource="{StaticResource WebsiteIcon}" AutomationId="about-privacy-policy" />
             </VerticalStackLayout>
             <VerticalStackLayout Spacing="12">
                 <Label Text="Built with .NET MAUI 11" Style="{StaticResource Subheading}" />

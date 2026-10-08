@@ -118,26 +118,19 @@ public partial class ConferenceViewModel(
     private Task BrowseScheduleAsync() => Shell.Current.GoToAsync("//schedule");
 
     [RelayCommand]
-    private Task OpenWebsiteAsync() =>
-        OpenExternalWebsiteAsync(document?.WebsiteUrl ?? "https://www.dotnetconf.net/");
-
-    [RelayCommand]
-    private Task OpenPrivacyPolicyAsync() =>
-        OpenExternalWebsiteAsync("https://jfversluis.dev/dotnetconf-privacy-policy.html");
-
-    private async Task OpenExternalWebsiteAsync(string url)
+    private async Task OpenWebsiteAsync()
     {
         try
         {
-            if (!await Browser.OpenAsync(url, BrowserLaunchMode.SystemPreferred))
+            if (!await Browser.OpenAsync(document?.WebsiteUrl ?? "https://www.dotnetconf.net/", BrowserLaunchMode.SystemPreferred))
                 await ShowErrorAsync("Couldn't open the website",
-                    $"Please visit {url} in your browser.");
+                    "Please visit https://www.dotnetconf.net/ in your browser.");
         }
         catch (Exception exception) when (exception is FeatureNotSupportedException or UriFormatException)
         {
-            logger.LogError(exception, "Could not open the website {Url}.", url);
+            logger.LogError(exception, "Could not open the conference website.");
             await ShowErrorAsync("Couldn't open the website",
-                $"Please visit {url} in your browser.");
+                "Please visit https://www.dotnetconf.net/ in your browser.");
         }
     }
 
