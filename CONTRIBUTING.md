@@ -25,7 +25,7 @@ dotnet tool restore
 dotnet test tests/DotNetConf.Core.Tests
 ```
 
-iOS builds require a Mac and the selected workload's supported Xcode. The RC1 workload contains iOS 26.5 bindings; this foundation was built against Xcode 26.6. Android requires the workload's Android SDK/JDK dependencies, including API 37 tooling. Deployment minimums are iOS 15 and Android API 24. These are different from the build SDK versions. See [MAUI release requirements](https://github.com/dotnet/maui/wiki/Release-Versions).
+iOS builds require a Mac and the selected workload's supported Xcode. The RC1 workload contains iOS 26.5 bindings; this foundation was built against Xcode 26.6. Android requires the workload's Android SDK dependencies, including API 37 tooling, and JDK 21. Deployment minimums are iOS 15 and Android API 24. These are different from the build SDK versions. See [MAUI release requirements](https://github.com/dotnet/maui/wiki/Release-Versions).
 
 The iOS head uses the scene lifecycle: `Info.plist` registers the single-window `SceneDelegate`, which inherits `MauiUISceneDelegate`. MAUI owns window creation through `App.CreateWindow`; `AppDelegate` only builds the app. This opts out of the legacy application lifecycle used by the initial scaffold without adding custom window sizing or safe-area offsets.
 
@@ -49,9 +49,39 @@ dotnet build src/DotNetConf.App -f net11.0-ios -p:RuntimeIdentifier=iossimulator
 dotnet build src/DotNetConf.App -f net11.0-android
 ```
 
-Android Debug APKs embed their managed assemblies so they also work when installed directly by test tools. The app uses CoreCLR defaults, source-generated XAML with compiled bindings, and Debug-only incremental XAML Hot Reload. MAUI 11 RC1's Android Material 3 controls are explicitly enabled with `UseMaterial3=true`; scoped search and picker customizations use `EntryHandler2` and `PickerHandler2`, while iOS keeps its existing handlers. The pinned MAUI Controls package remains unchanged. `dotnet watch --project src/DotNetConf.App -f net11.0-ios` uses the Debug-only no-linking setting; release linking is not disabled.
+The app uses source-generated XAML with compiled bindings and Debug-only incremental XAML Hot Reload. Runtime selection is left to the SDK, with `PublishAot=true` in the project and no configuration-specific overrides. MAUI 11 RC1's Android Material 3 controls are explicitly enabled with `UseMaterial3=true`; scoped search and picker customizations use `EntryHandler2` and `PickerHandler2`, while iOS keeps its existing handlers. The pinned MAUI Controls package remains unchanged. `dotnet watch --project src/DotNetConf.App -f net11.0-ios` uses the Debug-only no-linking setting; release linking is not disabled.
 
 The pinned RC1 incremental XAML generator can retain stale resource-style updates and report `Style.Setters` as read-only after a style edit. A targeted `dotnet clean src/DotNetConf.App -f net11.0-android -p:RuntimeIdentifier=android-arm64` (or the corresponding iOS target/RID), followed by the normal build, clears that preview state. Do not disable incremental Hot Reload or edit generated sources to work around it.
+
+### NativeAOT builds
+
+The app enables `PublishAot=true` by default for both mobile targets, without
+conditioning it on configuration. `DotNetConf.Core` declares
+`IsAotCompatible=true` to run its trimming and AOT analyzers independently;
+the unit-test project does not need that property.
+
+Use a Release publish to exercise native compilation and full trimming:
+
+```sh
+dotnet publish src/DotNetConf.App -c Release -f net11.0-android \
+  -p:MobileTargetFramework=net11.0-android -r android-arm64 -p:AndroidPackageFormats=apk
+dotnet publish src/DotNetConf.App -c Release -f net11.0-ios \
+  -p:MobileTargetFramework=net11.0-ios -r ios-arm64
+```
+
+Android's signed local APK is under
+`src/DotNetConf.App/bin/Release/net11.0-android/android-arm64/publish/`.
+It uses the local debug signing key unless release signing is configured.
+The iOS publish requires device signing; simulator builds are not a substitute
+for a NativeAOT device publish.
+
+The pinned Android workload requests NativeAOT runtime
+`11.0.0-rc.1.26428.117`, which is not on NuGet.org. `NuGet.Config` maps only
+`Microsoft.NETCore.App.Runtime.NativeAOT.android-*` packages to Microsoft's
+official `dotnet11` feed; other packages stay on NuGet.org.
+Android NativeAOT is experimental in this workload (`XA1040`) and is not yet
+suitable for production use. Do not suppress compatibility warnings. A Debug
+build is not a substitute for a Release NativeAOT publish and runtime verification.
 
 ## Inspect with Copilot and MAUI DevFlow
 
