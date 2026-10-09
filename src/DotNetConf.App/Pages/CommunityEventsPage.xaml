@@ -3,47 +3,32 @@
              xmlns:pages="clr-namespace:DotNetConf.App.Pages"
              xmlns:core="clr-namespace:DotNetConf.Core;assembly=DotNetConf.Core"
              x:DataType="pages:CommunityEventsPage"
-             Title="{Binding ExplorerTitle}" SafeAreaEdges="{OnPlatform iOS=None, Default=All}" Shell.TabBarIsVisible="False">
-    <Grid RowDefinitions="*,Auto" SafeAreaEdges="None">
+             Title="{Binding ExplorerTitle}" SafeAreaEdges="None" Shell.TabBarIsVisible="False">
+    <Grid RowDefinitions="*,Auto,Auto" SafeAreaEdges="None">
         <Grid x:Name="MapHost" IsVisible="{Binding ShowMap}" SafeAreaEdges="None"
               AutomationId="community-map-host" />
-        <Grid SafeAreaEdges="All" InputTransparent="True" CascadeInputTransparent="False">
-        <Grid InputTransparent="True" CascadeInputTransparent="False">
-            <Border Margin="12" Padding="12,10" StrokeShape="RoundRectangle 12"
+        <Grid SafeAreaEdges="Container" InputTransparent="True" CascadeInputTransparent="False">
+            <Border Margin="12" Padding="12,8" StrokeShape="RoundRectangle 12"
                     VerticalOptions="Start" IsVisible="{Binding ShowMap}"
+                    AutomationId="community-map-legend"
                     BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}">
-                <ScrollView MaximumHeightRequest="{Binding LegendHeight}" SafeAreaEdges="None">
-                    <VerticalStackLayout Spacing="8">
-                        <FlexLayout Wrap="Wrap" AlignItems="Center">
-                            <HorizontalStackLayout Spacing="6" Margin="0,0,16,0">
-                                <Image Source="{Binding WatchPartyPin}" WidthRequest="22" HeightRequest="28"
-                                       AutomationProperties.IsInAccessibleTree="False" />
-                                <Label Text="Watch party" FontSize="14" VerticalOptions="Center" />
-                            </HorizontalStackLayout>
-                            <HorizontalStackLayout Spacing="6">
-                                <Image Source="{Binding InPersonPin}" WidthRequest="22" HeightRequest="28"
-                                       AutomationProperties.IsInAccessibleTree="False" />
-                                <Label Text="In-person talks" FontSize="14" VerticalOptions="Center" />
-                            </HorizontalStackLayout>
-                        </FlexLayout>
-                        <Label Text="Fictional example events" FontSize="12" IsVisible="{Binding Conference.IsMock}"
-                               Style="{StaticResource Secondary}" AutomationId="community-mock-disclosure" />
-                        <Label Text="Tap a pin for a preview. Tap a number to zoom." FontSize="12"
-                               Style="{StaticResource Secondary}" />
-                    </VerticalStackLayout>
-                </ScrollView>
+                <VerticalStackLayout Spacing="4">
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
+                            <Image Source="{Binding WatchPartyPin}" WidthRequest="18" HeightRequest="24"
+                                   VerticalOptions="Center" AutomationProperties.IsInAccessibleTree="False" />
+                            <Label Grid.Column="1" Text="Watch party" FontSize="14" VerticalOptions="Center" />
+                        </Grid>
+                        <Grid Grid.Column="1" ColumnDefinitions="Auto,*" ColumnSpacing="6">
+                            <Image Source="{Binding InPersonPin}" WidthRequest="18" HeightRequest="24"
+                                   VerticalOptions="Center" AutomationProperties.IsInAccessibleTree="False" />
+                            <Label Grid.Column="1" Text="In-person talks" FontSize="14" VerticalOptions="Center" />
+                        </Grid>
+                    </Grid>
+                    <Label Text="Fictional example events" FontSize="12" IsVisible="{Binding Conference.IsMock}"
+                           Style="{StaticResource Secondary}" AutomationId="community-mock-disclosure" />
+                </VerticalStackLayout>
             </Border>
-            <Grid Margin="12,0,12,44" ColumnDefinitions="*,*" ColumnSpacing="8"
-                  VerticalOptions="End" IsVisible="{Binding ShowMap}">
-                <Button Text="Show all" ImageSource="{StaticResource ShowAllIcon}" Clicked="OnShowAllClicked"
-                        Style="{StaticResource QuietButton}" AutomationId="community-show-all"
-                        BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}"
-                        SemanticProperties.Hint="Zoom out to all event locations" />
-                <Button Grid.Column="1" Text="Event list" ImageSource="{StaticResource EventListIcon}" Clicked="OnListClicked"
-                        Style="{StaticResource QuietButton}" AutomationId="community-list-mode"
-                        BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}"
-                        SemanticProperties.Hint="Browse the same events without using the map" />
-            </Grid>
             <Grid RowDefinitions="Auto,*" IsVisible="{Binding ShowList}">
                 <VerticalStackLayout Padding="24,20,24,12" Spacing="10">
                     <Label Text="Find a gathering" Style="{StaticResource Subheading}" />
@@ -98,8 +83,22 @@
             <ActivityIndicator IsRunning="{Binding Conference.IsBusy}" IsVisible="{Binding Conference.IsBusy}"
                                HorizontalOptions="Center" VerticalOptions="Center" />
         </Grid>
-        </Grid>
-        <Border Grid.Row="1" IsVisible="{Binding HasSelection}" StrokeThickness="0" SafeAreaEdges="All"
+        <Border Grid.Row="1" IsVisible="{Binding ShowMap}" StrokeThickness="0" SafeAreaEdges="Container"
+                BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}"
+                AutomationId="community-map-actions">
+            <Grid RowDefinitions="Auto,Auto" SafeAreaEdges="None">
+                <BoxView HeightRequest="1" />
+                <Grid Grid.Row="1" Padding="16,8" ColumnDefinitions="*,*" ColumnSpacing="12">
+                    <Button Text="Show all" Clicked="OnShowAllClicked"
+                            Style="{StaticResource QuietButton}" AutomationId="community-show-all"
+                            SemanticProperties.Hint="Zoom out to all event locations" />
+                    <Button Grid.Column="1" Text="Event list" Clicked="OnListClicked"
+                            AutomationId="community-list-mode"
+                            SemanticProperties.Hint="Browse the same events without using the map" />
+                </Grid>
+            </Grid>
+        </Border>
+        <Border Grid.Row="2" IsVisible="{Binding HasSelection}" StrokeThickness="0" SafeAreaEdges="Container"
                 BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}">
             <ScrollView MaximumHeightRequest="{Binding DetailHeight}" SafeAreaEdges="None"
                         AutomationId="community-preview-scroll">
