@@ -3,13 +3,15 @@ namespace DotNetConf.Core;
 public static class Agenda
 {
     public static IEnumerable<Session> Search(
-        ConferenceDocument conference, string? query, DateOnly? localDay, string? topic, TimeZoneInfo timeZone)
+        ConferenceDocument conference, string? query, DateOnly? localDay,
+        IReadOnlyCollection<string>? topics, TimeZoneInfo timeZone)
     {
         var terms = (query ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var speakers = conference.Speakers.ToDictionary(speaker => speaker.Id, speaker => speaker.Name);
         return conference.Sessions
             .Where(session => localDay is null || LocalDay(session.StartsAt, timeZone) == localDay)
-            .Where(session => string.IsNullOrEmpty(topic) || session.Topics.Contains(topic, StringComparer.OrdinalIgnoreCase))
+            .Where(session => topics is null || topics.Count == 0
+                || session.Topics.Any(topic => topics.Contains(topic, StringComparer.OrdinalIgnoreCase)))
             .Where(session =>
             {
                 var text = string.Join(' ', session.Title, session.Description,

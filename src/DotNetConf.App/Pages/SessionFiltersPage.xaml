@@ -1,0 +1,57 @@
+<pages:ConferencePage x:Class="DotNetConf.App.Pages.SessionFiltersPage"
+                      xmlns:pages="clr-namespace:DotNetConf.App.Pages"
+                      xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
+                      x:DataType="vm:ConferenceViewModel" Title="Filters"
+                      Shell.TabBarIsVisible="False">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Clear" Command="{Binding ClearTopicFiltersCommand}"
+                     AutomationId="filter-reset" />
+    </ContentPage.ToolbarItems>
+    <Grid RowDefinitions="*,Auto" SafeAreaEdges="All">
+        <CollectionView ItemsSource="{Binding Topics}"
+                        SelectionMode="None" AutomationId="filter-topics">
+            <CollectionView.Header>
+                <VerticalStackLayout Padding="24,24,24,12" Spacing="24">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="Follow your interests" Style="{StaticResource Heading}" />
+                        <Label Text="Choose any topics. Sessions matching at least one appear across every day. Changes apply immediately."
+                               Style="{StaticResource Secondary}" />
+                    </VerticalStackLayout>
+                    <Label Text="No selection shows all topics." Style="{StaticResource Secondary}" FontSize="14" />
+                </VerticalStackLayout>
+            </CollectionView.Header>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:TopicFilterViewModel">
+                    <Grid Padding="24,4" ColumnDefinitions="*,Auto" ColumnSpacing="16"
+                          MinimumHeightRequest="56" AutomationId="{Binding AutomationId}">
+                        <Grid.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ToggleCommand}" />
+                        </Grid.GestureRecognizers>
+                        <Grid.Triggers>
+                            <DataTrigger TargetType="Grid" Binding="{Binding IsSelected}" Value="True">
+                                <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}" />
+                            </DataTrigger>
+                        </Grid.Triggers>
+                        <Label Text="{Binding Name}" VerticalOptions="Center" InputTransparent="True" />
+                        <CheckBox Grid.Column="1" IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                  Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
+                                  MinimumHeightRequest="48" MinimumWidthRequest="48"
+                                  AutomationId="{Binding Name, StringFormat='filter-check-{0}'}"
+                                  SemanticProperties.Description="{Binding Name, StringFormat='Include topic: {0}'}" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+            <CollectionView.Footer>
+                <BoxView HeightRequest="24" Color="Transparent" />
+            </CollectionView.Footer>
+        </CollectionView>
+        <VerticalStackLayout Grid.Row="1" Padding="24,16" Spacing="8"
+                             BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
+            <Label Text="{Binding FilterSummary}" Style="{StaticResource Secondary}" FontSize="12"
+                   AutomationId="filter-summary" />
+            <Label Text="{Binding FilterResultsContext}" Style="{StaticResource Secondary}" FontSize="12" />
+            <Button Text="{Binding ShowFilteredSessionsLabel}" Clicked="OnShowSessionsClicked"
+                    AutomationId="filter-show-sessions" />
+        </VerticalStackLayout>
+    </Grid>
+</pages:ConferencePage>

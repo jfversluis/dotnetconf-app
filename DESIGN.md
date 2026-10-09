@@ -14,15 +14,31 @@ The app defaults to system appearance; Settings offers a persisted System/Light/
 
 Use the website's actual fonts: bundled SIL-OFL Space Grotesk Bold for display/heading roles and Apache-licensed Open Sans Regular/Semibold for body, controls, and session titles. Roles in `Styles.xaml`: body 16, section heading 21, heading 28; Home display 44. All text scales. Compact metadata uses 12-14. Page padding is 24; reading pages have a 720-unit maximum content width. Sections use generous space and separators rather than card grids.
 
-Session and speaker lists use full-width virtualized CollectionView, with 24-unit gutters inside headers and item templates rather than margins on the scroll viewport. Native scroll indicators therefore sit at the screen edge without moving the content or overriding platform indicator insets. Heading, search, and day tabs remain outside the result list so filtering never recreates the focused Entry and day navigation stays reachable; topic filtering and metadata scroll with the sessions. Entire session/speaker content regions are native accessible navigation buttons with descriptive semantics; there are no separate Details buttons. Session titles have no floating chevron competing with the heart or narrowing wrapped titles; the compact speaker directory retains its trailing chevron. Session hearts occupy a separate, non-overlapping 48-unit target. Outline means not saved; filled means saved. Spoken descriptions include state and action; persistence commits before the icon changes.
+Session and speaker lists use full-width virtualized CollectionView, with 24-unit gutters inside headers and item templates rather than margins on the scroll viewport. Native scroll indicators therefore sit at the screen edge without moving the content or overriding platform indicator insets. Heading, search, day tabs, and the topic summary remain outside the result list so filtering never recreates the focused Entry and day navigation stays reachable; metadata scrolls with the sessions. Entire session/speaker content regions are native accessible navigation buttons with descriptive semantics; there are no separate Details buttons. Session titles have no floating chevron competing with the heart or narrowing wrapped titles; the compact speaker directory retains its trailing chevron. Session hearts occupy a separate, non-overlapping 48-unit target. Outline means not saved; filled means saved. Spoken descriptions include state and action; persistence commits before the icon changes.
 
 Successful heart actions show a short Community Toolkit Toast ("Added to My Schedule" / "Removed from My Schedule") after persistence and schedule refresh. Confirmations do not occupy inline space or shift the agenda. The heart and count remain the persistent, accessible state indicators. Errors use native, explicitly dismissed dialogs, never inline banners or disappearing toasts. Agenda-loading failures offer Retry / Not now; other failures explain recovery with an OK action. Retry happens after releasing the load gate. The sample-data disclosure lives in About, not a repeated banner.
 
 `AgendaSearchField` wraps a real Entry in a neutral outlined surface, with magnifier, live query binding, a 48-unit clear action, and a themed focus outline. Toolkit `UserStoppedTypingBehavior` applies the latest query after 300 ms of inactivity, including empty queries, with automatic keyboard dismissal disabled. Clear applies immediately and keeps focus; the Search keyboard action applies immediately then dismisses it. Filtered results update in one snapshot rather than Clear/Add animations; identical results cause no update. Only the `SearchEntry` subclass has its native border removed through MAUI's handler customization. Android uses `EntryHandler2`: its Material wrapper outline, floating hint, padding, and background are disabled, and the inner native edit field owns the placeholder and its themed color. Android search accessibility uses that placeholder rather than `SemanticProperties.Description`, preserving TalkBack editing actions; iOS retains its descriptive label and existing border customization.
 
-Day navigation uses the MIT-licensed Syncfusion Toolkit `SfTabView`: All days followed by device-local dates, horizontally scrolling, with Open Sans Semibold headers and a purple/lavender underline. Headers size to their text; bar height follows MAUI's measured, font-scaled label height rather than clipping larger text. Tabs stay visible during search and combine with the topic filter. Native detail/back navigation preserves the chosen local date.
+Day navigation uses the MIT-licensed Syncfusion Toolkit `SfTabView`: All days followed by device-local dates, evenly distributed without scrolling using `SfTabItem` headers and `TabWidthMode=Default`. Each header has two centered lines (weekday / month and date, or All / days), Open Sans Semibold, and a purple/lavender underline. Bar height follows MAUI's measured, font-scaled label height rather than clipping larger text. Tabs stay visible during search and combine with the topic filter. Native detail/back navigation preserves the chosen local date.
 
-The topic filter uses `AgendaPicker` with a scoped custom handler: the native iOS text-field border and Android underline tint are removed, leaving the themed outer Border as the sole outline. Android derives from Material 3's `PickerHandler2`, whose native view is `MauiMaterialPicker`; iOS retains `PickerHandler`. Native picker selection and accessibility are preserved; other pickers are unaffected.
+Sessions' native Fluent filter toolbar item opens a pushed Filters page, outside
+the result list. Topic choices are full-width, multi-select rows with native
+checkboxes and a subtle selected surface. Sessions matching any chosen topic
+appear on every day, including All days; day selection lives only in the tabs.
+No topic selection means all topics. Changes apply immediately,
+and Show N sessions returns to the same Sessions page. Native back keeps the
+chosen filters too. Clear removes all topic choices without changing the selected
+day or search. A small, borderless Clear action beside the persistent compact
+summary beneath the day tabs exposes a one-tap reset without reopening Filters.
+The summary exposes current
+choices without repeating a picker in the scrolling agenda.
+
+The toolbar uses MAUI 11's native `ToolbarItem.BadgeText`, counting selected
+topics, not days, search terms, or results. Zero hides the badge. Its semantic
+hint identifies the filter action; the visible summary is also available on
+pre-iOS-26 devices where native toolbar badges are unsupported. Badge colors
+use purple/white in light appearance and lavender/midnight in dark appearance.
 
 On iOS, pages use `SafeAreaEdges=None`, scrolling reading pages retain `ScrollView.SafeAreaEdges=Default` (native automatic content insets), and their content layouts do not reintroduce container insets. Shell's tab background is transparent so the platform-owned material can show scrolling content beneath it. The pinned MAUI iOS CollectionView explicitly disables automatic content insets in `ItemsViewController2.ViewDidLoad`; `SafeAreaFooter` therefore uses the public MAUI page `SafeAreaInsets.Bottom`, observing inset changes, to keep the last item reachable. There is no bottom viewport margin, fixed tab-bar padding, negative margin, or custom renderer. Android uses page `SafeAreaEdges=All` and an opaque native tab surface; its footer has zero height.
 
@@ -34,8 +50,10 @@ Five Shell destinations: Home, Sessions, Speakers, My Schedule, Community. Andro
 
 ## Content and states
 
-Sessions exposes a borderless Clear filters action only while a search, day, or
-topic filter is active. It clears all three without changing saved sessions.
+Sessions keeps search clearing in the Entry and topic clearing beside the summary
+and in Filters. Clearing topics leaves day selection and search unchanged.
+Neither changes saved sessions. A zero-match result still leaves search, day
+tabs, and the toolbar filter action reachable.
 
 Community replaces the About tab; Home's Fluent settings gear opens Settings.
 Settings includes appearance, device-time-zone information, and an About action

@@ -5,6 +5,16 @@
                       xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
                       xmlns:tabs="clr-namespace:Syncfusion.Maui.Toolkit.TabView;assembly=Syncfusion.Maui.Toolkit"
                       x:DataType="vm:ConferenceViewModel" Title="Sessions">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="{Binding FilterToolbarLabel}" IconImageSource="{StaticResource FilterIcon}"
+                     Command="{Binding BrowseSessionFiltersCommand}" Order="Primary"
+                     BadgeText="{Binding FilterBadgeText}"
+                     BadgeColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
+                     BadgeTextColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Midnight}}"
+                     SemanticProperties.Description="{Binding FilterToolbarLabel}"
+                     SemanticProperties.Hint="Choose topics for every day. Current selections are shown below the day tabs."
+                     AutomationId="session-filters" />
+    </ContentPage.ToolbarItems>
     <Grid RowDefinitions="Auto,*" SafeAreaEdges="None">
         <VerticalStackLayout Padding="24,16,24,8" Spacing="16">
             <Label Text="Find your next idea" Style="{StaticResource Heading}" />
@@ -12,24 +22,22 @@
                                         Placeholder="Talks, topics, or speakers"
                                         SearchDescription="Search sessions by talk, topic, or speaker"
                                         SearchAutomationId="session-search" ClearAutomationId="session-search-clear" />
-            <tabs:SfTabView x:Name="DayTabs" ItemsSource="{Binding Days}" SelectedIndex="{Binding SelectedDayIndex, Mode=TwoWay}"
-                            TabWidthMode="SizeToContent" TabBarHeight="52" TabHeaderPadding="0"
+            <tabs:SfTabView x:Name="DayTabs" SelectionChanged="OnDaySelectionChanged"
+                            TabWidthMode="Default" TabBarHeight="72" TabHeaderPadding="0"
                             TabBarPlacement="Top" IndicatorPlacement="Bottom" IndicatorWidthMode="Stretch"
                             EnableSwiping="False" EnableRippleAnimation="False" HeaderItemSpacing="0"
                             TabBarBackground="Transparent" VerticalOptions="Start"
                             IndicatorBackground="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
-                            AutomationId="day-filter">
-                <tabs:SfTabView.HeaderItemTemplate>
-                    <DataTemplate x:DataType="vm:DayFilter">
-                        <Label Text="{Binding Label}" FontFamily="OpenSansSemibold" FontSize="14"
-                               Padding="16,12" MinimumHeightRequest="52" VerticalTextAlignment="Center"
-                               LineBreakMode="NoWrap" Loaded="OnDayHeaderSizeChanged" SizeChanged="OnDayHeaderSizeChanged"
-                               AutomationId="{Binding Label, StringFormat='day-{0}'}"
-                               TextColor="{AppThemeBinding Light={StaticResource Midnight}, Dark={StaticResource LavenderLight}}"
-                               SemanticProperties.Description="{Binding Label, StringFormat='Show sessions: {0}'}" />
-                    </DataTemplate>
-                </tabs:SfTabView.HeaderItemTemplate>
-            </tabs:SfTabView>
+                            AutomationId="day-filter" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <Label Text="{Binding FilterSummary}" Style="{StaticResource Secondary}" FontSize="12"
+                       VerticalOptions="Center" AutomationId="session-filter-summary" />
+                <Button Grid.Column="1" Text="Clear" Command="{Binding ClearTopicFiltersCommand}"
+                        Style="{StaticResource QuietButton}" BorderWidth="0" Padding="8,0" FontSize="12"
+                        IsVisible="{Binding HasTopicFilters}" AutomationId="session-filters-clear"
+                        SemanticProperties.Description="Clear all topic filters"
+                        SemanticProperties.Hint="Keep your selected day and search" />
+            </Grid>
         </VerticalStackLayout>
     <CollectionView Grid.Row="1" ItemsSource="{Binding Sessions}" SelectionMode="None" AutomationId="session-list">
         <CollectionView.Footer>
@@ -38,18 +46,7 @@
         <CollectionView.Header>
             <VerticalStackLayout Spacing="16" Padding="24,16,24,8" SafeAreaEdges="None">
                 <controls:StatusBanner AutomationId="sessions-status" />
-                    <Border StrokeShape="RoundRectangle 8" Padding="12,0"
-                            BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}">
-                    <controls:AgendaPicker Title="Topic" ItemsSource="{Binding Topics}" SelectedItem="{Binding SelectedTopic}"
-                            AutomationId="topic-filter" SemanticProperties.Description="Filter sessions by topic" />
-                    </Border>
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                    <Label Text="{Binding TimeZoneLabel}" Style="{StaticResource Secondary}" FontSize="12" VerticalOptions="Center" />
-                    <Button Grid.Column="1" Text="Clear filters" Command="{Binding ResetFiltersCommand}"
-                            Style="{StaticResource QuietButton}" BorderWidth="0" Padding="8,0"
-                            IsVisible="{Binding HasSessionFilters}" AutomationId="reset-filters"
-                            SemanticProperties.Hint="Clear search and show all days and topics" />
-                </Grid>
+                <Label Text="{Binding TimeZoneLabel}" Style="{StaticResource Secondary}" FontSize="12" />
             </VerticalStackLayout>
         </CollectionView.Header>
         <CollectionView.ItemTemplate>

@@ -81,6 +81,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<AppShell>();
         builder.Services.AddTransient<HomePage>();
         builder.Services.AddTransient<SessionsPage>();
+        builder.Services.AddTransient<SessionFiltersPage>();
         builder.Services.AddTransient<SpeakersPage>();
         builder.Services.AddTransient<SchedulePage>();
         builder.Services.AddTransient<AboutPage>();

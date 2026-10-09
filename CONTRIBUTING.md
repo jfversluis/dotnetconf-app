@@ -85,7 +85,7 @@ Use an unused host port and the actual agent port reported by the app. Remove on
 
 The preview's Android theme command also ignores device selection when multiple emulators are connected. For theme checks, target the test device explicitly with `adb -s SERIAL shell cmd uimode night yes` (dark) or `no` (light).
 
-Stable AutomationIds include `home-sessions`, `session-search`, `reset-filters`, `save-language-features`, `detail-save`, `speaker-search`, and `saved-count`. Reusable status controls should be scoped to their page. To avoid mutation lease conflicts between short-lived CLI processes, use one batch for a sequence:
+Stable AutomationIds include `home-sessions`, `session-search`, `session-filters`, `session-filters-clear`, `filter-topics`, `filter-check-{topic}`, `filter-reset`, `filter-show-sessions`, `save-language-features`, `detail-save`, `speaker-search`, and `saved-count`. Reusable status controls should be scoped to their page. To avoid mutation lease conflicts between short-lived CLI processes, use one batch for a sequence:
 
 ```sh
 printf 'ui navigate //sessions\nui fill --automationId session-search Avalonia\nui tree --depth 14\n' \
@@ -124,14 +124,32 @@ The app-development and specialist skills were installed using an isolated night
 Session/speaker links reuse a matching detail already in the active Shell tab's navigation stack, popping back to that page rather than building circular history. New IDs still push normal details; the other tabs' histories remain independent. Native list scroll viewports span the page, while content templates retain 24-unit gutters, so scrollbars stay at the outer edge.
 
 Sessions uses the MIT-licensed Syncfusion Toolkit `SfTabView`, registered with
-`ConfigureSyncfusionToolkit()`, for horizontally scrolling local-day headers.
+`ConfigureSyncfusionToolkit()`, for equal-width, two-line local-day headers.
 All days remains available. The index adapter maps to the existing `SelectedDay`
 filter and ignores transient selection changes while local dates are rebuilt.
+The page maps the dynamic Days collection to `SfTabItem.HeaderContent` with
+`TabWidthMode=Default`; do not reintroduce `HeaderItemTemplate`/SizeToContent,
+which skips iOS selected-header auto-scroll and clips the last day.
 Search and topic filtering still use Core agenda logic. Header height is measured
 from scaled MAUI labels; do not replace it with a fixed height or disable font
-scaling. Verify native day taps, horizontal scrolling, combined filters,
+scaling. Verify all headers are visible, native day taps, combined filters,
 clear-filter selection, detail/back preservation, and larger-text themes on both
 platforms when changing this surface. The toolkit license is bundled offline.
+
+The Sessions filter spike moves topics to `session-filters`, a registered,
+DI-created native page sharing `ConferenceViewModel`. Choices apply immediately;
+native back and Show N sessions keep them. Native CheckBoxes bind to typed topic
+view models, and whole-row taps toggle the same state. Core search matches any
+selected topic, then intersects the selected local day and search terms. The
+same topics apply to every day tab and All days. Clear (also available beside the
+main summary) removes all topics but preserves search and day. The main toolbar
+binds MAUI 11 `BadgeText`, `BadgeColor`, and `BadgeTextColor`. The count is the
+number of selected topics, not days, matching sessions or query terms; zero maps
+to null. iOS renders toolbar badges
+only on iOS 26+, so retain the visible selection summary. Native toolbar labels
+and hints may retain their initial values when bindings change; don't rely on
+them alone to announce the active count. Do not add a custom badge renderer for
+older iOS.
 
 The next data stage replaces the bundled source with a validated HTTPS feed and last-known-good offline cache. Do not just flip `isMock` on fictional content. Reminders, local AI, Avalonia-owned video integration, and desktop targets are intentionally deferred. PR build validation and manual Google Play internal-testing/TestFlight release lanes are described in [CI and release setup](docs/CI.md); production promotion remains manual and store credentials must be configured by the owner.
 

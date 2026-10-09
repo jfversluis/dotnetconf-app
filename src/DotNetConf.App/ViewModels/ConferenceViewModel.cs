@@ -25,15 +25,18 @@ public partial class ConferenceViewModel(
     private readonly List<SpeakerViewModel> allSpeakers = [];
     private TimeZoneInfo timeZone = TimeZoneInfo.Local;
     private bool refreshingDays;
+    private bool clearingTopics;
 
-    [ObservableProperty] public partial IReadOnlyList<SessionViewModel> Sessions { get; set; } = [];
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowFilteredSessionsLabel))]
+    public partial IReadOnlyList<SessionViewModel> Sessions { get; set; } = [];
     public ObservableCollection<SessionViewModel> SavedSessions { get; } = [];
     [ObservableProperty] public partial IReadOnlyList<SpeakerViewModel> Speakers { get; set; } = [];
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CommunityEventSummary))]
     public partial IReadOnlyList<CommunityEvent> CommunityEvents { get; set; } = [];
     public ObservableCollection<DayFilter> Days { get; } = [new("All days", null)];
-    public ObservableCollection<string> Topics { get; } = ["All topics"];
+    public ObservableCollection<TopicFilterViewModel> Topics { get; } = [];
 
     [ObservableProperty] public partial bool IsBusy { get; set; }
     [ObservableProperty]
@@ -43,16 +46,12 @@ public partial class ConferenceViewModel(
     [ObservableProperty] public partial string ConferenceDescription { get; set; } =
         "The .NET community comes together to celebrate, learn, and build what is next.";
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasSessionFilters))]
     public partial string SessionQuery { get; set; } = "";
     [ObservableProperty] public partial string SpeakerQuery { get; set; } = "";
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasSessionFilters))]
     [NotifyPropertyChangedFor(nameof(SelectedDayIndex))]
+    [NotifyPropertyChangedFor(nameof(FilterResultsContext))]
     public partial DayFilter? SelectedDay { get; set; }
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasSessionFilters))]
-    public partial string? SelectedTopic { get; set; }
     [ObservableProperty] public partial string TimeZoneLabel { get; set; } = $"Times shown in {TimeZoneInfo.Local.DisplayName}";
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ScheduleSummary))]
@@ -68,9 +67,20 @@ public partial class ConferenceViewModel(
                 SelectedDay = Days[value];
         }
     }
-    public bool HasSessionFilters => !string.IsNullOrWhiteSpace(SessionQuery)
-        || SelectedDay?.Day is not null
-        || (SelectedTopic is not null && SelectedTopic != Topics[0]);
+    public int AppliedFilterCount => Topics.Count(topic => topic.IsSelected);
+    public bool HasTopicFilters => AppliedFilterCount > 0;
+    public string? FilterBadgeText => AppliedFilterCount == 0 ? null : AppliedFilterCount.ToString();
+    public string FilterToolbarLabel => AppliedFilterCount == 0
+        ? "Filter topics" : $"Filter topics, {AppliedFilterCount} selected";
+    public string FilterSummary => AppliedFilterCount switch
+    {
+        0 => "All topics",
+        <= 2 => string.Join(" · ", Topics.Where(topic => topic.IsSelected).Select(topic => topic.Name)),
+        _ => $"{AppliedFilterCount} topics selected"
+    };
+    public string FilterResultsContext => $"Results for {SelectedDay?.Label ?? Days[0].Label}. Your search still applies.";
+    public string ShowFilteredSessionsLabel => Sessions.Count == 1
+        ? "Show 1 session" : $"Show {Sessions.Count} sessions";
     public string CommunityEventSummary => CommunityEvents.Count == 0
         ? "Community events will appear here when they're available."
         : IsMock
@@ -111,8 +121,7 @@ public partial class ConferenceViewModel(
             allSessions.AddRange(loaded.Sessions.OrderBy(session => session.StartsAt)
                 .Select(session => new SessionViewModel(session, allSpeakers, schedule.IsSaved(session.Id), this)));
             foreach (var topic in loaded.Sessions.SelectMany(session => session.Topics).Distinct().Order())
-                Topics.Add(topic);
-            SelectedTopic = Topics[0];
+                Topics.Add(new(topic, OnTopicSelectionChanged));
             RefreshLocalTimes();
             FilterSpeakers();
             RefreshSchedule();
@@ -131,13 +140,35 @@ public partial class ConferenceViewModel(
     }
 
     [RelayCommand]
-    private void ResetFilters()
+    private void ClearTopicFilters()
     {
-        SessionQuery = "";
-        SelectedDay = Days[0];
-        SelectedTopic = Topics[0];
+        clearingTopics = true;
+        try
+        {
+            foreach (var topic in Topics)
+                topic.IsSelected = false;
+        }
+        finally
+        {
+            clearingTopics = false;
+        }
+        OnTopicSelectionChanged();
+    }
+
+    private void OnTopicSelectionChanged()
+    {
+        if (clearingTopics)
+            return;
+        OnPropertyChanged(nameof(AppliedFilterCount));
+        OnPropertyChanged(nameof(HasTopicFilters));
+        OnPropertyChanged(nameof(FilterBadgeText));
+        OnPropertyChanged(nameof(FilterSummary));
+        OnPropertyChanged(nameof(FilterToolbarLabel));
         FilterSessions();
     }
+
+    [RelayCommand]
+    private Task BrowseSessionFiltersAsync() => Shell.Current.GoToAsync("session-filters");
 
     [RelayCommand]
     private Task BrowseSessionsAsync() => Shell.Current.GoToAsync("//sessions");
@@ -281,7 +312,8 @@ public partial class ConferenceViewModel(
         if (document is null)
             return;
         var ids = Agenda.Search(document, SessionQuery, SelectedDay?.Day,
-            SelectedTopic == "All topics" ? null : SelectedTopic, timeZone).Select(session => session.Id).ToHashSet();
+            Topics.Where(topic => topic.IsSelected).Select(topic => topic.Name).ToArray(),
+            timeZone).Select(session => session.Id).ToHashSet();
         var results = allSessions.Where(session => ids.Contains(session.Id)).ToArray();
         if (!Sessions.SequenceEqual(results))
             Sessions = results;
@@ -302,7 +334,6 @@ public partial class ConferenceViewModel(
     [RelayCommand]
     private void SearchSpeakers() => FilterSpeakers();
     partial void OnSelectedDayChanged(DayFilter? value) => FilterSessions();
-    partial void OnSelectedTopicChanged(string? value) => FilterSessions();
 
     private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values)
     {
