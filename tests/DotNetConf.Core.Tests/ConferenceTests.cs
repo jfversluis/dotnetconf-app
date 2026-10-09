@@ -100,7 +100,7 @@ public sealed class ConferenceTests
         Assert.Single(Agenda.Search(document, "Sam languages", null, null, TimeZoneInfo.Utc));
         Assert.Single(Agenda.Search(document, "AVALONIA", null, null, TimeZoneInfo.Utc));
         Assert.Empty(Agenda.Search(document, "Avalonia nonexistent", null, null, TimeZoneInfo.Utc));
-        Assert.Equal(2, Agenda.Search(document, "", null, ".NET MAUI", TimeZoneInfo.Utc).Count());
+        Assert.Equal(2, Agenda.Search(document, "", null, [".NET MAUI"], TimeZoneInfo.Utc).Count());
         var sessions = Agenda.Search(document, "  ", null, null, TimeZoneInfo.Utc).ToArray();
         Assert.Equal(sessions.OrderBy(session => session.StartsAt), sessions);
     }
@@ -113,6 +113,51 @@ public sealed class ConferenceTests
         var sessions = Agenda.Search(document, "community", new DateOnly(2026, 11, 12), null, zone);
         Assert.Single(sessions);
         Assert.Empty(Agenda.Search(document, "community", new DateOnly(2026, 11, 11), null, zone));
+    }
+
+    [Fact]
+    public async Task SearchDayAndTopicFiltersCombineAndClearIndependently()
+    {
+        var document = await LoadAsync();
+        var day = new DateOnly(2026, 11, 10);
+        Assert.Single(Agenda.Search(document, "Alex", day, [".NET MAUI"], TimeZoneInfo.Utc));
+        Assert.Empty(Agenda.Search(document, "Alex", day, ["AI"], TimeZoneInfo.Utc));
+        Assert.Equal(3, Agenda.Search(document, "Alex", null, null, TimeZoneInfo.Utc).Count());
+        Assert.Equal(2, Agenda.Search(document, "", null, [".NET MAUI"], TimeZoneInfo.Utc).Count());
+        Assert.Equal(6, Agenda.Search(document, "", null, null, TimeZoneInfo.Utc).Count());
+    }
+
+    [Fact]
+    public async Task MultipleTopicsMatchAnyWithoutDuplicatingSessions()
+    {
+        var document = await LoadAsync();
+        var topics = new[] { ".NET MAUI", "UI", ".net maui" };
+        var results = Agenda.Search(document, "", null, topics, TimeZoneInfo.Utc).ToArray();
+        var expected = document.Sessions.Where(session =>
+            session.Topics.Contains(".NET MAUI") || session.Topics.Contains("UI"));
+        Assert.Equal(expected.Select(session => session.Id).Order(),
+            results.Select(session => session.Id).Order());
+        Assert.Equal(results.Length, results.Select(session => session.Id).Distinct().Count());
+        Assert.Equal(document.Sessions.Count, Agenda.Search(document, "", null, [], TimeZoneInfo.Utc).Count());
+    }
+
+    [Fact]
+    public async Task TopicSelectionAppliesToEachLocalDayAndAllDays()
+    {
+        var document = await LoadAsync();
+        var zone = TimeZoneInfo.CreateCustomTimeZone("UTC+02", TimeSpan.FromHours(2), "UTC+02", "UTC+02");
+        var topics = new[] { ".NET MAUI", "AI" };
+        var allDays = Agenda.Search(document, "", null, topics, zone).ToArray();
+        Assert.NotEmpty(allDays);
+        var days = document.Sessions.Select(session => Agenda.LocalDay(session.StartsAt, zone)).Distinct();
+        foreach (var day in days)
+        {
+            var results = Agenda.Search(document, "", day, topics, zone).ToArray();
+            Assert.Equal(allDays.Where(session => Agenda.LocalDay(session.StartsAt, zone) == day), results);
+            Assert.Equal(Agenda.Search(document, "Alex", day, null, zone),
+                Agenda.Search(document, "Alex", day, [], zone));
+        }
+        Assert.Single(Agenda.Search(document, "Alex", new DateOnly(2026, 11, 10), topics, zone));
     }
 
     [Fact]

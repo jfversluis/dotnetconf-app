@@ -54,6 +54,9 @@
     <FontImageSource x:Key="SearchIcon" Glyph="{x:Static icons:FluentIconsRegular.Search24}"
                      FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
                      Color="{AppThemeBinding Light={StaticResource LightSecondary}, Dark={StaticResource DarkSecondary}}" />
+    <FontImageSource x:Key="FilterIcon" Glyph="{x:Static icons:FluentIconsRegular.Filter24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
+                     Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
     <FontImageSource x:Key="ClearIcon" Glyph="{x:Static icons:FluentIconsRegular.Dismiss24}"
                      FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="20"
                      Color="{AppThemeBinding Light={StaticResource LightSecondary}, Dark={StaticResource DarkSecondary}}" />

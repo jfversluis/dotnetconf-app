@@ -22,6 +22,7 @@ public partial class AppShell : Shell
         ScheduleTab.ContentTemplate = new DataTemplate(() => services.GetRequiredService<SchedulePage>());
         CommunityTab.ContentTemplate = new DataTemplate(() => services.GetRequiredService<CommunityPage>());
         Routing.RegisterRoute("session-detail", typeof(SessionDetailPage));
+        Routing.RegisterRoute("session-filters", typeof(SessionFiltersPage));
         Routing.RegisterRoute("speaker-detail", typeof(SpeakerDetailPage));
         Routing.RegisterRoute("about", typeof(AboutPage));
         Routing.RegisterRoute("settings", typeof(SettingsPage));
