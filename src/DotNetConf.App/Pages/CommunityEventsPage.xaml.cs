@@ -27,7 +27,6 @@ public partial class CommunityEventsPage : ContentPage, IQueryAttributable
     public string ExplorerTitle => ShowMap ? "Event map" : "Community events";
     public bool HasSelection => selectedEvent is not null;
     public double DetailHeight => Height * 0.35;
-    public double LegendHeight => Height * 0.22;
     public string ListHelp => !CanShowMap
         ? "Map unavailable in this build. Explore the events below."
         : "Watch parties and in-person talks. Select an event to find out more.";
@@ -60,7 +59,6 @@ public partial class CommunityEventsPage : ContentPage, IQueryAttributable
         SizeChanged += (_, _) =>
         {
             OnPropertyChanged(nameof(DetailHeight));
-            OnPropertyChanged(nameof(LegendHeight));
         };
     }
 
@@ -109,6 +107,7 @@ public partial class CommunityEventsPage : ContentPage, IQueryAttributable
             IsClusteringEnabled = true,
             AutomationId = "community-map"
         };
+        SemanticProperties.SetHint(map, "Tap a pin for a preview. Tap a number to zoom.");
         foreach (var communityEvent in Conference.CommunityEvents)
         {
             var pin = new Pin

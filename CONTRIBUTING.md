@@ -156,8 +156,12 @@ The Community overview explains gathering formats and links to the pushed
 native back restores the overview. Trim-safe `IQueryAttributable` handles route
 parameters. Event details return to the existing explorer, retaining its viewport,
 list mode, and selection. The edge-to-edge map has a labeled legend, Show all and
-Event list controls, and a compact dismissible preview; long text in overlays
-scrolls within viewport-relative bounds.
+Event list controls, and a compact dismissible preview. The legend sizes to its
+content and wraps at larger text sizes; the preview scrolls within viewport-relative
+bounds. Map actions occupy a separate, safe-area-aware bottom row, outside the
+native map viewport, so Google Maps zoom controls and provider attribution stay
+unobstructed on both platforms. Android pages retain keyboard avoidance without
+adding another container inset on top of native Shell chrome.
 `Microsoft.Maui.Controls.Maps` is pinned to the same
 RC1 version as Controls. `UseMauiMaps()` enables native MapKit/Google Maps handlers.
 MAUI 11's `IsClusteringEnabled` and `Pin.ImageSource` APIs supply native clustering,
@@ -196,7 +200,30 @@ instead. Configure a Maps SDK for Android key restricted to
 `dev.jfversluis.dotnetconf` (or the build's overridden application ID) and the
 appropriate signing certificate SHA-1. Prefer an environment variable populated
 by your secret manager over a command-line literal. Never commit keys to the
-project, manifest, or launch settings. Test-track builds accept the optional
+project, manifest, or launch settings. For local development, an `android-maps.env`
+file at the repository root can contain `export GoogleMapsApiKey='YOUR_KEY'`.
+Files ending in `.env` are Git-ignored; restrict local access with
+`chmod 600 android-maps.env`, then load it in the shell used to build or launch:
+
+```sh
+source ./android-maps.env
+dotnet run --project src/DotNetConf.App -f net11.0-android
+```
+
+The file is not loaded automatically by MSBuild or an IDE. The key is embedded
+in the Android app, so Git exclusion does not replace package/signing-certificate
+and Maps SDK for Android API restrictions. Avoid diagnostic logs and binary logs
+when building with the key, as they can capture environment variables and properties.
+For the local SHA-1 restriction, inspect the certificate of the actual signed APK;
+.NET Android's default debug keystore can differ from `~/.android/debug.keystore`:
+
+```sh
+keytool -printcert -jarfile src/DotNetConf.App/bin/Debug/net11.0-android/android-arm64/dev.jfversluis.dotnetconf-Signed.apk
+```
+
+Adjust the APK path to match the build's runtime identifier. Use the reported SHA-1
+with the build's application ID, not a fingerprint from an unrelated keystore.
+Test-track builds accept the optional
 `GOOGLE_MAPS_ANDROID_API_KEY` environment secret described in [docs/CI.md](docs/CI.md).
 An invalid/restricted key can still prevent map tiles from loading; the Event list
 control remains available. A configured Android map and its clustering must be

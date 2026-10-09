@@ -24,7 +24,7 @@ Day navigation uses the MIT-licensed Syncfusion Toolkit `SfTabView`: All days fo
 
 The topic filter uses `AgendaPicker` with a scoped custom handler: the native iOS text-field border and Android underline tint are removed, leaving the themed outer Border as the sole outline. Android derives from Material 3's `PickerHandler2`, whose native view is `MauiMaterialPicker`; iOS retains `PickerHandler`. Native picker selection and accessibility are preserved; other pickers are unaffected.
 
-On iOS, pages use `SafeAreaEdges=None`, scrolling reading pages retain `ScrollView.SafeAreaEdges=Default` (native automatic content insets), and their content layouts do not reintroduce container insets. Shell's tab background is transparent so the platform-owned material can show scrolling content beneath it. The pinned MAUI iOS CollectionView explicitly disables automatic content insets in `ItemsViewController2.ViewDidLoad`; `SafeAreaFooter` therefore uses the public MAUI page `SafeAreaInsets.Bottom`, observing inset changes, to keep the last item reachable. There is no bottom viewport margin, fixed tab-bar padding, negative margin, or custom renderer. Android uses page `SafeAreaEdges=All` and an opaque native tab surface; its footer has zero height.
+On iOS, pages use `SafeAreaEdges=None`, scrolling reading pages retain `ScrollView.SafeAreaEdges=Default` (native automatic content insets), and their content layouts do not reintroduce container insets. Shell's tab background is transparent so the platform-owned material can show scrolling content beneath it. The pinned MAUI iOS CollectionView explicitly disables automatic content insets in `ItemsViewController2.ViewDidLoad`; `SafeAreaFooter` therefore uses the public MAUI page `SafeAreaInsets.Bottom`, observing inset changes, to keep the last item reachable. There is no bottom viewport margin, fixed tab-bar padding, negative margin, or custom renderer. Android pages use `SafeAreaEdges=SoftInput` to retain keyboard avoidance without duplicating container insets supplied by native Shell chrome, and an opaque native tab surface; their collection footer has zero height. System gesture protection is retained where controls meet the screen edge, not as a blank inset around every page.
 
 ## Icons and navigation
 
@@ -47,10 +47,14 @@ start a local gathering; no invented community statistics or organizer workflow.
 List-only builds label the primary action Browse community events instead of
 promising a map. Fictional event website actions explicitly say Open example website.
 The pushed explorer hides tabs with MAUI Shell, retains native back navigation,
-and gives the map the full available width and height. A compact opaque legend
-and bottom Show all / Event list controls leave the provider attribution visible.
-On iOS, the map background extends through the bottom safe area; a separate
-safe-area-aware layer keeps the legend, controls, list, and preview above system chrome.
+and gives the map the full available width. A content-sized opaque legend
+wraps its labeled pin types and retains the fictional-event disclosure without
+a fixed-height scrolling panel. Gesture instructions remain available as the
+map's semantic hint. Show all / Event list occupy a separate bottom action row,
+not a floating overlay over provider zoom controls or attribution. The action
+surface fills the bottom edge while container insets keep its buttons above
+system gestures on both platforms. A separate safe-area-aware layer keeps
+the legend, list, and preview clear of system chrome.
 Unused overlay space does not intercept map gestures. Native counted clusters
 keep dense locations legible. White-outlined teardrop pins use typed Fluent video and
 presenter symbols to distinguish purple watch parties from deep-magenta in-person
@@ -61,8 +65,8 @@ restores that view. Pin taps select details without forced recentering, while
 list selections focus their location for a subsequent map switch. A themed,
 dismissible preview exposes the event name, kind, and city. Event details opens
 a native reading page with the venue, website, and explicit fiction disclosure;
-back preserves the explorer's viewport and selection. Preview and legend heights
-are bounded relative to the viewport and scroll for larger text. The list supplies
+back preserves the explorer's viewport and selection. Preview height
+is bounded relative to the viewport and scrolls for larger text. The list supplies
 a non-map selection path, also directly reachable from the overview.
 Unconfigured Android builds omit the map switch and show an honest availability
 statement alongside the usable list, not API-key setup instructions.

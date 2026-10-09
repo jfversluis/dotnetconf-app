@@ -1,6 +1,6 @@
 <ContentPage x:Class="DotNetConf.App.Pages.ThirdPartyPage"
              xmlns:pages="clr-namespace:DotNetConf.App.Pages"
-             x:Name="NoticesPage" x:DataType="pages:ThirdPartyPage" Title="Third-party dependencies" SafeAreaEdges="All">
+             x:Name="NoticesPage" x:DataType="pages:ThirdPartyPage" Title="Third-party dependencies" SafeAreaEdges="{OnPlatform iOS=All, Android=SoftInput}">
     <CollectionView ItemsSource="{Binding Dependencies}" SelectionMode="None"
                     AutomationId="third-party-list">
         <CollectionView.Header>
