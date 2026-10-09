@@ -15,6 +15,7 @@ Versions are deliberately pinned:
 | MAUI Controls | `11.0.0-rc.1.26451.6` |
 | DevFlow CLI / agent | `0.1.0-preview.12.26421.1` |
 | IconFont.Maui.FluentIcons | `1.1.1` |
+| Syncfusion.Maui.Toolkit | `1.0.11` |
 
 Install the SDK selected by `global.json`, then:
 
@@ -121,6 +122,16 @@ The app-development and specialist skills were installed using an isolated night
 `Resources/Raw/conference.mock.json` is versioned, explicitly marked `isMock`, and loaded through `IConferenceDataSource`. Times are offset-aware instants converted using the device timezone. Multiple speakers and overlapping sessions are supported. Bookmarks are stored by stable ID in private app storage, independently of the agenda. Invalid data or storage failures are shown rather than silently discarded; corrupt bookmark files are never overwritten.
 
 Session/speaker links reuse a matching detail already in the active Shell tab's navigation stack, popping back to that page rather than building circular history. New IDs still push normal details; the other tabs' histories remain independent. Native list scroll viewports span the page, while content templates retain 24-unit gutters, so scrollbars stay at the outer edge.
+
+Sessions uses the MIT-licensed Syncfusion Toolkit `SfTabView`, registered with
+`ConfigureSyncfusionToolkit()`, for horizontally scrolling local-day headers.
+All days remains available. The index adapter maps to the existing `SelectedDay`
+filter and ignores transient selection changes while local dates are rebuilt.
+Search and topic filtering still use Core agenda logic. Header height is measured
+from scaled MAUI labels; do not replace it with a fixed height or disable font
+scaling. Verify native day taps, horizontal scrolling, combined filters,
+clear-filter selection, detail/back preservation, and larger-text themes on both
+platforms when changing this surface. The toolkit license is bundled offline.
 
 The next data stage replaces the bundled source with a validated HTTPS feed and last-known-good offline cache. Do not just flip `isMock` on fictional content. Reminders, local AI, Avalonia-owned video integration, and desktop targets are intentionally deferred. PR build validation and manual Google Play internal-testing/TestFlight release lanes are described in [CI and release setup](docs/CI.md); production promotion remains manual and store credentials must be configured by the owner.
 

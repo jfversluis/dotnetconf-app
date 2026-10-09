@@ -8,6 +8,11 @@ Copyright © .NET Foundation and Contributors
 https://github.com/CommunityToolkit/dotnet
 MIT license: LICENSE-MvvmToolkit.txt
 
+Syncfusion.Maui.Toolkit 1.0.11
+Copyright (c) 2024-2025 Syncfusion Inc.
+https://github.com/syncfusion/maui-toolkit
+MIT license: LICENSE-SyncfusionToolkit.txt
+
 Microsoft.Maui.DevFlow.Agent 0.1.0-preview.12.26421.1 (Debug builds only)
 Copyright (c) .NET Foundation and Contributors
 https://github.com/dotnet/maui-labs

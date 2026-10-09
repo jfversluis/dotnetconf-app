@@ -5,6 +5,7 @@ using DotNetConf.Core;
 using IconFont.Maui.FluentIcons;
 using DotNetConf.App.Controls;
 using CommunityToolkit.Maui;
+using Syncfusion.Maui.Toolkit.Hosting;
 #if ANDROID
 using Microsoft.Maui.Platform;
 #endif
@@ -23,6 +24,7 @@ public static class MauiProgram
         builder.UseMauiApp<App>()
             .UseMauiCommunityToolkit()
             .UseMauiMaps()
+            .ConfigureSyncfusionToolkit()
             .UseFluentIconsRegular()
             .UseFluentIconsFilled()
             .ConfigureMauiHandlers(handlers => handlers.AddHandler<AgendaPicker, AgendaPickerHandler>())

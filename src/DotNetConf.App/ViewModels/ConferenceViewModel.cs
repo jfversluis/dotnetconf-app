@@ -24,6 +24,7 @@ public partial class ConferenceViewModel(
     private readonly List<SessionViewModel> allSessions = [];
     private readonly List<SpeakerViewModel> allSpeakers = [];
     private TimeZoneInfo timeZone = TimeZoneInfo.Local;
+    private bool refreshingDays;
 
     [ObservableProperty] public partial IReadOnlyList<SessionViewModel> Sessions { get; set; } = [];
     public ObservableCollection<SessionViewModel> SavedSessions { get; } = [];
@@ -47,6 +48,7 @@ public partial class ConferenceViewModel(
     [ObservableProperty] public partial string SpeakerQuery { get; set; } = "";
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSessionFilters))]
+    [NotifyPropertyChangedFor(nameof(SelectedDayIndex))]
     public partial DayFilter? SelectedDay { get; set; }
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSessionFilters))]
@@ -57,6 +59,15 @@ public partial class ConferenceViewModel(
     public partial int SavedCount { get; set; }
 
     public string ScheduleSummary => SavedCount == 1 ? "1 saved session" : $"{SavedCount} saved sessions";
+    public int SelectedDayIndex
+    {
+        get => SelectedDay is null ? 0 : Math.Max(0, Days.IndexOf(SelectedDay));
+        set
+        {
+            if (!refreshingDays && value >= 0 && value < Days.Count)
+                SelectedDay = Days[value];
+        }
+    }
     public bool HasSessionFilters => !string.IsNullOrWhiteSpace(SessionQuery)
         || SelectedDay?.Day is not null
         || (SelectedTopic is not null && SelectedTopic != Topics[0]);
@@ -238,11 +249,20 @@ public partial class ConferenceViewModel(
         foreach (var session in allSessions)
             session.RefreshTime(timeZone);
         var selectedDay = SelectedDay?.Day;
-        Days.Clear();
-        Days.Add(new("All days", null));
-        foreach (var day in allSessions.Select(session => Agenda.LocalDay(session.Model.StartsAt, timeZone)).Distinct().Order())
-            Days.Add(new(day.ToString("ddd, MMM d"), day));
-        SelectedDay = Days.FirstOrDefault(day => day.Day == selectedDay) ?? Days[0];
+        refreshingDays = true;
+        try
+        {
+            Days.Clear();
+            Days.Add(new("All days", null));
+            foreach (var day in allSessions.Select(session => Agenda.LocalDay(session.Model.StartsAt, timeZone)).Distinct().Order())
+                Days.Add(new(day.ToString("ddd, MMM d"), day));
+            SelectedDay = Days.FirstOrDefault(day => day.Day == selectedDay) ?? Days[0];
+        }
+        finally
+        {
+            refreshingDays = false;
+        }
+        OnPropertyChanged(nameof(SelectedDayIndex));
         FilterSessions();
     }
 

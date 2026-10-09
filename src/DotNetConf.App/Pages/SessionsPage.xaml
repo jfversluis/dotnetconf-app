@@ -3,6 +3,7 @@
                       xmlns:pages="clr-namespace:DotNetConf.App.Pages"
                       xmlns:controls="clr-namespace:DotNetConf.App.Controls"
                       xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
+                      xmlns:tabs="clr-namespace:Syncfusion.Maui.Toolkit.TabView;assembly=Syncfusion.Maui.Toolkit"
                       x:DataType="vm:ConferenceViewModel" Title="Sessions">
     <Grid RowDefinitions="Auto,*" SafeAreaEdges="None">
         <VerticalStackLayout Padding="24,16,24,8" Spacing="16">
@@ -11,6 +12,24 @@
                                         Placeholder="Talks, topics, or speakers"
                                         SearchDescription="Search sessions by talk, topic, or speaker"
                                         SearchAutomationId="session-search" ClearAutomationId="session-search-clear" />
+            <tabs:SfTabView x:Name="DayTabs" ItemsSource="{Binding Days}" SelectedIndex="{Binding SelectedDayIndex, Mode=TwoWay}"
+                            TabWidthMode="SizeToContent" TabBarHeight="52" TabHeaderPadding="0"
+                            TabBarPlacement="Top" IndicatorPlacement="Bottom" IndicatorWidthMode="Stretch"
+                            EnableSwiping="False" EnableRippleAnimation="False" HeaderItemSpacing="0"
+                            TabBarBackground="Transparent" VerticalOptions="Start"
+                            IndicatorBackground="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
+                            AutomationId="day-filter">
+                <tabs:SfTabView.HeaderItemTemplate>
+                    <DataTemplate x:DataType="vm:DayFilter">
+                        <Label Text="{Binding Label}" FontFamily="OpenSansSemibold" FontSize="14"
+                               Padding="16,12" MinimumHeightRequest="52" VerticalTextAlignment="Center"
+                               LineBreakMode="NoWrap" Loaded="OnDayHeaderSizeChanged" SizeChanged="OnDayHeaderSizeChanged"
+                               AutomationId="{Binding Label, StringFormat='day-{0}'}"
+                               TextColor="{AppThemeBinding Light={StaticResource Midnight}, Dark={StaticResource LavenderLight}}"
+                               SemanticProperties.Description="{Binding Label, StringFormat='Show sessions: {0}'}" />
+                    </DataTemplate>
+                </tabs:SfTabView.HeaderItemTemplate>
+            </tabs:SfTabView>
         </VerticalStackLayout>
     <CollectionView Grid.Row="1" ItemsSource="{Binding Sessions}" SelectionMode="None" AutomationId="session-list">
         <CollectionView.Footer>
@@ -19,18 +38,11 @@
         <CollectionView.Header>
             <VerticalStackLayout Spacing="16" Padding="24,16,24,8" SafeAreaEdges="None">
                 <controls:StatusBanner AutomationId="sessions-status" />
-                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
                     <Border StrokeShape="RoundRectangle 8" Padding="12,0"
-                            BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}">
-                    <controls:AgendaPicker Title="Day" ItemsSource="{Binding Days}" SelectedItem="{Binding SelectedDay}"
-                            AutomationId="day-filter" SemanticProperties.Description="Filter sessions by local day" />
-                    </Border>
-                    <Border Grid.Column="1" StrokeShape="RoundRectangle 8" Padding="12,0"
                             BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}">
                     <controls:AgendaPicker Title="Topic" ItemsSource="{Binding Topics}" SelectedItem="{Binding SelectedTopic}"
                             AutomationId="topic-filter" SemanticProperties.Description="Filter sessions by topic" />
                     </Border>
-                </Grid>
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                     <Label Text="{Binding TimeZoneLabel}" Style="{StaticResource Secondary}" FontSize="12" VerticalOptions="Center" />
                     <Button Grid.Column="1" Text="Clear filters" Command="{Binding ResetFiltersCommand}"
