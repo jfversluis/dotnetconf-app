@@ -8,7 +8,7 @@ Your .NET Conf, in your pocket. An **unofficial companion app for iOS and Androi
 
 ## Explore the conference
 
-- **Find your next idea.** Browse sessions and search by title, topic, or speaker. Filter the agenda by day or topic.
+- **Find your next idea.** Browse sessions and search by title, topic, or speaker. Switch between local days with scrolling day tabs, or narrow the agenda by topic.
 - **Meet the speakers.** Read their biographies and explore their talks, with easy navigation between speakers and sessions.
 - **Find your community.** Discover ways to watch together, meet local presenters, or organize a gathering. Open the full-screen event map or browse the event list, then see an event's location and website. Distinct pins and numbered clusters help you explore. The 24 community events and venues are currently fictional examples.
 - **Build your schedule.** Tap a heart to save a session. Your choices stay on your device, and overlapping sessions are highlighted.

@@ -12,6 +12,7 @@ public partial class ThirdPartyPage : ContentPage
         new(".NET MAUI", "Controls, Maps, Core, Essentials & Graphics · 11.0.0-rc.1.26451.6 · MIT", "LICENSE-DotNetFoundation.txt"),
         new("CommunityToolkit.Maui", "15.0.1 · MIT", "LICENSE-MauiToolkit.txt"),
         new("CommunityToolkit.Mvvm", "8.4.2 · MIT", "LICENSE-MvvmToolkit.txt"),
+        new("Syncfusion.Maui.Toolkit", "1.0.11 · MIT", "LICENSE-SyncfusionToolkit.txt"),
         new("IconFont.Maui.FluentIcons", "1.1.1 · MIT", "LICENSE-FluentIcons.txt"),
         new("Fluent UI System Icons", "Regular and Filled icon fonts · MIT", "LICENSE-FluentSystemIcons.txt"),
         new("Open Sans", "Regular and Semibold · Apache 2.0", "LICENSE-OpenSans.txt"),
