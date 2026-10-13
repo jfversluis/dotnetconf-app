@@ -6,15 +6,22 @@ namespace IconFont.Maui.FluentIcons;
 public static class FluentIconsRegular
 {
     public const string FontFamily = "FluentIcons";
+    public const string ArrowExpand24 = "\uf154";
     public const string CalendarAgenda24 = "\uf214";
     public const string ChevronRight24 = "\uf2b1";
     public const string Dismiss24 = "\uf36a";
+    public const string Filter24 = "\uf407";
     public const string Heart24 = "\uf47a";
     public const string Home24 = "\uf481";
     public const string Info24 = "\uf4a4";
+    public const string List24 = "\uf4ee";
+    public const string Map24 = "\uf52e";
     public const string Open24 = "\uf583";
     public const string People24 = "\uf5a9";
+    public const string Presenter24 = "\uf622";
     public const string Search24 = "\uf690";
+    public const string Settings24 = "\uf6aa";
+    public const string VideoClip24 = "\uf850";
 }
 
 public static class FluentIconsFilled

@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Maui.Extensions;
 using Avalonia.Controls.Maui.Services;
 using Avalonia.Media;
 using Avalonia.Platform;
@@ -19,6 +20,7 @@ internal static class AvaloniaHost
             // Buttons and Shell tabs resolve the image service by concrete type, which MAUI registers for itself.
             .ConfigureImageSources(services => services.AddService<FontImageSource, AvaloniaFontImageSourceService>());
         builder.Services.AddSingleton<IBrowser, AvaloniaBrowser>();
+        builder.UseSyncfusionOnAvalonia();
 
         AvaloniaHandlers.WindowHandler.Mapper.AppendToMapping(nameof(IWindow.Title), (handler, window) =>
         {
@@ -26,7 +28,11 @@ internal static class AvaloniaHost
             handler.PlatformView.Icon ??= new WindowIcon(AssetLoader.Open(new Uri("avares://DotNetConf.App/windowicon.png")));
         });
 
-        // The search field and filters draw their own outline, as on Android and iOS.
+        // Shell only refreshes toolbar items when its top-level item changes, not on tab switches or page pushes.
+        AvaloniaHandlers.Shell.ShellHandler.Mapper.AppendToMapping("ToolbarItemsOnNavigation", (handler, shell) =>
+            shell.Navigated += (_, _) => handler.UpdateToolbarItems(shell));
+
+        // The search field draws its own outline, as on Android and iOS.
         AvaloniaHandlers.EntryHandler.Mapper.AppendToMapping("AgendaSearch", (handler, view) =>
         {
             if (view is not SearchEntry)
@@ -38,20 +44,6 @@ internal static class AvaloniaHost
             entry.Resources["EntryBorderBrushPointerOver"] = Brushes.Transparent;
             entry.Resources["EntryBorderBrushFocused"] = Brushes.Transparent;
         });
-        foreach (var key in new[] { nameof(IPicker.Title), nameof(IPicker.TitleColor) })
-        {
-            AvaloniaHandlers.PickerHandler.Mapper.AppendToMapping(key, (handler, view) =>
-            {
-                if (view is not AgendaPicker)
-                    return;
-
-                var picker = handler.PlatformView;
-                picker.Header = null;
-                picker.BorderThickness = default;
-                picker.Resources["ComboBoxBackgroundPointerOver"] = Brushes.Transparent;
-                picker.Resources["ComboBoxBackgroundPressed"] = Brushes.Transparent;
-            });
-        }
 
         // Avalonia's CollectionView overlays EmptyView on the whole list, so keep it below the header.
         AvaloniaHandlers.CollectionViewHandler.Mapper.AppendToMapping("EmptyViewBelowHeader", (handler, view) =>

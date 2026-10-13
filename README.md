@@ -27,7 +27,7 @@ The app is **in development and not yet available in the App Store or Google Pla
 
 Saved sessions and your appearance preference are stored locally on your device. There is no account or cloud sync in the current app. Links to the conference website open in your browser.
 
-Community maps use Apple Maps on iOS and Google Maps on Android, with an internet connection for map tiles. The app does not request your location. The event list remains available without map tiles; Android builds without a configured Maps key use the list.
+Community maps use Apple Maps on iOS and Google Maps on Android, with an internet connection for map tiles. The app does not request your location. The event list remains available without map tiles; Android builds without a configured Maps key, Linux and the browser use the list.
 
 Read the [privacy policy](https://jfversluis.dev/dotnetconf-privacy-policy.html),
 also available under Settings → About.

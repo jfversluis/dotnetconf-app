@@ -78,7 +78,7 @@ public partial class CommunityEventsPage : ContentPage, IQueryAttributable
             SetMode(false);
             return;
         }
-        if (map is not null)
+        if (map is not null || !CanShowMap)
             return;
 
         try
@@ -99,8 +99,6 @@ public partial class CommunityEventsPage : ContentPage, IQueryAttributable
         }
         OnPropertyChanged(nameof(WatchPartyPin));
         OnPropertyChanged(nameof(InPersonPin));
-        if (!CanShowMap)
-            return;
         map = new Map
         {
             IsShowingUser = false,
@@ -160,6 +158,9 @@ public partial class CommunityEventsPage : ContentPage, IQueryAttributable
             context.PackageName!, Android.Content.PM.PackageInfoFlags.MetaData);
         var key = application?.MetaData?.GetString("com.google.android.geo.API_KEY");
         return !string.IsNullOrWhiteSpace(key) && key != "NOT_CONFIGURED";
+#elif AVALONIA
+        // Avalonia.Controls.Maui has no Map handler yet, so these targets use the event list.
+        return false;
 #else
         return true;
 #endif

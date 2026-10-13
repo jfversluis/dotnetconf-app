@@ -98,12 +98,14 @@ build is not a substitute for a Release NativeAOT publish and runtime verificati
 Differences from the mobile apps:
 
 - IconFont.Maui.FluentIcons 1.1.1 brings its fonts to every target but has no platform-neutral assembly. `src/DotNetConf.FluentIcons` supplies the missing types with the same assembly name and API, limited to the glyphs in use. Add a glyph there when `Icons.xaml` starts using one, and remove the project once the package targets plain .NET.
-- DevFlow and the CommunityToolkit.Maui initializer are mobile-only. `UserStoppedTypingBehavior` still drives search. The save toast does nothing, so the heart and saved count are the confirmation, and tab badges are not drawn.
+- DevFlow, MAUI Maps and the CommunityToolkit.Maui initializer are mobile-only. `UserStoppedTypingBehavior` still drives search. The save toast does nothing, so the heart and saved count are the confirmation, and tab and toolbar badges are not drawn.
+- Avalonia.Controls.Maui has no Map handler yet, so Community events open as the event list, as on Android builds without a Maps key.
+- Syncfusion.Maui.Toolkit 1.0.11 has native views only for Android, iOS, Mac Catalyst and Windows. `Platforms/Avalonia/SyncfusionAvalonia.cs` replaces its `SfViewHandler` with an Avalonia panel that hosts the children of its drawn views and paints them with Skia, and forwards pointer input to views that listen to their own touches. That covers the Sessions day tabs (`SfTabView`); check other toolkit controls before using them on these targets.
 - Saved sessions are kept in `~/.config/DotNetConf.App/schedule.json` on Linux and in the browser's local storage (through `Preferences`) on the web.
 - Website links go through Avalonia's launcher: `xdg-open` on Linux, a new tab in the browser.
 - The Linux window icon is `Resources/Splash/splash.png`. The browser's page icon and loading screen use `wwwroot/splash.png`, a copy of that file with the `MauiSplashScreen` colors; update both together.
 
-`AvaloniaHost` and the app project also carry workarounds for Avalonia.Controls.Maui `11.0.0-rc.1.26252.343`, each commented in place: font icons on buttons and Shell tabs, `EmptyView` overlapping a `CollectionView` header, an empty `FileSystem.AppDataDirectory` when `~/.config` does not exist, and fonts and raw assets missing from the assembly when the target has no images. Recheck them when updating the package.
+`AvaloniaHost` and the app project also carry workarounds for Avalonia.Controls.Maui `11.0.0-rc.1.26252.343`, each commented in place: font icons on buttons and Shell tabs, Shell toolbar items that do not change with the tab or page, `EmptyView` overlapping a `CollectionView` header, an empty `FileSystem.AppDataDirectory` when `~/.config` does not exist, and fonts and raw assets missing from the assembly when the target has no images. Recheck them when updating the package.
 
 ## Inspect with Copilot and MAUI DevFlow
 

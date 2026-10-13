@@ -1,5 +1,9 @@
 using IconFont.Maui.FluentIcons;
+#if AVALONIA
+using PlatformBitmapExportContext = Microsoft.Maui.Graphics.Skia.SkiaBitmapExportContext;
+#else
 using Microsoft.Maui.Graphics.Platform;
+#endif
 
 namespace DotNetConf.App.Controls;
 

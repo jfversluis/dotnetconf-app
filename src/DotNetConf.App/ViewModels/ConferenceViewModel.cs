@@ -206,7 +206,7 @@ public partial class ConferenceViewModel(
             return;
         try
         {
-            if (!await Browser.OpenAsync(communityEvent.WebsiteUrl, BrowserLaunchMode.SystemPreferred))
+            if (!await browser.OpenAsync(communityEvent.WebsiteUrl, BrowserLaunchMode.SystemPreferred))
                 await ShowErrorAsync("Couldn't open the event website", $"Please visit {communityEvent.WebsiteUrl} in your browser.");
         }
         catch (Exception exception) when (exception is FeatureNotSupportedException or UriFormatException)
