@@ -20,7 +20,7 @@ internal static class AvaloniaHost
             // Buttons and Shell tabs resolve the image service by concrete type, which MAUI registers for itself.
             .ConfigureImageSources(services => services.AddService<FontImageSource, AvaloniaFontImageSourceService>());
         builder.Services.AddSingleton<IBrowser, AvaloniaBrowser>();
-        builder.UseSyncfusionOnAvalonia();
+        builder.UseAvaloniaSyncfusion();
 
         AvaloniaHandlers.WindowHandler.Mapper.AppendToMapping(nameof(IWindow.Title), (handler, window) =>
         {
