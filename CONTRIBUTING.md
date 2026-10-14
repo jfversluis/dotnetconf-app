@@ -14,8 +14,8 @@ Versions are deliberately pinned:
 | Mobile workload set | `11.0.100-rc.2.26513.2` |
 | MAUI Controls | `11.0.0-rc.2.26505.5` |
 | DevFlow CLI / agent | `0.1.0-preview.13.26512.5` |
-| Avalonia.Controls.Maui, Desktop, Essentials | `11.0.0-rc.1.26252.343` |
-| Avalonia.Browser | `12.1.2` |
+| Avalonia.Controls.Maui, Desktop, Essentials | `11.0.0-rc.2.26287.618` |
+| Avalonia.Browser | `12.1.4` |
 | IconFont.Maui.FluentIcons | `1.1.1` |
 | Syncfusion.Maui.Toolkit | `1.0.11` |
 
@@ -99,13 +99,13 @@ Differences from the mobile apps:
 
 - IconFont.Maui.FluentIcons 1.1.1 brings its fonts to every target but has no platform-neutral assembly. `src/DotNetConf.FluentIcons` supplies the missing types with the same assembly name and API, limited to the glyphs in use. Add a glyph there when `Icons.xaml` starts using one, and remove the project once the package targets plain .NET.
 - DevFlow, MAUI Maps and the CommunityToolkit.Maui initializer are mobile-only. `UserStoppedTypingBehavior` still drives search. The save toast does nothing, so the heart and saved count are the confirmation, and tab and toolbar badges are not drawn.
-- Avalonia.Controls.Maui has no Map handler yet, so Community events open as the event list, as on Android builds without a Maps key.
+- MAUI has no map handler on these targets, so `Platforms/Avalonia/AvaloniaMap.cs` draws the Community map with [Mapsui](https://mapsui.com) and OpenStreetMap tiles; `CommunityEventsPage` only switches its `Map` alias. OpenStreetMap's tile servers are meant for light use: follow the [tile usage policy](https://operations.osmfoundation.org/policies/tiles/) and keep the attribution visible.
 - Syncfusion.Maui.Toolkit 1.0.11 has native views only for Android, iOS, Mac Catalyst and Windows. `Platforms/Avalonia/AvaloniaSyncfusion.cs` hosts its views with Avalonia's layout handler and forwards pointer input to the views that listen to their own touches. Their own drawing, such as ripple effects and scroll arrows, is not rendered; the Sessions day tabs (`SfTabView`) draw nothing visible as configured. Check other toolkit controls before using them on these targets.
 - Saved sessions are kept in `~/.config/DotNetConf.App/schedule.json` on Linux and in the browser's local storage (through `Preferences`) on the web.
 - Website links go through Avalonia's launcher: `xdg-open` on Linux, a new tab in the browser.
 - The Linux window icon is `Resources/Splash/splash.png`. The browser's page icon and loading screen use `wwwroot/splash.png`, a copy of that file with the `MauiSplashScreen` colors; update both together.
 
-`AvaloniaHost` and the app project also carry workarounds for Avalonia.Controls.Maui `11.0.0-rc.1.26252.343`, each commented in place: font icons on buttons and Shell tabs, Shell toolbar items that do not change with the tab or page, `EmptyView` overlapping a `CollectionView` header, an empty `FileSystem.AppDataDirectory` when `~/.config` does not exist, and fonts and raw assets missing from the assembly when the target has no images. Recheck them when updating the package.
+`AvaloniaHost` and the app project also carry workarounds for Avalonia.Controls.Maui `11.0.0-rc.2.26287.618`, each commented in place: font icons on buttons and Shell tabs, Shell toolbar items that do not change with the tab or page, `EmptyView` overlapping a `CollectionView` header, input-transparent layouts that still take input, an empty `FileSystem.AppDataDirectory` when `~/.config` does not exist, and fonts and raw assets missing from the assembly when the target has no images. Recheck them when updating the package.
 
 ## Inspect with Copilot and MAUI DevFlow
 

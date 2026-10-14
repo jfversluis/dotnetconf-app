@@ -4,6 +4,7 @@ using Avalonia.Controls.Maui.Services;
 using Avalonia.Media;
 using Avalonia.Platform;
 using DotNetConf.App.Controls;
+using SkiaSharp.Views.Maui.Controls.Hosting;
 using AvaloniaHandlers = Avalonia.Controls.Maui.Handlers;
 
 namespace DotNetConf.App;
@@ -17,6 +18,8 @@ internal static class AvaloniaHost
 
         builder.UseAvaloniaApp(useSingleViewLifetime: OperatingSystem.IsBrowser())
             .UseAvaloniaEssentials()
+            // The community map draws through SkiaSharp views.
+            .UseAvaloniaSkiaSharp()
             // Buttons and Shell tabs resolve the image service by concrete type, which MAUI registers for itself.
             .ConfigureImageSources(services => services.AddService<FontImageSource, AvaloniaFontImageSourceService>());
         builder.Services.AddSingleton<IBrowser, AvaloniaBrowser>();
@@ -31,6 +34,14 @@ internal static class AvaloniaHost
         // Shell only refreshes toolbar items when its top-level item changes, not on tab switches or page pushes.
         AvaloniaHandlers.Shell.ShellHandler.Mapper.AppendToMapping("ToolbarItemsOnNavigation", (handler, shell) =>
             shell.Navigated += (_, _) => handler.UpdateToolbarItems(shell));
+
+        // Layouts take input through a transparent background and InputTransparent isn't mapped yet, so the legend
+        // layer over the community map would swallow its clicks. Its children still take input.
+        AvaloniaHandlers.LayoutHandler.Mapper.AppendToMapping(nameof(IView.InputTransparent), (handler, layout) =>
+        {
+            if (layout is Layout { InputTransparent: true, CascadeInputTransparent: false })
+                handler.PlatformView.Background = null;
+        });
 
         // The search field draws its own outline, as on Android and iOS.
         AvaloniaHandlers.EntryHandler.Mapper.AppendToMapping("AgendaSearch", (handler, view) =>

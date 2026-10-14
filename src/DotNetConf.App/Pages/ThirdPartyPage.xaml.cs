@@ -17,6 +17,11 @@ public partial class ThirdPartyPage : ContentPage
         new("Fluent UI System Icons", "Regular and Filled icon fonts · MIT", "LICENSE-FluentSystemIcons.txt"),
         new("Open Sans", "Regular and Semibold · Apache 2.0", "LICENSE-OpenSans.txt"),
         new("Space Grotesk", "Bold · SIL Open Font License 1.1", "LICENSE-SpaceGrotesk.txt"),
+#if AVALONIA
+        new("Mapsui", "Community map on Linux and in the browser · 5.1.0 · MIT", "LICENSE-Mapsui.txt"),
+        new("BruTile", "Map tiles for Mapsui · 6.0.0 · Apache 2.0", "LICENSE-BruTile.txt"),
+        new("NetTopologySuite", "Map geometry for Mapsui · 2.6.0 · BSD 3-Clause", "LICENSE-NetTopologySuite.txt"),
+#endif
 #if DEBUG
         new("MAUI DevFlow", "Development builds only · 0.1.0-preview.13.26512.5 · MIT", "LICENSE-DotNetFoundation.txt"),
         new("Microsoft.Extensions.Logging.Debug", "Development builds only · 11.0.0-rc.2.26504.105 · MIT", "LICENSE-DotNetFoundation.txt"),

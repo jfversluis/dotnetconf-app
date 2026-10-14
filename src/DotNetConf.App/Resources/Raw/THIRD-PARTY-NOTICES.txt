@@ -47,6 +47,25 @@ Copyright 2020 The Space Grotesk Project Authors
 https://github.com/floriankarsten/space-grotesk
 SIL Open Font License 1.1: LICENSE-SpaceGrotesk.txt
 
+Mapsui, Mapsui.Maui, Mapsui.Rendering.Skia, Mapsui.Tiling 5.1.0 (Linux and browser builds only)
+Copyright (c) 2022 The Mapsui authors
+https://github.com/Mapsui/Mapsui
+MIT license: LICENSE-Mapsui.txt
+
+BruTile 6.0.0 (Linux and browser builds only)
+Copyright (c) 2008-2018 BruTile developers team
+https://github.com/BruTile/BruTile
+Licensed under the Apache License, Version 2.0: LICENSE-BruTile.txt
+
+NetTopologySuite 2.6.0 (Linux and browser builds only)
+Copyright (C) 2005-2018 NetTopologySuite team
+https://github.com/NetTopologySuite/NetTopologySuite
+BSD 3-Clause license: LICENSE-NetTopologySuite.txt
+
+OpenStreetMap map tiles (Linux and browser builds only)
+Map data (c) OpenStreetMap contributors, available under the Open Database License.
+https://www.openstreetmap.org/copyright
+
 .NET Conf two-robots-on-a-rocket artwork
 Source: https://www.dotnetconf.net/img/conf-hero.b21gztz2hl.svg
 Used in launcher and splash assets with redistribution permission confirmed by

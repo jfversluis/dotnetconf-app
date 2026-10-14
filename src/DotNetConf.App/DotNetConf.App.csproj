@@ -27,6 +27,8 @@
     <UseAvalonia>true</UseAvalonia>
     <DefineConstants>$(DefineConstants);AVALONIA</DefineConstants>
     <AssemblyTitle>$(ApplicationTitle)</AssemblyTitle>
+    <!-- NativeAOT publishing is set up for the mobile targets only. -->
+    <PublishAot>false</PublishAot>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
     <EnableMauiIncrementalHotReload>true</EnableMauiIncrementalHotReload>
@@ -63,10 +65,13 @@
   <ItemGroup Condition="'$(UseAvalonia)' == 'true'">
     <MauiPlatformSpecificFolder Include="Platforms/Avalonia" />
     <Compile Remove="Controls/AgendaPickerHandler.cs" />
-    <PackageReference Include="Avalonia.Controls.Maui" Version="11.0.0-rc.1.26252.343" />
-    <PackageReference Include="Avalonia.Controls.Maui.Essentials" Version="11.0.0-rc.1.26252.343" />
-    <PackageReference Include="Avalonia.Controls.Maui.Desktop" Version="11.0.0-rc.1.26252.343"
+    <PackageReference Include="Avalonia.Controls.Maui" Version="11.0.0-rc.2.26287.618" />
+    <PackageReference Include="Avalonia.Controls.Maui.Essentials" Version="11.0.0-rc.2.26287.618" />
+    <PackageReference Include="Avalonia.Controls.Maui.Desktop" Version="11.0.0-rc.2.26287.618"
                       Condition="'$(TargetFramework)' == 'net11.0'" />
+    <!-- The community map: Mapsui draws through the SkiaSharp views. -->
+    <PackageReference Include="Avalonia.Controls.Maui.SkiaSharp.Views" Version="11.0.0-rc.2.26287.618" />
+    <PackageReference Include="Mapsui.Maui" Version="5.1.0" />
     <AvaloniaResource Include="Resources/Splash/splash.png" Link="windowicon.png"
                       Condition="'$(TargetFramework)' == 'net11.0'" />
     <!-- IconFont.Maui.FluentIcons 1.1.1 brings its fonts to these targets but no assembly, so the typed glyphs
@@ -78,7 +83,8 @@
           DependsOnTargets="ConvertMauiFontsToAvaloniaResources;ConvertMauiAssetsToAvaloniaResources" />
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="11.0.0-rc.2.26504.105" />
-    <PackageReference Include="Microsoft.Maui.DevFlow.Agent" Version="0.1.0-preview.13.26512.5" />
+    <PackageReference Include="Microsoft.Maui.DevFlow.Agent" Version="0.1.0-preview.13.26512.5"
+                      Condition="'$(UseAvalonia)' != 'true'" />
   </ItemGroup>
   <ItemGroup Condition="'$(Configuration)' != 'Debug'">
     <AndroidResource Remove="Platforms/Android/Resources/xml/devflow_network_security_config.xml" />

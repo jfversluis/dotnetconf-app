@@ -25,12 +25,13 @@ public static class MauiProgram
     {
         var builder = MauiApp.CreateBuilder();
         builder.UseMauiApp<App>()
+            // Configured first so the Avalonia host can replace the toolkit's handlers.
+            .ConfigureSyncfusionToolkit()
 #if AVALONIA
             .UseAvaloniaHost()
 #else
             .UseMauiCommunityToolkit()
             .UseMauiMaps()
-            .ConfigureSyncfusionToolkit()
             .ConfigureMauiHandlers(handlers => handlers.AddHandler<AgendaPicker, AgendaPickerHandler>())
 #endif
             .UseFluentIconsRegular()

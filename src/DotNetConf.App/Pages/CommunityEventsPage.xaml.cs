@@ -4,7 +4,11 @@ using DotNetConf.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Controls.Maps;
 using Microsoft.Maui.Maps;
+#if AVALONIA
+using Map = DotNetConf.App.AvaloniaMap;
+#else
 using Map = Microsoft.Maui.Controls.Maps.Map;
+#endif
 
 namespace DotNetConf.App.Pages;
 
@@ -159,8 +163,8 @@ public partial class CommunityEventsPage : ContentPage, IQueryAttributable
         var key = application?.MetaData?.GetString("com.google.android.geo.API_KEY");
         return !string.IsNullOrWhiteSpace(key) && key != "NOT_CONFIGURED";
 #elif AVALONIA
-        // Avalonia.Controls.Maui has no Map handler yet, so these targets use the event list.
-        return false;
+        // AvaloniaMap's OpenStreetMap tiles need no key.
+        return true;
 #else
         return true;
 #endif

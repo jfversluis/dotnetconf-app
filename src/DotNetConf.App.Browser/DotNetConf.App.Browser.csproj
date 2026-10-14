@@ -7,6 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../DotNetConf.App/DotNetConf.App.csproj" />
-    <PackageReference Include="Avalonia.Browser" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Browser" Version="12.1.4" />
   </ItemGroup>
 </Project>
