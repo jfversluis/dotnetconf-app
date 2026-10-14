@@ -129,7 +129,7 @@ jobs:
     name: TestFlight upload
     needs: validate
     if: inputs.platform == 'ios' || inputs.platform == 'both'
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 60
     environment: app-store-testflight
     concurrency:

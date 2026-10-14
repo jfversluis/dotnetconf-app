@@ -9,7 +9,7 @@ public partial class ThirdPartyPage : ContentPage
 {
     public IReadOnlyList<DependencyNotice> Dependencies { get; } =
     [
-        new(".NET MAUI", "Controls, Maps, Core, Essentials & Graphics · 11.0.0-rc.1.26451.6 · MIT", "LICENSE-DotNetFoundation.txt"),
+        new(".NET MAUI", "Controls, Maps, Core, Essentials & Graphics · 11.0.0-rc.2.26505.5 · MIT", "LICENSE-DotNetFoundation.txt"),
         new("CommunityToolkit.Maui", "15.0.1 · MIT", "LICENSE-MauiToolkit.txt"),
         new("CommunityToolkit.Mvvm", "8.4.2 · MIT", "LICENSE-MvvmToolkit.txt"),
         new("Syncfusion.Maui.Toolkit", "1.0.11 · MIT", "LICENSE-SyncfusionToolkit.txt"),
@@ -18,8 +18,8 @@ public partial class ThirdPartyPage : ContentPage
         new("Open Sans", "Regular and Semibold · Apache 2.0", "LICENSE-OpenSans.txt"),
         new("Space Grotesk", "Bold · SIL Open Font License 1.1", "LICENSE-SpaceGrotesk.txt"),
 #if DEBUG
-        new("MAUI DevFlow", "Development builds only · 0.1.0-preview.12.26421.1 · MIT", "LICENSE-DotNetFoundation.txt"),
-        new("Microsoft.Extensions.Logging.Debug", "Development builds only · 11.0.0-rc.1.26425.128 · MIT", "LICENSE-DotNetFoundation.txt"),
+        new("MAUI DevFlow", "Development builds only · 0.1.0-preview.13.26512.5 · MIT", "LICENSE-DotNetFoundation.txt"),
+        new("Microsoft.Extensions.Logging.Debug", "Development builds only · 11.0.0-rc.2.26504.105 · MIT", "LICENSE-DotNetFoundation.txt"),
 #endif
     ];
 

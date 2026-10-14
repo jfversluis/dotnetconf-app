@@ -23,13 +23,13 @@ runs:
         set -euo pipefail
         case "$PLATFORM" in android|ios) ;; *) echo "::error::Unknown mobile platform"; exit 1 ;; esac
         dotnet workload install "maui-$PLATFORM" --version "$(jq -r '.workload.version' global.json)"
-    - name: Select Xcode 26.6
+    - name: Select Xcode 27.0
       if: inputs.platform == 'ios'
       shell: bash
       run: |
         set -euo pipefail
-        developer_dir=/Applications/Xcode_26.6.app/Contents/Developer
-        test -d "$developer_dir" || { echo "::error::Xcode 26.6 is required by the pinned workload."; exit 1; }
+        developer_dir=/Applications/Xcode_27.0.app/Contents/Developer
+        test -d "$developer_dir" || { echo "::error::Xcode 27.0 is required by the pinned workload."; exit 1; }
         echo "DEVELOPER_DIR=$developer_dir" >> "$GITHUB_ENV"
         DEVELOPER_DIR="$developer_dir" xcodebuild -version
     - name: Install workload-required Android SDK packages
