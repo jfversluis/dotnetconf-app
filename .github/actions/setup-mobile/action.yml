@@ -28,7 +28,7 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        developer_dir=/Applications/Xcode-27.0.0-Release.Candidate.app/Contents/Developer
+        developer_dir=/Applications/Xcode_27.0.app/Contents/Developer
         test -d "$developer_dir" || { echo "::error::Xcode 27.0 is required by the pinned workload."; exit 1; }
         echo "DEVELOPER_DIR=$developer_dir" >> "$GITHUB_ENV"
         DEVELOPER_DIR="$developer_dir" xcodebuild -version

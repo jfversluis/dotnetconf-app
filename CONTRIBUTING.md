@@ -76,9 +76,9 @@ The iOS publish requires device signing; simulator builds are not a substitute
 for a NativeAOT device publish.
 
 The pinned Android workload requests NativeAOT runtime
-`11.0.0-rc.2.26504.105`, which is not on NuGet.org. `NuGet.Config` maps only
-`Microsoft.NETCore.App.Runtime.NativeAOT.android-*` packages to Microsoft's
-official `dotnet11` feed; other packages stay on NuGet.org.
+`11.0.0-rc.2.26504.105`, which is available on NuGet.org. `NuGet.Config` uses
+NuGet.org for all packages, including `Microsoft.NETCore.App.Runtime.NativeAOT.android-*`;
+the RC1-only daily-feed mapping is no longer needed.
 Android NativeAOT is experimental in this workload (`XA1040`) and is not yet
 suitable for production use. Do not suppress compatibility warnings. A Debug
 build is not a substitute for a Release NativeAOT publish and runtime verification.
