@@ -2,45 +2,67 @@
                       x:Name="Page"
                       xmlns:pages="clr-namespace:DotNetConf.App.Pages"
                       xmlns:controls="clr-namespace:DotNetConf.App.Controls"
+                      xmlns:planner="clr-namespace:DotNetConf.App.Planner"
                       xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
                       x:DataType="vm:ConferenceViewModel" Title="My Schedule">
-    <Grid SafeAreaEdges="Container,None,Container,None">
-    <RefreshView IsRefreshing="{Binding IsPullRefreshing, Mode=TwoWay}"
-                 Command="{Binding RequestRefreshCommand}"
-                 RefreshColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
-                 AutomationId="schedule-refresh">
-    <CollectionView ItemsSource="{Binding SavedSessions}" SelectionMode="None"
-                    ItemsUpdatingScrollMode="KeepScrollOffset" AutomationId="saved-session-list">
-        <CollectionView.Footer>
-            <controls:SafeAreaFooter Page="{x:Reference Page}" />
-        </CollectionView.Footer>
-        <CollectionView.Header>
-            <VerticalStackLayout Spacing="12" Padding="24,16,24,8" SafeAreaEdges="None">
-                <Label Text="Your conference, your way" Style="{StaticResource Heading}" />
-                <controls:StatusBanner AutomationId="schedule-status" />
-                <Label Text="{Binding ScheduleSummary}" FontFamily="OpenSansSemibold" AutomationId="saved-count" />
-                <Label Text="{Binding TimeZoneLabel}" Style="{StaticResource Secondary}" FontSize="12" />
-            </VerticalStackLayout>
-        </CollectionView.Header>
-        <CollectionView.ItemTemplate>
-            <DataTemplate x:DataType="vm:SessionViewModel">
-                <Grid Padding="24,0">
-                    <controls:SessionRow />
-                </Grid>
-            </DataTemplate>
-        </CollectionView.ItemTemplate>
-        <CollectionView.EmptyView>
-            <VerticalStackLayout Padding="40,32" Spacing="16">
-                <Image Source="{StaticResource HeartOutlineIcon}" WidthRequest="32" HeightRequest="32"
-                       HorizontalOptions="Start" AutomationProperties.IsInAccessibleTree="False" />
-                <ActivityIndicator IsRunning="{Binding IsInitialAgendaLoading}" IsVisible="{Binding IsInitialAgendaLoading}"
-                                   HorizontalOptions="Start" AutomationId="schedule-initial-loading" />
-                <Label Text="{Binding ScheduleEmptyTitle}" Style="{StaticResource Subheading}" AutomationId="schedule-empty-title" />
-                <Label Text="{Binding ScheduleEmptyMessage}" Style="{StaticResource Secondary}" AutomationId="schedule-empty-message" />
-                <Button Text="Find a session" Command="{Binding BrowseSessionsCommand}" AutomationId="schedule-browse" />
-            </VerticalStackLayout>
-        </CollectionView.EmptyView>
-    </CollectionView>
-    </RefreshView>
+    <Grid RowDefinitions="Auto,*" SafeAreaEdges="Container,None,Container,None">
+        <VerticalStackLayout Padding="24,16,24,8" Spacing="12">
+            <Label Text="Your conference, your way" Style="{StaticResource Heading}" />
+            <!-- The track sits behind the buttons rather than around them: on the Avalonia host, the focus
+                 adorner of a control inside a clipping Border throws when tabbed to. -->
+            <Grid HorizontalOptions="Start">
+                <Border StrokeShape="RoundRectangle 20"
+                        Stroke="{AppThemeBinding Light={StaticResource LightOutline}, Dark={StaticResource DarkOutline}}"
+                        BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}" />
+                <HorizontalStackLayout Spacing="2" Padding="3">
+                    <Button x:Name="TimelineButton" Text="Timeline" Clicked="OnTimelineClicked" CornerRadius="17"
+                            Padding="18,0" MinimumHeightRequest="36" BorderWidth="0" AutomationId="schedule-timeline-mode"
+                            SemanticProperties.Hint="Shows every session on a timeline with your saved ones highlighted" />
+                    <Button x:Name="ListButton" Text="List" Clicked="OnListClicked" CornerRadius="17"
+                            Padding="18,0" MinimumHeightRequest="36" BorderWidth="0" AutomationId="schedule-list-mode"
+                            SemanticProperties.Hint="Shows only your saved sessions as a list" />
+                </HorizontalStackLayout>
+            </Grid>
+            <Label Text="{Binding TimeZoneLabel}" Style="{StaticResource Secondary}" FontSize="12" />
+            <controls:StatusBanner AutomationId="schedule-status" />
+        </VerticalStackLayout>
+        <planner:SchedulePlanner x:Name="Planner" Grid.Row="1" Sessions="{Binding AllSessions}"
+                                 SavedSessions="{Binding SavedSessions}" Topics="{Binding Topics}"
+                                 ClearTopicsCommand="{Binding ClearTopicFiltersCommand}" AutomationId="schedule-planner" />
+        <RefreshView x:Name="SavedList" Grid.Row="1" IsVisible="False"
+                     IsRefreshing="{Binding IsPullRefreshing, Mode=TwoWay}"
+                     Command="{Binding RequestRefreshCommand}"
+                     RefreshColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
+                     AutomationId="schedule-refresh">
+        <CollectionView ItemsSource="{Binding SavedSessions}" ItemsUpdatingScrollMode="KeepScrollOffset"
+                        SelectionMode="None" AutomationId="saved-session-list">
+            <CollectionView.Footer>
+                <controls:SafeAreaFooter Page="{x:Reference Page}" />
+            </CollectionView.Footer>
+            <CollectionView.Header>
+                <VerticalStackLayout Spacing="12" Padding="24,8,24,8" SafeAreaEdges="None">
+                    <Label Text="{Binding ScheduleSummary}" FontFamily="OpenSansSemibold" AutomationId="saved-count" />
+                </VerticalStackLayout>
+            </CollectionView.Header>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:SessionViewModel">
+                    <Grid Padding="24,0">
+                        <controls:SessionRow />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+            <CollectionView.EmptyView>
+                <VerticalStackLayout Padding="40,32" Spacing="16">
+                    <Image Source="{StaticResource HeartOutlineIcon}" WidthRequest="32" HeightRequest="32"
+                           HorizontalOptions="Start" AutomationProperties.IsInAccessibleTree="False" />
+                    <ActivityIndicator IsRunning="{Binding IsInitialAgendaLoading}" IsVisible="{Binding IsInitialAgendaLoading}"
+                                       HorizontalOptions="Start" AutomationId="schedule-initial-loading" />
+                    <Label Text="{Binding ScheduleEmptyTitle}" Style="{StaticResource Subheading}" AutomationId="schedule-empty-title" />
+                    <Label Text="{Binding ScheduleEmptyMessage}" Style="{StaticResource Secondary}" AutomationId="schedule-empty-message" />
+                    <Button Text="Find a session" Command="{Binding BrowseSessionsCommand}" AutomationId="schedule-browse" />
+                </VerticalStackLayout>
+            </CollectionView.EmptyView>
+        </CollectionView>
+        </RefreshView>
     </Grid>
 </pages:ConferencePage>

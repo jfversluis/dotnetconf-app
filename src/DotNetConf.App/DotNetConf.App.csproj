@@ -29,6 +29,8 @@
     <!-- [JSImport], used for browser local storage, generates unsafe code. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyTitle>$(ApplicationTitle)</AssemblyTitle>
+    <!-- NativeAOT publishing is set up for the mobile targets only. -->
+    <PublishAot>false</PublishAot>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
     <EnableMauiIncrementalHotReload>true</EnableMauiIncrementalHotReload>
@@ -61,13 +63,15 @@
     <PackageReference Include="CommunityToolkit.Maui" Version="15.0.1" />
     <PackageReference Include="IconFont.Maui.FluentIcons" Version="1.1.1" />
     <PackageReference Include="Syncfusion.Maui.Toolkit" Version="1.0.11" />
+    <!-- Draws the schedule planner on every target; Android and iOS embed it in their native UI. -->
+    <PackageReference Include="Avalonia.Controls.Maui" Version="11.0.0-rc.2.26287.618" />
   </ItemGroup>
   <ItemGroup Condition="'$(UseAvalonia)' == 'true'">
     <MauiPlatformSpecificFolder Include="Platforms/Avalonia" />
     <Compile Remove="Controls/AgendaPickerHandler.cs" />
-    <PackageReference Include="Avalonia.Controls.Maui" Version="11.0.0-rc.1.26252.343" />
-    <PackageReference Include="Avalonia.Controls.Maui.Essentials" Version="11.0.0-rc.1.26252.343" />
-    <PackageReference Include="Avalonia.Controls.Maui.Desktop" Version="11.0.0-rc.1.26252.343"
+    <Compile Remove="Planner/PlannerApplication.cs" />
+    <PackageReference Include="Avalonia.Controls.Maui.Essentials" Version="11.0.0-rc.2.26287.618" />
+    <PackageReference Include="Avalonia.Controls.Maui.Desktop" Version="11.0.0-rc.2.26287.618"
                       Condition="'$(TargetFramework)' == 'net11.0'" />
     <AvaloniaResource Include="Resources/Splash/splash.png" Link="windowicon.png"
                       Condition="'$(TargetFramework)' == 'net11.0'" />
@@ -76,11 +80,18 @@
     <ProjectReference Include="../DotNetConf.FluentIcons/DotNetConf.FluentIcons.csproj" />
   </ItemGroup>
   <!-- Avalonia only embeds resources that exist when it registers them; the package converts fonts and raw assets after that. -->
-  <Target Name="ConvertMauiResourcesForAvalonia" BeforeTargets="ResolveReferences" Condition="'$(UseAvalonia)' == 'true'"
-          DependsOnTargets="ConvertMauiFontsToAvaloniaResources;ConvertMauiAssetsToAvaloniaResources" />
+  <Target Name="ConvertMauiResourcesForAvalonia" BeforeTargets="ResolveReferences"
+          DependsOnTargets="ConvertMauiFontsToAvaloniaResources;ConvertMauiAssetsToAvaloniaResources">
+    <!-- On Android and iOS only the planner reads them: keep the app's own fonts, not the icon fonts or raw assets. -->
+    <ItemGroup Condition="'$(UseAvalonia)' != 'true'">
+      <AvaloniaResource Remove="@(AvaloniaResource)"
+                        Condition="!$([System.String]::Copy('%(FullPath)').StartsWith($([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', 'Resources', 'Fonts'))))" />
+    </ItemGroup>
+  </Target>
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="11.0.0-rc.2.26504.105" />
-    <PackageReference Include="Microsoft.Maui.DevFlow.Agent" Version="0.1.0-preview.13.26512.5" />
+    <PackageReference Include="Microsoft.Maui.DevFlow.Agent" Version="0.1.0-preview.13.26512.5"
+                      Condition="'$(UseAvalonia)' != 'true'" />
   </ItemGroup>
   <ItemGroup Condition="'$(Configuration)' != 'Debug'">
     <AndroidResource Remove="Platforms/Android/Resources/xml/devflow_network_security_config.xml" />
