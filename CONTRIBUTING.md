@@ -10,30 +10,30 @@ Versions are deliberately pinned:
 
 | Component | Version |
 |---|---|
-| .NET SDK | `11.0.100-rc.1.26425.128` |
-| Mobile workload set | `11.0.100-rc.1.26460.1` |
-| MAUI Controls | `11.0.0-rc.1.26451.6` |
-| DevFlow CLI / agent | `0.1.0-preview.12.26421.1` |
+| .NET SDK | `11.0.100-rc.2.26504.105` |
+| Mobile workload set | `11.0.100-rc.2.26513.2` |
+| MAUI Controls | `11.0.0-rc.2.26505.5` |
+| DevFlow CLI / agent | `0.1.0-preview.13.26512.5` |
 | IconFont.Maui.FluentIcons | `1.1.1` |
 | Syncfusion.Maui.Toolkit | `1.0.11` |
 
 Install the SDK selected by `global.json`, then:
 
 ```sh
-dotnet workload install maui-android maui-ios --version 11.0.100-rc.1.26460.1
+dotnet workload install maui-android maui-ios --version 11.0.100-rc.2.26513.2
 dotnet tool restore
 dotnet test tests/DotNetConf.Core.Tests
 ```
 
-iOS builds require a Mac and the selected workload's supported Xcode. The RC1 workload contains iOS 26.5 bindings; this foundation was built against Xcode 26.6. Android requires the workload's Android SDK dependencies, including API 37 tooling, and JDK 21. Deployment minimums are iOS 15 and Android API 24. These are different from the build SDK versions. See [MAUI release requirements](https://github.com/dotnet/maui/wiki/Release-Versions).
+iOS builds require a Mac and Xcode 27.0, as required by the pinned RC2 workload's iOS 27 bindings. Android requires the workload's Android SDK dependencies, including API 37.0 tooling, and JDK 21. Deployment minimums are iOS 15 and Android API 24. These are different from the build SDK versions. See [MAUI release requirements](https://github.com/dotnet/maui/wiki/Release-Versions).
 
 The iOS head uses the scene lifecycle: `Info.plist` registers the single-window `SceneDelegate`, which inherits `MauiUISceneDelegate`. MAUI owns window creation through `App.CreateWindow`; `AppDelegate` only builds the app. This opts out of the legacy application lifecycle used by the initial scaffold without adding custom window sizing or safe-area offsets.
 
-Keep the supported RC1/Xcode 26.6 build pairing distinct from running that binary on iOS 27 simulators. As checked on October 7, the .NET 11 RC2 Apple release is still a draft; this migration does not upgrade the build SDK to Xcode 27 or claim Xcode 27.1 build support. RC1 also lacks later scene forwarding fixes for App Actions, authentication URL returns, and user activities. Revisit the published .NET 11 workload and those paths before adding deep links or authentication.
+The current RC2/Xcode 27.0 build pairing does not claim Xcode 27.1 build support. The scene-forwarding paths for App Actions, authentication URL returns, and user activities still need validation with this workload before adding deep links or authentication.
 
-The scene-enabled RC1 build was launched on an iPhone 18 Pro with iOS 27.0 and an iPhone Duo with iOS 27.1. Ordinary iPhone startup and search work. On Duo, the app still occupies a 375 x 667 compatibility window inside a 466 x 678 native scene, leaving a black right margin; adding the scene manifest alone does not fix this older-SDK geometry. Do not force window dimensions or disguise the margin with layout offsets. Full Duo geometry and folding remain release gates: rebuild with a published .NET 11 Apple workload supporting Xcode 27, then verify both postures.
+The earlier scene-enabled RC1 build was launched on an iPhone 18 Pro with iOS 27.0 and an iPhone Duo with iOS 27.1. Ordinary iPhone startup and search work. On Duo, the app occupied a 375 x 667 compatibility window inside a 466 x 678 native scene, leaving a black right margin; adding the scene manifest alone did not fix this older-SDK geometry. Do not force window dimensions or disguise the margin with layout offsets. Full Duo geometry and folding remain release gates: verify both postures with the pinned RC2/Xcode 27.0 toolchain.
 
-After changing the scene manifest, clean and rebuild the iOS target and inspect the generated app bundle's `Info.plist` before reinstalling. The RC1 incremental build retained the previous manifest during this migration; a successful compilation alone did not prove that the installed app used scenes.
+After changing the scene manifest, clean and rebuild the iOS target and inspect the generated app bundle's `Info.plist` before reinstalling. During the RC1 migration, an incremental build retained the previous manifest; a successful compilation alone did not prove that the installed app used scenes.
 
 ## Run
 
@@ -49,9 +49,9 @@ dotnet build src/DotNetConf.App -f net11.0-ios -p:RuntimeIdentifier=iossimulator
 dotnet build src/DotNetConf.App -f net11.0-android
 ```
 
-The app uses source-generated XAML with compiled bindings and Debug-only incremental XAML Hot Reload. Runtime selection is left to the SDK, with `PublishAot=true` in the project and no configuration-specific overrides. MAUI 11 RC1's Android Material 3 controls are explicitly enabled with `UseMaterial3=true`; scoped search and picker customizations use `EntryHandler2` and `PickerHandler2`, while iOS keeps its existing handlers. The pinned MAUI Controls package remains unchanged. `dotnet watch --project src/DotNetConf.App -f net11.0-ios` uses the Debug-only no-linking setting; release linking is not disabled.
+The app uses source-generated XAML with compiled bindings and Debug-only incremental XAML Hot Reload. Runtime selection is left to the SDK, with `PublishAot=true` in the project and no configuration-specific overrides. MAUI 11 RC2's Android Material 3 controls are explicitly enabled with `UseMaterial3=true`; scoped search and picker customizations use `EntryHandler2` and `PickerHandler2`, while iOS keeps its existing handlers. The pinned MAUI Controls package is updated with the workload. `dotnet watch --project src/DotNetConf.App -f net11.0-ios` uses the Debug-only no-linking setting; release linking is not disabled.
 
-The pinned RC1 incremental XAML generator can retain stale resource-style updates and report `Style.Setters` as read-only after a style edit. A targeted `dotnet clean src/DotNetConf.App -f net11.0-android -p:RuntimeIdentifier=android-arm64` (or the corresponding iOS target/RID), followed by the normal build, clears that preview state. Do not disable incremental Hot Reload or edit generated sources to work around it.
+The RC1 incremental XAML generator was observed to retain stale resource-style updates and report `Style.Setters` as read-only after a style edit. If this recurs, a targeted `dotnet clean src/DotNetConf.App -f net11.0-android -p:RuntimeIdentifier=android-arm64` (or the corresponding iOS target/RID), followed by the normal build, clears that preview state. Do not disable incremental Hot Reload or edit generated sources to work around it.
 
 ### NativeAOT builds
 
@@ -76,7 +76,7 @@ The iOS publish requires device signing; simulator builds are not a substitute
 for a NativeAOT device publish.
 
 The pinned Android workload requests NativeAOT runtime
-`11.0.0-rc.1.26428.117`, which is not on NuGet.org. `NuGet.Config` maps only
+`11.0.0-rc.2.26504.105`, which is not on NuGet.org. `NuGet.Config` maps only
 `Microsoft.NETCore.App.Runtime.NativeAOT.android-*` packages to Microsoft's
 official `dotnet11` feed; other packages stay on NuGet.org.
 Android NativeAOT is experimental in this workload (`XA1040`) and is not yet
@@ -211,7 +211,7 @@ native map viewport, so Google Maps zoom controls and provider attribution stay
 unobstructed on both platforms. Android pages retain keyboard avoidance without
 adding another container inset on top of native Shell chrome.
 `Microsoft.Maui.Controls.Maps` is pinned to the same
-RC1 version as Controls. `UseMauiMaps()` enables native MapKit/Google Maps handlers.
+RC2 version as Controls. `UseMauiMaps()` enables native MapKit/Google Maps handlers.
 MAUI 11's `IsClusteringEnabled` and `Pin.ImageSource` APIs supply native clustering,
 default cluster-tap zoom, and custom pin images; no custom map handler or
 third-party clustering implementation is used. MAUI's `MapSpan.FromLocations`
