@@ -245,6 +245,9 @@ public partial class ConferenceViewModel(
         try
         {
             session.IsSaved = await schedule.ToggleAsync(session.Id);
+            // Also shows sessions saved in another browser tab.
+            foreach (var other in allSessions)
+                other.IsSaved = schedule.IsSaved(other.Id);
             RefreshSchedule();
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or JsonException)

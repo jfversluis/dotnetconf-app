@@ -88,6 +88,21 @@ public sealed class ScheduleTests : IDisposable
     }
 
     [Fact]
+    public async Task ToggleKeepsSessionsSavedInAnotherTab()
+    {
+        string? value = null;
+        ValueScheduleStore Store() => new(() => value, json => value = json);
+        var first = new ScheduleService(Store());
+        var second = new ScheduleService(Store());
+        await first.InitializeAsync();
+        await second.InitializeAsync();
+        Assert.True(await first.ToggleAsync("one"));
+        Assert.True(await second.ToggleAsync("two"));
+        Assert.True(second.IsSaved("one"));
+        Assert.Equal("[\"one\",\"two\"]", value);
+    }
+
+    [Fact]
     public async Task CorruptValueIsNotOverwritten()
     {
         var value = "corrupt";

@@ -109,9 +109,12 @@ public sealed class ScheduleService(IScheduleStore store)
         await gate.WaitAsync(cancellationToken);
         try
         {
-            var next = new HashSet<string>(savedIds, StringComparer.Ordinal);
-            var added = next.Add(sessionId);
-            if (!added)
+            // Another browser tab may have saved sessions since this one loaded, so start from what's stored.
+            var next = new HashSet<string>(await store.ReadAsync(cancellationToken), StringComparer.Ordinal);
+            var added = !savedIds.Contains(sessionId);
+            if (added)
+                next.Add(sessionId);
+            else
                 next.Remove(sessionId);
             await store.WriteAsync(next, cancellationToken);
             savedIds = next;
