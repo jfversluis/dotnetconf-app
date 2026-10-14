@@ -5,7 +5,7 @@
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('linux'))">net11.0-android</TargetFrameworks>
     <TargetFrameworks Condition="'$(MobileTargetFramework)' != ''">$(MobileTargetFramework)</TargetFrameworks>
     <!-- net11.0 is the Avalonia-drawn Linux desktop app; net11.0-browser is hosted by DotNetConf.App.Browser. -->
-    <TargetFrameworks>$(TargetFrameworks);net11.0;net11.0-browser</TargetFrameworks>
+    <TargetFrameworks Condition="'$(MobileTargetFramework)' == ''">$(TargetFrameworks);net11.0;net11.0-browser</TargetFrameworks>
     <OutputType Condition="'$(TargetFramework)' != 'net11.0-browser'">Exe</OutputType>
     <RootNamespace>DotNetConf.App</RootNamespace>
     <UseMaui>true</UseMaui>

@@ -179,7 +179,6 @@ The app-development and specialist skills were installed using an isolated night
 
 Session/speaker links reuse a matching detail already in the active Shell tab's navigation stack, popping back to that page rather than building circular history. New IDs still push normal details; the other tabs' histories remain independent. Native list scroll viewports span the page, while content templates retain 24-unit gutters, so scrollbars stay at the outer edge.
 
-<<<<<<< HEAD
 Sessions uses the MIT-licensed Syncfusion Toolkit `SfTabView`, registered with
 `ConfigureSyncfusionToolkit()`, for equal-width, two-line local-day headers.
 All days remains available. The index adapter maps to the existing `SelectedDay`
@@ -208,10 +207,7 @@ and hints may retain their initial values when bindings change; don't rely on
 them alone to announce the active count. Do not add a custom badge renderer for
 older iOS.
 
-The next data stage replaces the bundled source with a validated HTTPS feed and last-known-good offline cache. Do not just flip `isMock` on fictional content. Reminders, local AI, Avalonia-owned video integration, and desktop targets are intentionally deferred. PR build validation and manual Google Play internal-testing/TestFlight release lanes are described in [CI and release setup](docs/CI.md); production promotion remains manual and store credentials must be configured by the owner.
-=======
-The next data stage replaces the bundled source with a validated HTTPS feed and last-known-good offline cache. Do not just flip `isMock` on fictional content. Maps, reminders, local AI, Avalonia-owned video integration, and store/CI/signing are intentionally deferred.
->>>>>>> e4e30ca (Add Linux and WebAssembly targets with Avalonia.Controls.Maui)
+The next data stage replaces the bundled source with a validated HTTPS feed and last-known-good offline cache. Do not just flip `isMock` on fictional content. Reminders, local AI, and Avalonia-owned video integration are intentionally deferred. PR build validation and manual Google Play internal-testing/TestFlight release lanes are described in [CI and release setup](docs/CI.md); production promotion remains manual and store credentials must be configured by the owner.
 
 App-owned icons use [IconFont.Maui.FluentIcons](https://github.com/jfversluis/IconFont.Maui.FluentIcons). Website-matched Space Grotesk headings and Open Sans body fonts, gradients, Entry-based search, and heart save actions are documented in `DESIGN.md`. iOS uses MAUI safe-area controls and native automatic scroll insets to scroll beneath the system tab material without fixed offsets.
 
