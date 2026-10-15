@@ -16,7 +16,7 @@ public sealed class PlannerToolTests
         tools.Initialize(conference, TimeZoneInfo.Utc, []);
         tools.CapturePreferences(["Alex Rivera"], []);
         var functions = tools.CreateFunctions().Cast<AIFunction>().ToArray();
-        Assert.Equal(4, functions.Length);
+        Assert.Equal(5, functions.Length);
         foreach (var function in functions)
         {
             Assert.Equal(JsonValueKind.Object, function.JsonSchema.ValueKind);
@@ -130,7 +130,7 @@ public sealed class PlannerToolTests
         tools.Initialize(conference, TimeZoneInfo.Utc, []);
         tools.CapturePreferences([], []);
         var search = tools.CreateFunctions().Cast<AIFunction>().Single(f => f.Name == "search_sessions");
-        for (var i = 0; i < 10; i++)
+        for (var i = 0; i < 32; i++)
             await search.InvokeAsync(new AIFunctionArguments { ["query"] = "", ["skip"] = 0 });
         await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await search.InvokeAsync(new AIFunctionArguments { ["query"] = "", ["skip"] = 0 }));

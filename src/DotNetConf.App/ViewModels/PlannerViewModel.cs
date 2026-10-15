@@ -43,10 +43,12 @@ public partial class PlannerViewModel(
     [NotifyPropertyChangedFor(nameof(CanGenerate))]
     [NotifyPropertyChangedFor(nameof(CanApply))]
     [NotifyPropertyChangedFor(nameof(CanEdit))]
+    [NotifyPropertyChangedFor(nameof(CanRetryModel))]
     public partial bool IsBusy { get; set; }
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanGenerate))]
     [NotifyPropertyChangedFor(nameof(CanEdit))]
+    [NotifyPropertyChangedFor(nameof(CanRetryModel))]
     public partial bool IsReady { get; set; }
     [ObservableProperty] public partial string Status { get; set; } = "Checking the on-device model...";
     [ObservableProperty] public partial string Constraints { get; set; } = "";
@@ -58,11 +60,20 @@ public partial class PlannerViewModel(
     [NotifyPropertyChangedFor(nameof(CanApply))]
     public partial bool ConstraintsConfirmed { get; set; }
     [ObservableProperty] public partial bool HasProposal { get; set; }
+    [ObservableProperty] public partial bool HasAddedSessions { get; set; }
     public ObservableCollection<ProposedSessionViewModel> Sessions { get; } = [];
     public bool CanGenerate => IsReady && !IsBusy && !string.IsNullOrWhiteSpace(Request);
-    public bool CanEdit => IsReady && !IsBusy;
+    public bool CanEdit => !IsBusy;
+    public bool CanRetryModel => !IsReady && !IsBusy && OnDevicePlanner.UnsupportedReason is null;
     public bool CanApply => HasValidProposal && ConstraintsConfirmed && !IsBusy;
     public string TimeZoneLabel => $"Use dates and times in {TimeZoneInfo.Local.Id}, or explicitly name another time zone.";
+
+    [RelayCommand]
+    private void UseExample(string example)
+    {
+        if (CanEdit)
+            Request = example;
+    }
 
     public async Task InitializeAsync()
     {
@@ -231,6 +242,7 @@ public partial class PlannerViewModel(
             await schedule.AddAsync(SelectedProposal().SessionIds);
             conference.RefreshSavedState();
             ClearProposal();
+            HasAddedSessions = true;
             Status = "Selected proposals added to My Schedule. Your previous likes were kept.";
         }
         catch (Exception exception) when (IsExpectedFailure(exception))

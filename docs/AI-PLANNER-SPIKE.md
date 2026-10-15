@@ -1,6 +1,7 @@
 # On-device planner spike: runtime prompts
 
-Open **My Schedule > Plan with on-device AI (spike)** on an Apple
+On first launch, use the skippable welcome, or reopen
+**My Schedule > Plan with on-device AI (spike)** on an Apple
 Intelligence-capable target. Wait for the actual local readiness inference,
 then enter a request and generate a preview. Review both the session list and
 the interpreted constraints before confirming and adding sessions.
@@ -35,11 +36,15 @@ prevent `UI` from accidentally matching the word `build`.
 A combined request previously took the all-speaker shortcut and skipped the
 topic query entirely. Independent topic and speaker requests now contribute a union of
 results. Topic intent, quantity, OR/AND and speaker scope are extracted separately.
-Literal topics are grounded directly from the request. For inferred interests
-combined with speakers, the source phrase must occur in the request; names,
-dates and generic conference-request words alone are not evidence of an interest.
-Vague topic-only requests use the model's classification into real agenda tags.
-All-topic requests paginate, and C# validates their completeness
+Literal topics are grounded directly from the request. Catalog-aware prefix
+and edit-distance matching handle shorthand and spelling errors, without a
+separate alias for every typo. Names, dates and generic conference-request words
+alone are not evidence of an interest. Remaining source clauses are classified
+by the real local model into the closest actual agenda topic. Adjacent goal
+clauses stay together, so "screen readers and bigger text" retains its context.
+The model gets a bounded catalog of every real topic plus a representative
+session title, not just an ungrounded enum or the entire agenda JSON.
+Every relevant ID is then gathered in C#, and C# validates completeness
 independently of all-speaker completeness. Topic completeness is relative to the
 explicit availability. All matching talks remain visible, including late talks
 and conflicts with existing likes: warning rows are unchecked and cannot be
@@ -53,8 +58,9 @@ every tag needs explicit combined-talk wording, such as BOTH, together, or
 in the same session. A plain "and" previously forced an intersection, making
 three-interest requests find no talks. Literal-topic grounding also previously
 discarded inferred interests when mixed with exact tags; catalog topic aliases
-now preserve phrases such as mobile development, phone apps, and faster code
-alongside AI or MAUI. A single
+now preserve inferred interests alongside literal topics instead of dropping them.
+Small scalar semantic decisions avoid allowing one large multi-topic response
+to replace clear source mentions with neighboring subjects. A single
 speaker scope such as `Maddy's MAUI sessions` intersects those speakers and topics.
 Different pairings such as Maddy/MAUI plus Gerald/C# are explicitly rejected
 rather than flattened into an incorrect union.
@@ -82,6 +88,17 @@ topics, complete all-speaker requests and preservation of hard constraints.
 
 | Request | Expected result |
 | --- | --- |
+| `I like mobile, AI and I want to see everything on perf` | All eleven Mobile OR AI OR Performance matches, including both performance talks. |
+| `Everything on performnce` / `gimme all the perf talks pls` | Both performance talks, without extra C# talks. |
+| `All talks on MAUUI` / `Everything about Blazorrr` | Seven MAUI matches / two Blazor matches, not broad Mobile/Web replacements. |
+| `My app is sluggish. Help me find bottlenecks and cut memory allocations` | Only the two performance talks; a valid recommendation. |
+| `I need to build HTTP endpoints for my backend` | `aspnet-apis`; Backend must not become a required person. |
+| `My users need screen readers and bigger text` | Only `accessible-by-design`; do not split off "bigger text" into an unrelated performance interest. |
+| `I'm chasing lower memory use and smoother startup` | Both performance matches. Independent holdout phrasing, not an instruction example. |
+| `Could you find talks about assistive technology?` | `accessible-by-design`. Independent holdout phrasing. |
+| `Show me every perf talk and all Blazorr talks` | Both performance and both Blazor talks. |
+| `I care about MAUUI, AI, and perf` | Twelve MAUI OR AI OR Performance matches, without inventing a speaker/time constraint. |
+| `Please find sessions on making builds and tests more reliable` | `gerald-maui-testing`. Independent holdout phrasing. |
 | `I like mobile development and AI and want to get the latest on performance` | Eleven Mobile OR AI OR Performance matches; a nonempty valid selected subset, no invented availability. |
 | `I like MAUI and AI and performance` | Twelve MAUI OR AI OR Performance matches; a nonempty valid selected subset, not a three-tag intersection. |
 | `Give me everything about MAUI and don't miss a session from Maddy` | Seven MAUI talks, including both Maddy talks. Independent all-topic and don't-miss speaker constraints. |
@@ -116,28 +133,77 @@ talks; `I'd like Stephen Toub's performance talks` selects the performance
 talks; `Show every talk by Ortinau` includes both of David Ortinau's talks.
 These are runtime checks, not hard-coded responses or prompt-specific branches.
 
+## Real conference size and catalog strategy
+
+Microsoft's [.NET Conf 2024 recap](https://devblogs.microsoft.com/dotnet/dotnet-conf-2024-recap/)
+reports **92 sessions over four days**. A 100-session catalog is therefore a
+realistic target, not an unusually large conference.
+
+Several actual-client approaches were tried rather than assuming that more
+context would solve relevance. Full session batches (titles, descriptions and
+tags) produced missing and irrelevant matches. English sentence embeddings
+ranked adjacent programming categories above the intended API/accessibility
+subjects. Multi-topic arrays and fixed slots also over-expanded interests.
+The retained approach uses compact catalog context, source-anchored mentions,
+and small semantic classifications for goals. No experimental embedding,
+response-repair or fake-model fallback ships.
+
+Context size scales with the topic vocabulary, not session count. The preview
+explicitly rejects catalogs over 120 sessions or 9,000 context characters,
+rather than silently dropping categories. All matching sessions remain visible;
+ordinary recommendations use a bounded interval-scheduling dynamic program
+instead of searching all subsets of a 100-session catalog. Required speakers,
+availability, existing likes and the 12-selection limit still apply.
+
 ## Verification and limitations
 
 Runtime checks use the isolated `dotnetconf-planner-iPhone17Pro` simulator
-(iOS 26.5, Europe/Amsterdam). After the interest-list correction, the expanded
-31-case matrix ran twice: **62/62 strict checks passed**, including the two
-three-interest requests and all four earlier user-supplied examples on both passes.
+(iOS 26.5, Europe/Amsterdam). The expanded **44-case matrix ran twice:
+88/88 strict checks passed**, including the original requests, shorthand,
+spelling errors, semantic goals, and five new holdout phrasings.
 Assertions checked matched and selected IDs, visible warnings, disabled excluded
 checkboxes, validity, unrestricted/explicit windows and all-speaker completeness.
-The previous 29-case run passed 57/58: one `Help me make my code faster`
-pass inferred Performance OR C#, showing extra C# alternatives. Grounding the
-common faster-code phrase to Performance now prevents this particular drift;
-both latest passes returned only the expected performance matches.
+Earlier approaches failed measurably: the first full semantic pass reached
+31/39, and a later source-grounded iteration reached 73/78. Causes included
+broader neighboring tags, a time-only clause misread as an interest, and one
+native structured-generation failure. Source anchoring, clock-clause filtering,
+explicit absent-subject checks, and the smaller two-field intent schema
+addressed those failures before the final repeated run.
 The runs exercised the real Apple client and agenda
 functions, not a fake `IChatClient`. They generated previews only and did not
 change likes.
 
-All 123 core/adapter tests passed, as did iOS simulator and Android Debug builds
+Two additional actual-client checks used an isolated synthetic **100-session**
+fixture, without changing the normal agenda or likes: "Everything about perf"
+and a lower-memory/smoother-startup goal both returned all **9/9 expected
+performance matches**, with no missing or unrelated IDs (1.9 and 2.4 seconds
+in this simulator). The temporary Debug action was removed afterward.
+These timings are not physical-device performance guarantees.
+
+The final installed artifact also passed a fresh **44/44** regression pass after
+the onboarding corrections. Six end-to-end lifecycle/save scenarios passed:
+Skip persists without returning to a cached welcome on Home; native back
+persists; an interrupted launch offers onboarding again; cancellation does not
+publish a late preview; saving requires confirmation and hands off to Schedule;
+and a second proposal preserves the first like across app restart.
+Two readiness timeouts during rapid force-quit/re-entry testing showed visible
+retry/skip states and recovered through the explicit retry control. Test-created
+likes were removed afterward, restoring the original empty schedule.
+
+Light/dark visual inspection included the maximum iOS accessibility text size.
+That exposed truncated example/browse buttons; full-width wrapping buttons
+were corrected and visually rechecked. The screen scrolls, font scaling remains
+enabled, and native Skip stays reachable.
+
+All 149 core/adapter tests passed, as did iOS simulator and Android Debug builds
 and an unsigned iOS NativeAOT publish. Core and adapter coverage includes
 partial-name ambiguity, independent topic and
 speaker completeness, their union, pagination beyond four talks, availability filtering, overlap
 arrangement that retains required speakers, offset consistency and
 source-generated JSON with reflection serialization disabled.
+The independent code review found competing startup navigations; that was
+removed. Runtime tests additionally caught tab-stack retention and native-back
+dismissal timing, both corrected before the final checks.
 
 This is a proof of concept, not a guarantee for arbitrary language. Earlier
 iterations produced invented constraints, incorrect topic classifications,
@@ -149,7 +215,7 @@ warnings. Android compiles and remains explicitly unavailable for inference;
 there is no cloud or canned fallback.
 
 The spike accepts at most four topics, eight speakers, twelve availability
-windows and twelve selected talks, within ten app-function calls. Use one time
+windows and twelve selected talks, within 32 app-function calls. Use one time
 zone per request. An oversized complete match stays visible with a validation
 error rather than silently becoming a partial result. Different speaker/topic
 pairings still require separate requests.

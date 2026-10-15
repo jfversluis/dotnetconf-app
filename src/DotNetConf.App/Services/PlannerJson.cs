@@ -55,11 +55,11 @@ public sealed record PlannerTopicRequest(string Text, string[] Topics, string Qu
 
     public PlannerTopicFilter? ToFilter(ConferenceDocument conference, string request, bool hasSpeakers = false)
     {
-        if (Topics is null || Topics.Length > 4 || Topics.Any(t => t is null)
+        if (Text is null || Topics is null || Topics.Length > 4 || Topics.Any(t => t is null)
             || Quantity is not ("all" or "some") || Match is not ("any" or "all")
             || SpeakerScope is not ("independent" or "within-topics" or "unsupported"))
             throw new InvalidDataException("The model returned invalid topic fields.");
-        if (SpeakerScope == "unsupported")
+        if (hasSpeakers && SpeakerScope == "unsupported")
             throw new InvalidDataException("Separate different speaker/topic pairs into individual requests; this spike cannot safely combine them.");
         var literal = Agenda.MentionedTopics(conference, request);
         if (literal.Length == 0)
@@ -70,7 +70,7 @@ public sealed record PlannerTopicRequest(string Text, string[] Topics, string Qu
                 return null;
         }
         var known = conference.Sessions.SelectMany(s => s.Topics).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var topics = (literal.Length > 0 ? literal : Topics).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var topics = Topics.Concat(literal).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
         if (topics.Length is 0 or > 4 || topics.Any(t => !known.Contains(t)))
             throw new InvalidDataException("No supported agenda topics matched, or more than four were requested. Use up to four real agenda topics.");
         var topicPattern = string.Join('|', topics.Select(t => Regex.Escape(t.StartsWith(".NET ", StringComparison.Ordinal) ? t[5..] : t)));
@@ -92,7 +92,7 @@ public sealed record PlannerTopicRequest(string Text, string[] Topics, string Qu
             @"\bboth\b|\b(?:all|each|every)\s+(?:(?:of\s+)?(?:these|the|requested)\s+)?topics\b|\b(?:same\s+(?:session|talk)|together|combin(?:e|es|ing|ation))\b",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
         return new(topics, explicitAnd && !explicitOr,
-            scopedSpeakers > 0 || (SpeakerScope == "within-topics" && !independentClause), RequestsAll(request));
+            hasSpeakers && (scopedSpeakers > 0 || (SpeakerScope == "within-topics" && !independentClause)), RequestsAll(request));
     }
 
     public bool HasInterest(ConferenceDocument conference, string request)
@@ -110,18 +110,17 @@ public sealed record PlannerTopicRequest(string Text, string[] Topics, string Qu
             remaining = Regex.Replace(remaining, $@"\b(?:{string.Join('|', names)})\b", "",
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
             return Regex.Replace(remaining,
-                @"\b(?:all|every|everything|sessions?|talks?|show|me|by|from|with|and|or|of|the|please|s|a|an|I|want|would|like|must|see|watch|only|available|availability|on|at|in|before|after|between|until|to|time|local|UTC|am|pm|don|t|do|not|miss|any|but|exclude|excluding|ending|ends?|finish(?:ing|es)?|they|are|for|no|matter|regardless|January|February|March|April|May|June|July|August|September|October|November|December|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b", "",
+                @"\b(?:all|every|everything|each|day|daily|sessions?|talks?|show|give|find|me|by|from|with|and|or|of|the|please|s|a|an|I|want|would|like|must|can|see|watch|only|just|available|availability|on|at|in|before|after|between|until|to|time|local|UTC|am|pm|don|t|do|not|miss|any|but|exclude|excluding|ending|ends?|finish(?:ing|es)?|they|are|for|no|matter|regardless|about|surprise|January|February|March|April|May|June|July|August|September|October|November|December|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b", "",
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
         }
         if (!Remaining(request).Any(char.IsLetter))
             return false;
-        if (!request.Contains(Text, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("The model's topic phrase was not present in the request.");
         return Remaining(Text).Any(char.IsLetter);
     }
 }
 
-public sealed record PlannerSelection(string[] SessionIds);
+public sealed record PlannerTopicIntent(string Quantity, string SpeakerScope);
+public sealed record PlannerTopicClassification(string Topic);
 public sealed record PlannerDailyAvailability(string DailyStart, string DailyEnd, string Zone)
 {
     public PlannerDailyAvailability Ground(string request)
@@ -230,26 +229,26 @@ public sealed record PlannerWindow(string Start, string End, string Zone)
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 [JsonSerializable(typeof(PlannerInterpretation))]
 [JsonSerializable(typeof(PlannerTopicRequest))]
-[JsonSerializable(typeof(PlannerSelection))]
+[JsonSerializable(typeof(PlannerTopicClassification))]
+[JsonSerializable(typeof(PlannerTopicIntent))]
 [JsonSerializable(typeof(PlannerAvailability))]
 [JsonSerializable(typeof(PlannerDailyAvailability))]
 internal partial class PlannerJsonContext : JsonSerializerContext;
 
 internal static class PlannerSchemas
 {
+    public static JsonElement TopicIntent { get; } = Parse(
+        """
+        {"title":"TopicIntent","type":"object","properties":{"quantity":{"type":"string","enum":["all","some"]},"speakerScope":{"type":"string","enum":["independent","within-topics","unsupported"]}},"required":["quantity","speakerScope"],"additionalProperties":false}
+        """);
+    public static JsonElement ClassifyTopic(ConferenceDocument conference) => WithChoices(Parse(
+        """
+        {"title":"ClosestAgendaTopic","type":"object","properties":{"topic":{"type":"string","description":"The single closest agenda topic for this interest. Correct typos and understand abbreviations. Use none if no topic is relevant."}},"required":["topic"],"additionalProperties":false}
+        """), "topic", conference.Sessions.SelectMany(s => s.Topics).Prepend("none").Distinct());
+
     private static JsonElement InterpretationTemplate { get; } = Parse(
         """
         {"title":"ConferenceRequest","type":"object","properties":{"speakerNames":{"type":"string","description":"Names of PEOPLE explicitly mentioned, copied verbatim and separated by semicolons. Use none if no person. Topics and interests are NOT people."},"availabilityText":{"type":"string","description":"Copy explicit date/time restrictions, including daily clock cutoffs. Use none if no restriction, or if the user says no matter the time. Latest/newest about a topic does NOT restrict dates."},"quantity":{"type":"string","enum":["all","some"],"description":"Use all for all/every/everything by a person or don't miss a session from a person; otherwise some."},"searchQuery":{"type":"string","description":"Closest topic for stated interests. Faster code maps to Performance; browser apps to Web; phone apps to Mobile. Use none for speaker-only requests or no interests."}},"required":["speakerNames","availabilityText","quantity","searchQuery"],"additionalProperties":false}
-        """);
-
-    private static JsonElement TopicTemplate { get; } = Parse(
-        """
-        {"title":"ConferenceTopicRequest","type":"object","properties":{"text":{"type":"string","description":"Copy the exact topical-interest phrase, excluding speaker names and time restrictions. Use none for speaker-only requests."},"topics":{"type":"array","minItems":0,"maxItems":4,"items":{"type":"string"},"description":"All requested real agenda topics. MAUI means .NET MAUI; faster code means Performance; phone apps means Mobile; web stuff means Web. Empty if none or unavailable. Never infer a person's expertise."},"quantity":{"type":"string","enum":["all","some"],"description":"all for all/every/everything about the requested TOPICS, otherwise some."},"match":{"type":"string","enum":["any","all"],"description":"any for OR or a comma-separated topic list; all for explicitly requiring sessions about BOTH topics (AND)."},"speakerScope":{"type":"string","enum":["independent","within-topics","unsupported"],"description":"independent for topic talks PLUS don't-miss speaker talks. within-topics for a person's talks ABOUT the topics. unsupported for different topic/speaker pairings per clause, such as Maddy's MAUI and Gerald's C#."}},"required":["text","topics","quantity","match","speakerScope"],"additionalProperties":false}
-        """);
-
-    private static JsonElement SelectionTemplate { get; } = Parse(
-        """
-        {"title":"ConferenceSelection","type":"object","properties":{"sessionIds":{"type":"array","minItems":0,"maxItems":12,"items":{"type":"string"},"description":"Select real IDs from the agenda function result, satisfying the user's request without overlapping sessions. Empty only if impossible."}},"required":["sessionIds"],"additionalProperties":false}
         """);
 
     public static JsonElement Availability { get; } = Parse(
@@ -265,12 +264,6 @@ internal static class PlannerSchemas
     public static JsonElement Interpretation(ConferenceDocument conference) =>
         WithChoices(InterpretationTemplate, "searchQuery",
             conference.Sessions.SelectMany(s => s.Topics).Prepend("none").Distinct());
-
-    public static JsonElement Selection(IEnumerable<string> candidateIds) =>
-        WithChoices(SelectionTemplate, "sessionIds", candidateIds);
-
-    public static JsonElement Topic(ConferenceDocument conference) =>
-        WithChoices(TopicTemplate, "topics", conference.Sessions.SelectMany(s => s.Topics).Distinct());
 
     private static JsonElement WithChoices(JsonElement template, string propertyName, IEnumerable<string> choices)
     {

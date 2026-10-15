@@ -25,6 +25,16 @@ availability in natural language. Skip it at any time, or reopen it from
 **My Schedule → Plan with on-device AI (spike)**. This is not a hosted chatbot:
 there are no API keys, accounts, fake responses or cloud fallback.
 
+The welcome screen opens automatically on a fresh install. **Skip**, **I'll
+explore on my own**, and native back dismiss it without changing saved sessions;
+dismissal is remembered across launches. An interrupted first run is offered
+again. Example prompts only fill the editor: you still choose when to generate,
+review the preview, and explicitly confirm before anything is added.
+
+Startup navigation is owned by `App`, not Home's appearance lifecycle. To repeat
+first-run QA, clear only this app's `planner-onboarding-completed-v1` preference.
+The legacy `planner-intro-shown-v1` preference is ignored and need not be reset.
+
 The spike uses `Microsoft.Maui.Essentials.AI`'s `AppleIntelligenceChatClient`
 on supported Apple Intelligence iPhones with **iOS 26+**, Apple Intelligence
 enabled, a supported language, and the local model downloaded. It checks

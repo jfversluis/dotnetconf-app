@@ -101,6 +101,38 @@ public sealed class PlannerJsonTests
     }
 
     [Fact]
+    public async Task ModelCannotTurnBackendWordsOrUnmentionedRealPeopleIntoRequiredSpeakers()
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        Assert.Empty(new PlannerInterpretation("Backend", "none", "APIs", "some")
+            .Ground(conference, "I need to build HTTP endpoints for my backend").Speakers);
+        Assert.Empty(new PlannerInterpretation("Daniel Roth", "none", "APIs", "some")
+            .Ground(conference, "I need to build HTTP endpoints for my backend").Speakers);
+        Assert.Equal(["Ada Lovelace"], new PlannerInterpretation("Ada Lovelace", "none", "none", "some")
+            .Ground(conference, "I must see Ada Lovelace").Speakers);
+        Assert.Equal(["Scott"], new PlannerInterpretation("Scott Hunter", "none", "none", "all")
+            .Ground(conference, "All talks by Scott").Speakers);
+        Assert.Equal(["Gerald"], new PlannerInterpretation("none", "none", "none", "all")
+            .Ground(conference, "Everything from Gerald").Speakers);
+        Assert.Equal(["Scot"], new PlannerInterpretation("Scot", "none", "none", "all")
+            .Ground(conference, "All talks by Scot").Speakers);
+    }
+
+    [Theory]
+    [InlineData("All talks on MAUUI", ".NET MAUI")]
+    [InlineData("Everything about Blazorrr", "Blazor")]
+    [InlineData("gimme all the perf talks pls", "Performance")]
+    [InlineData("Everything on performnce", "Performance")]
+    [InlineData("I want to build phone apps", "Mobile")]
+    public async Task CatalogAwareSpellingAndShorthandDoNotNeedPerTypoAliases(string request, string topic)
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        Assert.Equal([topic], Agenda.MentionedTopics(conference, request));
+    }
+
+    [Fact]
     public async Task MixedAllRequestsKeepIndependentTopicAndSpeakerQuantities()
     {
         await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
@@ -140,11 +172,8 @@ public sealed class PlannerJsonTests
         var conference = await ConferenceJson.ReadAsync(stream);
         Assert.Equal(expected, new PlannerTopicRequest(evidence, [], "all", "any", "independent").HasInterest(conference, evidence));
         Assert.False(new PlannerTopicRequest("none", [], "all", "any", "independent").HasInterest(conference, evidence));
-        if (expected)
-            Assert.Throws<InvalidDataException>(() =>
-                new PlannerTopicRequest("invented interest", [], "all", "any", "independent").HasInterest(conference, evidence));
-        else
-            Assert.False(new PlannerTopicRequest("invented interest", [], "all", "any", "independent").HasInterest(conference, evidence));
+        Assert.Equal(expected,
+            new PlannerTopicRequest("a semantic paraphrase", [], "all", "any", "independent").HasInterest(conference, evidence));
     }
 
     [Theory]
@@ -171,9 +200,9 @@ public sealed class PlannerJsonTests
         var independent = new PlannerTopicRequest("C#", ["C#", "Mobile"], "all", "any", "within-topics")
             .ToFilter(conference, "All C# sessions and everything from Ortinau")!;
         Assert.False(independent.RestrictToRequiredSpeakers);
-        Assert.Equal(["C#"], independent.Topics);
+        Assert.Equal(["C#", "Mobile"], independent.Topics);
         var scope = new PlannerTopicRequest("MAUI", [".NET MAUI"], "all", "any", "independent")
-            .ToFilter(conference, "All of Maddy's MAUI sessions")!;
+            .ToFilter(conference, "All of Maddy's MAUI sessions", hasSpeakers: true)!;
         Assert.True(scope.RestrictToRequiredSpeakers);
         Assert.Throws<InvalidDataException>(() =>
             new PlannerTopicRequest("Rust", [], "all", "any", "independent").ToFilter(conference, "Everything about Rust"));
@@ -182,6 +211,20 @@ public sealed class PlannerJsonTests
                 .ToFilter(conference, "Maddy's MAUI talks and Gerald's C# talks"));
         Assert.True(new PlannerInterpretation("Maddy", "none", "none", "all")
             .RequestsAllSpeakers("Give me everything about MAUI and don't miss a session from Maddy"));
+    }
+
+    [Fact]
+    public async Task InferredInterestsSurviveAlongsideLiteralTopicsWithoutAnAliasDictionary()
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        var filter = new PlannerTopicRequest("mobile, AI and perf", ["Mobile", "AI", "Performance"],
+            "all", "any", "within-topics")
+            .ToFilter(conference, "I like mobile, AI and I want to see everything on perf")!;
+        Assert.Equal(["Mobile", "AI", "Performance"], filter.Topics);
+        Assert.False(filter.RestrictToRequiredSpeakers);
+        Assert.Contains(SchedulePlanner.TopicMatches(conference, new([], [], []) { TopicFilter = filter }),
+            s => s.Id == "runtime-profiling");
     }
 
     [Theory]
@@ -193,7 +236,7 @@ public sealed class PlannerJsonTests
     {
         await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
         var conference = await ConferenceJson.ReadAsync(stream);
-        var filter = new PlannerTopicRequest("AI", ["AI", "C#"], "some", "all", "independent")
+        var filter = new PlannerTopicRequest("AI", ["AI"], "some", "all", "independent")
             .ToFilter(conference, request)!;
         Assert.False(filter.MatchAll);
         Assert.Equal(new[] { mobileTopic, "AI", "Performance" }.Order(), filter.Topics.Order());
@@ -314,7 +357,7 @@ public sealed class PlannerJsonTests
     }
 
     [Fact]
-    public async Task SchemasGroundTopicsAndSelectionsWithoutEmbeddingTheCatalog()
+    public async Task SchemasConstrainSemanticDecisionsToRealTopicsWithoutEmbeddingTheFullCatalog()
     {
         await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
         var conference = await ConferenceJson.ReadAsync(stream);
@@ -324,9 +367,10 @@ public sealed class PlannerJsonTests
         Assert.Contains("Mobile", topics);
         Assert.Contains("none", topics);
         Assert.DoesNotContain("building-with-maui", topics);
-        var ids = PlannerSchemas.Selection(["blazor-web", "aspnet-apis"]).GetProperty("properties")
-            .GetProperty("sessionIds").GetProperty("items").GetProperty("enum")
+        var classifiedTopics = PlannerSchemas.ClassifyTopic(conference).GetProperty("properties")
+            .GetProperty("topic").GetProperty("enum")
             .EnumerateArray().Select(e => Assert.IsType<string>(e.GetString())).ToArray();
-        Assert.Equal(["blazor-web", "aspnet-apis"], ids);
+        Assert.Equal(topics.Order(), classifiedTopics.Order());
+        Assert.Equal(2, PlannerSchemas.TopicIntent.GetProperty("properties").EnumerateObject().Count());
     }
 }

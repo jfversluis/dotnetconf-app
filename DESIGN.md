@@ -56,6 +56,18 @@ Five Shell destinations: Home, Sessions, Speakers, My Schedule, Community. Andro
 
 ## Content and states
 
+The first-run planner is a native pushed page, not a tour or account gate. Its
+Space Grotesk welcome heading and incumbent hero wash lead directly into one
+prompt. A native toolbar Skip action stays reachable while the page scrolls;
+the browse action and native back also dismiss it. Dismissal persists locally,
+while an interrupted launch remains eligible. My Schedule retains re-entry.
+Example buttons fill the editor without generating or saving. Apple-only local
+model availability, privacy boundaries, and the fictional agenda are stated
+explicitly. Suggestions appear progressively as a reviewable shortlist with
+native checkboxes; interpreted constraints still require explicit confirmation.
+After saving, View My Schedule provides the next step. The same semantic theme
+tokens, scalable text, 48-unit actions, and typed Fluent icons apply throughout.
+
 Sessions keeps search clearing in the Entry and topic clearing beside the summary
 and in Filters. Clearing topics leaves day selection and search unchanged.
 Neither changes saved sessions. A zero-match result keeps search reachable; day

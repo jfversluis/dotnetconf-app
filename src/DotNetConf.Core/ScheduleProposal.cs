@@ -23,6 +23,43 @@ public static class SchedulePlanner
 {
     public const int MaximumSessions = 12;
 
+    public static string[] Recommend(ConferenceDocument conference, ScheduleProposal preferences,
+        IEnumerable<string> candidateIds, TimeZoneInfo zone, IReadOnlyCollection<string> savedIds)
+    {
+        var ids = candidateIds.ToHashSet(StringComparer.Ordinal);
+        var eligible = conference.Sessions.Where(s => ids.Contains(s.Id)
+            && Review(conference, new([s.Id], [], preferences.Availability), zone, savedIds).CanApply)
+            .OrderBy(s => s.EndsAt).ThenBy(s => s.Id, StringComparer.Ordinal).ToArray();
+        var speakers = preferences.RequiredSpeakers.Select(n => Agenda.FindSpeakers(conference, n))
+            .Select(matches => matches.Count == 1 ? matches[0].Id : "").ToArray();
+        if (speakers.Length > 8)
+            throw new InvalidDataException("Use at most eight required speakers.");
+        var states = new Dictionary<(int Mask, int Count), string[]>[eligible.Length + 1];
+        states[0] = new() { [(0, 0)] = [] };
+        for (var i = 0; i < eligible.Length; i++)
+        {
+            var session = eligible[i];
+            var previous = i;
+            while (previous > 0 && eligible[previous - 1].EndsAt > session.StartsAt)
+                previous--;
+            var next = new Dictionary<(int Mask, int Count), string[]>(states[i]);
+            var speakerMask = 0;
+            for (var index = 0; index < speakers.Length; index++)
+                if (session.SpeakerIds.Contains(speakers[index]))
+                    speakerMask |= 1 << index;
+            foreach (var (key, selected) in states[previous])
+            {
+                if (selected.Length >= MaximumSessions)
+                    continue;
+                var combined = (key.Mask | speakerMask, selected.Length + 1);
+                next.TryAdd(combined, [.. selected, session.Id]);
+            }
+            states[i + 1] = next;
+        }
+        return states[^1].Where(s => s.Key.Mask == (1 << speakers.Length) - 1)
+            .OrderByDescending(s => s.Key.Count).Select(s => s.Value).FirstOrDefault() ?? [];
+    }
+
     public static ScheduleProposal Arrange(
         ConferenceDocument conference, ScheduleProposal candidates, TimeZoneInfo timeZone,
         IReadOnlyCollection<string> savedIds)

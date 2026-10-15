@@ -84,17 +84,54 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
                     || error.StartsWith("Ambiguous speaker", StringComparison.Ordinal)).ToArray();
             if (nameErrors.Length > 0)
                 return new(tools.Preferences, string.Join("\n", nameErrors));
-            var topicSchema = PlannerSchemas.Topic(conference);
-            var topical = await client.GetResponseAsync(
-                [new ChatMessage(ChatRole.System,
-                    $"Extract requested topic interests, independently from speaker and time requests. Use the smallest set of agenda tags that expresses those interests: one vague interest needs one best tag, not every related language or framework. Preserve every explicitly named topic and speaker scope. Lists of interests joined by and mean ANY topic. Only require ALL tags if the user explicitly wants both topics in the same talk. Never infer expertise from a name. For speaker-only requests use text none, topics [], quantity some, match any, speakerScope independent. Respond using this schema:\n{topicSchema.GetRawText()}"),
-                 new ChatMessage(ChatRole.User, request)],
-                new ChatOptions { ResponseFormat = ChatResponseFormat.ForJsonSchema(topicSchema),
-                    MaxOutputTokens = 700, Temperature = 0 }, cancellationToken);
-            var topic = JsonSerializer.Deserialize(topical.Text, PlannerJsonContext.Default.PlannerTopicRequest)
-                ?? throw new InvalidDataException("The model returned no topic interpretation.");
-            if (topic.Text is null)
-                throw new InvalidDataException("The model returned no topic source phrase.");
+            var functions = tools.CreateFunctions().OfType<AIFunction>().ToDictionary(f => f.Name);
+            var catalog = await functions["catalog_topics"].InvokeAsync(new AIFunctionArguments(), cancellationToken);
+            var interests = PlannerCatalog.SemanticInterests(conference, request);
+            var topic = new PlannerTopicRequest(request, Agenda.MentionedTopics(conference, request), "some", "any", "independent");
+            if (topic.Topics.Length > 0 || interests.Length > 0)
+            {
+                var topical = await client.GetResponseAsync(
+                    [new ChatMessage(ChatRole.System,
+                        """
+                        Return only quantity and speakerScope.
+                        quantity: all if every matching TOPIC session is requested; some for ordinary interests.
+                        "Everything from Ortinau and some phone apps" means some, because all applies only to the speaker.
+                        speakerScope: independent for separate topic and speaker requests; within-topics for a person's
+                        talks about a topic; unsupported for different speaker/topic pairs.
+                        """),
+                     new ChatMessage(ChatRole.User, request)],
+                    new ChatOptions { ResponseFormat = ChatResponseFormat.ForJsonSchema(PlannerSchemas.TopicIntent),
+                        MaxOutputTokens = 150, Temperature = 0 }, cancellationToken);
+                var intent = JsonSerializer.Deserialize(topical.Text, PlannerJsonContext.Default.PlannerTopicIntent)
+                    ?? throw new InvalidDataException("The model returned no topic intent.");
+                topic = topic with { Quantity = intent.Quantity, SpeakerScope = intent.SpeakerScope };
+            }
+            if (interests.Length > 0)
+            {
+                List<string> mapped = [.. topic.Topics];
+                var schema = PlannerSchemas.ClassifyTopic(conference);
+                foreach (var phrase in interests)
+                {
+                    var classified = await client.GetResponseAsync(
+                        [new ChatMessage(ChatRole.System, $"""
+                            Choose the ONE most specific agenda topic for this interest. Understand typos, shorthand and goals.
+                            Reducing allocations and bottlenecks means Performance, not APIs, Testing or Cloud.
+                            HTTP endpoints means APIs. Screen readers and bigger text means Accessibility.
+                            Use none if unrelated. Respond with the topic field only.
+                            {catalog}
+                            """),
+                         new ChatMessage(ChatRole.User, phrase)],
+                        new ChatOptions { ResponseFormat = ChatResponseFormat.ForJsonSchema(schema),
+                            MaxOutputTokens = 100, Temperature = 0 }, cancellationToken);
+                    var match = JsonSerializer.Deserialize(classified.Text, PlannerJsonContext.Default.PlannerTopicClassification)
+                        ?? throw new InvalidDataException("The model returned no interest classification.");
+                    if (match.Topic != "none")
+                        mapped.Add(match.Topic);
+                }
+                topic = topic with { Topics = mapped.Distinct(StringComparer.OrdinalIgnoreCase).ToArray() };
+            }
+            else if (topic.Topics.Length == 0)
+                topic = topic with { Text = "none" };
             var topicFilter = topic.ToFilter(conference, request, speakerNames.Length > 0);
             var captured = tools.CapturePreferences(speakerNames, windows,
                 interpretation.RequestsAllSpeakers(request) && speakerNames.Length > 0,
@@ -104,8 +141,6 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
             cancellationToken.ThrowIfCancellationRequested();
             // Dispatch model-selected queries explicitly. Native automatic tool calling
             // in this preview can repeat callbacks indefinitely inside a single request.
-            var functions = tools.CreateFunctions().OfType<AIFunction>().ToDictionary(f => f.Name);
-            var results = new List<string>();
             foreach (var speaker in preferences.RequiredSpeakers)
             {
                 for (var skip = 0; skip < conference.Sessions.Count; skip += 4)
@@ -113,39 +148,23 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
                     var result = await functions["speaker_sessions"].InvokeAsync(
                         new AIFunctionArguments { ["name"] = speaker, ["skip"] = skip }, cancellationToken);
                     var text = result?.ToString() ?? throw new InvalidDataException("The agenda function returned no result.");
-                    results.Add(text);
                     if (!text.Contains("Next page:", StringComparison.Ordinal))
                         break;
                 }
             }
-            if (topicFilter is not null || preferences.RequiredSpeakers.Length == 0)
+            if (topicFilter is not null)
             {
-                for (var skip = 0; skip < conference.Sessions.Count; skip += 4)
-                {
-                    var result = topicFilter is not null
-                        ? await functions["topic_sessions"].InvokeAsync(new AIFunctionArguments { ["skip"] = skip }, cancellationToken)
-                        : await functions["search_sessions"].InvokeAsync(
-                            new AIFunctionArguments { ["query"] = "", ["skip"] = skip }, cancellationToken);
-                    var text = result?.ToString() ?? throw new InvalidDataException("The agenda function returned no result.");
-                    results.Add(text);
-                    if (topicFilter is null || !text.Contains("Next page:", StringComparison.Ordinal))
-                        break;
-                }
+                tools.IncludeCandidates(SchedulePlanner.TopicMatches(conference, preferences).Select(s => s.Id));
             }
+            else if (preferences.RequiredSpeakers.Length == 0)
+                tools.IncludeCandidates(conference.Sessions.Select(s => s.Id));
             string[] selectedIds;
             var eligibleIds = tools.EligibleCandidateIds;
             if (preferences.AllSessionsByRequiredSpeakers || topicFilter?.IncludeAll == true || eligibleIds.Length == 0)
                 selectedIds = eligibleIds;
             else
             {
-                var selectionSchema = PlannerSchemas.Selection(eligibleIds);
-                var response = await client.GetResponseAsync(
-                    [new ChatMessage(ChatRole.System, $"Select a non-overlapping schedule from these agenda function results. Times use {zone.Id}. Include the requested speakers. Return only session IDs.\nSchema: {selectionSchema.GetRawText()}\n{string.Join("\n", results)}"),
-                     new ChatMessage(ChatRole.User, request)],
-                    new ChatOptions { ResponseFormat = ChatResponseFormat.ForJsonSchema(selectionSchema),
-                        MaxOutputTokens = 500, Temperature = 0 }, cancellationToken);
-                selectedIds = JsonSerializer.Deserialize(response.Text, PlannerJsonContext.Default.PlannerSelection)?.SessionIds
-                    ?? throw new InvalidDataException("The model returned no session selection.");
+                selectedIds = SchedulePlanner.Recommend(conference, preferences, eligibleIds, zone, savedIds);
             }
             var arranged = SchedulePlanner.Arrange(conference, preferences with { SessionIds = selectedIds }, zone, savedIds);
             await functions["submit_proposal"].InvokeAsync(

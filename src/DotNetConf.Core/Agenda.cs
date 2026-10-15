@@ -14,8 +14,38 @@ public static class Agenda
         var matches = conference.Sessions.SelectMany(s => s.Topics).Distinct(StringComparer.OrdinalIgnoreCase)
             .Where(t => Regex.IsMatch(request,
                 $$"""(?<![\p{L}\p{N}])(?:{{TopicPattern(t)}})(?![\p{L}\p{N}])""",
-                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100))).ToArray();
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100))
+                || FuzzyTopic(request, t)).ToArray();
         return matches.Where(t => t != ".NET" || !matches.Any(other => other.StartsWith(".NET ", StringComparison.Ordinal))).ToArray();
+    }
+
+    private static bool FuzzyTopic(string request, string topic)
+    {
+        var label = topic.StartsWith(".NET ", StringComparison.Ordinal) ? topic[5..] : topic;
+        var name = label.ToLowerInvariant();
+        if (name.Length < 4 || (name.Length == 4 && !label.All(char.IsUpper)) || name.Any(c => !char.IsLetter(c)))
+            return false;
+        return Regex.Matches(request.ToLowerInvariant(), @"\b\p{L}{4,}\b",
+            RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)).Any(match =>
+        {
+            var word = match.Value;
+            if (name.StartsWith(word, StringComparison.Ordinal))
+                return true;
+            var tolerance = Math.Max(word.Length, name.Length) >= 8 ? 2 : 1;
+            if (Math.Abs(word.Length - name.Length) > tolerance)
+                return false;
+            var previous = Enumerable.Range(0, name.Length + 1).ToArray();
+            for (var i = 1; i <= word.Length; i++)
+            {
+                var current = new int[name.Length + 1];
+                current[0] = i;
+                for (var j = 1; j <= name.Length; j++)
+                    current[j] = Math.Min(Math.Min(current[j - 1] + 1, previous[j] + 1),
+                        previous[j - 1] + (word[i - 1] == name[j - 1] ? 0 : 1));
+                previous = current;
+            }
+            return previous[^1] <= tolerance;
+        });
     }
 
     private static string TopicPattern(string topic) => topic switch
@@ -32,7 +62,24 @@ public static class Agenda
         var topics = conference.Sessions.SelectMany(s => s.Topics).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
         var topicNames = names.Where(n => topics.Contains(n, StringComparer.OrdinalIgnoreCase)
             && FindSpeakers(conference, n).Count == 0).ToArray();
-        var speakers = names.Except(topicNames, StringComparer.OrdinalIgnoreCase).ToArray();
+        var fullNames = conference.Speakers.Where(s => Regex.IsMatch(request, $@"\b{Regex.Escape(s.Name)}\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
+            .Select(s => s.Name).ToArray();
+        var remainder = request;
+        foreach (var name in fullNames)
+            remainder = Regex.Replace(remainder, $@"\b{Regex.Escape(name)}\b", "",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        var aliases = conference.Speakers.SelectMany(s => s.Name.Split(' '))
+            .Distinct(StringComparer.OrdinalIgnoreCase).Where(name => Regex.IsMatch(remainder, $@"\b{Regex.Escape(name)}\b",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)));
+        var prefixes = names.Where(name => FindSpeakers(conference, name).Count > 0
+            && Regex.IsMatch(remainder, $@"\b{Regex.Escape(name)}\b",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)));
+        var unknown = names.Except(topicNames, StringComparer.OrdinalIgnoreCase)
+            .Where(name => FindSpeakers(conference, name).Count == 0 && Regex.IsMatch(request,
+                $@"\b(?:by|from|with|see)\s+{Regex.Escape(name)}\b",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)));
+        var speakers = fullNames.Concat(aliases).Concat(prefixes).Concat(unknown).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
         var explicitTopics = topics.Where(t => Regex.IsMatch(request,
                 $$"""(?<![\p{L}\p{N}]){{Regex.Escape(t)}}(?![\p{L}\p{N}])""",
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
