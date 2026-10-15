@@ -3,7 +3,10 @@ using System.Globalization;
 namespace DotNetConf.Core;
 
 public sealed record ScheduleProposal(
-    string[] SessionIds, string[] RequiredSpeakers, AvailabilityWindow[] Availability);
+    string[] SessionIds, string[] RequiredSpeakers, AvailabilityWindow[] Availability)
+{
+    public bool AllSessionsByRequiredSpeakers { get; init; }
+}
 
 public sealed record AvailabilityWindow(string Start, string End, string Zone);
 
@@ -15,6 +18,32 @@ public sealed record ProposalReview(IReadOnlyList<Session> Sessions, IReadOnlyLi
 public static class SchedulePlanner
 {
     public const int MaximumSessions = 12;
+
+    public static ScheduleProposal Arrange(
+        ConferenceDocument conference, ScheduleProposal candidates, TimeZoneInfo timeZone,
+        IReadOnlyCollection<string> savedIds)
+    {
+        var review = Review(conference, candidates, timeZone, savedIds);
+        if (candidates.AllSessionsByRequiredSpeakers || review.Errors.Count == 0
+            || review.Errors.Any(e => !e.StartsWith("Overlapping proposals:", StringComparison.Ordinal)))
+            return candidates;
+
+        // At most 12 model-selected alternatives: search subsets, not a greedy
+        // choice that could discard the only talk by a required speaker.
+        for (var count = candidates.SessionIds.Length - 1; count > 0; count--)
+            for (var mask = 1; mask < (1 << candidates.SessionIds.Length); mask++)
+            {
+                if (System.Numerics.BitOperations.PopCount((uint)mask) != count)
+                    continue;
+                var subset = candidates with
+                {
+                    SessionIds = candidates.SessionIds.Where((_, index) => (mask & (1 << index)) != 0).ToArray()
+                };
+                if (Review(conference, subset, timeZone, savedIds).CanApply)
+                    return subset;
+            }
+        return candidates;
+    }
 
     public static ProposalReview Review(
         ConferenceDocument conference, ScheduleProposal proposal, TimeZoneInfo timeZone,
@@ -64,13 +93,23 @@ public static class SchedulePlanner
 
         foreach (var name in proposal.RequiredSpeakers.Take(8))
         {
-            var matches = conference.Speakers.Where(s =>
-                string.Equals(s.Name, name?.Trim(), StringComparison.OrdinalIgnoreCase)).ToArray();
-            if (matches.Length != 1)
-                errors.Add($"Required speaker not uniquely found: {name}.");
+            var matches = Agenda.FindSpeakers(conference, name);
+            if (matches.Count == 0)
+                errors.Add($"Speaker not found in this demo agenda: {name}.");
+            else if (matches.Count > 1)
+                errors.Add($"Ambiguous speaker '{name}'. Choose {string.Join(" or ", matches.Select(s => s.Name))}.");
             else if (!sessions.Any(s => s.SpeakerIds.Contains(matches[0].Id)))
                 errors.Add($"Required speaker has no proposed session: {matches[0].Name}.");
+            if (matches.Count == 1 && proposal.AllSessionsByRequiredSpeakers)
+            {
+                var missing = conference.Sessions.Where(s => s.SpeakerIds.Contains(matches[0].Id)
+                    && !proposal.SessionIds.Contains(s.Id)).ToArray();
+                if (missing.Length > 0)
+                    errors.Add($"You requested all sessions by {matches[0].Name}. Missing: {string.Join(", ", missing.Select(s => s.Title))}. Change your request if you only want a subset.");
+            }
         }
+        if (proposal.AllSessionsByRequiredSpeakers && proposal.RequiredSpeakers.Length == 0)
+            errors.Add("Specify a speaker when requesting all of their sessions.");
         return new(sessions.OrderBy(s => s.StartsAt).ToArray(), errors);
     }
 

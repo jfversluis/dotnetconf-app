@@ -8,7 +8,7 @@
             <Label Text="Make it your conference" Style="{StaticResource Heading}" />
             <Label Text="Optional AI spike. Describe your interests, must-see speakers and when you can watch. Apple Intelligence searches the agenda on your device. No account, API key or cloud fallback."
                    Style="{StaticResource Secondary}" />
-            <Label Text="Fictional sample agenda and speakers - not the announced .NET Conf lineup."
+            <Label Text="Fictional demo talks and participation, including real .NET community names. Not an announced or endorsed lineup."
                    FontFamily="OpenSansSemibold" />
             <Label Text="{Binding Status}" AutomationId="planner-status" />
             <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
@@ -35,11 +35,12 @@
                 <VerticalStackLayout BindableLayout.ItemsSource="{Binding Sessions}" Spacing="12">
                     <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="vm:ProposedSessionViewModel">
-                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" AutomationId="{Binding AutomationId}">
                                 <CheckBox IsChecked="{Binding IsSelected}" VerticalOptions="Start"
                                           SemanticProperties.Description="{Binding Title}" />
                                 <VerticalStackLayout Grid.Column="1" Spacing="4">
                                     <Label Text="{Binding Title}" FontFamily="OpenSansSemibold" />
+                                    <Label Text="{Binding SpeakerNames}" Style="{StaticResource Secondary}" />
                                     <Label Text="{Binding Time}" Style="{StaticResource Secondary}" />
                                 </VerticalStackLayout>
                             </Grid>

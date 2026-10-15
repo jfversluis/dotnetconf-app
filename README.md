@@ -33,15 +33,19 @@ public model-availability API. Android shows an unavailable message; normal
 browsing and likes still work. A simulator build alone does **not** establish
 that the model is ready or that inference works.
 
-`Microsoft.Extensions.AI` exposes a first-pass `capture_preferences` function,
-then `search_sessions`, `speaker_sessions`, and `submit_proposal`. Two short,
-independent local passes keep preference extraction separate from agenda
-selection: the second pass cannot rewrite the captured constraints. C# filters
-search results by availability and existing likes. The chat pipeline
-uses `UseFunctionInvocation`; the Apple client also receives the per-request DI
-provider because it can execute native tool calls itself. Searches return at
-most four real agenda rows, with at most ten calls per request. The complete
-catalog is not placed in the prompt. No tool can change likes.
+The local model produces schema-constrained query arguments and, when needed,
+session selections. The app dispatches `Microsoft.Extensions.AI` functions:
+`search_sessions`, `speaker_sessions`, and `submit_proposal`. This is an
+application-managed tool flow, not an autonomous native tool loop: the preview
+client can repeat native callbacks within a single request. Preference
+extraction is separate from selection; selection cannot rewrite constraints.
+C# filters by availability and existing likes. Searches return at most four
+real agenda rows per page, with at most ten function calls per request. Speaker
+requests support pagination and unique partial names; ambiguous names require
+clarification. An "all sessions" request gathers all matching speaker sessions
+deterministically, and validation rejects an incomplete result. Only the topic
+vocabulary and bounded query results enter prompts, not the complete catalog.
+No function can change likes.
 `NLEmbeddingGenerator` is not needed for this small grounded agenda.
 
 `Microsoft.Maui.AI.Attributes` / `ExportAIFunction` was evaluated, but the
@@ -59,8 +63,10 @@ that the interpreted constraints match your request, then tap **Add selected
 sessions to My Schedule**. C# rejects unknown IDs, unknown or unsatisfied
 required speakers, overlaps (including existing likes), and sessions outside
 the full availability window. Invalid or ambiguous daylight-saving times are
-rejected rather than guessed. Saving is an atomic, additive update: it does not
-remove previous likes.
+rejected rather than guessed. For ordinary recommendations C# can select a
+compatible subset of model-chosen alternatives, preserving required speakers;
+it never drops a talk from an "all sessions by" request to hide a conflict.
+Saving is an atomic, additive update: it does not remove previous likes.
 
 For a demo with the **fictional** agenda, first browse its speaker names, then
 try: "I like mobile development and AI. I must see Alex Rivera. I can watch
@@ -70,6 +76,10 @@ confirmed likes and whether the introduction was shown are stored locally.
 Cancellation, a 90-second planning timeout, or a model error leaves likes
 unchanged. Model accuracy and tool use must still be exercised on a
 model-ready physical iPhone before using this as a reliable live demo.
+
+See the [runtime prompt matrix](docs/AI-PLANNER-SPIKE.md) for vague, precise,
+ambiguous and impossible requests, expected results, and the actual simulator
+inference checks.
 
 ## Availability
 

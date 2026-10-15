@@ -8,10 +8,12 @@ using Microsoft.Extensions.Logging;
 
 namespace DotNetConf.App.ViewModels;
 
-public partial class ProposedSessionViewModel(Session session, TimeZoneInfo zone, Action changed) : ObservableObject
+public partial class ProposedSessionViewModel(Session session, string speakerNames, TimeZoneInfo zone, Action changed) : ObservableObject
 {
     public string Id => session.Id;
+    public string AutomationId => $"planner-session-{Id}";
     public string Title => session.Title;
+    public string SpeakerNames => speakerNames;
     public string Time => $"{TimeZoneInfo.ConvertTime(session.StartsAt, zone):ddd, MMM d HH:mm} - " +
         $"{TimeZoneInfo.ConvertTime(session.EndsAt, zone):HH:mm}";
     [ObservableProperty] public partial bool IsSelected { get; set; } = true;
@@ -136,12 +138,16 @@ public partial class PlannerViewModel(
                 return;
             }
             Constraints = $"Required speakers: {(proposal.RequiredSpeakers.Length == 0 ? "None" : string.Join(", ", proposal.RequiredSpeakers))}\n" +
+                (proposal.AllSessionsByRequiredSpeakers ? "Include all sessions by these speakers.\n" : "") +
                 $"Availability: {(proposal.Availability.Length == 0 ? "Unrestricted" : string.Join("; ", proposal.Availability.Select(w => $"{w.Start} to {w.End} ({(w.Zone == "local" ? timeZone.Id : w.Zone)})")))}";
             foreach (var session in SchedulePlanner.Review(document, proposal, timeZone, SavedIds()).Sessions)
-                Sessions.Add(new(session, timeZone, ReviewSelection));
+                Sessions.Add(new(session, string.Join(", ", document.Speakers
+                    .Where(s => session.SpeakerIds.Contains(s.Id)).Select(s => s.Name)), timeZone, ReviewSelection));
             HasProposal = true;
             ReviewSelection();
-            Status = "Review the interpreted constraints and sessions below. AI can misunderstand your request. Nothing has been saved.";
+            Status = Sessions.Count == 0
+                ? "No schedule was proposed. Check the explanation below; your likes have not changed."
+                : "Review the interpreted constraints and sessions below. AI can misunderstand your request. Nothing has been saved.";
         }
         catch (OperationCanceledException)
         {
@@ -248,7 +254,7 @@ public partial class PlannerViewModel(
     }
 
     private static bool IsExpectedFailure(Exception exception) =>
-        exception is IOException or UnauthorizedAccessException or JsonException
+        exception is IOException or InvalidDataException or UnauthorizedAccessException or JsonException
             or InvalidOperationException or NotSupportedException or ArgumentException
 #if IOS
             or Foundation.NSErrorException

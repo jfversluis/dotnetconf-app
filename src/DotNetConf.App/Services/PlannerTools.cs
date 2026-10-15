@@ -10,10 +10,12 @@ public sealed class PlannerTools
     private TimeZoneInfo timeZone = TimeZoneInfo.Utc;
     private string[] savedIds = [];
     private int calls;
+    private readonly HashSet<string> candidateIds = new(StringComparer.Ordinal);
 
     public ScheduleProposal? Proposal { get; private set; }
     public ScheduleProposal? Preferences { get; private set; }
     public int CallCount => calls;
+    public IReadOnlySet<string> CandidateIds => candidateIds;
 
     public void Initialize(ConferenceDocument conference, TimeZoneInfo zone, string[] likedIds)
     {
@@ -23,6 +25,7 @@ public sealed class PlannerTools
         calls = 0;
         Proposal = null;
         Preferences = null;
+        candidateIds.Clear();
     }
 
     private ConferenceDocument GetDocument() =>
@@ -31,29 +34,30 @@ public sealed class PlannerTools
     public string SearchSessions(string query, int skip)
     {
         var conference = GetDocument();
-        return Format(Agenda.Search(conference, query, null, null, timeZone)
-            .Where(IsEligible).Skip(Math.Clamp(skip, 0, 100)).Take(4));
+        return FormatPage(Agenda.Search(conference, query, null, null, timeZone).ToArray(), skip);
     }
 
-    public string SpeakerSessions(string name)
+    public string SpeakerSessions(string name, int skip = 0)
     {
         var conference = GetDocument();
         if (string.IsNullOrWhiteSpace(name))
             return "Supply a speaker name.";
-        var speakers = conference.Speakers.Where(s =>
-            s.Name.Contains(name.Trim(), StringComparison.OrdinalIgnoreCase)).Take(4).ToArray();
-        if (speakers.Length == 0)
-            return "Speaker not found. Report the unsatisfied request; do not drop it.";
-        var ids = speakers.Select(s => s.Id).ToHashSet();
-        return Format(conference.Sessions.Where(s => s.SpeakerIds.Any(ids.Contains))
-            .Where(IsEligible).OrderBy(s => s.StartsAt).Take(4));
+        var speakers = Agenda.FindSpeakers(conference, name);
+        if (speakers.Count == 0)
+            return $"Speaker not found in this demo agenda: {name}. Do not invent participation.";
+        if (speakers.Count > 1)
+            return $"Ambiguous speaker '{name}'. Ask the user to choose: {string.Join(", ", speakers.Select(s => s.Name))}.";
+        return $"Speaker: {speakers[0].Name}\n" + FormatPage(
+            conference.Sessions.Where(s => s.SpeakerIds.Contains(speakers[0].Id)).OrderBy(s => s.StartsAt).ToArray(), skip);
     }
 
-    public string CapturePreferences(string[] requiredSpeakers, AvailabilityWindow[] availability)
+    public string CapturePreferences(string[] requiredSpeakers, AvailabilityWindow[] availability,
+        bool allSessionsByRequiredSpeakers = false)
     {
         GetDocument();
         Proposal = null;
         Preferences = null;
+        candidateIds.Clear();
         if (requiredSpeakers is null || availability is null || requiredSpeakers.Any(n => n is null)
             || availability.Any(w => w is null || w.Start is null || w.End is null || w.Zone is null))
             return "Invalid arguments: arrays and their items must not be null.";
@@ -62,7 +66,12 @@ public sealed class PlannerTools
         if (requiredSpeakers.Any(n => n.Length > 100)
             || availability.Any(w => w.Start.Length > 20 || w.End.Length > 20 || w.Zone.Length > 100))
             return "Preference arguments are too long. Use speaker names and the specified time format.";
-        Preferences = new([], requiredSpeakers, availability);
+        var names = requiredSpeakers.Select(name =>
+        {
+            var matches = Agenda.FindSpeakers(GetDocument(), name);
+            return matches.Count == 1 ? matches[0].Name : name;
+        }).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        Preferences = new([], names, availability) { AllSessionsByRequiredSpeakers = allSessionsByRequiredSpeakers };
         return "Preferences captured for user review. They cannot be changed during agenda selection.";
     }
 
@@ -83,7 +92,7 @@ public sealed class PlannerTools
     private bool IsEligible(Session session)
     {
         var preferences = Preferences ?? throw new InvalidOperationException("Capture preferences before searching.");
-        var candidate = preferences with { SessionIds = [session.Id], RequiredSpeakers = [] };
+        var candidate = preferences with { SessionIds = [session.Id], RequiredSpeakers = [], AllSessionsByRequiredSpeakers = false };
         return SchedulePlanner.Review(document ?? throw new InvalidOperationException("No agenda loaded."),
             candidate, timeZone, savedIds).CanApply;
     }
@@ -99,17 +108,30 @@ public sealed class PlannerTools
         return rows.Length == 0 ? "No matching sessions." : string.Join("\n", rows);
     }
 
+    private string FormatPage(Session[] matching, int skip)
+    {
+        var eligible = matching.Where(IsEligible).ToArray();
+        var offset = Math.Clamp(skip, 0, matching.Length);
+        var page = eligible.Skip(offset).Take(4).ToArray();
+        foreach (var session in page)
+            candidateIds.Add(session.Id);
+        var excluded = matching.Length - eligible.Length;
+        return $"Matches: {matching.Length}; eligible: {eligible.Length}; excluded by availability or liked-session conflicts: {excluded}. " +
+            (offset + page.Length < eligible.Length ? $"Next page: skip={offset + page.Length}.\n" : "End of results.\n") +
+            Format(page);
+    }
+
     public IReadOnlyList<AITool> CreateFunctions() =>
     [
         new PlannerFunction(this, "search_sessions",
-            "Search real agenda titles, topics and descriptions. Returns at most 4 sessions. Empty query browses all. Use skip for the next page.",
+            "Search agenda titles, topics, descriptions and speakers. Use a short topic keyword (Mobile, AI, Blazor), NOT a sentence. Words are ANDed. Empty query browses all. At most 4 rows per page; follow next-page skip.",
             """
             {"type":"object","properties":{"query":{"type":"string","description":"Short search term, or empty to browse"},"skip":{"type":"integer","description":"Results to skip, starting at zero"}},"required":["query","skip"],"additionalProperties":false}
             """),
         new PlannerFunction(this, "speaker_sessions",
-            "Find real sessions by speaker name. Returns at most 4 sessions or a not-found message. Never invent speakers.",
+            "Find sessions by full name or a UNIQUE first/last name. Ask for clarification if ambiguous. At most 4 rows per page; follow next-page skip to include ALL sessions.",
             """
-            {"type":"object","properties":{"name":{"type":"string","description":"Speaker name as provided by the user"}},"required":["name"],"additionalProperties":false}
+            {"type":"object","properties":{"name":{"type":"string","description":"Full or partial speaker name"},"skip":{"type":"integer","description":"Results to skip, zero for the first page"}},"required":["name","skip"],"additionalProperties":false}
             """),
         new PlannerFunction(this, "submit_proposal",
             "Submit a PREVIEW, never save likes. Copy real session IDs exactly. C# enforces the previously captured preferences. Fix reported validation errors and resubmit without relaxing constraints.",
@@ -117,12 +139,6 @@ public sealed class PlannerTools
             {"type":"object","properties":{"sessionIds":{"type":"array","items":{"type":"string"},"description":"1 to 12 real session IDs copied exactly from search results"}},"required":["sessionIds"],"additionalProperties":false}
             """)
     ];
-
-    public AITool CreatePreferenceFunction() => new PlannerFunction(this, "capture_preferences",
-        "Capture ALL required speakers and allowed time windows from the USER'S words only. Never substitute session times. Empty time arrays ONLY if unrestricted. Do not convert time zones.",
-        """
-        {"type":"object","properties":{"requiredSpeakers":{"type":"array","items":{"type":"string"},"description":"ALL must-see speaker names verbatim, even unknown names; empty only if none required"},"availabilityStarts":{"type":"array","items":{"type":"string"},"description":"Start of EACH user availability window as yyyy-MM-ddTHH:mm without offset"},"availabilityEnds":{"type":"array","items":{"type":"string"},"description":"End of EACH user availability window as yyyy-MM-ddTHH:mm without offset"},"availabilityZones":{"type":"array","items":{"type":"string"},"description":"Zone of EACH window: UTC if user said UTC, local if device time, otherwise IANA zone ID. Same count as starts and ends."}},"required":["requiredSpeakers","availabilityStarts","availabilityEnds","availabilityZones"],"additionalProperties":false}
-        """);
 
     // Explicit schemas and argument readers avoid reflection-only JSON paths in
     // the current Attributes generator on NativeAOT.
@@ -141,21 +157,14 @@ public sealed class PlannerTools
             cancellationToken.ThrowIfCancellationRequested();
             if (Interlocked.Increment(ref tools.calls) > 10)
                 throw new InvalidOperationException("Planner tool limit reached. Try a simpler request.");
-            if (name == "capture_preferences")
-            {
-                tools.Preferences = null;
-                tools.Proposal = null;
-            }
-            else if (name == "submit_proposal")
+            if (name == "submit_proposal")
                 tools.Proposal = null;
             try
             {
                 object result = name switch
                 {
                     "search_sessions" => tools.SearchSessions(ReadString(arguments, "query"), ReadInteger(arguments, "skip")),
-                    "speaker_sessions" => tools.SpeakerSessions(ReadString(arguments, "name")),
-                    "capture_preferences" => tools.CapturePreferences(
-                        ReadArray(arguments, "requiredSpeakers", 8), ReadWindows(arguments)),
+                    "speaker_sessions" => tools.SpeakerSessions(ReadString(arguments, "name"), ReadInteger(arguments, "skip")),
                     "submit_proposal" => tools.SubmitProposal(ReadArray(arguments, "sessionIds", 12)),
                     _ => throw new InvalidOperationException($"Unknown planner function: {name}.")
                 };
@@ -202,14 +211,5 @@ public sealed class PlannerTools
             throw new InvalidDataException($"Tool argument {key} must be an array of at most {maximum} short strings.");
         }
 
-        private static AvailabilityWindow[] ReadWindows(AIFunctionArguments arguments)
-        {
-            var starts = ReadArray(arguments, "availabilityStarts", 12);
-            var ends = ReadArray(arguments, "availabilityEnds", 12);
-            var zones = ReadArray(arguments, "availabilityZones", 12);
-            if (starts.Length != ends.Length || starts.Length != zones.Length)
-                throw new InvalidDataException("Availability start, end and zone arrays must have the same length.");
-            return starts.Select((start, index) => new AvailabilityWindow(start, ends[index], zones[index])).ToArray();
-        }
     }
 }

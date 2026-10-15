@@ -100,7 +100,7 @@ public sealed class PlannerTests
     {
         var review = Review(new(["mobile"], ["Not A Speaker", "Sam Taylor"], []));
         Assert.False(review.CanApply);
-        Assert.Contains(review.Errors, e => e.StartsWith("Required speaker not uniquely found:"));
+        Assert.Contains(review.Errors, e => e.StartsWith("Speaker not found"));
         Assert.Contains(review.Errors, e => e.StartsWith("Required speaker has no proposed session:"));
     }
 
@@ -127,6 +127,51 @@ public sealed class PlannerTests
         Assert.False(Review(new([], [], [])).CanApply);
         Assert.False(Review(new(Enumerable.Repeat("mobile", 13).ToArray(), [], [])).CanApply);
         Assert.False(Review(new(["mobile"], Enumerable.Repeat("Alex Rivera", 9).ToArray(), [])).CanApply);
+    }
+
+    [Fact]
+    public void ArrangementKeepsTheLargestCompatibleSubsetAndRequiredSpeakers()
+    {
+        var arranged = SchedulePlanner.Arrange(Conference,
+            new(["mobile", "overlap", "adjacent", "language"], ["Alex", "Sam"], []), TimeZoneInfo.Utc, []);
+        Assert.Equal(["mobile", "adjacent", "language"], arranged.SessionIds);
+        Assert.True(Review(arranged).CanApply);
+
+        var requiredSam = SchedulePlanner.Arrange(Conference,
+            new(["mobile", "overlap"], ["Sam"], []), TimeZoneInfo.Utc, []);
+        Assert.Equal(["overlap"], requiredSam.SessionIds);
+        Assert.True(Review(requiredSam).CanApply);
+    }
+
+    [Fact]
+    public void ArrangementDoesNotHideUnknownIdsMissingSpeakersOrLikedConflicts()
+    {
+        foreach (var proposal in new ScheduleProposal[]
+        {
+            new(["mobile", "not-real"], [], []),
+            new(["mobile", "overlap"], ["Not A Speaker"], []),
+            new(["mobile", "overlap"], [], [Window("2026-11-10T17:00/2026-11-10T18:00")])
+        })
+            Assert.Same(proposal, SchedulePlanner.Arrange(Conference, proposal, TimeZoneInfo.Utc, []));
+        var conflict = new ScheduleProposal(["mobile", "language"], [], []);
+        Assert.Same(conflict, SchedulePlanner.Arrange(Conference, conflict, TimeZoneInfo.Utc, ["overlap"]));
+    }
+
+    [Fact]
+    public void AllSpeakerRequestsMustNotDropOverlapsOrUnavailableTalks()
+    {
+        var all = new ScheduleProposal(["language", "overlap", "midnight"], ["Sam"], [])
+        {
+            AllSessionsByRequiredSpeakers = true
+        };
+        Assert.Same(all, SchedulePlanner.Arrange(Conference, all, TimeZoneInfo.Utc, []));
+        Assert.False(Review(all).CanApply);
+        var unavailable = all with
+        {
+            SessionIds = ["language"],
+            Availability = [Window("2026-11-10T17:00/2026-11-10T18:00")]
+        };
+        Assert.Contains(Review(unavailable).Errors, e => e.StartsWith("You requested all sessions"));
     }
 
     private static ProposalReview Review(ScheduleProposal proposal) =>

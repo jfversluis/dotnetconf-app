@@ -22,7 +22,7 @@
                    IsVisible="{Binding CommunityEventsAreMock}" Style="{StaticResource Secondary}" />
             <VerticalStackLayout Spacing="12" IsVisible="{Binding IsMock}">
                 <Label Text="About the sample agenda" Style="{StaticResource Subheading}" />
-                <Label Text="All sessions and speakers in this preview are fictional examples, not the confirmed conference lineup."
+                <Label Text="All talks and participation in this preview are fictional examples. Some real .NET community names are used for demo purposes only, not as announced or endorsed participants."
                        Style="{StaticResource Secondary}" AutomationId="mock-data-disclosure" />
             </VerticalStackLayout>
             <VerticalStackLayout Spacing="12">

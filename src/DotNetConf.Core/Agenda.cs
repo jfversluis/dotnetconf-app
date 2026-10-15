@@ -1,9 +1,42 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace DotNetConf.Core;
 
 public static class Agenda
 {
+    public static (string[] Speakers, string Query) GroundPlannerQuery(
+        ConferenceDocument conference, string request, string[] names, string inferred)
+    {
+        var topics = conference.Sessions.SelectMany(s => s.Topics).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var topicNames = names.Where(n => topics.Contains(n, StringComparer.OrdinalIgnoreCase)
+            && FindSpeakers(conference, n).Count == 0).ToArray();
+        var speakers = names.Except(topicNames, StringComparer.OrdinalIgnoreCase).ToArray();
+        var explicitTopics = topics.Where(t => Regex.IsMatch(request,
+                $$"""(?<![\p{L}\p{N}]){{Regex.Escape(t)}}(?![\p{L}\p{N}])""",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
+            .OrderByDescending(t => t.Length).ToArray();
+        // Actual catalog entity kinds and literal topics outrank inferred labels.
+        var query = explicitTopics.FirstOrDefault(t => t.Equals(inferred, StringComparison.OrdinalIgnoreCase))
+            ?? explicitTopics.FirstOrDefault() ?? topicNames.FirstOrDefault() ?? inferred;
+        return (speakers, query);
+    }
+
+    public static IReadOnlyList<Speaker> FindSpeakers(ConferenceDocument conference, string? name)
+    {
+        var terms = (name ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (terms.Length == 0)
+            return [];
+        var normalized = string.Join(' ', terms);
+        var exact = conference.Speakers.Where(s =>
+            s.Name.Equals(normalized, StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (exact.Length > 0)
+            return exact;
+        return conference.Speakers.Where(s => terms.All(term =>
+            s.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Any(part => part.StartsWith(term, StringComparison.OrdinalIgnoreCase)))).ToArray();
+    }
+
     public static IEnumerable<Session> Search(
         ConferenceDocument conference, string? query, DateOnly? localDay,
         IReadOnlyCollection<string>? topics, TimeZoneInfo timeZone)

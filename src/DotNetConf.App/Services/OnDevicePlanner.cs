@@ -1,4 +1,5 @@
 using DotNetConf.Core;
+using System.Text.Json;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 #if IOS
@@ -33,58 +34,93 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
         using var scope = scopeFactory.CreateScope();
         var tools = scope.ServiceProvider.GetRequiredService<PlannerTools>();
         tools.Initialize(conference, zone, savedIds);
-        using var client = CreateClient(scope.ServiceProvider).AsBuilder()
-            .UseFunctionInvocation(configure: invocation => invocation.MaximumIterationsPerRequest = 10)
-            .Build(scope.ServiceProvider);
+        using var client = CreateClient(scope.ServiceProvider);
         var first = TimeZoneInfo.ConvertTime(conference.Sessions.Min(s => s.StartsAt), zone);
-        var last = TimeZoneInfo.ConvertTime(conference.Sessions.Max(s => s.EndsAt), zone);
-        ChatResponse response;
         try
         {
-            var extraction = $"""
-                Extract conference preferences from the user's words using capture_preferences once.
-                Conference dates: {first:yyyy-MM-dd} through {last:yyyy-MM-dd}. Device zone: {zone.Id}.
-                Copy ALL must-see speaker names verbatim, even unknown names.
-                Copy ALL availability windows into matching start, end and zone arrays.
-                For November 10 from 16:00 to 18:00 UTC, use:
-                availabilityStarts=["2026-11-10T16:00"], availabilityEnds=["2026-11-10T18:00"], availabilityZones=["UTC"].
-                Use zone "local" for device times. Do not convert time zones. Empty arrays ONLY if unrestricted.
-                If unrestricted, ALL THREE availability arrays must be empty, including availabilityZones.
-                Never replace availability with session times. Do not relax or drop any constraint.
-                If the tool reports invalid arguments, correct them and call it again.
-                If a date, time zone or requirement is unclear, ask for clarification and do not call the tool.
-                """;
+            // The native preview constrains the shape but does not include the
+            // schema descriptions in its prompt, so send those explicitly too.
+            var interpretationSchema = PlannerSchemas.Interpretation(conference);
             var extracted = await client.GetResponseAsync(
-                [new ChatMessage(ChatRole.System, extraction), new ChatMessage(ChatRole.User, request)],
-                new ChatOptions { Tools = [tools.CreatePreferenceFunction()], MaxOutputTokens = 350 },
-                cancellationToken);
+                [new ChatMessage(ChatRole.System,
+                    $"Turn a software conference attendee's request into query arguments, not recommendations. Never add names or time restrictions. Use none for unmentioned constraints. A topic is not a person. Respond using this schema and its field descriptions:\n{interpretationSchema.GetRawText()}"),
+                 new ChatMessage(ChatRole.User, request)],
+                new ChatOptions { ResponseFormat = ChatResponseFormat.ForJsonSchema(interpretationSchema),
+                    MaxOutputTokens = 500, Temperature = 0 }, cancellationToken);
+            var interpretation = JsonSerializer.Deserialize(extracted.Text, PlannerJsonContext.Default.PlannerInterpretation)
+                ?? throw new InvalidDataException("The model returned no interpretation.");
+            if (interpretation.SpeakerNames is null
+                || interpretation.AvailabilityText is null
+                || interpretation.SearchQuery is null
+                || interpretation.Quantity is not ("all" or "some"))
+                throw new InvalidDataException("The model returned missing or invalid preference fields.");
+            AvailabilityWindow[] windows = [];
+            if (interpretation.HasAvailability)
+            {
+                var available = await client.GetResponseAsync(
+                    [new ChatMessage(ChatRole.System, $"Extract ONLY the allowed time windows. Conference year: {first:yyyy}. Local time means {zone.Id}; use zone local for local or unspecified times, and UTC for UTC. Never convert the clock times. Respond with JSON using this schema:\n{PlannerSchemas.Availability.GetRawText()}"),
+                     new ChatMessage(ChatRole.User, request)],
+                    new ChatOptions { ResponseFormat = ChatResponseFormat.ForJsonSchema(PlannerSchemas.Availability),
+                        MaxOutputTokens = 800, Temperature = 0 }, cancellationToken);
+                windows = JsonSerializer.Deserialize(available.Text, PlannerJsonContext.Default.PlannerAvailability)?.ToWindows(zone)
+                    ?? throw new InvalidDataException("The model returned no availability.");
+            }
+            var (speakerNames, query) = interpretation.Ground(conference, request);
+            var captured = tools.CapturePreferences(speakerNames, windows, interpretation.Quantity == "all" && speakerNames.Length > 0);
             if (tools.Preferences is not { } preferences)
-                return new(null, $"No preferences were captured. {extracted.Text}");
+                return new(null, captured);
             cancellationToken.ThrowIfCancellationRequested();
-            var instructions = $"""
-                Propose a conference schedule using the agenda tools. The agenda is fictional sample content.
-                Preferences have already been captured and are immutable during this step.
-                Required speakers: {string.Join(", ", preferences.RequiredSpeakers)}.
-                Searches return only sessions satisfying availability and not conflicting with existing likes.
-                Tool result times are in {zone.Id}. Never invent or modify IDs, speakers or times.
-                Search a short topic or look up required speakers. Use at most 8 tool calls.
-                Select up to 12 sessions and call submit_proposal with their exact IDs.
-                Include at least one session for each required speaker and avoid overlapping proposals.
-                If submit_proposal reports errors, correct the selection and resubmit without relaxing constraints.
-                If no valid schedule is possible, explain why and submit an empty list so the user sees the constraints.
-                Nothing is saved: this is a preview for user confirmation.
-                """;
-            response = await client.GetResponseAsync(
-                [new ChatMessage(ChatRole.System, instructions), new ChatMessage(ChatRole.User, request)],
-                new ChatOptions { Tools = [.. tools.CreateFunctions()], MaxOutputTokens = 700 },
-                cancellationToken);
+            var speakerErrors = SchedulePlanner.Review(conference, preferences, zone, savedIds).Errors
+                .Where(error => error.StartsWith("Speaker not found", StringComparison.Ordinal)
+                    || error.StartsWith("Ambiguous speaker", StringComparison.Ordinal)).ToArray();
+            if (speakerErrors.Length > 0)
+                return new(preferences, string.Join("\n", speakerErrors));
+            // Dispatch model-selected queries explicitly. Native automatic tool calling
+            // in this preview can repeat callbacks indefinitely inside a single request.
+            var functions = tools.CreateFunctions().OfType<AIFunction>().ToDictionary(f => f.Name);
+            var results = new List<string>();
+            foreach (var speaker in preferences.RequiredSpeakers)
+            {
+                for (var skip = 0; skip < SchedulePlanner.MaximumSessions; skip += 4)
+                {
+                    var result = await functions["speaker_sessions"].InvokeAsync(
+                        new AIFunctionArguments { ["name"] = speaker, ["skip"] = skip }, cancellationToken);
+                    var text = result?.ToString() ?? throw new InvalidDataException("The agenda function returned no result.");
+                    results.Add(text);
+                    if (!text.Contains("Next page:", StringComparison.Ordinal))
+                        break;
+                }
+            }
+            if (preferences.RequiredSpeakers.Length == 0 || (!preferences.AllSessionsByRequiredSpeakers && query.Length > 0))
+            {
+                var result = await functions["search_sessions"].InvokeAsync(
+                    new AIFunctionArguments { ["query"] = query, ["skip"] = 0 }, cancellationToken);
+                results.Add(result?.ToString() ?? throw new InvalidDataException("The agenda function returned no result."));
+            }
+            string[] selectedIds;
+            if (preferences.AllSessionsByRequiredSpeakers || tools.CandidateIds.Count == 0)
+                selectedIds = tools.CandidateIds.ToArray();
+            else
+            {
+                var selectionSchema = PlannerSchemas.Selection(tools.CandidateIds);
+                var response = await client.GetResponseAsync(
+                    [new ChatMessage(ChatRole.System, $"Select a non-overlapping schedule from these agenda function results. Times use {zone.Id}. Include the requested speakers. Return only session IDs.\nSchema: {selectionSchema.GetRawText()}\n{string.Join("\n", results)}"),
+                     new ChatMessage(ChatRole.User, request)],
+                    new ChatOptions { ResponseFormat = ChatResponseFormat.ForJsonSchema(selectionSchema),
+                        MaxOutputTokens = 500, Temperature = 0 }, cancellationToken);
+                selectedIds = JsonSerializer.Deserialize(response.Text, PlannerJsonContext.Default.PlannerSelection)?.SessionIds
+                    ?? throw new InvalidDataException("The model returned no session selection.");
+            }
+            var arranged = SchedulePlanner.Arrange(conference, preferences with { SessionIds = selectedIds }, zone, savedIds);
+            await functions["submit_proposal"].InvokeAsync(
+                new AIFunctionArguments { ["sessionIds"] = arranged.SessionIds }, cancellationToken);
         }
         finally
         {
             loggerFactory.CreateLogger<OnDevicePlanner>().LogInformation(
                 "Local planning used {ToolCalls} app function calls.", tools.CallCount);
         }
-        return new(tools.Proposal ?? tools.Preferences, response.Text);
+        return new(tools.Proposal ?? tools.Preferences, "");
     }
 
     private IChatClient CreateClient(IServiceProvider? services)
