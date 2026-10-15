@@ -80,11 +80,8 @@ public static class MauiProgram
 #endif
 
         builder.Services.AddSingleton<IConferenceDataSource, BundledConferenceDataSource>();
-        // Files do not survive a page reload in the browser, where preferences are kept in local storage.
-        builder.Services.AddSingleton<IScheduleStore>(_ => OperatingSystem.IsBrowser()
-            ? new ValueScheduleStore(() => Preferences.Default.Get<string?>("schedule", null),
-                json => Preferences.Default.Set("schedule", json))
-            : new JsonScheduleStore(Path.Combine(FileSystem.AppDataDirectory, "schedule.json")));
+        builder.Services.TryAddSingleton<IScheduleStore>(_ =>
+            new JsonScheduleStore(Path.Combine(FileSystem.AppDataDirectory, "schedule.json")));
         builder.Services.AddSingleton<ScheduleService>();
         builder.Services.AddSingleton<DetailNavigationService>();
         builder.Services.TryAddSingleton(Browser.Default);

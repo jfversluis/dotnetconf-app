@@ -4,6 +4,7 @@ using Avalonia.Controls.Maui.Services;
 using Avalonia.Media;
 using Avalonia.Platform;
 using DotNetConf.App.Controls;
+using DotNetConf.Core;
 using AvaloniaHandlers = Avalonia.Controls.Maui.Handlers;
 
 namespace DotNetConf.App;
@@ -20,6 +21,8 @@ internal static class AvaloniaHost
             // Buttons and Shell tabs resolve the image service by concrete type, which MAUI registers for itself.
             .ConfigureImageSources(services => services.AddService<FontImageSource, AvaloniaFontImageSourceService>());
         builder.Services.AddSingleton<IBrowser, AvaloniaBrowser>();
+        if (OperatingSystem.IsBrowser())
+            builder.Services.AddSingleton(CreateBrowserScheduleStore());
         builder.UseAvaloniaSyncfusion();
 
         AvaloniaHandlers.WindowHandler.Mapper.AppendToMapping(nameof(IWindow.Title), (handler, window) =>
@@ -61,4 +64,12 @@ internal static class AvaloniaHost
 
         return builder;
     }
+
+    /// <summary>
+    /// Files do not survive a page reload in the browser, so the schedule lives in local storage, under its own key
+    /// rather than in preferences, which each tab holds its own copy of.
+    /// </summary>
+    [System.Runtime.Versioning.SupportedOSPlatform("browser")]
+    private static IScheduleStore CreateBrowserScheduleStore()
+        => new ValueScheduleStore(() => BrowserStorage.Get("dotnetconf.schedule"), json => BrowserStorage.Set("dotnetconf.schedule", json));
 }
