@@ -11,7 +11,30 @@ public sealed record PlannerInterpretation(string SpeakerNames, string Availabil
     public bool HasAvailability => !string.IsNullOrWhiteSpace(AvailabilityText)
         && !AvailabilityText.Equals("none", StringComparison.OrdinalIgnoreCase);
 
-    public bool RequestsAllSpeakers(string request) => Quantity == "all" && HasAllQuantifier(request);
+    public bool RequiresTimeExtraction(string request) => HasAvailability || Regex.IsMatch(request,
+        @"\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\b\d{1,2}:\d{2}\b",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+
+    public static bool HasExplicitDate(string request) => Regex.IsMatch(request,
+        @"\b\d{4}-\d{2}-\d{2}\b|\b(?:January|February|March|April|May|June|July|August|September|October|November|December|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|today|tomorrow)\b|\b\d{1,2}/\d{1,2}\b",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+
+    public static string RequestedZone(string request)
+    {
+        var zones = Regex.Matches(request, @"\bUTC\b|\b[A-Za-z_]+/[A-Za-z_]+(?:/[A-Za-z_]+)?\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100))
+            .Select(m => m.Value.Equals("UTC", StringComparison.OrdinalIgnoreCase) ? "UTC" : m.Value)
+            .Distinct(StringComparer.Ordinal).ToArray();
+        return zones.Length switch
+        {
+            0 => "local", 1 => zones[0],
+            _ => throw new InvalidDataException("Use one explicit time zone per request.")
+        };
+    }
+
+    public bool RequestsAllSpeakers(string request) => Quantity == "all" && (HasAllQuantifier(request)
+        || Regex.IsMatch(request, @"\b(don['’]?t|do not)\s+miss\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)));
 
     public static bool HasAllQuantifier(string request) => Regex.IsMatch(request,
         @"\b(all|every|everything)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
@@ -26,39 +49,146 @@ public sealed record PlannerInterpretation(string SpeakerNames, string Availabil
     }
 }
 
-public sealed record PlannerTopicRequest(string Text, string Quantity)
+public sealed record PlannerTopicRequest(string Text, string[] Topics, string Quantity, string Match, string SpeakerScope)
 {
     public bool RequestsAll(string request) => Quantity == "all" && PlannerInterpretation.HasAllQuantifier(request);
+
+    public PlannerTopicFilter? ToFilter(ConferenceDocument conference, string request, bool hasSpeakers = false)
+    {
+        if (Topics is null || Topics.Length > 4 || Topics.Any(t => t is null)
+            || Quantity is not ("all" or "some") || Match is not ("any" or "all")
+            || SpeakerScope is not ("independent" or "within-topics" or "unsupported"))
+            throw new InvalidDataException("The model returned invalid topic fields.");
+        if (SpeakerScope == "unsupported")
+            throw new InvalidDataException("Separate different speaker/topic pairs into individual requests; this spike cannot safely combine them.");
+        var literal = Agenda.MentionedTopics(conference, request);
+        if (literal.Length == 0)
+        {
+            if (hasSpeakers && !HasInterest(conference, request))
+                return null;
+            if (!hasSpeakers && Topics.Length == 0 && (string.IsNullOrWhiteSpace(Text) || Text == "none"))
+                return null;
+        }
+        var known = conference.Sessions.SelectMany(s => s.Topics).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var topics = (literal.Length > 0 ? literal : Topics).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        if (topics.Length is 0 or > 4 || topics.Any(t => !known.Contains(t)))
+            throw new InvalidDataException("No supported agenda topics matched, or more than four were requested. Use up to four real agenda topics.");
+        var topicPattern = string.Join('|', topics.Select(t => Regex.Escape(t.StartsWith(".NET ", StringComparison.Ordinal) ? t[5..] : t)));
+        var scopedSpeakers = conference.Speakers.Where(s =>
+        {
+            var aliases = s.Name.Split(' ').Append(s.Name).Select(Regex.Escape);
+            return Regex.IsMatch(request, $@"\b(?:{string.Join('|', aliases)})['’]s\s+(?:\.NET\s+)?(?:{topicPattern})(?![\p{{L}}\p{{N}}])",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        }).Count();
+        if (scopedSpeakers > 1 && topics.Length > 1)
+            throw new InvalidDataException("Separate different speaker/topic pairs into individual requests; this spike cannot safely combine them.");
+        var explicitOr = Regex.IsMatch(request, @"\bor\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+            TimeSpan.FromMilliseconds(100));
+        var independentClause = Regex.IsMatch(request, @"\b(?:and|plus)\s+(?:everything|all|every|don['’]?t|do not|I must)\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        var explicitAnd = literal.Length > 1 && Regex.IsMatch(request, @"\b(?:both|and)\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        return new(topics, (Match == "all" || explicitAnd) && !explicitOr,
+            scopedSpeakers > 0 || (SpeakerScope == "within-topics" && !independentClause), RequestsAll(request));
+    }
 
     public bool HasInterest(ConferenceDocument conference, string request)
     {
         if (string.IsNullOrWhiteSpace(Text) || Text.Equals("none", StringComparison.OrdinalIgnoreCase))
             return false;
-        if (!request.Contains(Text, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("The model's topic phrase was not present in the request.");
         // The model can copy a speaker request as its topic evidence. Names and
         // generic conference-request words alone cannot justify inferred topics.
         var names = conference.Speakers.SelectMany(s => s.Name.Split(' ')).Distinct(StringComparer.OrdinalIgnoreCase)
             .Select(Regex.Escape);
-        var remaining = Regex.Replace(Text, $@"\b(?:{string.Join('|', names)})\b", "",
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
-        remaining = Regex.Replace(remaining,
-            @"\b(?:all|every|everything|sessions?|talks?|show|me|by|from|with|and|or|of|the|please|s)\b", "",
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
-        return remaining.Any(char.IsLetterOrDigit);
+        string Remaining(string value)
+        {
+            var remaining = Regex.Replace(value, @"\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b", "",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+            remaining = Regex.Replace(remaining, $@"\b(?:{string.Join('|', names)})\b", "",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+            return Regex.Replace(remaining,
+                @"\b(?:all|every|everything|sessions?|talks?|show|me|by|from|with|and|or|of|the|please|s|a|an|I|want|would|like|must|see|watch|only|available|availability|on|at|in|before|after|between|until|to|time|local|UTC|am|pm|don|t|do|not|miss|any|but|exclude|excluding|ending|ends?|finish(?:ing|es)?|they|are|for|no|matter|regardless|January|February|March|April|May|June|July|August|September|October|November|December|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b", "",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        }
+        if (!Remaining(request).Any(char.IsLetter))
+            return false;
+        if (!request.Contains(Text, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The model's topic phrase was not present in the request.");
+        return Remaining(Text).Any(char.IsLetter);
     }
 }
 
 public sealed record PlannerSelection(string[] SessionIds);
-public sealed record PlannerAvailability(PlannerWindow[] Windows)
+public sealed record PlannerDailyAvailability(string DailyStart, string DailyEnd, string Zone)
 {
-    public AvailabilityWindow[] ToWindows(TimeZoneInfo zone)
+    public PlannerDailyAvailability Ground(string request)
     {
+        const string clock = @"(?<hour>\d{1,2})(?::(?<minute>\d{2}))?\s*(?<period>am|pm)?";
+        var clocks = Regex.Matches(request, $@"\b{clock}(?=\s|[.,;!?]|$)",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100))
+            .Where(m => m.Groups["period"].Success || m.Groups["minute"].Success).ToArray();
+        if (clocks.Length != 1)
+            return this;
+        var match = Regex.Match(request, $@"\b(?<operator>before|until|by|after|from)\s+{clock}\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        if (!match.Success)
+            return this;
+        var hour = int.Parse(match.Groups["hour"].Value, CultureInfo.InvariantCulture);
+        var minute = match.Groups["minute"].Success ? int.Parse(match.Groups["minute"].Value, CultureInfo.InvariantCulture) : 0;
+        var period = match.Groups["period"].Value;
+        if (minute > 59 || hour > (period.Length > 0 ? 12 : 23) || (period.Length > 0 && hour == 0))
+            throw new InvalidDataException("The requested clock time is invalid.");
+        if (period.Length > 0)
+            hour = hour % 12 + (period.Equals("pm", StringComparison.OrdinalIgnoreCase) ? 12 : 0);
+        var time = new TimeOnly(hour, minute).ToString("HH:mm", CultureInfo.InvariantCulture);
+        var op = match.Groups["operator"].Value.ToLowerInvariant();
+        var excludeAfter = op == "after" && Regex.IsMatch(request, @"\b(?:exclud(?:e|ing)|avoid|nothing|no\s+(?:sessions?|talks?)|not\s+after)\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        return op is "before" or "until" or "by" || excludeAfter
+            ? this with { DailyStart = "none", DailyEnd = time }
+            : this with { DailyStart = time, DailyEnd = "none" };
+    }
+
+    public AvailabilityWindow[] ToWindows(TimeZoneInfo zone, ConferenceDocument conference) =>
+        new PlannerAvailability([], DailyStart, DailyEnd, Zone).ToWindows(zone, conference);
+}
+
+public sealed record PlannerAvailability(PlannerWindow[] Windows, string DailyStart = "none",
+    string DailyEnd = "none", string Zone = "local")
+{
+    public PlannerAvailability InZone(string zone, TimeZoneInfo local) => this with
+    {
+        Windows = Windows?.Select(w =>
+        {
+            var normalized = w?.ToWindow(local) ?? throw new InvalidDataException("The model returned an empty window.");
+            // Validate redundant model offsets first, then restore the user's
+            // explicit zone without converting their requested clock times.
+            return new PlannerWindow(normalized.Start, normalized.End, zone);
+        }).ToArray()
+            ?? throw new InvalidDataException("The model returned no windows.")
+    };
+
+    public AvailabilityWindow[] ToWindows(TimeZoneInfo zone, ConferenceDocument? conference = null)
+    {
+        if (DailyStart is null || DailyEnd is null || Zone is null || Windows is null)
+            throw new InvalidDataException("The model returned incomplete availability.");
+        if (DailyStart != "none" || DailyEnd != "none")
+        {
+            if (Windows.Length != 0 || conference is null)
+                throw new InvalidDataException("Do not combine dated windows and recurring clock limits in one request.");
+            var start = Clock(DailyStart, TimeOnly.MinValue);
+            var end = Clock(DailyEnd, TimeOnly.MinValue);
+            return SchedulePlanner.DailyAvailability(conference, zone, start, end, Zone);
+        }
         if (Windows is not { Length: > 0 and <= 12 })
             throw new InvalidDataException("The model must return between 1 and 12 explicit availability windows.");
         return Windows.Select(w => w?.ToWindow(zone)
             ?? throw new InvalidDataException("The model returned an empty window.")).ToArray();
     }
+
+    private static TimeOnly Clock(string value, TimeOnly unspecified) => value == "none" ? unspecified
+        : TimeOnly.TryParseExact(value, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var time)
+            ? time : throw new InvalidDataException("Use HH:mm for daily clock limits.");
 }
 public sealed record PlannerWindow(string Start, string End, string Zone)
 {
@@ -99,18 +229,19 @@ public sealed record PlannerWindow(string Start, string End, string Zone)
 [JsonSerializable(typeof(PlannerTopicRequest))]
 [JsonSerializable(typeof(PlannerSelection))]
 [JsonSerializable(typeof(PlannerAvailability))]
+[JsonSerializable(typeof(PlannerDailyAvailability))]
 internal partial class PlannerJsonContext : JsonSerializerContext;
 
 internal static class PlannerSchemas
 {
     private static JsonElement InterpretationTemplate { get; } = Parse(
         """
-        {"title":"ConferenceRequest","type":"object","properties":{"speakerNames":{"type":"string","description":"Names of PEOPLE explicitly mentioned, copied verbatim and separated by semicolons. Use none if the request mentions no person. Topics and interests are NOT people."},"availabilityText":{"type":"string","description":"Copy the date/time restriction from the user's request. Use none if the request says nothing about dates or times. Never invent a restriction."},"quantity":{"type":"string","enum":["all","some"],"description":"Use all only if the user asks for all, every or everything by/from a person; otherwise some."},"searchQuery":{"type":"string","description":"Classify the attendee's goal, not generic words such as code or apps. Runtime speed, low latency and memory efficiency map to Performance; browser UI and sites map to Web; native phone/tablet development maps to Mobile. Prefer a topic literally mentioned in the request. Use none for speaker-only requests or no interests."}},"required":["speakerNames","availabilityText","quantity","searchQuery"],"additionalProperties":false}
+        {"title":"ConferenceRequest","type":"object","properties":{"speakerNames":{"type":"string","description":"Names of PEOPLE explicitly mentioned, copied verbatim and separated by semicolons. Use none if no person. Topics and interests are NOT people."},"availabilityText":{"type":"string","description":"Copy explicit date/time restrictions, including daily clock cutoffs. Use none if no restriction, or if the user says no matter the time. Latest/newest about a topic does NOT restrict dates."},"quantity":{"type":"string","enum":["all","some"],"description":"Use all for all/every/everything by a person or don't miss a session from a person; otherwise some."},"searchQuery":{"type":"string","description":"Closest topic for stated interests. Faster code maps to Performance; browser apps to Web; phone apps to Mobile. Use none for speaker-only requests or no interests."}},"required":["speakerNames","availabilityText","quantity","searchQuery"],"additionalProperties":false}
         """);
 
-    public static JsonElement Topic { get; } = Parse(
+    private static JsonElement TopicTemplate { get; } = Parse(
         """
-        {"title":"ConferenceTopicRequest","type":"object","properties":{"text":{"type":"string","description":"Copy the exact words stating the user's TOPICAL interests, excluding speaker names and time restrictions. Use none for speaker-only requests. Never infer a topic from a person's expertise."},"quantity":{"type":"string","enum":["all","some"],"description":"Use all only when ALL or EVERY qualifies the requested TOPIC sessions. Otherwise some. Everything from a speaker does not mean all topic sessions."}},"required":["text","quantity"],"additionalProperties":false}
+        {"title":"ConferenceTopicRequest","type":"object","properties":{"text":{"type":"string","description":"Copy the exact topical-interest phrase, excluding speaker names and time restrictions. Use none for speaker-only requests."},"topics":{"type":"array","minItems":0,"maxItems":4,"items":{"type":"string"},"description":"All requested real agenda topics. MAUI means .NET MAUI; faster code means Performance; phone apps means Mobile; web stuff means Web. Empty if none or unavailable. Never infer a person's expertise."},"quantity":{"type":"string","enum":["all","some"],"description":"all for all/every/everything about the requested TOPICS, otherwise some."},"match":{"type":"string","enum":["any","all"],"description":"any for OR or a comma-separated topic list; all for explicitly requiring sessions about BOTH topics (AND)."},"speakerScope":{"type":"string","enum":["independent","within-topics","unsupported"],"description":"independent for topic talks PLUS don't-miss speaker talks. within-topics for a person's talks ABOUT the topics. unsupported for different topic/speaker pairings per clause, such as Maddy's MAUI and Gerald's C#."}},"required":["text","topics","quantity","match","speakerScope"],"additionalProperties":false}
         """);
 
     private static JsonElement SelectionTemplate { get; } = Parse(
@@ -120,7 +251,12 @@ internal static class PlannerSchemas
 
     public static JsonElement Availability { get; } = Parse(
         """
-        {"title":"ConferenceAvailability","type":"object","properties":{"windows":{"type":"array","minItems":1,"maxItems":12,"items":{"title":"ConferenceTimeWindow","type":"object","properties":{"start":{"type":"string","description":"Requested start, yyyy-MM-ddTHH:mm, with no conversion or offset."},"end":{"type":"string","description":"Requested end, yyyy-MM-ddTHH:mm, with no conversion or offset."},"zone":{"type":"string","description":"Copy UTC if user says UTC. Use local if user says local or names no zone. Otherwise copy the explicit IANA zone ID. Never convert the clock times."}},"required":["start","end","zone"],"additionalProperties":false}}},"required":["windows"],"additionalProperties":false}
+        {"title":"ConferenceAvailability","type":"object","properties":{"windows":{"type":"array","minItems":1,"maxItems":12,"items":{"title":"ConferenceTimeWindow","type":"object","properties":{"start":{"type":"string","description":"Requested start yyyy-MM-ddTHH:mm; never convert."},"end":{"type":"string","description":"Requested end yyyy-MM-ddTHH:mm; never convert."},"zone":{"type":"string","description":"UTC if explicit, local if unspecified; otherwise explicit IANA zone."}},"required":["start","end","zone"],"additionalProperties":false}}},"required":["windows"],"additionalProperties":false}
+        """);
+
+    public static JsonElement DailyAvailability { get; } = Parse(
+        """
+        {"title":"ConferenceDailyClockLimits","type":"object","properties":{"dailyStart":{"type":"string","description":"Allowed start HH:mm, or none if not stated. Do not invent a morning limit."},"dailyEnd":{"type":"string","description":"Allowed finish HH:mm, or none. Exclude after 10pm means 22:00. The ENTIRE session must finish by this time."},"zone":{"type":"string","description":"local for for me or unspecified; UTC if explicit; otherwise explicit IANA zone. Never convert clock times."}},"required":["dailyStart","dailyEnd","zone"],"additionalProperties":false}
         """);
 
     public static JsonElement Interpretation(ConferenceDocument conference) =>
@@ -129,6 +265,9 @@ internal static class PlannerSchemas
 
     public static JsonElement Selection(IEnumerable<string> candidateIds) =>
         WithChoices(SelectionTemplate, "sessionIds", candidateIds);
+
+    public static JsonElement Topic(ConferenceDocument conference) =>
+        WithChoices(TopicTemplate, "topics", conference.Sessions.SelectMany(s => s.Topics).Distinct());
 
     private static JsonElement WithChoices(JsonElement template, string propertyName, IEnumerable<string> choices)
     {

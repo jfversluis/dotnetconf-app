@@ -35,7 +35,7 @@ that the model is ready or that inference works.
 
 The local model produces schema-constrained query arguments and, when needed,
 session selections. The app dispatches `Microsoft.Extensions.AI` functions:
-`search_sessions`, `speaker_sessions`, and `submit_proposal`. This is an
+`search_sessions`, `speaker_sessions`, `topic_sessions`, and `submit_proposal`. This is an
 application-managed tool flow, not an autonomous native tool loop: the preview
 client can repeat native callbacks within a single request. Preference
 extraction is separate from selection; selection cannot rewrite constraints.
@@ -43,15 +43,28 @@ C# filters by availability and existing likes. Searches return at most four
 real agenda rows per page, with at most ten function calls per request. Speaker
 requests support pagination and unique partial names; ambiguous names require
 clarification. An "all sessions" request gathers all matching speaker sessions
-deterministically, and validation rejects an incomplete result. Mixed topic and
+deterministically, and validation rejects an incomplete result. Independent topic and
 speaker requests query both groups, not their intersection. A separate small
-local extraction identifies topical intent and its quantity from a quoted
-request fragment; speaker names alone cannot justify an inferred topic.
-An "all sessions about" request also paginates and validates topic completeness,
-including after the user changes the preview selection. Only the topic
+local extraction identifies topical intent and its quantity. Literal topics
+are grounded directly; inferred interests combined with speakers need quoted
+source evidence, and speaker names alone cannot justify an inferred topic.
+Topics use real agenda tags, with OR lists, explicit BOTH/AND intersections and
+single speaker/topic scopes (for example, Maddy's MAUI talks). Different
+speaker/topic pairings in one request are rejected instead of flattened.
+An "all sessions about" request paginates and validates completeness within the
+requested availability, including after the user changes the preview selection.
+Daily limits without dates are expanded over actual conference dates in the
+requested time zone. "After 10pm for me" means the entire session must finish by
+22:00 local time. Late/conflicting matches stay visible with warnings, unchecked
+and unavailable for saving; they are not silently hidden. A don't-miss speaker
+request that cannot fit remains an explicit conflict. Only the topic
 vocabulary and bounded query results enter prompts, not the complete catalog.
 No function can change likes.
 `NLEmbeddingGenerator` is not needed for this small grounded agenda.
+Requests are bounded to four topics, eight speakers, twelve availability windows
+and twelve selected talks, with one time zone per request. Matching talks are
+not hidden just because the selection limit is exceeded; the preview explains
+why it cannot be saved.
 
 `Microsoft.Maui.AI.Attributes` / `ExportAIFunction` was evaluated, but the
 current preview generator's schema construction fails with reflection-based

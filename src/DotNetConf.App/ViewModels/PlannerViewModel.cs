@@ -8,15 +8,21 @@ using Microsoft.Extensions.Logging;
 
 namespace DotNetConf.App.ViewModels;
 
-public partial class ProposedSessionViewModel(Session session, string speakerNames, TimeZoneInfo zone, Action changed) : ObservableObject
+public partial class ProposedSessionViewModel(Session session, string speakerNames, TimeZoneInfo zone,
+    bool selected, string warning, Action changed) : ObservableObject
 {
     public string Id => session.Id;
     public string AutomationId => $"planner-session-{Id}";
+    public string WarningAutomationId => $"planner-warning-{Id}";
+    public string SelectionAutomationId => $"planner-select-{Id}";
     public string Title => session.Title;
     public string SpeakerNames => speakerNames;
     public string Time => $"{TimeZoneInfo.ConvertTime(session.StartsAt, zone):ddd, MMM d HH:mm} - " +
-        $"{TimeZoneInfo.ConvertTime(session.EndsAt, zone):HH:mm}";
-    [ObservableProperty] public partial bool IsSelected { get; set; } = true;
+        $"{TimeZoneInfo.ConvertTime(session.EndsAt, zone):ddd, MMM d HH:mm}";
+    public string Warning => warning;
+    public bool HasWarning => warning.Length > 0;
+    public bool CanSelect => !HasWarning;
+    [ObservableProperty] public partial bool IsSelected { get; set; } = selected && warning.Length == 0;
     partial void OnIsSelectedChanged(bool value) => changed();
 }
 
@@ -139,16 +145,27 @@ public partial class PlannerViewModel(
             }
             Constraints = $"Required speakers: {(proposal.RequiredSpeakers.Length == 0 ? "None" : string.Join(", ", proposal.RequiredSpeakers))}\n" +
                 (proposal.AllSessionsByRequiredSpeakers ? "Include all sessions by these speakers.\n" : "") +
-                (proposal.AllSessionsMatchingQuery is { } query ? $"Include all sessions matching: {query}.\n" : "") +
+                (proposal.TopicFilter is { } filter
+                    ? $"Topics: {string.Join(filter.MatchAll ? " AND " : " OR ", filter.Topics)}" +
+                        (filter.RestrictToRequiredSpeakers ? " (only these speakers)" : " (plus independent speaker requests)") + ".\n" +
+                        (filter.IncludeAll ? "Include all matching topic sessions within availability.\n" : "")
+                    : "") +
                 $"Availability: {(proposal.Availability.Length == 0 ? "Unrestricted" : string.Join("; ", proposal.Availability.Select(w => $"{w.Start} to {w.End} ({(w.Zone == "local" ? timeZone.Id : w.Zone)})")))}";
-            foreach (var session in SchedulePlanner.Review(document, proposal, timeZone, SavedIds()).Sessions)
+            var matchedIds = proposal.MatchedSessionIds.Concat(proposal.SessionIds).ToHashSet(StringComparer.Ordinal);
+            foreach (var session in document.Sessions.Where(s => matchedIds.Contains(s.Id)).OrderBy(s => s.StartsAt))
+            {
+                var warnings = SchedulePlanner.Review(document, new([session.Id], [], proposal.Availability),
+                    timeZone, SavedIds()).Errors;
                 Sessions.Add(new(session, string.Join(", ", document.Speakers
-                    .Where(s => session.SpeakerIds.Contains(s.Id)).Select(s => s.Name)), timeZone, ReviewSelection));
+                    .Where(s => session.SpeakerIds.Contains(s.Id)).Select(s => s.Name)), timeZone,
+                    proposal.SessionIds.Contains(session.Id),
+                    warnings.Count > 0 ? "Not selected. " + string.Join(" ", warnings) : "", ReviewSelection));
+            }
             HasProposal = true;
             ReviewSelection();
             Status = Sessions.Count == 0
                 ? "No schedule was proposed. Check the explanation below; your likes have not changed."
-                : "Review the interpreted constraints and sessions below. AI can misunderstand your request. Nothing has been saved.";
+                : "Review the interpreted constraints and matching sessions below. Warning rows remain visible but are not selected. AI can misunderstand your request. Nothing has been saved.";
         }
         catch (OperationCanceledException)
         {
@@ -175,7 +192,7 @@ public partial class PlannerViewModel(
 
     private ScheduleProposal SelectedProposal() => (proposal ?? throw new InvalidOperationException("No proposal.")) with
     {
-        SessionIds = Sessions.Where(s => s.IsSelected).Select(s => s.Id).ToArray()
+        SessionIds = Sessions.Where(s => s.IsSelected && s.CanSelect).Select(s => s.Id).ToArray()
     };
 
     private void ReviewSelection()

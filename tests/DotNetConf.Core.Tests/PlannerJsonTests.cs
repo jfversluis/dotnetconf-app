@@ -113,7 +113,7 @@ public sealed class PlannerJsonTests
         Assert.Equal("C#", grounded.Query);
         Assert.Equal("all", interpretation.Quantity);
         Assert.True(interpretation.RequestsAllSpeakers("All sessions about C# and everything from Ortinau"));
-        var topic = JsonSerializer.Deserialize("""{"text":"C#","quantity":"all"}""",
+        var topic = JsonSerializer.Deserialize("""{"text":"C#","topics":["C#"],"quantity":"all","match":"any","speakerScope":"independent"}""",
             PlannerJsonContext.Default.PlannerTopicRequest)!;
         Assert.Equal("C#", topic.Text);
         Assert.True(topic.HasInterest(conference, "All sessions about C# and everything from Ortinau"));
@@ -125,7 +125,7 @@ public sealed class PlannerJsonTests
     {
         var request = "Everything from Ortinau and some phone apps";
         Assert.True(new PlannerInterpretation("Ortinau", "none", "Mobile", "all").RequestsAllSpeakers(request));
-        Assert.False(new PlannerTopicRequest("Mobile", "some").RequestsAll(request));
+        Assert.False(new PlannerTopicRequest("Mobile", ["Mobile"], "some", "any", "independent").RequestsAll(request));
     }
 
     [Theory]
@@ -138,10 +138,13 @@ public sealed class PlannerJsonTests
     {
         await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
         var conference = await ConferenceJson.ReadAsync(stream);
-        Assert.Equal(expected, new PlannerTopicRequest(evidence, "all").HasInterest(conference, evidence));
-        Assert.False(new PlannerTopicRequest("none", "all").HasInterest(conference, evidence));
-        Assert.Throws<InvalidDataException>(() =>
-            new PlannerTopicRequest("invented interest", "all").HasInterest(conference, evidence));
+        Assert.Equal(expected, new PlannerTopicRequest(evidence, [], "all", "any", "independent").HasInterest(conference, evidence));
+        Assert.False(new PlannerTopicRequest("none", [], "all", "any", "independent").HasInterest(conference, evidence));
+        if (expected)
+            Assert.Throws<InvalidDataException>(() =>
+                new PlannerTopicRequest("invented interest", [], "all", "any", "independent").HasInterest(conference, evidence));
+        else
+            Assert.False(new PlannerTopicRequest("invented interest", [], "all", "any", "independent").HasInterest(conference, evidence));
     }
 
     [Theory]
@@ -152,7 +155,127 @@ public sealed class PlannerJsonTests
     {
         var interpretation = new PlannerInterpretation("none", "none", "Web", "all");
         Assert.False(interpretation.RequestsAllSpeakers(request));
-        Assert.False(new PlannerTopicRequest("Web", "all").RequestsAll(request));
+        Assert.False(new PlannerTopicRequest("Web", ["Web"], "all", "any", "independent").RequestsAll(request));
+    }
+
+    [Fact]
+    public async Task TopicListsPreserveLiteralTopicsAndSpeakerScopeWithoutSubstringMatches()
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        var filter = new PlannerTopicRequest("AI, MAUI or Blazor", ["AI"], "all", "all", "independent")
+            .ToFilter(conference, "Everything about AI, MAUI or Blazor")!;
+        Assert.Equal([".NET MAUI", "AI", "Blazor"], filter.Topics.Order(StringComparer.Ordinal));
+        Assert.False(filter.MatchAll);
+        Assert.True(filter.IncludeAll);
+        var independent = new PlannerTopicRequest("C#", ["C#", "Mobile"], "all", "any", "within-topics")
+            .ToFilter(conference, "All C# sessions and everything from Ortinau")!;
+        Assert.False(independent.RestrictToRequiredSpeakers);
+        Assert.Equal(["C#"], independent.Topics);
+        var scope = new PlannerTopicRequest("MAUI", [".NET MAUI"], "all", "any", "independent")
+            .ToFilter(conference, "All of Maddy's MAUI sessions")!;
+        Assert.True(scope.RestrictToRequiredSpeakers);
+        Assert.Throws<InvalidDataException>(() =>
+            new PlannerTopicRequest("Rust", [], "all", "any", "independent").ToFilter(conference, "Everything about Rust"));
+        Assert.Throws<InvalidDataException>(() =>
+            new PlannerTopicRequest("MAUI talks and Gerald's C# talks", [".NET MAUI", "C#"], "all", "any", "independent")
+                .ToFilter(conference, "Maddy's MAUI talks and Gerald's C# talks"));
+        Assert.True(new PlannerInterpretation("Maddy", "none", "none", "all")
+            .RequestsAllSpeakers("Give me everything about MAUI and don't miss a session from Maddy"));
+    }
+
+    [Theory]
+    [InlineData("I want all the latest on C# but exclude sessions after 10pm for me", true)]
+    [InlineData("All C# sessions must finish by 22:00", true)]
+    [InlineData("Just everything from Gerald, no matter the time", false)]
+    [InlineData("I want the latest on C#", false)]
+    public void ExplicitClockLimitsCannotBeDroppedByAnEmptyModelMarker(string request, bool expected)
+    {
+        Assert.Equal(expected, new PlannerInterpretation("none", "none", "none", "some").RequiresTimeExtraction(request));
+        Assert.False(PlannerInterpretation.HasExplicitDate(request));
+    }
+
+    [Fact]
+    public async Task SpeakerAndTimeOnlyRequestsCannotAcquireTopicsFromParaphrasedModelEvidence()
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        foreach (var request in new[]
+        {
+            "Don't miss any session from Gerald, but exclude sessions ending after 10pm local time",
+            "A session with Alex on November 10, 2026, between 17:00 and 18:00 local time."
+        })
+            Assert.Null(new PlannerTopicRequest("a paraphrase not in the request", ["Mobile"], "some", "any", "independent")
+                .ToFilter(conference, request, hasSpeakers: true));
+    }
+
+    [Theory]
+    [InlineData("Exclude sessions if they are after 10pm for me", "none", "22:00")]
+    [InlineData("All C# sessions must finish by 22:00 UTC", "none", "22:00")]
+    [InlineData("No talks after 10pm local time", "none", "22:00")]
+    [InlineData("I can watch after 9pm", "21:00", "none")]
+    [InlineData("Finish before 12am", "none", "00:00")]
+    public void ASingleExplicitClockCannotAcquireAnInventedStartOrChangedCutoff(string request, string start, string end)
+    {
+        var grounded = new PlannerDailyAvailability("09:00", "20:00", "local").Ground(request);
+        Assert.Equal(start, grounded.DailyStart);
+        Assert.Equal(end, grounded.DailyEnd);
+    }
+
+    [Theory]
+    [InlineData("Finish before 25:00")]
+    [InlineData("Finish before 13pm")]
+    [InlineData("Finish before 0am")]
+    [InlineData("Finish before 9:99")]
+    public void InvalidExplicitClocksAreNotReplacedWithModelGuesses(string request) =>
+        Assert.Throws<InvalidDataException>(() => new PlannerDailyAvailability("none", "22:00", "local").Ground(request));
+
+    [Fact]
+    public void MultipleClocksPreserveTheSeparateWindowExtraction()
+    {
+        var extracted = new PlannerDailyAvailability("09:00", "22:00", "local");
+        Assert.Equal(extracted, extracted.Ground("Only between 09:00 and 22:00"));
+    }
+
+    [Fact]
+    public void RequestedZoneWinsWithoutConvertingClockTimesOrDiscardingInconsistentOffsets()
+    {
+        var local = TimeZoneInfo.FindSystemTimeZoneById("Europe/Amsterdam");
+        var sourceZone = PlannerInterpretation.RequestedZone("November 10 from 08:00 to 09:00 UTC");
+        Assert.Equal("UTC", sourceZone);
+        var interpreted = new PlannerAvailability(
+            [new("2026-11-10T08:00:00+01:00", "2026-11-10T09:00:00+01:00", "local")]);
+        var window = Assert.Single(interpreted.InZone(sourceZone, local).ToWindows(local));
+        Assert.Equal(new AvailabilityWindow("2026-11-10T08:00", "2026-11-10T09:00", "UTC"), window);
+        Assert.Throws<InvalidDataException>(() =>
+            (interpreted with { Windows = [new("2026-11-10T08:00+02:00", "2026-11-10T09:00+02:00", "local")] })
+                .InZone(sourceZone, local));
+        Assert.Equal("local", PlannerInterpretation.RequestedZone("Finish by 10pm for me"));
+        Assert.Equal("America/New_York", PlannerInterpretation.RequestedZone("Finish by 22:00 America/New_York"));
+        Assert.Throws<InvalidDataException>(() => PlannerInterpretation.RequestedZone("One window UTC and one Europe/Amsterdam"));
+    }
+
+    [Fact]
+    public async Task DailyLimitsUseAgendaDatesInTheRequestedZoneRatherThanInventingDates()
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        var zone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Amsterdam");
+        var windows = new PlannerAvailability([], DailyEnd: "22:00").ToWindows(zone, conference);
+        var daily = JsonSerializer.Deserialize(
+            """{"dailyStart":"none","dailyEnd":"22:00","zone":"local"}""",
+            PlannerJsonContext.Default.PlannerDailyAvailability)!;
+        Assert.Equal(windows, daily.ToWindows(zone, conference));
+        Assert.True(PlannerInterpretation.HasExplicitDate("November 10, 2026 between 17:00 and 18:00"));
+        Assert.Equal("2026-11-10T00:00", windows[0].Start);
+        Assert.Equal("2026-11-10T22:00", windows[0].End);
+        Assert.Equal("2026-11-13T22:00", windows[^1].End);
+        Assert.All(windows, w => Assert.Equal("local", w.Zone));
+        Assert.Throws<InvalidDataException>(() => new PlannerAvailability([], DailyEnd: "25:00").ToWindows(zone, conference));
+        Assert.Throws<InvalidDataException>(() => new PlannerAvailability([], DailyEnd: "22:00", Zone: "Unknown/Zone").ToWindows(zone, conference));
+        Assert.Throws<InvalidDataException>(() =>
+            new PlannerAvailability([new("2026-11-10T10:00", "2026-11-10T11:00", "local")], DailyEnd: "22:00")
+                .ToWindows(zone, conference));
     }
 
     [Fact]

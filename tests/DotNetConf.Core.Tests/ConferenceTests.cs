@@ -18,8 +18,8 @@ public sealed class ConferenceTests
     {
         var document = await LoadAsync();
         Assert.True(document.IsMock);
-        Assert.Equal(18, document.Sessions.Count);
-        Assert.Equal(10, document.Speakers.Count);
+        Assert.Equal(22, document.Sessions.Count);
+        Assert.Equal(12, document.Speakers.Count);
         Assert.Equal(24, document.CommunityEvents.Count);
         Assert.Contains(document.Sessions, session => session.SpeakerIds.Count > 1);
         Assert.Contains(document.Sessions, session => session.StartsAt.Date != session.EndsAt.Date);
@@ -101,7 +101,7 @@ public sealed class ConferenceTests
         Assert.Single(Agenda.Search(document, "Sam languages", null, null, TimeZoneInfo.Utc));
         Assert.Single(Agenda.Search(document, "AVALONIA", null, null, TimeZoneInfo.Utc));
         Assert.Empty(Agenda.Search(document, "Avalonia nonexistent", null, null, TimeZoneInfo.Utc));
-        Assert.Equal(4, Agenda.Search(document, "", null, [".NET MAUI"], TimeZoneInfo.Utc).Count());
+        Assert.Equal(7, Agenda.Search(document, "", null, [".NET MAUI"], TimeZoneInfo.Utc).Count());
         var sessions = Agenda.Search(document, "  ", null, null, TimeZoneInfo.Utc).ToArray();
         Assert.Equal(sessions.OrderBy(session => session.StartsAt), sessions);
     }
@@ -124,8 +124,8 @@ public sealed class ConferenceTests
         Assert.Single(Agenda.Search(document, "Alex", day, [".NET MAUI"], TimeZoneInfo.Utc));
         Assert.Empty(Agenda.Search(document, "Alex", day, ["AI"], TimeZoneInfo.Utc));
         Assert.Equal(3, Agenda.Search(document, "Alex", null, null, TimeZoneInfo.Utc).Count());
-        Assert.Equal(4, Agenda.Search(document, "", null, [".NET MAUI"], TimeZoneInfo.Utc).Count());
-        Assert.Equal(18, Agenda.Search(document, "", null, null, TimeZoneInfo.Utc).Count());
+        Assert.Equal(7, Agenda.Search(document, "", null, [".NET MAUI"], TimeZoneInfo.Utc).Count());
+        Assert.Equal(22, Agenda.Search(document, "", null, null, TimeZoneInfo.Utc).Count());
     }
 
     [Fact]

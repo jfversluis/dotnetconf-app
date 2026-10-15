@@ -5,6 +5,19 @@ namespace DotNetConf.Core;
 
 public static class Agenda
 {
+    public static bool MatchesTopics(Session session, PlannerTopicFilter filter) => filter.MatchAll
+        ? filter.Topics.All(t => session.Topics.Contains(t, StringComparer.OrdinalIgnoreCase))
+        : filter.Topics.Any(t => session.Topics.Contains(t, StringComparer.OrdinalIgnoreCase));
+
+    public static string[] MentionedTopics(ConferenceDocument conference, string request)
+    {
+        var matches = conference.Sessions.SelectMany(s => s.Topics).Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(t => Regex.IsMatch(request,
+                $$"""(?<![\p{L}\p{N}]){{Regex.Escape(t.StartsWith(".NET ", StringComparison.Ordinal) ? t[5..] : t)}}(?![\p{L}\p{N}])""",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100))).ToArray();
+        return matches.Where(t => t != ".NET" || !matches.Any(other => other.StartsWith(".NET ", StringComparison.Ordinal))).ToArray();
+    }
+
     public static (string[] Speakers, string Query) GroundPlannerQuery(
         ConferenceDocument conference, string request, string[] names, string inferred)
     {

@@ -6,8 +6,11 @@ public sealed record ScheduleProposal(
     string[] SessionIds, string[] RequiredSpeakers, AvailabilityWindow[] Availability)
 {
     public bool AllSessionsByRequiredSpeakers { get; init; }
-    public string? AllSessionsMatchingQuery { get; init; }
+    public PlannerTopicFilter? TopicFilter { get; init; }
+    public string[] MatchedSessionIds { get; init; } = [];
 }
+
+public sealed record PlannerTopicFilter(string[] Topics, bool MatchAll, bool RestrictToRequiredSpeakers, bool IncludeAll);
 
 public sealed record AvailabilityWindow(string Start, string End, string Zone);
 
@@ -25,7 +28,7 @@ public static class SchedulePlanner
         IReadOnlyCollection<string> savedIds)
     {
         var review = Review(conference, candidates, timeZone, savedIds);
-        if (candidates.AllSessionsByRequiredSpeakers || candidates.AllSessionsMatchingQuery is not null || review.Errors.Count == 0
+        if (candidates.AllSessionsByRequiredSpeakers || candidates.TopicFilter?.IncludeAll == true || review.Errors.Count == 0
             || review.Errors.Any(e => !e.StartsWith("Overlapping proposals:", StringComparison.Ordinal)))
             return candidates;
 
@@ -56,7 +59,7 @@ public static class SchedulePlanner
             errors.Add($"Propose between 1 and {MaximumSessions} sessions.");
         if (proposal.RequiredSpeakers.Length > 8 || proposal.Availability.Length > 12)
             errors.Add("Too many constraints. Use at most 8 required speakers and 12 availability windows.");
-        foreach (var id in proposal.SessionIds.Take(MaximumSessions))
+        foreach (var id in proposal.SessionIds)
         {
             var session = conference.Sessions.Find(s => s.Id == id);
             if (session is null)
@@ -77,11 +80,20 @@ public static class SchedulePlanner
             else
                 windows.Add((start, end));
         }
+        bool FitsAvailability(Session session) => proposal.Availability.Length == 0
+            || windows.Any(w => session.StartsAt >= w.Start && session.EndsAt <= w.End);
+        if (proposal.TopicFilter is { } topicFilter)
+        {
+            var known = conference.Sessions.SelectMany(s => s.Topics).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (topicFilter.Topics.Length is 0 or > 4 || topicFilter.Topics.Any(t => !known.Contains(t)))
+                errors.Add("Choose between 1 and 4 real agenda topics.");
+            if (topicFilter.RestrictToRequiredSpeakers && proposal.RequiredSpeakers.Length == 0)
+                errors.Add("Specify a speaker when restricting topic sessions to speakers.");
+        }
 
         foreach (var session in sessions)
         {
-            if (proposal.Availability.Length > 0
-                && !windows.Any(w => session.StartsAt >= w.Start && session.EndsAt <= w.End))
+            if (!FitsAvailability(session))
                 errors.Add($"Outside your availability: {session.Title}.");
             foreach (var other in sessions.Where(s => string.CompareOrdinal(s.Id, session.Id) > 0))
                 if (Agenda.Overlaps(session, other))
@@ -104,6 +116,8 @@ public static class SchedulePlanner
             if (matches.Count == 1 && proposal.AllSessionsByRequiredSpeakers)
             {
                 var missing = conference.Sessions.Where(s => s.SpeakerIds.Contains(matches[0].Id)
+                    && (proposal.TopicFilter is not { RestrictToRequiredSpeakers: true } scoped
+                        || Agenda.MatchesTopics(s, scoped))
                     && !proposal.SessionIds.Contains(s.Id)).ToArray();
                 if (missing.Length > 0)
                     errors.Add($"You requested all sessions by {matches[0].Name}. Missing: {string.Join(", ", missing.Select(s => s.Title))}. Change your request if you only want a subset.");
@@ -111,16 +125,46 @@ public static class SchedulePlanner
         }
         if (proposal.AllSessionsByRequiredSpeakers && proposal.RequiredSpeakers.Length == 0)
             errors.Add("Specify a speaker when requesting all of their sessions.");
-        if (proposal.AllSessionsMatchingQuery is { } query)
+        if (proposal.TopicFilter is { IncludeAll: true } filter)
         {
-            var matching = Agenda.Search(conference, query, null, null, timeZone).ToArray();
-            if (string.IsNullOrWhiteSpace(query) || matching.Length == 0)
-                errors.Add($"No sessions match the requested all-session topic: {query}.");
+            var matching = TopicMatches(conference, proposal).Where(FitsAvailability).ToArray();
+            var label = string.Join(filter.MatchAll ? " AND " : " OR ", filter.Topics);
+            if (matching.Length == 0)
+                errors.Add($"No sessions match the requested topics within your availability: {label}.");
             var missing = matching.Where(s => !proposal.SessionIds.Contains(s.Id)).ToArray();
             if (missing.Length > 0)
-                errors.Add($"You requested all sessions matching '{query}'. Missing: {string.Join(", ", missing.Select(s => s.Title))}. Change your request if you only want a subset.");
+                errors.Add($"You requested all sessions matching '{label}' within your availability. Missing: {string.Join(", ", missing.Select(s => s.Title))}. Change your request if you only want a subset.");
         }
         return new(sessions.OrderBy(s => s.StartsAt).ToArray(), errors);
+    }
+
+    public static IEnumerable<Session> TopicMatches(ConferenceDocument conference, ScheduleProposal proposal)
+    {
+        if (proposal.TopicFilter is not { } filter)
+            return [];
+        var speakerIds = proposal.RequiredSpeakers.SelectMany(n => Agenda.FindSpeakers(conference, n))
+            .Select(s => s.Id).ToHashSet(StringComparer.Ordinal);
+        return conference.Sessions.Where(s => Agenda.MatchesTopics(s, filter)
+            && (!filter.RestrictToRequiredSpeakers || s.SpeakerIds.Any(speakerIds.Contains)))
+            .OrderBy(s => s.StartsAt).ThenBy(s => s.Id, StringComparer.Ordinal);
+    }
+
+    public static AvailabilityWindow[] DailyAvailability(ConferenceDocument conference, TimeZoneInfo local,
+        TimeOnly start, TimeOnly end, string zoneId)
+    {
+        if (!TryTimeZone(zoneId, local, out var zone))
+            throw new InvalidDataException("The model returned an unknown time zone.");
+        var first = Agenda.LocalDay(conference.Sessions.Min(s => s.StartsAt), zone);
+        var last = Agenda.LocalDay(conference.Sessions.Max(s => s.EndsAt), zone);
+        if (last.DayNumber - first.DayNumber >= 12)
+            throw new InvalidDataException("Recurring availability spans more than twelve days. Specify a narrower date range.");
+        return Enumerable.Range(0, last.DayNumber - first.DayNumber + 1).Select(offset =>
+        {
+            var day = first.AddDays(offset);
+            return new AvailabilityWindow(day.ToDateTime(start).ToString("yyyy-MM-dd'T'HH:mm", CultureInfo.InvariantCulture),
+                (end <= start ? day.AddDays(1) : day).ToDateTime(end).ToString("yyyy-MM-dd'T'HH:mm", CultureInfo.InvariantCulture),
+                zoneId);
+        }).ToArray();
     }
 
     private static bool TryTimeZone(string id, TimeZoneInfo local, out TimeZoneInfo zone)

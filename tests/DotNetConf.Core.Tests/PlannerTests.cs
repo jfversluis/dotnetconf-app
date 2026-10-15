@@ -20,7 +20,7 @@ public sealed class PlannerTests
     private static Session Talk(string id, string start, string end, string speaker) => new()
     {
         Id = id, Title = id, StartsAt = DateTimeOffset.Parse(start), EndsAt = DateTimeOffset.Parse(end),
-        SpeakerIds = [speaker]
+        SpeakerIds = [speaker], Topics = [speaker == "sam" ? "C#" : "Mobile"]
     };
 
     [Fact]
@@ -162,13 +162,13 @@ public sealed class PlannerTests
     {
         var all = new ScheduleProposal(["language", "overlap", "midnight"], [], [])
         {
-            AllSessionsMatchingQuery = "Sam"
+            TopicFilter = new(["C#"], false, false, true)
         };
         Assert.Same(all, SchedulePlanner.Arrange(Conference, all, TimeZoneInfo.Utc, []));
         Assert.Contains(Review(all).Errors, e => e.StartsWith("Overlapping proposals:"));
         Assert.Contains(Review(all with { SessionIds = ["language"] }).Errors,
             e => e.StartsWith("You requested all sessions matching"));
-        Assert.Contains(Review(all with { AllSessionsMatchingQuery = "unknown topic" }).Errors,
+        Assert.Contains(Review(all with { TopicFilter = new(["unknown topic"], false, false, true) }).Errors,
             e => e.StartsWith("No sessions match"));
     }
 

@@ -16,7 +16,7 @@ public sealed class PlannerToolTests
         tools.Initialize(conference, TimeZoneInfo.Utc, []);
         tools.CapturePreferences(["Alex Rivera"], []);
         var functions = tools.CreateFunctions().Cast<AIFunction>().ToArray();
-        Assert.Equal(3, functions.Length);
+        Assert.Equal(4, functions.Length);
         foreach (var function in functions)
         {
             Assert.Equal(JsonValueKind.Object, function.JsonSchema.ValueKind);
@@ -77,6 +77,8 @@ public sealed class PlannerToolTests
         var rows = tools.SearchSessions("", 0);
         Assert.Contains("building-with-maui", rows);
         Assert.DoesNotContain("accessible-by-design", rows);
+        Assert.Contains("accessible-by-design", tools.SpeakerSessions("Alex"));
+        Assert.DoesNotContain("accessible-by-design", tools.EligibleCandidateIds);
         Assert.Contains("Outside your availability", tools.SubmitProposal(["accessible-by-design"]));
         Assert.Contains("Required speaker has no proposed session", tools.SubmitProposal(["language-features"]));
         Assert.Equal("Alex Rivera", Assert.Single(tools.Proposal!.RequiredSpeakers));
@@ -194,7 +196,7 @@ public sealed class PlannerToolTests
         Assert.Contains("talk-5 |", last);
         Assert.Contains("End of results", last);
         Assert.Equal(6, tools.CandidateIds.Count);
-        tools.CapturePreferences([], [], allSessionsMatchingQuery: "Mobile");
+        tools.CapturePreferences([], [], topicFilter: new(["Mobile"], false, false, true));
         Assert.Contains("Next page: skip=4", tools.SearchSessions("Mobile", 0));
         Assert.Contains("You requested all sessions matching", tools.SubmitProposal(tools.CandidateIds.ToArray()));
         Assert.Contains("End of results", tools.SearchSessions("Mobile", 4));
@@ -209,14 +211,15 @@ public sealed class PlannerToolTests
         var conference = await ConferenceJson.ReadAsync(stream);
         var tools = new PlannerTools();
         tools.Initialize(conference, TimeZoneInfo.Utc, []);
-        tools.CapturePreferences(["Ortinau"], [], true, "C#");
+        tools.CapturePreferences(["Ortinau"], [], true, new(["C#"], false, false, true));
         tools.SpeakerSessions("Ortinau");
         var speakerIds = tools.CandidateIds.ToArray();
         Assert.Contains("You requested all sessions matching 'C#'", tools.SubmitProposal(speakerIds));
-        tools.SearchSessions("C#", 0);
-        Assert.Equal(6, tools.CandidateIds.Count);
+        tools.TopicSessions(0);
+        tools.TopicSessions(4);
+        Assert.Equal(7, tools.CandidateIds.Count);
         Assert.StartsWith("Preview ready.", tools.SubmitProposal(tools.CandidateIds.ToArray()));
-        Assert.Equal("C#", tools.Proposal!.AllSessionsMatchingQuery);
+        Assert.Equal(["C#"], tools.Proposal!.TopicFilter!.Topics);
         Assert.True(tools.Proposal.AllSessionsByRequiredSpeakers);
         Assert.Contains("You requested all sessions by David Ortinau",
             tools.SubmitProposal(tools.CandidateIds.Except(speakerIds).ToArray()));
@@ -229,17 +232,122 @@ public sealed class PlannerToolTests
         var conference = await ConferenceJson.ReadAsync(stream);
         var tools = new PlannerTools();
         tools.Initialize(conference, TimeZoneInfo.Utc, []);
-        tools.CapturePreferences([], [], allSessionsMatchingQuery: "Mobile");
-        Assert.Contains("End of results", tools.SearchSessions("Mobile", 0));
-        Assert.Equal(4, tools.CandidateIds.Count);
+        tools.CapturePreferences([], [], topicFilter: new(["Mobile"], false, false, true));
+        Assert.Contains("Next page", tools.TopicSessions(0));
+        Assert.Contains("End of results", tools.TopicSessions(4));
+        Assert.Equal(7, tools.CandidateIds.Count);
         Assert.StartsWith("Preview ready.", tools.SubmitProposal(tools.CandidateIds.ToArray()));
 
         tools.CapturePreferences([], [new("2026-11-10T15:00", "2026-11-10T20:00", "UTC")],
-            allSessionsMatchingQuery: "Mobile");
-        tools.SearchSessions("Mobile", 0);
-        Assert.Contains("You requested all sessions matching", tools.SubmitProposal(tools.CandidateIds.ToArray()));
+            topicFilter: new(["Mobile"], false, false, true));
+        tools.TopicSessions(0);
+        tools.TopicSessions(4);
+        Assert.StartsWith("Preview ready.", tools.SubmitProposal(tools.EligibleCandidateIds));
+        Assert.True(tools.Proposal!.MatchedSessionIds.Length > tools.Proposal.SessionIds.Length);
         var proposal = tools.Proposal!;
         Assert.Same(proposal, SchedulePlanner.Arrange(conference, proposal, TimeZoneInfo.Utc, []));
+    }
+
+    [Fact]
+    public async Task TopicOrAndSpeakerIntersectionAreSeparateAndNeverMatchAiInsideMaui()
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        var tools = new PlannerTools();
+        tools.Initialize(conference, TimeZoneInfo.Utc, []);
+        tools.CapturePreferences([], [], topicFilter: new(["AI", ".NET MAUI", "Blazor"], false, false, true));
+        for (var skip = 0; skip < 12; skip += 4)
+            tools.TopicSessions(skip);
+        Assert.Equal(11, tools.CandidateIds.Count);
+        Assert.StartsWith("Preview ready.", tools.SubmitProposal(tools.EligibleCandidateIds));
+        tools.CapturePreferences([], [], topicFilter: new(["AI"], false, false, true));
+        tools.TopicSessions(0);
+        tools.TopicSessions(4);
+        Assert.Equal(5, tools.CandidateIds.Count);
+        Assert.DoesNotContain("building-with-maui", tools.CandidateIds);
+        tools.CapturePreferences([], [], topicFilter: new(["AI", ".NET MAUI"], true, false, true));
+        tools.TopicSessions();
+        Assert.Equal(["maddy-maui-ai", "maui-local-ai"], tools.CandidateIds.Order());
+        tools.CapturePreferences(["Maddy"], [], true, new([".NET MAUI"], false, true, true));
+        tools.SpeakerSessions("Maddy");
+        tools.TopicSessions();
+        Assert.Equal(["maddy-maui-ai", "maddy-maui-roadmap"], tools.CandidateIds.Order());
+        Assert.StartsWith("Preview ready.", tools.SubmitProposal(tools.EligibleCandidateIds));
+    }
+
+    [Fact]
+    public async Task LateMatchesRemainVisibleButUnselectedAndRequiredSpeakerConflictsStayExplicit()
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        var zone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Amsterdam");
+        var windows = new PlannerAvailability([], DailyEnd: "22:00").ToWindows(zone, conference);
+        var tools = new PlannerTools();
+        tools.Initialize(conference, zone, []);
+        tools.CapturePreferences([], windows, topicFilter: new(["C#"], false, false, true));
+        tools.TopicSessions();
+        Assert.Contains("Warning:", tools.TopicSessions(4));
+        Assert.Contains("gerald-csharp-ai", tools.CandidateIds);
+        Assert.DoesNotContain("gerald-csharp-ai", tools.EligibleCandidateIds);
+        Assert.Equal(4, tools.EligibleCandidateIds.Length);
+        Assert.StartsWith("Preview ready.", tools.SubmitProposal(tools.EligibleCandidateIds));
+        Assert.Contains("gerald-csharp-ai", tools.Proposal!.MatchedSessionIds);
+        tools.CapturePreferences(["Gerald"], windows, true);
+        tools.SpeakerSessions("Gerald");
+        Assert.Contains("Missing:", tools.SubmitProposal(tools.EligibleCandidateIds));
+        Assert.Equal(2, tools.Proposal!.MatchedSessionIds.Length);
+        Assert.Equal(["gerald-maui-testing"], tools.Proposal.SessionIds);
+    }
+
+    [Fact]
+    public void CutoffIsInclusiveForFinishTimeAndRejectsCrossMidnightSessions()
+    {
+        var zone = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
+        var conference = new ConferenceDocument
+        {
+            Speakers = [new() { Id = "alex", Name = "Alex Rivera" }],
+            Sessions = new[] { ("exact-before-dst", 31, 21, 0, -4), ("exact-after-dst", 1, 21, 0, -5),
+                ("late", 1, 21, 15, -5), ("midnight", 1, 23, 30, -5) }.Select(x =>
+            {
+                var start = new DateTimeOffset(2026, x.Item2 == 31 ? 10 : 11, x.Item2, x.Item3, x.Item4, 0, TimeSpan.FromHours(x.Item5));
+                return new Session
+                {
+                    Id = x.Item1, Title = x.Item1, StartsAt = start, EndsAt = start.AddHours(1),
+                    SpeakerIds = ["alex"], Topics = ["C#"]
+                };
+            }).ToList()
+        };
+        var windows = new PlannerAvailability([], DailyEnd: "22:00").ToWindows(zone, conference);
+        var tools = new PlannerTools();
+        tools.Initialize(conference, zone, []);
+        tools.CapturePreferences([], windows, topicFilter: new(["C#"], false, false, true));
+        tools.TopicSessions();
+        Assert.Equal(4, tools.CandidateIds.Count);
+        Assert.Equal(["exact-before-dst", "exact-after-dst"], tools.EligibleCandidateIds);
+        Assert.StartsWith("Preview ready.", tools.SubmitProposal(tools.EligibleCandidateIds));
+    }
+
+    [Fact]
+    public void OversizedCompleteMatchesRemainVisibleInsteadOfBeingTruncatedIntoSuccess()
+    {
+        var conference = new ConferenceDocument
+        {
+            Speakers = [new() { Id = "alex", Name = "Alex Rivera" }],
+            Sessions = Enumerable.Range(0, 16).Select(i => new Session
+            {
+                Id = $"talk-{i}", Title = $"Talk {i}", SpeakerIds = ["alex"], Topics = ["C#"],
+                StartsAt = DateTimeOffset.Parse("2026-11-10T08:00Z").AddHours(i),
+                EndsAt = DateTimeOffset.Parse("2026-11-10T08:45Z").AddHours(i)
+            }).ToList()
+        };
+        var tools = new PlannerTools();
+        tools.Initialize(conference, TimeZoneInfo.Utc, []);
+        tools.CapturePreferences([], [], topicFilter: new(["C#"], false, false, true));
+        for (var skip = 0; skip < 16; skip += 4)
+            tools.TopicSessions(skip);
+        Assert.Contains("between 1 and 12", tools.SubmitProposal(tools.EligibleCandidateIds));
+        Assert.Equal(16, tools.Proposal!.MatchedSessionIds.Length);
+        Assert.Equal(16, SchedulePlanner.Review(conference, tools.Proposal, TimeZoneInfo.Utc, []).Sessions.Count);
     }
 
     [Fact]
@@ -248,7 +356,7 @@ public sealed class PlannerToolTests
         await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
         var conference = await ConferenceJson.ReadAsync(stream);
         var realNames = conference.Speakers.Where(s => s.Tagline.StartsWith("Real name")).ToArray();
-        Assert.Equal(6, realNames.Length);
+        Assert.Equal(8, realNames.Length);
         Assert.All(realNames, speaker =>
         {
             Assert.Contains("Fictional demo participation", speaker.Tagline);

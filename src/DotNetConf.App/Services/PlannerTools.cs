@@ -16,6 +16,8 @@ public sealed class PlannerTools
     public ScheduleProposal? Preferences { get; private set; }
     public int CallCount => calls;
     public IReadOnlySet<string> CandidateIds => candidateIds;
+    public string[] EligibleCandidateIds => GetDocument().Sessions
+        .Where(s => candidateIds.Contains(s.Id) && IsEligible(s)).Select(s => s.Id).ToArray();
 
     public void Initialize(ConferenceDocument conference, TimeZoneInfo zone, string[] likedIds)
     {
@@ -48,11 +50,17 @@ public sealed class PlannerTools
         if (speakers.Count > 1)
             return $"Ambiguous speaker '{name}'. Ask the user to choose: {string.Join(", ", speakers.Select(s => s.Name))}.";
         return $"Speaker: {speakers[0].Name}\n" + FormatPage(
-            conference.Sessions.Where(s => s.SpeakerIds.Contains(speakers[0].Id)).OrderBy(s => s.StartsAt).ToArray(), skip);
+            conference.Sessions.Where(s => s.SpeakerIds.Contains(speakers[0].Id)
+                && (Preferences?.TopicFilter is not { RestrictToRequiredSpeakers: true } filter
+                    || Agenda.MatchesTopics(s, filter))).OrderBy(s => s.StartsAt).ToArray(), skip);
     }
 
+    public string TopicSessions(int skip = 0) => FormatPage(
+        SchedulePlanner.TopicMatches(GetDocument(), Preferences
+            ?? throw new InvalidOperationException("Capture preferences before searching.")).ToArray(), skip);
+
     public string CapturePreferences(string[] requiredSpeakers, AvailabilityWindow[] availability,
-        bool allSessionsByRequiredSpeakers = false, string? allSessionsMatchingQuery = null)
+        bool allSessionsByRequiredSpeakers = false, PlannerTopicFilter? topicFilter = null)
     {
         GetDocument();
         Proposal = null;
@@ -74,7 +82,7 @@ public sealed class PlannerTools
         Preferences = new([], names, availability)
         {
             AllSessionsByRequiredSpeakers = allSessionsByRequiredSpeakers,
-            AllSessionsMatchingQuery = allSessionsMatchingQuery
+            TopicFilter = topicFilter
         };
         return "Preferences captured for user review. They cannot be changed during agenda selection.";
     }
@@ -84,10 +92,14 @@ public sealed class PlannerTools
         var conference = GetDocument();
         Proposal = null;
         if (sessionIds is null || sessionIds.Any(id => id is null || id.Length > 100)
-            || sessionIds.Length > SchedulePlanner.MaximumSessions)
-            return "Invalid arguments: provide at most 12 real session IDs.";
+            || sessionIds.Length > Math.Max(SchedulePlanner.MaximumSessions, conference.Sessions.Count))
+            return "Invalid arguments: provide real session IDs within the agenda bounds.";
         var preferences = Preferences ?? throw new InvalidOperationException("Capture preferences before proposing sessions.");
-        Proposal = preferences with { SessionIds = sessionIds };
+        Proposal = preferences with
+        {
+            SessionIds = sessionIds,
+            MatchedSessionIds = candidateIds.Concat(sessionIds).Distinct(StringComparer.Ordinal).ToArray()
+        };
         var review = SchedulePlanner.Review(conference, Proposal, timeZone, savedIds);
         return review.CanApply ? "Preview ready. Ask the user to review interpreted constraints and confirm in the app."
             : string.Join("\n", review.Errors.Take(8));
@@ -99,7 +111,7 @@ public sealed class PlannerTools
         var candidate = preferences with
         {
             SessionIds = [session.Id], RequiredSpeakers = [], AllSessionsByRequiredSpeakers = false,
-            AllSessionsMatchingQuery = null
+            TopicFilter = null
         };
         return SchedulePlanner.Review(document ?? throw new InvalidOperationException("No agenda loaded."),
             candidate, timeZone, savedIds).CanApply;
@@ -112,7 +124,8 @@ public sealed class PlannerTools
             $"{s.Id} | {s.Title} | {TimeZoneInfo.ConvertTime(s.StartsAt, timeZone):yyyy-MM-ddTHH:mm} to " +
             $"{TimeZoneInfo.ConvertTime(s.EndsAt, timeZone):yyyy-MM-ddTHH:mm} | " +
             $"{string.Join(", ", conference.Speakers.Where(p => s.SpeakerIds.Contains(p.Id)).Select(p => p.Name))} | " +
-            $"{string.Join(", ", s.Topics)}").ToArray();
+            $"{string.Join(", ", s.Topics)}" +
+            (IsEligible(s) ? "" : " | Warning: outside availability or conflicts with a liked session; do not select.")).ToArray();
         return rows.Length == 0 ? "No matching sessions." : string.Join("\n", rows);
     }
 
@@ -120,12 +133,12 @@ public sealed class PlannerTools
     {
         var eligible = matching.Where(IsEligible).ToArray();
         var offset = Math.Clamp(skip, 0, matching.Length);
-        var page = eligible.Skip(offset).Take(4).ToArray();
+        var page = matching.Skip(offset).Take(4).ToArray();
         foreach (var session in page)
             candidateIds.Add(session.Id);
         var excluded = matching.Length - eligible.Length;
-        return $"Matches: {matching.Length}; eligible: {eligible.Length}; excluded by availability or liked-session conflicts: {excluded}. " +
-            (offset + page.Length < eligible.Length ? $"Next page: skip={offset + page.Length}.\n" : "End of results.\n") +
+        return $"Matches: {matching.Length}; eligible: {eligible.Length}; shown with warnings for availability or liked-session conflicts: {excluded}. " +
+            (offset + page.Length < matching.Length ? $"Next page: skip={offset + page.Length}.\n" : "End of results.\n") +
             Format(page);
     }
 
@@ -140,6 +153,11 @@ public sealed class PlannerTools
             "Find sessions by full name or a UNIQUE first/last name. Ask for clarification if ambiguous. At most 4 rows per page; follow next-page skip to include ALL sessions.",
             """
             {"type":"object","properties":{"name":{"type":"string","description":"Full or partial speaker name"},"skip":{"type":"integer","description":"Results to skip, zero for the first page"}},"required":["name","skip"],"additionalProperties":false}
+            """),
+        new PlannerFunction(this, "topic_sessions",
+            "Query the captured real agenda topics, respecting OR/AND and any speaker scope. Late/conflicting matches remain visible with warnings and must not be selected. Follow next-page skip for all results.",
+            """
+            {"type":"object","properties":{"skip":{"type":"integer","description":"Results to skip, starting at zero"}},"required":["skip"],"additionalProperties":false}
             """),
         new PlannerFunction(this, "submit_proposal",
             "Submit a PREVIEW, never save likes. Copy real session IDs exactly. C# enforces the previously captured preferences. Fix reported validation errors and resubmit without relaxing constraints.",
@@ -173,7 +191,9 @@ public sealed class PlannerTools
                 {
                     "search_sessions" => tools.SearchSessions(ReadString(arguments, "query"), ReadInteger(arguments, "skip")),
                     "speaker_sessions" => tools.SpeakerSessions(ReadString(arguments, "name"), ReadInteger(arguments, "skip")),
-                    "submit_proposal" => tools.SubmitProposal(ReadArray(arguments, "sessionIds", 12)),
+                    "topic_sessions" => tools.TopicSessions(ReadInteger(arguments, "skip")),
+                    "submit_proposal" => tools.SubmitProposal(ReadArray(arguments, "sessionIds",
+                        Math.Max(SchedulePlanner.MaximumSessions, tools.GetDocument().Sessions.Count))),
                     _ => throw new InvalidOperationException($"Unknown planner function: {name}.")
                 };
                 return ValueTask.FromResult<object?>(result);
