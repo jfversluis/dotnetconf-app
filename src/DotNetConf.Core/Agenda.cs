@@ -13,10 +13,18 @@ public static class Agenda
     {
         var matches = conference.Sessions.SelectMany(s => s.Topics).Distinct(StringComparer.OrdinalIgnoreCase)
             .Where(t => Regex.IsMatch(request,
-                $$"""(?<![\p{L}\p{N}]){{Regex.Escape(t.StartsWith(".NET ", StringComparison.Ordinal) ? t[5..] : t)}}(?![\p{L}\p{N}])""",
+                $$"""(?<![\p{L}\p{N}])(?:{{TopicPattern(t)}})(?![\p{L}\p{N}])""",
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100))).ToArray();
         return matches.Where(t => t != ".NET" || !matches.Any(other => other.StartsWith(".NET ", StringComparison.Ordinal))).ToArray();
     }
+
+    private static string TopicPattern(string topic) => topic switch
+    {
+        "Mobile" => @"mobile(?:\s+(?:development|apps?))?|phone\s+apps?",
+        "Performance" => @"performance|(?:code|apps?)\s+(?:run\s+)?faster",
+        "Web" => @"web(?:\s+(?:development|apps?|stuff))?|browser\s+apps?",
+        _ => Regex.Escape(topic.StartsWith(".NET ", StringComparison.Ordinal) ? topic[5..] : topic)
+    };
 
     public static (string[] Speakers, string Query) GroundPlannerQuery(
         ConferenceDocument conference, string request, string[] names, string inferred)

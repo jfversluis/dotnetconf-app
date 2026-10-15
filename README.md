@@ -48,7 +48,11 @@ speaker requests query both groups, not their intersection. A separate small
 local extraction identifies topical intent and its quantity. Literal topics
 are grounded directly; inferred interests combined with speakers need quoted
 source evidence, and speaker names alone cannot justify an inferred topic.
-Topics use real agenda tags, with OR lists, explicit BOTH/AND intersections and
+Topics use real agenda tags. Interest lists joined by "and" or "or" use a union;
+only explicit combined-talk requests ("both", "together", "in the same session")
+require a tag intersection. Common topic phrases such as "phone apps" are
+grounded alongside literal topics, so "mobile development and AI" keeps both
+interests. The planner also supports
 single speaker/topic scopes (for example, Maddy's MAUI talks). Different
 speaker/topic pairings in one request are rejected instead of flattened.
 An "all sessions about" request paginates and validates completeness within the

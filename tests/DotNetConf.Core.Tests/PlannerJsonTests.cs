@@ -185,6 +185,41 @@ public sealed class PlannerJsonTests
     }
 
     [Theory]
+    [InlineData("I like mobile development and AI and want to get the latest on performance", "Mobile")]
+    [InlineData("I like MAUI and AI and performance", ".NET MAUI")]
+    [InlineData("Everything about AI and MAUI and performance", ".NET MAUI")]
+    [InlineData("I like phone apps, AI and performance", "Mobile")]
+    public async Task InterestListsAreUnionsAndKeepAliasesAlongsideLiteralTopics(string request, string mobileTopic)
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        var filter = new PlannerTopicRequest("AI", ["AI", "C#"], "some", "all", "independent")
+            .ToFilter(conference, request)!;
+        Assert.False(filter.MatchAll);
+        Assert.Equal(new[] { mobileTopic, "AI", "Performance" }.Order(), filter.Topics.Order());
+        var matches = SchedulePlanner.TopicMatches(conference, new([], [], []) { TopicFilter = filter }).ToArray();
+        Assert.Contains(matches, s => s.Id == "runtime-profiling");
+        Assert.Contains(matches, s => s.Id == "building-with-maui");
+        Assert.Contains(matches, s => s.Id == "blazor-ai");
+    }
+
+    [Theory]
+    [InlineData("Everything about both AI and MAUI")]
+    [InlineData("Talks covering AI and MAUI together")]
+    [InlineData("AI and MAUI in the same session")]
+    [InlineData("AI and MAUI, each talk must cover all these topics")]
+    public async Task ExplicitCombinedTalkRequestsStillIntersectTopics(string request)
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        var filter = new PlannerTopicRequest("AI and MAUI", ["AI", ".NET MAUI"], "some", "any", "independent")
+            .ToFilter(conference, request)!;
+        Assert.True(filter.MatchAll);
+        Assert.Equal(["maddy-maui-ai", "maui-local-ai"], SchedulePlanner.TopicMatches(conference,
+            new([], [], []) { TopicFilter = filter }).Select(s => s.Id).Order());
+    }
+
+    [Theory]
     [InlineData("I want all the latest on C# but exclude sessions after 10pm for me", true)]
     [InlineData("All C# sessions must finish by 22:00", true)]
     [InlineData("Just everything from Gerald, no matter the time", false)]

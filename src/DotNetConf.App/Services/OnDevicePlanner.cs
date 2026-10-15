@@ -87,7 +87,7 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
             var topicSchema = PlannerSchemas.Topic(conference);
             var topical = await client.GetResponseAsync(
                 [new ChatMessage(ChatRole.System,
-                    $"Extract requested topic interests, independently from speaker and time requests. Use the smallest set of agenda tags that expresses those interests: one vague interest needs one best tag, not every related language or framework. Preserve every explicitly named topic, OR versus BOTH/AND and speaker scope. Never infer expertise from a name. For speaker-only requests use text none, topics [], quantity some, match any, speakerScope independent. Respond using this schema:\n{topicSchema.GetRawText()}"),
+                    $"Extract requested topic interests, independently from speaker and time requests. Use the smallest set of agenda tags that expresses those interests: one vague interest needs one best tag, not every related language or framework. Preserve every explicitly named topic and speaker scope. Lists of interests joined by and mean ANY topic. Only require ALL tags if the user explicitly wants both topics in the same talk. Never infer expertise from a name. For speaker-only requests use text none, topics [], quantity some, match any, speakerScope independent. Respond using this schema:\n{topicSchema.GetRawText()}"),
                  new ChatMessage(ChatRole.User, request)],
                 new ChatOptions { ResponseFormat = ChatResponseFormat.ForJsonSchema(topicSchema),
                     MaxOutputTokens = 700, Temperature = 0 }, cancellationToken);

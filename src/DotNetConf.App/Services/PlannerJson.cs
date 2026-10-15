@@ -86,9 +86,12 @@ public sealed record PlannerTopicRequest(string Text, string[] Topics, string Qu
             TimeSpan.FromMilliseconds(100));
         var independentClause = Regex.IsMatch(request, @"\b(?:and|plus)\s+(?:everything|all|every|don['’]?t|do not|I must)\b",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
-        var explicitAnd = literal.Length > 1 && Regex.IsMatch(request, @"\b(?:both|and)\b",
+        // A list of interests is a union. Require source evidence that each talk
+        // must cover the combination, rather than trusting the model's AND guess.
+        var explicitAnd = Regex.IsMatch(request,
+            @"\bboth\b|\b(?:all|each|every)\s+(?:(?:of\s+)?(?:these|the|requested)\s+)?topics\b|\b(?:same\s+(?:session|talk)|together|combin(?:e|es|ing|ation))\b",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
-        return new(topics, (Match == "all" || explicitAnd) && !explicitOr,
+        return new(topics, explicitAnd && !explicitOr,
             scopedSpeakers > 0 || (SpeakerScope == "within-topics" && !independentClause), RequestsAll(request));
     }
 

@@ -48,7 +48,13 @@ still reports its unsatisfied constraint.
 
 Topic matching uses structured agenda tags, not arbitrary substrings: `AI`
 does not accidentally include every `MAUI` title. `MAUI` resolves to `.NET MAUI`.
-OR lists deduplicate results; explicit BOTH/AND requires every tag. A single
+Interest lists joined by AND or OR deduplicate a union of results. Requiring
+every tag needs explicit combined-talk wording, such as BOTH, together, or
+in the same session. A plain "and" previously forced an intersection, making
+three-interest requests find no talks. Literal-topic grounding also previously
+discarded inferred interests when mixed with exact tags; catalog topic aliases
+now preserve phrases such as mobile development, phone apps, and faster code
+alongside AI or MAUI. A single
 speaker scope such as `Maddy's MAUI sessions` intersects those speakers and topics.
 Different pairings such as Maddy/MAUI plus Gerald/C# are explicitly rejected
 rather than flattened into an incorrect union.
@@ -76,6 +82,8 @@ topics, complete all-speaker requests and preservation of hard constraints.
 
 | Request | Expected result |
 | --- | --- |
+| `I like mobile development and AI and want to get the latest on performance` | Eleven Mobile OR AI OR Performance matches; a nonempty valid selected subset, no invented availability. |
+| `I like MAUI and AI and performance` | Twelve MAUI OR AI OR Performance matches; a nonempty valid selected subset, not a three-tag intersection. |
 | `Give me everything about MAUI and don't miss a session from Maddy` | Seven MAUI talks, including both Maddy talks. Independent all-topic and don't-miss speaker constraints. |
 | `I want all the latest on C# but exclude sessions if they are after 10pm for me` | Five matching C# talks shown. Four selected in Europe/Amsterdam; `gerald-csharp-ai` remains visible, unchecked, disabled and warned because it ends after 22:00. |
 | `Just everything from Gerald, no matter the time` | Both Gerald talks selected, including the cross-midnight local talk; unrestricted availability. |
@@ -111,20 +119,20 @@ These are runtime checks, not hard-coded responses or prompt-specific branches.
 ## Verification and limitations
 
 Runtime checks use the isolated `dotnetconf-planner-iPhone17Pro` simulator
-(iOS 26.5, Europe/Amsterdam). The final 29-case matrix ran twice: **57/58
-strict checks passed**, including all four user-supplied examples on both passes.
+(iOS 26.5, Europe/Amsterdam). After the interest-list correction, the expanded
+31-case matrix ran twice: **62/62 strict checks passed**, including the two
+three-interest requests and all four earlier user-supplied examples on both passes.
 Assertions checked matched and selected IDs, visible warnings, disabled excluded
 checkboxes, validity, unrestricted/explicit windows and all-speaker completeness.
-The remaining failure was `Help me make my code faster`: one pass inferred
-Performance OR C#, showing additional C# alternatives, although both selected
-talks were the correct performance talks. This is an outstanding interpretation
-limitation, not a passing strict relevance check; `Everything about Performance`
-uses literal grounding for a more predictable demo.
+The previous 29-case run passed 57/58: one `Help me make my code faster`
+pass inferred Performance OR C#, showing extra C# alternatives. Grounding the
+common faster-code phrase to Performance now prevents this particular drift;
+both latest passes returned only the expected performance matches.
 The runs exercised the real Apple client and agenda
 functions, not a fake `IChatClient`. They generated previews only and did not
 change likes.
 
-All 115 core/adapter tests passed, as did iOS simulator and Android Debug builds
+All 123 core/adapter tests passed, as did iOS simulator and Android Debug builds
 and an unsigned iOS NativeAOT publish. Core and adapter coverage includes
 partial-name ambiguity, independent topic and
 speaker completeness, their union, pagination beyond four talks, availability filtering, overlap
