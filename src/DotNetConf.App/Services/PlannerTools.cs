@@ -52,7 +52,7 @@ public sealed class PlannerTools
     }
 
     public string CapturePreferences(string[] requiredSpeakers, AvailabilityWindow[] availability,
-        bool allSessionsByRequiredSpeakers = false)
+        bool allSessionsByRequiredSpeakers = false, string? allSessionsMatchingQuery = null)
     {
         GetDocument();
         Proposal = null;
@@ -71,7 +71,11 @@ public sealed class PlannerTools
             var matches = Agenda.FindSpeakers(GetDocument(), name);
             return matches.Count == 1 ? matches[0].Name : name;
         }).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-        Preferences = new([], names, availability) { AllSessionsByRequiredSpeakers = allSessionsByRequiredSpeakers };
+        Preferences = new([], names, availability)
+        {
+            AllSessionsByRequiredSpeakers = allSessionsByRequiredSpeakers,
+            AllSessionsMatchingQuery = allSessionsMatchingQuery
+        };
         return "Preferences captured for user review. They cannot be changed during agenda selection.";
     }
 
@@ -92,7 +96,11 @@ public sealed class PlannerTools
     private bool IsEligible(Session session)
     {
         var preferences = Preferences ?? throw new InvalidOperationException("Capture preferences before searching.");
-        var candidate = preferences with { SessionIds = [session.Id], RequiredSpeakers = [], AllSessionsByRequiredSpeakers = false };
+        var candidate = preferences with
+        {
+            SessionIds = [session.Id], RequiredSpeakers = [], AllSessionsByRequiredSpeakers = false,
+            AllSessionsMatchingQuery = null
+        };
         return SchedulePlanner.Review(document ?? throw new InvalidOperationException("No agenda loaded."),
             candidate, timeZone, savedIds).CanApply;
     }

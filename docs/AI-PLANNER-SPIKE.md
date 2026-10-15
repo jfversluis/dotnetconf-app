@@ -32,6 +32,15 @@ labels: `Mobile` cannot become a required speaker, and a request explicitly
 naming Blazor cannot be redirected to an unrelated topic. Phrase boundaries
 prevent `UI` from accidentally matching the word `build`.
 
+A combined request previously took the all-speaker shortcut and skipped the
+topic query entirely. Topic and speaker queries now contribute a union of
+results. Topic intent and quantity are extracted separately when a request
+mentions speakers or asks for all sessions. Its source phrase must occur in
+the request; names and generic conference-request words alone are not evidence
+of an interest. All-topic requests paginate, and C# validates their completeness
+independently of all-speaker completeness. Availability or overlaps cannot be
+hidden by silently dropping a required talk, including when editing the preview.
+
 ## Acceptance matrix
 
 Start with no liked sessions, because existing likes intentionally affect what
@@ -42,6 +51,9 @@ topics, complete all-speaker requests and preservation of hard constraints.
 
 | Request | Expected result |
 | --- | --- |
+| `All sessions about C# and everything from Ortinau` | All six: the four C# talks (`language-features`, `csharp-next`, `csharp-patterns`, `async-performance`) plus `maui-shipping` and `maui-local-ai`. Both all-session constraints remain visible. |
+| `Everything from Ortinau and all C# sessions` | The same six talks, regardless of clause order. |
+| `All sessions about Mobile` | All four: `building-with-maui`, `maui-shipping`, `maui-local-ai`, `local-ai`. |
 | `all sessions by Alex` | All three: `building-with-maui`, `avalonia-ui`, `accessible-by-design`; unrestricted availability. |
 | `all sessions by Mads` | Both `csharp-next` and `csharp-patterns`. |
 | `I'm into web stuff` | Relevant Web/Blazor/ASP.NET talks; no invented required speaker or time window. |
@@ -63,7 +75,7 @@ These are runtime checks, not hard-coded responses or prompt-specific branches.
 
 ## Verification and limitations
 
-The final executable passed all sixteen cases on two consecutive live-model
+The executable with mixed-request support passed all nineteen cases on two consecutive live-model
 UI runs on the isolated `dotnetconf-planner-iPhone17Pro` simulator
 (iOS 26.5, Europe/Amsterdam). Assertions checked IDs, validity,
 unrestricted/explicit windows and
@@ -71,8 +83,8 @@ all-speaker completeness. The runs exercised the real Apple client and agenda
 functions, not a fake `IChatClient`. They generated previews only and did not
 change likes.
 
-Core and adapter coverage includes partial-name ambiguity, all-session
-completeness, pagination beyond four talks, availability filtering, overlap
+Core and adapter coverage includes partial-name ambiguity, independent topic and
+speaker completeness, their union, pagination beyond four talks, availability filtering, overlap
 arrangement that retains required speakers, offset consistency and
 source-generated JSON with reflection serialization disabled.
 

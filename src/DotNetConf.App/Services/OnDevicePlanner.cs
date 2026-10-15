@@ -66,7 +66,28 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
                     ?? throw new InvalidDataException("The model returned no availability.");
             }
             var (speakerNames, query) = interpretation.Ground(conference, request);
-            var captured = tools.CapturePreferences(speakerNames, windows, interpretation.Quantity == "all" && speakerNames.Length > 0);
+            var allTopics = false;
+            if (speakerNames.Length > 0 || PlannerInterpretation.HasAllQuantifier(request))
+            {
+                var topicSchema = PlannerSchemas.Topic;
+                var topical = await client.GetResponseAsync(
+                    [new ChatMessage(ChatRole.System,
+                        $"Extract only TOPIC interests and their quantity, separately from speaker requests. A combined request needs both groups, not just their intersection. For speaker-only requests use text none and quantity some. Respond using this schema:\n{topicSchema.GetRawText()}"),
+                     new ChatMessage(ChatRole.User, request)],
+                    new ChatOptions { ResponseFormat = ChatResponseFormat.ForJsonSchema(topicSchema),
+                        MaxOutputTokens = 300, Temperature = 0 }, cancellationToken);
+                var topic = JsonSerializer.Deserialize(topical.Text, PlannerJsonContext.Default.PlannerTopicRequest)
+                    ?? throw new InvalidDataException("The model returned no topic interpretation.");
+                if (topic.Text is null || topic.Quantity is not ("all" or "some"))
+                    throw new InvalidDataException("The model returned invalid topic fields.");
+                var hasInterest = topic.HasInterest(conference, request);
+                (_, query) = Agenda.GroundPlannerQuery(conference, request, speakerNames,
+                    hasInterest ? query : "");
+                allTopics = hasInterest && topic.RequestsAll(request);
+            }
+            var captured = tools.CapturePreferences(speakerNames, windows,
+                interpretation.RequestsAllSpeakers(request) && speakerNames.Length > 0,
+                allTopics && query.Length > 0 ? query : null);
             if (tools.Preferences is not { } preferences)
                 return new(null, captured);
             cancellationToken.ThrowIfCancellationRequested();
@@ -91,14 +112,21 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
                         break;
                 }
             }
-            if (preferences.RequiredSpeakers.Length == 0 || (!preferences.AllSessionsByRequiredSpeakers && query.Length > 0))
+            if (preferences.RequiredSpeakers.Length == 0 || query.Length > 0)
             {
-                var result = await functions["search_sessions"].InvokeAsync(
-                    new AIFunctionArguments { ["query"] = query, ["skip"] = 0 }, cancellationToken);
-                results.Add(result?.ToString() ?? throw new InvalidDataException("The agenda function returned no result."));
+                for (var skip = 0; skip < SchedulePlanner.MaximumSessions; skip += 4)
+                {
+                    var result = await functions["search_sessions"].InvokeAsync(
+                        new AIFunctionArguments { ["query"] = query, ["skip"] = skip }, cancellationToken);
+                    var text = result?.ToString() ?? throw new InvalidDataException("The agenda function returned no result.");
+                    results.Add(text);
+                    if (preferences.AllSessionsMatchingQuery is null || !text.Contains("Next page:", StringComparison.Ordinal))
+                        break;
+                }
             }
             string[] selectedIds;
-            if (preferences.AllSessionsByRequiredSpeakers || tools.CandidateIds.Count == 0)
+            if (preferences.AllSessionsByRequiredSpeakers || preferences.AllSessionsMatchingQuery is not null
+                || tools.CandidateIds.Count == 0)
                 selectedIds = tools.CandidateIds.ToArray();
             else
             {

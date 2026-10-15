@@ -139,6 +139,7 @@ public partial class PlannerViewModel(
             }
             Constraints = $"Required speakers: {(proposal.RequiredSpeakers.Length == 0 ? "None" : string.Join(", ", proposal.RequiredSpeakers))}\n" +
                 (proposal.AllSessionsByRequiredSpeakers ? "Include all sessions by these speakers.\n" : "") +
+                (proposal.AllSessionsMatchingQuery is { } query ? $"Include all sessions matching: {query}.\n" : "") +
                 $"Availability: {(proposal.Availability.Length == 0 ? "Unrestricted" : string.Join("; ", proposal.Availability.Select(w => $"{w.Start} to {w.End} ({(w.Zone == "local" ? timeZone.Id : w.Zone)})")))}";
             foreach (var session in SchedulePlanner.Review(document, proposal, timeZone, SavedIds()).Sessions)
                 Sessions.Add(new(session, string.Join(", ", document.Speakers

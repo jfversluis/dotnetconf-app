@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using DotNetConf.Core;
 
 namespace DotNetConf.App.Services;
@@ -10,12 +11,41 @@ public sealed record PlannerInterpretation(string SpeakerNames, string Availabil
     public bool HasAvailability => !string.IsNullOrWhiteSpace(AvailabilityText)
         && !AvailabilityText.Equals("none", StringComparison.OrdinalIgnoreCase);
 
+    public bool RequestsAllSpeakers(string request) => Quantity == "all" && HasAllQuantifier(request);
+
+    public static bool HasAllQuantifier(string request) => Regex.IsMatch(request,
+        @"\b(all|every|everything)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+        TimeSpan.FromMilliseconds(100));
+
     public (string[] Speakers, string Query) Ground(ConferenceDocument conference, string request)
     {
         var names = SpeakerNames.Equals("none", StringComparison.OrdinalIgnoreCase)
             ? [] : SpeakerNames.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         var inferred = SearchQuery.Equals("none", StringComparison.OrdinalIgnoreCase) ? "" : SearchQuery;
         return Agenda.GroundPlannerQuery(conference, request, names, inferred);
+    }
+}
+
+public sealed record PlannerTopicRequest(string Text, string Quantity)
+{
+    public bool RequestsAll(string request) => Quantity == "all" && PlannerInterpretation.HasAllQuantifier(request);
+
+    public bool HasInterest(ConferenceDocument conference, string request)
+    {
+        if (string.IsNullOrWhiteSpace(Text) || Text.Equals("none", StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (!request.Contains(Text, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The model's topic phrase was not present in the request.");
+        // The model can copy a speaker request as its topic evidence. Names and
+        // generic conference-request words alone cannot justify inferred topics.
+        var names = conference.Speakers.SelectMany(s => s.Name.Split(' ')).Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(Regex.Escape);
+        var remaining = Regex.Replace(Text, $@"\b(?:{string.Join('|', names)})\b", "",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        remaining = Regex.Replace(remaining,
+            @"\b(?:all|every|everything|sessions?|talks?|show|me|by|from|with|and|or|of|the|please|s)\b", "",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        return remaining.Any(char.IsLetterOrDigit);
     }
 }
 
@@ -66,6 +96,7 @@ public sealed record PlannerWindow(string Start, string End, string Zone)
 
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 [JsonSerializable(typeof(PlannerInterpretation))]
+[JsonSerializable(typeof(PlannerTopicRequest))]
 [JsonSerializable(typeof(PlannerSelection))]
 [JsonSerializable(typeof(PlannerAvailability))]
 internal partial class PlannerJsonContext : JsonSerializerContext;
@@ -74,7 +105,12 @@ internal static class PlannerSchemas
 {
     private static JsonElement InterpretationTemplate { get; } = Parse(
         """
-        {"title":"ConferenceRequest","type":"object","properties":{"speakerNames":{"type":"string","description":"Names of PEOPLE explicitly mentioned, copied verbatim and separated by semicolons. Use none if the request mentions no person. Topics and interests are NOT people."},"availabilityText":{"type":"string","description":"Copy the date/time restriction from the user's request. Use none if the request says nothing about dates or times. Never invent a restriction."},"quantity":{"type":"string","enum":["all","some"],"description":"Use all only if the user asks for all or every session by a person; otherwise some."},"searchQuery":{"type":"string","description":"Classify the attendee's goal, not generic words such as code or apps. Runtime speed, low latency and memory efficiency map to Performance; browser UI and sites map to Web; native phone/tablet development maps to Mobile. Prefer a topic literally mentioned in the request. Use none for speaker-only requests or no interests."}},"required":["speakerNames","availabilityText","quantity","searchQuery"],"additionalProperties":false}
+        {"title":"ConferenceRequest","type":"object","properties":{"speakerNames":{"type":"string","description":"Names of PEOPLE explicitly mentioned, copied verbatim and separated by semicolons. Use none if the request mentions no person. Topics and interests are NOT people."},"availabilityText":{"type":"string","description":"Copy the date/time restriction from the user's request. Use none if the request says nothing about dates or times. Never invent a restriction."},"quantity":{"type":"string","enum":["all","some"],"description":"Use all only if the user asks for all, every or everything by/from a person; otherwise some."},"searchQuery":{"type":"string","description":"Classify the attendee's goal, not generic words such as code or apps. Runtime speed, low latency and memory efficiency map to Performance; browser UI and sites map to Web; native phone/tablet development maps to Mobile. Prefer a topic literally mentioned in the request. Use none for speaker-only requests or no interests."}},"required":["speakerNames","availabilityText","quantity","searchQuery"],"additionalProperties":false}
+        """);
+
+    public static JsonElement Topic { get; } = Parse(
+        """
+        {"title":"ConferenceTopicRequest","type":"object","properties":{"text":{"type":"string","description":"Copy the exact words stating the user's TOPICAL interests, excluding speaker names and time restrictions. Use none for speaker-only requests. Never infer a topic from a person's expertise."},"quantity":{"type":"string","enum":["all","some"],"description":"Use all only when ALL or EVERY qualifies the requested TOPIC sessions. Otherwise some. Everything from a speaker does not mean all topic sessions."}},"required":["text","quantity"],"additionalProperties":false}
         """);
 
     private static JsonElement SelectionTemplate { get; } = Parse(

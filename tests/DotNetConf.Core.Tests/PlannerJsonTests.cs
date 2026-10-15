@@ -101,6 +101,61 @@ public sealed class PlannerJsonTests
     }
 
     [Fact]
+    public async Task MixedAllRequestsKeepIndependentTopicAndSpeakerQuantities()
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        var interpretation = JsonSerializer.Deserialize(
+            """{"speakerNames":"Ortinau","availabilityText":"none","searchQuery":"Mobile","quantity":"all"}""",
+            PlannerJsonContext.Default.PlannerInterpretation)!;
+        var grounded = interpretation.Ground(conference, "All sessions about C# and everything from Ortinau");
+        Assert.Equal(["Ortinau"], grounded.Speakers);
+        Assert.Equal("C#", grounded.Query);
+        Assert.Equal("all", interpretation.Quantity);
+        Assert.True(interpretation.RequestsAllSpeakers("All sessions about C# and everything from Ortinau"));
+        var topic = JsonSerializer.Deserialize("""{"text":"C#","quantity":"all"}""",
+            PlannerJsonContext.Default.PlannerTopicRequest)!;
+        Assert.Equal("C#", topic.Text);
+        Assert.True(topic.HasInterest(conference, "All sessions about C# and everything from Ortinau"));
+        Assert.True(topic.RequestsAll("All sessions about C# and everything from Ortinau"));
+    }
+
+    [Fact]
+    public void TopicQuantityIsIndependentOfAllSpeakerQuantity()
+    {
+        var request = "Everything from Ortinau and some phone apps";
+        Assert.True(new PlannerInterpretation("Ortinau", "none", "Mobile", "all").RequestsAllSpeakers(request));
+        Assert.False(new PlannerTopicRequest("Mobile", "some").RequestsAll(request));
+    }
+
+    [Theory]
+    [InlineData("Ortinau", false)]
+    [InlineData("Show every talk by Ortinau", false)]
+    [InlineData("all sessions by Mads", false)]
+    [InlineData("C# and everything from Ortinau", true)]
+    [InlineData("phone apps", true)]
+    public async Task CopiedSpeakerRequestsAreNotEvidenceOfTopicalInterests(string evidence, bool expected)
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        Assert.Equal(expected, new PlannerTopicRequest(evidence, "all").HasInterest(conference, evidence));
+        Assert.False(new PlannerTopicRequest("none", "all").HasInterest(conference, evidence));
+        Assert.Throws<InvalidDataException>(() =>
+            new PlannerTopicRequest("invented interest", "all").HasInterest(conference, evidence));
+    }
+
+    [Theory]
+    [InlineData("I'm into web stuff")]
+    [InlineData("Help me make my code faster")]
+    [InlineData("I must see Ortinau")]
+    public void ModelCannotInventAnAllSessionsConstraintWithoutAnExplicitQuantifier(string request)
+    {
+        var interpretation = new PlannerInterpretation("none", "none", "Web", "all");
+        Assert.False(interpretation.RequestsAllSpeakers(request));
+        Assert.False(new PlannerTopicRequest("Web", "all").RequestsAll(request));
+    }
+
+    [Fact]
     public async Task SchemasGroundTopicsAndSelectionsWithoutEmbeddingTheCatalog()
     {
         await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));

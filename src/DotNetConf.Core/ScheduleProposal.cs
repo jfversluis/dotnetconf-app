@@ -6,6 +6,7 @@ public sealed record ScheduleProposal(
     string[] SessionIds, string[] RequiredSpeakers, AvailabilityWindow[] Availability)
 {
     public bool AllSessionsByRequiredSpeakers { get; init; }
+    public string? AllSessionsMatchingQuery { get; init; }
 }
 
 public sealed record AvailabilityWindow(string Start, string End, string Zone);
@@ -24,7 +25,7 @@ public static class SchedulePlanner
         IReadOnlyCollection<string> savedIds)
     {
         var review = Review(conference, candidates, timeZone, savedIds);
-        if (candidates.AllSessionsByRequiredSpeakers || review.Errors.Count == 0
+        if (candidates.AllSessionsByRequiredSpeakers || candidates.AllSessionsMatchingQuery is not null || review.Errors.Count == 0
             || review.Errors.Any(e => !e.StartsWith("Overlapping proposals:", StringComparison.Ordinal)))
             return candidates;
 
@@ -110,6 +111,15 @@ public static class SchedulePlanner
         }
         if (proposal.AllSessionsByRequiredSpeakers && proposal.RequiredSpeakers.Length == 0)
             errors.Add("Specify a speaker when requesting all of their sessions.");
+        if (proposal.AllSessionsMatchingQuery is { } query)
+        {
+            var matching = Agenda.Search(conference, query, null, null, timeZone).ToArray();
+            if (string.IsNullOrWhiteSpace(query) || matching.Length == 0)
+                errors.Add($"No sessions match the requested all-session topic: {query}.");
+            var missing = matching.Where(s => !proposal.SessionIds.Contains(s.Id)).ToArray();
+            if (missing.Length > 0)
+                errors.Add($"You requested all sessions matching '{query}'. Missing: {string.Join(", ", missing.Select(s => s.Title))}. Change your request if you only want a subset.");
+        }
         return new(sessions.OrderBy(s => s.StartsAt).ToArray(), errors);
     }
 

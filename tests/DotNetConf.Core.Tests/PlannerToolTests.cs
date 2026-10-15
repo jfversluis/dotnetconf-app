@@ -178,7 +178,7 @@ public sealed class PlannerToolTests
             Speakers = [new() { Id = "alex", Name = "Alex Rivera" }],
             Sessions = Enumerable.Range(0, 6).Select(i => new Session
             {
-                Id = $"talk-{i}", Title = $"Talk {i}", SpeakerIds = ["alex"],
+                Id = $"talk-{i}", Title = $"Talk {i}", SpeakerIds = ["alex"], Topics = ["Mobile"],
                 StartsAt = new DateTimeOffset(2026, 11, 10, 10 + i, 0, 0, TimeSpan.Zero),
                 EndsAt = new DateTimeOffset(2026, 11, 10, 10 + i, 45, 0, TimeSpan.Zero)
             }).ToList()
@@ -194,6 +194,52 @@ public sealed class PlannerToolTests
         Assert.Contains("talk-5 |", last);
         Assert.Contains("End of results", last);
         Assert.Equal(6, tools.CandidateIds.Count);
+        tools.CapturePreferences([], [], allSessionsMatchingQuery: "Mobile");
+        Assert.Contains("Next page: skip=4", tools.SearchSessions("Mobile", 0));
+        Assert.Contains("You requested all sessions matching", tools.SubmitProposal(tools.CandidateIds.ToArray()));
+        Assert.Contains("End of results", tools.SearchSessions("Mobile", 4));
+        Assert.Equal(6, tools.CandidateIds.Count);
+        Assert.StartsWith("Preview ready.", tools.SubmitProposal(tools.CandidateIds.ToArray()));
+    }
+
+    [Fact]
+    public async Task MixedAllTopicAndSpeakerRequestsRequireTheUnionNotJustSpeakerResults()
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        var tools = new PlannerTools();
+        tools.Initialize(conference, TimeZoneInfo.Utc, []);
+        tools.CapturePreferences(["Ortinau"], [], true, "C#");
+        tools.SpeakerSessions("Ortinau");
+        var speakerIds = tools.CandidateIds.ToArray();
+        Assert.Contains("You requested all sessions matching 'C#'", tools.SubmitProposal(speakerIds));
+        tools.SearchSessions("C#", 0);
+        Assert.Equal(6, tools.CandidateIds.Count);
+        Assert.StartsWith("Preview ready.", tools.SubmitProposal(tools.CandidateIds.ToArray()));
+        Assert.Equal("C#", tools.Proposal!.AllSessionsMatchingQuery);
+        Assert.True(tools.Proposal.AllSessionsByRequiredSpeakers);
+        Assert.Contains("You requested all sessions by David Ortinau",
+            tools.SubmitProposal(tools.CandidateIds.Except(speakerIds).ToArray()));
+    }
+
+    [Fact]
+    public async Task AllTopicAvailabilityCannotSilentlyTruncateResults()
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        var tools = new PlannerTools();
+        tools.Initialize(conference, TimeZoneInfo.Utc, []);
+        tools.CapturePreferences([], [], allSessionsMatchingQuery: "Mobile");
+        Assert.Contains("End of results", tools.SearchSessions("Mobile", 0));
+        Assert.Equal(4, tools.CandidateIds.Count);
+        Assert.StartsWith("Preview ready.", tools.SubmitProposal(tools.CandidateIds.ToArray()));
+
+        tools.CapturePreferences([], [new("2026-11-10T15:00", "2026-11-10T20:00", "UTC")],
+            allSessionsMatchingQuery: "Mobile");
+        tools.SearchSessions("Mobile", 0);
+        Assert.Contains("You requested all sessions matching", tools.SubmitProposal(tools.CandidateIds.ToArray()));
+        var proposal = tools.Proposal!;
+        Assert.Same(proposal, SchedulePlanner.Arrange(conference, proposal, TimeZoneInfo.Utc, []));
     }
 
     [Fact]

@@ -158,6 +158,21 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void AllMatchingRequestsMustNotDropOverlapsOrPretendUnknownQueriesSucceeded()
+    {
+        var all = new ScheduleProposal(["language", "overlap", "midnight"], [], [])
+        {
+            AllSessionsMatchingQuery = "Sam"
+        };
+        Assert.Same(all, SchedulePlanner.Arrange(Conference, all, TimeZoneInfo.Utc, []));
+        Assert.Contains(Review(all).Errors, e => e.StartsWith("Overlapping proposals:"));
+        Assert.Contains(Review(all with { SessionIds = ["language"] }).Errors,
+            e => e.StartsWith("You requested all sessions matching"));
+        Assert.Contains(Review(all with { AllSessionsMatchingQuery = "unknown topic" }).Errors,
+            e => e.StartsWith("No sessions match"));
+    }
+
+    [Fact]
     public void AllSpeakerRequestsMustNotDropOverlapsOrUnavailableTalks()
     {
         var all = new ScheduleProposal(["language", "overlap", "midnight"], ["Sam"], [])

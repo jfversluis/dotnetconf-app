@@ -43,7 +43,12 @@ C# filters by availability and existing likes. Searches return at most four
 real agenda rows per page, with at most ten function calls per request. Speaker
 requests support pagination and unique partial names; ambiguous names require
 clarification. An "all sessions" request gathers all matching speaker sessions
-deterministically, and validation rejects an incomplete result. Only the topic
+deterministically, and validation rejects an incomplete result. Mixed topic and
+speaker requests query both groups, not their intersection. A separate small
+local extraction identifies topical intent and its quantity from a quoted
+request fragment; speaker names alone cannot justify an inferred topic.
+An "all sessions about" request also paginates and validates topic completeness,
+including after the user changes the preview selection. Only the topic
 vocabulary and bounded query results enter prompts, not the complete catalog.
 No function can change likes.
 `NLEmbeddingGenerator` is not needed for this small grounded agenda.
