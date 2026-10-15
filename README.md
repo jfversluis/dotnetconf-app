@@ -18,6 +18,59 @@ Your .NET Conf, in your pocket. An **unofficial companion app for iOS and Androi
 
 The agenda opens immediately from the last downloaded update. No sessions or speaker profiles ship with the app: the first launch needs an internet connection to download them. The Microsoft agenda refreshes in the background without interrupting browsing. To check for updates yourself, pull down on Home, Sessions, Speakers, or the Schedule screen. A keyboard- and screen-reader-accessible alternative is available under Settings → About → Check for agenda updates. If an update fails, choose Retry. Downloaded data and your saved choices remain available offline.
 
+### On-device schedule planner (experimental spike)
+
+An optional first-run screen lets you describe interests, must-see speakers and
+availability in natural language. Skip it at any time, or reopen it from
+**My Schedule → Plan with on-device AI (spike)**. This is not a hosted chatbot:
+there are no API keys, accounts, fake responses or cloud fallback.
+
+The spike uses `Microsoft.Maui.Essentials.AI`'s `AppleIntelligenceChatClient`
+on supported Apple Intelligence iPhones with **iOS 26+**, Apple Intelligence
+enabled, a supported language, and the local model downloaded. It checks
+readiness with a short real local inference because this preview package has no
+public model-availability API. Android shows an unavailable message; normal
+browsing and likes still work. A simulator build alone does **not** establish
+that the model is ready or that inference works.
+
+`Microsoft.Extensions.AI` exposes a first-pass `capture_preferences` function,
+then `search_sessions`, `speaker_sessions`, and `submit_proposal`. Two short,
+independent local passes keep preference extraction separate from agenda
+selection: the second pass cannot rewrite the captured constraints. C# filters
+search results by availability and existing likes. The chat pipeline
+uses `UseFunctionInvocation`; the Apple client also receives the per-request DI
+provider because it can execute native tool calls itself. Searches return at
+most four real agenda rows, with at most ten calls per request. The complete
+catalog is not placed in the prompt. No tool can change likes.
+`NLEmbeddingGenerator` is not needed for this small grounded agenda.
+
+`Microsoft.Maui.AI.Attributes` / `ExportAIFunction` was evaluated, but the
+current preview generator's schema construction fails with reflection-based
+JSON serialization disabled. This NativeAOT app therefore uses small explicit
+`AIFunction` adapters with literal schemas and bounded argument readers instead.
+The tool tests run with reflection-based JSON serialization disabled.
+
+The preview shows the model's interpretation of required speakers and allowed
+time windows with explicit time zones. C# converts these to instants; the model
+does not need to perform time-zone arithmetic. **Check this interpretation**: C# cannot
+prove that a language model extracted every constraint correctly. Edit and
+regenerate if anything is missing or wrong. Select proposed sessions, confirm
+that the interpreted constraints match your request, then tap **Add selected
+sessions to My Schedule**. C# rejects unknown IDs, unknown or unsatisfied
+required speakers, overlaps (including existing likes), and sessions outside
+the full availability window. Invalid or ambiguous daylight-saving times are
+rejected rather than guessed. Saving is an atomic, additive update: it does not
+remove previous likes.
+
+For a demo with the **fictional** agenda, first browse its speaker names, then
+try: "I like mobile development and AI. I must see Alex Rivera. I can watch
+November 10 from 16:00 to 18:00 UTC." Proposal session times use your device's
+time zone. Requests, proposals and chat history are not persisted; only
+confirmed likes and whether the introduction was shown are stored locally.
+Cancellation, a 90-second planning timeout, or a model error leaves likes
+unchanged. Model accuracy and tool use must still be exercised on a
+model-ready physical iPhone before using this as a reliable live demo.
+
 ## Availability
 
 The app is **in development and not yet available in the App Store or Google Play**. We're aiming for a first release in November 2026.

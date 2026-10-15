@@ -16,6 +16,8 @@ public partial class ThirdPartyPage : ContentPage
 #elif AVALONIA
         new(".NET MAUI Foldable", "11.0.0-rc.2.26505.5 · MIT", "LICENSE-DotNetFoundation.txt"),
 #endif
+        new("MAUI Essentials AI", "11.0.0-preview.7.26512.5 · MIT", "LICENSE-DotNetFoundation.txt"),
+        new("Microsoft.Extensions.AI", "10.4.1 · MIT", "LICENSE-DotNetFoundation.txt"),
         new("CommunityToolkit.Maui", "15.0.1 · MIT", "LICENSE-MauiToolkit.txt"),
         new("CommunityToolkit.Mvvm", "8.4.2 · MIT", "LICENSE-MvvmToolkit.txt"),
         new("Syncfusion.Maui.Toolkit", "1.0.11 · MIT", "LICENSE-SyncfusionToolkit.txt"),

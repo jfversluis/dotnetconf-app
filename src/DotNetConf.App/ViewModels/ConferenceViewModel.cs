@@ -486,6 +486,9 @@ public partial class ConferenceViewModel(
     private Task BrowseScheduleAsync() => Shell.Current.GoToAsync("//schedule");
 
     [RelayCommand]
+    private Task BrowsePlannerAsync() => Shell.Current.GoToAsync("planner");
+
+    [RelayCommand]
     private Task BrowseCommunityEventsAsync() => Shell.Current.GoToAsync("//community");
 
     [RelayCommand]
@@ -605,6 +608,13 @@ public partial class ConferenceViewModel(
         }
         OnPropertyChanged(nameof(SelectedDayIndex));
         FilterSessions();
+    }
+
+    public void RefreshSavedState()
+    {
+        foreach (var session in allSessions)
+            session.IsSaved = schedule.IsSaved(session.Id);
+        RefreshSchedule();
     }
 
     private void RefreshSchedule()

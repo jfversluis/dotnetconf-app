@@ -15,6 +15,16 @@ Copyright (c) .NET Foundation Contributors
 https://github.com/dotnet/macios
 MIT license: LICENSE-MaciOS.txt
 
+Microsoft.Maui.Essentials.AI 11.0.0-preview.7.26512.5
+Copyright (c) Microsoft Corporation
+https://github.com/dotnet/maui-labs
+MIT license: LICENSE-DotNetFoundation.txt
+
+Microsoft.Extensions.AI and Microsoft.Extensions.AI.Abstractions 10.4.1
+Copyright (c) .NET Foundation and Contributors
+https://github.com/dotnet/extensions
+MIT license: LICENSE-DotNetFoundation.txt
+
 CommunityToolkit.Mvvm 8.4.2
 Copyright © .NET Foundation and Contributors
 https://github.com/CommunityToolkit/dotnet

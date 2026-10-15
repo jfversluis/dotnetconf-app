@@ -1,0 +1,64 @@
+<ContentPage x:Class="DotNetConf.App.Pages.PlannerPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
+             x:DataType="vm:PlannerViewModel" Title="On-device planner">
+    <ScrollView SafeAreaEdges="Default">
+        <VerticalStackLayout Padding="24" Spacing="16" MaximumWidthRequest="720">
+            <Label Text="Make it your conference" Style="{StaticResource Heading}" />
+            <Label Text="Optional AI spike. Describe your interests, must-see speakers and when you can watch. Apple Intelligence searches the agenda on your device. No account, API key or cloud fallback."
+                   Style="{StaticResource Secondary}" />
+            <Label Text="Fictional sample agenda and speakers - not the announced .NET Conf lineup."
+                   FontFamily="OpenSansSemibold" />
+            <Label Text="{Binding Status}" AutomationId="planner-status" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            <Button Text="Check local model again" Command="{Binding CheckModelCommand}"
+                    Style="{StaticResource QuietButton}" AutomationId="planner-check-model" />
+            <Label Text="What would you like to watch?" Style="{StaticResource Subheading}" />
+            <Label Text="{Binding TimeZoneLabel}" Style="{StaticResource Secondary}" />
+            <Editor Text="{Binding Request}" AutoSize="TextChanges" MinimumHeightRequest="130"
+                    MaxLength="1200" IsEnabled="{Binding CanEdit}" FontAutoScalingEnabled="True"
+                    FontFamily="OpenSansRegular" FontSize="16"
+                    TextColor="{AppThemeBinding Light={StaticResource LightText}, Dark={StaticResource DarkText}}"
+                    BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}"
+                    Placeholder="I like mobile development and AI. I must see Alex Rivera. I can watch November 10 from 17:00 to 20:00, local time."
+                    AutomationId="planner-request" />
+            <Button Text="Propose my schedule" Command="{Binding GenerateCommand}" IsEnabled="{Binding CanGenerate}"
+                    AutomationId="planner-generate" />
+            <Button Text="Cancel generation" Command="{Binding CancelCommand}" IsVisible="{Binding IsBusy}"
+                    Style="{StaticResource QuietButton}" AutomationId="planner-cancel" />
+            <VerticalStackLayout IsVisible="{Binding HasProposal}" Spacing="12">
+                <Label Text="Check what AI understood" Style="{StaticResource Subheading}" />
+                <Label Text="{Binding Constraints}" AutomationId="planner-constraints" />
+                <Label Text="If any speaker or availability restriction is missing or wrong, edit your request and generate again. Do not confirm an incorrect interpretation."
+                       Style="{StaticResource Secondary}" />
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding Sessions}" Spacing="12">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ProposedSessionViewModel">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <CheckBox IsChecked="{Binding IsSelected}" VerticalOptions="Start"
+                                          SemanticProperties.Description="{Binding Title}" />
+                                <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                    <Label Text="{Binding Title}" FontFamily="OpenSansSemibold" />
+                                    <Label Text="{Binding Time}" Style="{StaticResource Secondary}" />
+                                </VerticalStackLayout>
+                            </Grid>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+                <Label Text="{Binding Validation}" AutomationId="planner-validation" />
+                <HorizontalStackLayout Spacing="8">
+                    <CheckBox IsChecked="{Binding ConstraintsConfirmed}" IsEnabled="{Binding HasValidProposal}"
+                              SemanticProperties.Description="The interpreted speakers and availability match my request"
+                              AutomationId="planner-confirm-constraints" />
+                    <Label Text="These speakers and times match my request." VerticalOptions="Center"
+                           LineBreakMode="WordWrap" MaximumWidthRequest="240" />
+                </HorizontalStackLayout>
+                <Button Text="Add selected sessions to My Schedule" Command="{Binding ApplyCommand}"
+                        IsEnabled="{Binding CanApply}" AutomationId="planner-apply" />
+            </VerticalStackLayout>
+            <Button Text="Skip / back to browsing" Command="{Binding SkipCommand}"
+                    Style="{StaticResource QuietButton}" AutomationId="planner-skip" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

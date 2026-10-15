@@ -72,6 +72,25 @@ public sealed class ScheduleService(IScheduleStore store)
     /// <summary>Number of distinct saved IDs, including IDs the current agenda does not know.</summary>
     public int SavedCount => Volatile.Read(ref savedIds).Count;
 
+    public async Task AddAsync(IReadOnlyCollection<string> sessionIds, CancellationToken cancellationToken = default)
+    {
+        foreach (var id in sessionIds)
+            ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        await InitializeAsync(cancellationToken);
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            var next = new HashSet<string>(savedIds, StringComparer.Ordinal);
+            next.UnionWith(sessionIds);
+            await store.WriteAsync(next, cancellationToken);
+            savedIds = next;
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         await gate.WaitAsync(cancellationToken);

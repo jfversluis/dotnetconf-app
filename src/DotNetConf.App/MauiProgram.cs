@@ -125,6 +125,10 @@ public static class MauiProgram
         builder.Services.AddSingleton<DetailNavigationService>();
         builder.Services.TryAddSingleton(Browser.Default);
         builder.Services.AddSingleton<ConferenceViewModel>();
+        builder.Services.AddSingleton<OnDevicePlanner>();
+        builder.Services.AddScoped<PlannerTools>();
+        builder.Services.AddTransient<PlannerViewModel>();
+        builder.Services.AddTransient<PlannerPage>();
         builder.Services.AddSingleton<AppShell>();
         builder.Services.AddTransient<HomePage>();
         builder.Services.AddTransient<SessionsPage>();

@@ -26,6 +26,8 @@
             </Grid>
             <Label Text="{Binding TimeZoneLabel}" Style="{StaticResource Secondary}" FontSize="12"
                    AutomationId="schedule-timezone" />
+            <Button Text="Plan with on-device AI (spike)" Command="{Binding BrowsePlannerCommand}"
+                    Style="{StaticResource QuietButton}" AutomationId="schedule-ai-planner" />
             <controls:StatusBanner AutomationId="schedule-status" />
         </VerticalStackLayout>
         <planner:SchedulePlanner x:Name="Planner" Grid.Row="1" Sessions="{Binding SavedTimelineSessions}"

@@ -71,6 +71,8 @@
     <PackageReference Include="Syncfusion.Maui.Toolkit" Version="1.0.11" />
     <!-- Draws the schedule planner on every target; Android and iOS embed it in their native UI. -->
     <PackageReference Include="Avalonia.Controls.Maui" Version="11.0.0-rc.2.26287.618" />
+    <PackageReference Include="Microsoft.Maui.Essentials.AI" Version="11.0.0-preview.7.26512.5" />
+    <PackageReference Include="Microsoft.Extensions.AI" Version="10.4.1" />
   </ItemGroup>
   <ItemGroup Condition="'$(UseAvalonia)' == 'true'">
     <MauiPlatformSpecificFolder Include="Platforms/Avalonia" />
