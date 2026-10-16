@@ -198,6 +198,64 @@ availability, existing likes and the 12-selection limit still apply.
 
 ## Verification and limitations
 
+### MAUI-first hardening follow-up
+
+The review fixes keep orchestration cross-platform. Onboarding uses a root MAUI
+`SafeAreaEdges` content layout and a separate gradient background, replacing
+AndroidX inset/pixel calculations and the iOS inset-padding branch. Applying
+safe areas only inside carousel item templates did not protect the native iOS
+status area; the root composition was verified on both dedicated targets.
+The remaining native search-border customization is isolated in `SearchEntry`,
+registered once by its static constructor, and still guarded to that subclass.
+Platform chat-client registration and the pinned iOS CollectionView footer
+workaround remain necessary; no new native layout code was added.
+
+Explicit speaker/topic exclusions such as "no sessions by Alex", "except
+Daniel Roth" and "don't show me Blazor" now fail with a visible unsupported
+exclusion explanation, rather than accidentally requiring the excluded person.
+This is not general-purpose negative-filter support. Existing clock exclusions,
+including "exclude sessions ending after 10pm", still use validated availability.
+Unknown-name handling remains conservative. The extraction prompt explicitly
+distinguishes personal names from programming concepts, with two small
+person-versus-interest examples. Earlier runtime attempts misclassified generic
+interests as people; no constraint is silently discarded to hide that failure.
+Explicit unrestricted-time and don't-miss-every-session wording now outrank
+contradictory extracted availability/quantity. Local generation is still not
+guaranteed deterministic.
+
+Internal validation routes on typed issue codes, and speaker pagination returns
+a typed next offset. Neither depends on parsing English display text.
+Planner and schedule-update interfaces let the pure .NET test host exercise the
+actual ViewModel without booting MAUI. Saving disables shortlist/confirmation
+editing and persists the confirmed snapshot. A successful write followed by a
+refresh failure is reported as saved, never as unchanged likes. Outcomes are
+explicit events gated by loaded/active view state. Onboarding persists completion
+after dismissal, prevents duplicate modals and detaches reminder subscriptions
+on disappearance.
+
+The current suite has **223 passing tests**, including delayed/failed saves,
+late cancellation results, unsupported clients, dismissal/persistence failures,
+notification permission denial/revocation, owned-request reconciliation and
+retry after notification failures. Both platform Debug builds and unsigned iOS
+NativeAOT publishing succeed. Existing AI/Syncfusion trim/AOT warnings and the
+duplicate plugin privacy-manifest warning remain; physical Release inference
+has not been established.
+
+The final **44/44 existing runtime prompt matrix passed**, using the real Apple
+client, not a fake. Checks on the isolated iOS 26.5 simulator exercised actual local
+inference for all-Alex, clock-cutoff, impossible all-Gerald/cutoff, unrestricted
+Gerald, combined AI/MAUI and exact UTC availability requests. Negative filters
+were visibly blocked, and leaving during generation twice prevented late
+previews while the retained planner's active flag was false.
+Confirmation-gated saving preserved an existing like and survived app relaunch;
+only test-added likes were then removed, restoring the original snapshot.
+Both platforms passed native search, empty-results/clear and heart checks,
+onboarding navigation/persistence, normal and enlarged text layouts
+(maximum iOS Dynamic Type in dark appearance; Android font scale 2.0).
+Device font/appearance settings were restored. These are targeted regressions,
+not exhaustive whole-app UI coverage. Actual VoiceOver/TalkBack listening and
+physical-device background notification delivery remain outstanding.
+
 ### Current onboarding and reminder follow-up
 
 First-run onboarding now uses a separate full-screen modal carousel:

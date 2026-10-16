@@ -9,6 +9,25 @@ namespace DotNetConf.Core.Tests;
 public sealed class OnDevicePlannerGroundingTests
 {
     [Theory]
+    [InlineData("AI, but no sessions by Alex")]
+    [InlineData("Everything except Daniel Roth")]
+    [InlineData("Don't show me Blazor")]
+    public async Task ExclusionsStopBeforeInferenceOrToolQueries(string request)
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        var client = new ExtractionClient("none");
+        var services = new TestServices(client);
+        var planner = new OnDevicePlanner(services, NullLoggerFactory.Instance, services);
+        var result = await planner.ProposeAsync(conference, request, TimeZoneInfo.Utc, [], default);
+        Assert.Null(result.Proposal);
+        Assert.Contains("Excluding speakers or topics isn't supported", result.Message);
+        Assert.Equal(0, client.Calls);
+        Assert.Equal(0, services.Tools.CallCount);
+        Assert.True(client.Disposed);
+    }
+
+    [Theory]
     [InlineData("Show me sessions for Ada Lovelace", "Ada Lovelace")]
     [InlineData("Ada Lovelace, please", "Ada Lovelace")]
     [InlineData("Put Ada on my schedule", "Ada")]

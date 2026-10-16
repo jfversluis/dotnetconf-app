@@ -11,9 +11,17 @@ public sealed record PlannerInterpretation(string SpeakerNames, string Availabil
     public bool HasAvailability => !string.IsNullOrWhiteSpace(AvailabilityText)
         && !AvailabilityText.Equals("none", StringComparison.OrdinalIgnoreCase);
 
-    public bool RequiresTimeExtraction(string request) => HasAvailability || Regex.IsMatch(request,
-        @"\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\b\d{1,2}:\d{2}\b",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+    public bool RequiresTimeExtraction(string request)
+    {
+        if (HasExplicitDate(request) || Regex.IsMatch(request,
+            @"\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\b\d{1,2}:\d{2}\b|\b(?:before|after|until|by|from)\s+(?:noon|midnight)\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
+            return true;
+        if (Regex.IsMatch(request, @"\b(?:no\s+matter\s+(?:the\s+)?time|regardless\s+of\s+(?:the\s+)?time|any\s*time)\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
+            return false;
+        return HasAvailability;
+    }
 
     public static bool HasExplicitDate(string request) => Regex.IsMatch(request,
         @"\b\d{4}-\d{2}-\d{2}\b|\b(?:January|February|March|April|May|June|July|August|September|October|November|December|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|today|tomorrow)\b|\b\d{1,2}/\d{1,2}\b",
@@ -32,9 +40,12 @@ public sealed record PlannerInterpretation(string SpeakerNames, string Availabil
         };
     }
 
-    public bool RequestsAllSpeakers(string request) => Quantity == "all" && (HasAllQuantifier(request)
-        || Regex.IsMatch(request, @"\b(don['’]?t|do not)\s+miss\b",
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)));
+    public bool RequestsAllSpeakers(string request) =>
+        Regex.IsMatch(request, @"\b(?:don['’]?t|do not)\s+(?:want\s+to\s+)?miss\s+(?:any|a(?:\s+single)?|one)\s+(?:sessions?|talks?)\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100))
+        || Quantity == "all" && (HasAllQuantifier(request)
+            || Regex.IsMatch(request, @"\b(don['’]?t|do not)\s+miss\b",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)));
 
     public static bool HasAllQuantifier(string request) => Regex.IsMatch(request,
         @"\b(all|every|everything)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,

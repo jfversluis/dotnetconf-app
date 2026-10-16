@@ -18,7 +18,7 @@ public sealed record DayFilter(string Label, DateOnly? Day)
 public partial class ConferenceViewModel(
     IConferenceRepository repository, ScheduleService schedule, DetailNavigationService navigation,
     IBrowser browser, IConnectivity connectivity, SpeakerImageCache images,
-    ILogger<ConferenceViewModel> logger, SessionReminderService reminders) : ObservableObject
+    ILogger<ConferenceViewModel> logger, SessionReminderService reminders) : ObservableObject, IPlannerScheduleUpdates
 {
     private readonly SemaphoreSlim loadGate = new(1, 1);
     private ConferenceDocument? document;
@@ -618,6 +618,8 @@ public partial class ConferenceViewModel(
             session.IsSaved = schedule.IsSaved(session.Id);
         RefreshSchedule();
     }
+
+    public Task<bool> RefreshRemindersAsync() => reminders.RefreshAsync();
 
     private void RefreshSchedule()
     {

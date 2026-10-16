@@ -6,6 +6,46 @@ namespace DotNetConf.Core.Tests;
 
 public sealed class PlannerJsonTests
 {
+    [Theory]
+    [InlineData("Everything from Gerald, no matter the time", false)]
+    [InlineData("All of Alex's talks, regardless of time", false)]
+    [InlineData("All Alex talks anytime", false)]
+    [InlineData("Alex on November 11, no matter the time", true)]
+    [InlineData("Alex anytime after 10:00", true)]
+    [InlineData("Alex anytime before noon", true)]
+    public void ExplicitUnrestrictedTimeOutranksHallucinatedAvailability(string request, bool extract)
+    {
+        Assert.Equal(extract, new PlannerInterpretation("Alex", "09:00 to 22:00", "none", "all")
+            .RequiresTimeExtraction(request));
+    }
+
+    [Theory]
+    [InlineData("Don't miss any session from Gerald")]
+    [InlineData("Do not miss a single talk from Maddy")]
+    [InlineData("I don't want to miss a session from Alex")]
+    public void ExplicitDontMissEverySessionCannotBeRelaxedByModelQuantity(string request)
+    {
+        Assert.True(new PlannerInterpretation("none", "none", "none", "some").RequestsAllSpeakers(request));
+    }
+
+    [Theory]
+    [InlineData("I want AI sessions, but no sessions by Alex")]
+    [InlineData("Show me all sessions except Daniel Roth's")]
+    [InlineData("I don't want to see Ada Lovelace")]
+    [InlineData("AI but not Mobile")]
+    [InlineData("Not Alex, please")]
+    [InlineData("Without Blazor")]
+    [InlineData("Don't show me talks by Scott")]
+    [InlineData("Exclude Ada Lovelace")]
+    public async Task ExclusionsNeverBecomePositiveConstraintsEvenWhenTheModelOmitsThem(string request)
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        var error = Assert.Throws<InvalidDataException>(() =>
+            new PlannerInterpretation("none", "none", "AI", "some").Ground(conference, request));
+        Assert.Contains("Excluding", error.Message);
+    }
+
     [Fact]
     public void ExtractedPreferencesDeserializeWithoutReflection()
     {
@@ -98,6 +138,19 @@ public sealed class PlannerJsonTests
         foreach (var name in new[] { "Ada Lovelace", "Alex", "Scott" })
             Assert.Equal([name], new PlannerInterpretation(name, "none", "none", "some")
                 .Ground(conference, $"I must see {name}").Speakers);
+    }
+
+    [Theory]
+    [InlineData("I want all the latest on C# but exclude sessions if they are after 10pm for me")]
+    [InlineData("Don't miss any session from Gerald, but exclude sessions ending after 10pm local time")]
+    [InlineData("All Blazor talks, but no sessions after 22:00")]
+    [InlineData("Just everything from Gerald, no matter the time")]
+    [InlineData("I don't want to miss Alex")]
+    public async Task PositiveSpeakerRequestsAndClockCutoffsAreNotEntityExclusions(string request)
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        _ = new PlannerInterpretation("none", "none", "none", "all").Ground(conference, request);
     }
 
     [Theory]

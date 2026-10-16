@@ -5,6 +5,33 @@ namespace DotNetConf.Core.Tests;
 public class FirstRunPlannerTests
 {
     [Fact]
+    public async Task CompletionWaitsForSuccessfulDismissalAndFailureCanBeRetried()
+    {
+        var writes = 0;
+        var state = new FirstRunPlannerState(false, () => writes++);
+        Assert.True(state.TryBegin());
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            state.CompleteAfterDismissalAsync(() => Task.FromException(new InvalidOperationException("Navigation"))));
+        Assert.Equal(0, writes);
+        var pending = new TaskCompletionSource();
+        var finish = state.CompleteAfterDismissalAsync(() => pending.Task);
+        Assert.Equal(0, writes);
+        pending.SetResult();
+        await finish;
+        Assert.Equal(1, writes);
+        Assert.False(state.TryBegin());
+    }
+
+    [Fact]
+    public async Task FailedPersistenceAfterDismissalAllowsAnotherLaunch()
+    {
+        var state = new FirstRunPlannerState(false, () => throw new IOException("Preferences"));
+        Assert.True(state.TryBegin());
+        await Assert.ThrowsAsync<IOException>(() => state.CompleteAfterDismissalAsync(() => Task.CompletedTask));
+        Assert.True(state.TryBegin());
+    }
+
+    [Fact]
     public void FreshInstallStartsOnceWithoutPersistingBeforeDismissal()
     {
         var writes = 0;

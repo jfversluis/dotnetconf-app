@@ -190,8 +190,10 @@ public sealed class PlannerToolTests
         tools.CapturePreferences(["Alex"], [], true);
         var first = tools.SpeakerSessions("Alex");
         Assert.Contains("Next page: skip=4", first);
+        Assert.Equal(4, tools.SpeakerSessionsPage("Alex").NextSkip);
         Assert.DoesNotContain("talk-4 |", first);
         var last = tools.SpeakerSessions("Alex", 4);
+        Assert.Null(tools.SpeakerSessionsPage("Alex", 4).NextSkip);
         Assert.Contains("talk-4 |", last);
         Assert.Contains("talk-5 |", last);
         Assert.Contains("End of results", last);

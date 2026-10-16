@@ -52,6 +52,8 @@ public partial class App : Application
 
     private async void ShowOnboardingAsync(AppShell shell)
     {
+        if (shell.Navigation.ModalStack.Any(page => page is Pages.OnboardingPage))
+            return;
         if (!onboarding.TryBegin())
             return;
         try

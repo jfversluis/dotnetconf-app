@@ -17,11 +17,13 @@ public partial class PlannerPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        Planner.IsActive = true;
         await viewModel.InitializeAsync();
     }
 
     protected override void OnDisappearing()
     {
+        Planner.IsActive = false;
         viewModel.Cancel();
         base.OnDisappearing();
     }

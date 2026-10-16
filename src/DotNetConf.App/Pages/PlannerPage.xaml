@@ -6,7 +6,7 @@
              x:DataType="vm:PlannerViewModel" Title="Plan my schedule"
              Shell.TabBarIsVisible="False">
     <Grid RowDefinitions="*,Auto">
-        <controls:PlannerView />
+        <controls:PlannerView x:Name="Planner" />
         <Button Grid.Row="1" Text="View My Schedule" Margin="24,8,24,16" LineBreakMode="WordWrap"
                 IsVisible="{Binding HasAddedSessions}" Clicked="ViewScheduleClicked"
                 AutomationId="planner-view-schedule" />

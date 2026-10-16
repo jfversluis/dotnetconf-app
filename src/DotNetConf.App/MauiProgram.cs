@@ -72,42 +72,7 @@ public static class MauiProgram
             handlers.AddHandler<ShellItem, InstantTabsHandler>();
             handlers.AddHandler<SearchResultLayer, SearchResultLayerHandler>();
         });
-        Microsoft.Maui.Handlers.EntryHandler2.Mapper.AppendToMapping(nameof(IEntry.Placeholder), (handler, view) =>
-        {
-            if (view is not SearchEntry)
-                return;
-
-            var layout = handler.PlatformView;
-            layout.BoxBackgroundMode = Google.Android.Material.TextField.TextInputLayout.BoxBackgroundNone;
-            layout.HintEnabled = false;
-            layout.SetPadding(0, 0, 0, 0);
-            layout.Background = null;
-            layout.SetGravity((layout.Gravity & ~Android.Views.GravityFlags.VerticalGravityMask)
-                | Android.Views.GravityFlags.CenterVertical);
-            if (layout.EditText is { } input)
-            {
-                input.SetPadding(0, 0, 0, 0);
-                input.Background = null;
-                input.Hint = view.Placeholder;
-                input.Gravity = (input.Gravity & ~Android.Views.GravityFlags.VerticalGravityMask)
-                    | Android.Views.GravityFlags.CenterVertical;
-            }
-        });
-        Microsoft.Maui.Handlers.EntryHandler2.Mapper.AppendToMapping(nameof(IEntry.PlaceholderColor), (handler, view) =>
-        {
-            if (view is SearchEntry && handler.PlatformView.EditText is { } input && view.PlaceholderColor is { } color)
-                input.SetHintTextColor(color.ToPlatform());
-        });
-#elif IOS
-        Microsoft.Maui.Handlers.EntryHandler.Mapper.AppendToMapping("AgendaSearch", (handler, view) =>
-        {
-            if (view is not SearchEntry)
-                return;
-
-            handler.PlatformView.BorderStyle = UIKit.UITextBorderStyle.None;
-        });
 #endif
-
         builder.UseLocalNotification(options => options.AddAndroid(android => android.AddChannel(
             new Plugin.LocalNotification.Core.Models.AndroidOption.AndroidNotificationChannelRequest
             {
@@ -153,6 +118,8 @@ public static class MauiProgram
         }
 #endif
         builder.Services.AddSingleton<OnDevicePlanner>();
+        builder.Services.AddSingleton<IOnDevicePlanner>(services => services.GetRequiredService<OnDevicePlanner>());
+        builder.Services.AddSingleton<IPlannerScheduleUpdates>(services => services.GetRequiredService<ConferenceViewModel>());
         builder.Services.AddScoped<PlannerTools>();
         builder.Services.AddTransient<PlannerViewModel>();
         builder.Services.AddTransient<PlannerPage>();

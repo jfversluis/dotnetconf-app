@@ -15,6 +15,20 @@ public sealed class FirstRunPlannerState(bool completed, Action persistCompletio
 
     public void RetryLaunch() => started = false;
 
+    public async Task CompleteAfterDismissalAsync(Func<Task> dismiss)
+    {
+        await dismiss();
+        try
+        {
+            Complete();
+        }
+        catch
+        {
+            RetryLaunch();
+            throw;
+        }
+    }
+
     public void Complete()
     {
         if (completed)

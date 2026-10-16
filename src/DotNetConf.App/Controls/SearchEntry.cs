@@ -1,3 +1,7 @@
+#if ANDROID
+using Microsoft.Maui.Platform;
+#endif
+
 namespace DotNetConf.App.Controls;
 
 public class SearchEntry : Entry
@@ -33,4 +37,42 @@ public class SearchEntry : Entry
             input.ImeOptions |= (Android.Views.InputMethods.ImeAction)Android.Views.InputMethods.ImeFlags.NoFullscreen;
     }
 #endif
+
+    static SearchEntry()
+    {
+#if ANDROID
+        Microsoft.Maui.Handlers.EntryHandler2.Mapper.AppendToMapping(nameof(IEntry.Placeholder), (handler, view) =>
+        {
+            if (view is not SearchEntry)
+                return;
+
+            var layout = handler.PlatformView;
+            layout.BoxBackgroundMode = Google.Android.Material.TextField.TextInputLayout.BoxBackgroundNone;
+            layout.HintEnabled = false;
+            layout.SetPadding(0, 0, 0, 0);
+            layout.Background = null;
+            layout.SetGravity((layout.Gravity & ~Android.Views.GravityFlags.VerticalGravityMask)
+                | Android.Views.GravityFlags.CenterVertical);
+            if (layout.EditText is { } input)
+            {
+                input.SetPadding(0, 0, 0, 0);
+                input.Background = null;
+                input.Hint = view.Placeholder;
+                input.Gravity = (input.Gravity & ~Android.Views.GravityFlags.VerticalGravityMask)
+                    | Android.Views.GravityFlags.CenterVertical;
+            }
+        });
+        Microsoft.Maui.Handlers.EntryHandler2.Mapper.AppendToMapping(nameof(IEntry.PlaceholderColor), (handler, view) =>
+        {
+            if (view is SearchEntry && handler.PlatformView.EditText is { } input && view.PlaceholderColor is { } color)
+                input.SetHintTextColor(color.ToPlatform());
+        });
+#elif IOS
+        Microsoft.Maui.Handlers.EntryHandler.Mapper.AppendToMapping("AgendaSearch", (handler, view) =>
+        {
+            if (view is SearchEntry)
+                handler.PlatformView.BorderStyle = UIKit.UITextBorderStyle.None;
+        });
+#endif
+    }
 }

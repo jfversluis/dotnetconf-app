@@ -20,23 +20,9 @@ public partial class OnboardingPage : ContentPage
     private PlannerView? plannerView;
     private Task? schedulePreparation;
     private bool pageVisible;
+    private bool observingReminders;
     public bool PreparingScheduleStep { get; private set; } = true;
     public IReadOnlyList<View> Slides { get; }
-    public Thickness HeroPadding => new(24, 32 + TopInset, 24, 28);
-    private double TopInset
-    {
-        get
-        {
-#if ANDROID
-            if (Handler?.PlatformView is Android.Views.View view
-                && AndroidX.Core.View.ViewCompat.GetRootWindowInsets(view) is { } insets)
-                return insets.GetInsets(AndroidX.Core.View.WindowInsetsCompat.Type.SystemBars()
-                    | AndroidX.Core.View.WindowInsetsCompat.Type.DisplayCutout()).Top
-                    / (view.Resources?.DisplayMetrics?.Density ?? 1);
-#endif
-            return Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.Page.GetSafeAreaInsets(this).Top;
-        }
-    }
     public bool CanGoBack => Carousel.Position > 0;
     public string ProgressText => $"{Carousel.Position + 1} of 3";
     public string NextText => Carousel.Position == 2 ? "Done" : "Next";
@@ -63,7 +49,6 @@ public partial class OnboardingPage : ContentPage
         scheduleStep = new ContentView { Content = intro, SafeAreaEdges = SafeAreaEdges.None };
         Slides = [welcome, scheduleStep, notificationStep];
         BindingContext = this;
-        reminders.PropertyChanged += RemindersChanged;
     }
 
     private async Task PrepareScheduleStepAsync()
@@ -97,32 +82,12 @@ public partial class OnboardingPage : ContentPage
         skip.SetBinding(IsEnabledProperty, Binding.Create(static (OnboardingPage page) => page.CanNavigate, source: this));
         skip.Clicked += SkipClicked;
         plannerView.SetHeroAction(skip);
-        plannerView.SetHeroPadding(HeroPadding);
+        plannerView.UseOnboardingSafeArea();
+        plannerView.IsActive = Carousel.Position == 1;
         scheduleStep.Content = plannerView;
     }
 
     public void Configure(FirstRunPlannerState onboarding) => state = onboarding;
-
-    protected override void OnPropertyChanged(string? propertyName = null)
-    {
-        base.OnPropertyChanged(propertyName);
-        if (propertyName == Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.Page.SafeAreaInsetsProperty.PropertyName)
-        {
-            UpdateHeroPadding();
-        }
-    }
-
-    private void UpdateHeroPadding()
-    {
-        OnPropertyChanged(nameof(HeroPadding));
-        plannerView?.SetHeroPadding(HeroPadding);
-    }
-
-    protected override void OnSizeAllocated(double width, double height)
-    {
-        base.OnSizeAllocated(width, height);
-        UpdateHeroPadding();
-    }
 
     private void RemindersChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args) =>
         UpdatePermissionState();
@@ -132,6 +97,8 @@ public partial class OnboardingPage : ContentPage
         OnPropertyChanged(nameof(CanGoBack));
         OnPropertyChanged(nameof(NextText));
         OnPropertyChanged(nameof(ProgressText));
+        if (plannerView is not null)
+            plannerView.IsActive = pageVisible && Carousel.Position == 1;
         if (args.PreviousPosition == 1 && !PreparingScheduleStep)
             planner.Cancel();
     }
@@ -169,22 +136,28 @@ public partial class OnboardingPage : ContentPage
             return;
         leaving = true;
         OnPropertyChanged(nameof(CanNavigate));
+        if (plannerView is not null)
+            plannerView.IsActive = false;
         planner.Cancel();
+        var host = Window?.Page;
         try
         {
-            state?.Complete();
-            await Navigation.PopModalAsync();
-            reminders.PropertyChanged -= RemindersChanged;
+            if (state is null)
+                throw new InvalidOperationException("Onboarding was not configured.");
+            await state.CompleteAfterDismissalAsync(async () => await Navigation.PopModalAsync());
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException)
         {
             logger.LogError(exception, "Could not finish onboarding.");
-            await DisplayAlertAsync("Couldn't finish setup", "Please try again. Your saved sessions are kept.", "OK");
+            if (host is not null)
+                await host.DisplayAlertAsync("Couldn't finish setup", "Please try again. Your saved sessions are kept.", "OK");
         }
         finally
         {
             leaving = false;
             OnPropertyChanged(nameof(CanNavigate));
+            if (plannerView is not null)
+                plannerView.IsActive = pageVisible && Carousel.Position == 1;
         }
     }
 
@@ -194,10 +167,16 @@ public partial class OnboardingPage : ContentPage
             return;
         requestingReminders = true;
         UpdatePermissionState();
-        await reminders.EnableAsync();
-        permissionAttempted = true;
-        requestingReminders = false;
-        UpdatePermissionState();
+        try
+        {
+            await reminders.EnableAsync();
+            permissionAttempted = true;
+        }
+        finally
+        {
+            requestingReminders = false;
+            UpdatePermissionState();
+        }
     }
 
     private void UpdatePermissionState()
@@ -217,7 +196,13 @@ public partial class OnboardingPage : ContentPage
     {
         base.OnAppearing();
         pageVisible = true;
-        UpdateHeroPadding();
+        if (!observingReminders)
+        {
+            reminders.PropertyChanged += RemindersChanged;
+            observingReminders = true;
+        }
+        if (plannerView is not null)
+            plannerView.IsActive = Carousel.Position == 1;
         if (permissionAttempted)
         {
             await reminders.RefreshAsync();
@@ -230,6 +215,13 @@ public partial class OnboardingPage : ContentPage
     protected override void OnDisappearing()
     {
         pageVisible = false;
+        if (plannerView is not null)
+            plannerView.IsActive = false;
+        if (observingReminders)
+        {
+            reminders.PropertyChanged -= RemindersChanged;
+            observingReminders = false;
+        }
         planner.Cancel();
         base.OnDisappearing();
     }

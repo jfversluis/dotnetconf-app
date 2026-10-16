@@ -69,9 +69,11 @@ All three steps share a 34-unit heading, 48-unit Fluent icon, and the
 incumbent hero wash, with 24-unit gutters aligned to the builder.
 The builder uses a sparkle glyph to distinguish AI-assisted planning from the
 welcome's agenda and reminder's bell; the shared in-app builder retains it.
-On iOS and Android the onboarding hero background extends behind the status bar;
-content padding follows the actual safe-area/system-bar and cutout inset. Bottom protection
-remains page-owned, and the regular in-app builder retains native scroll insets.
+On iOS and Android the onboarding hero background extends behind the status bar.
+A root MAUI `SafeAreaEdges` layout protects the carousel content; a separate
+background layer paints behind the protected region. No native inset measurement
+or platform-specific hero padding is needed. Bottom protection remains page-owned,
+and the regular in-app builder retains native scroll insets.
 Supporting copy returns to the neutral reading surface. Skip setup sits beside
 each onboarding hero icon, directly on the gradient without a separate bar.
 The hero content follows the actual top safe-area inset. The footer is a
@@ -83,8 +85,10 @@ Back is hidden on the first slide.
 Idle reminder status is hidden; permission
 results and recovery remain visible. Labels wrap and content scrolls at larger
 text sizes without disabling font scaling.
-Completion and skipping persist locally, while an interrupted launch remains
-eligible. Android back moves to the previous step or dismisses from welcome.
+Completion and skipping persist locally only after successful modal dismissal;
+failed dismissal leaves setup retryable, while an interrupted launch remains
+eligible. Reminder subscriptions attach/detach with page visibility.
+Android back moves to the previous step or dismisses from welcome.
 My Schedule opens the regular native planner, which shares the builder view
 but has no onboarding Skip or explore actions.
 Horizontally scrolling example chips above the input fill the editor without
@@ -110,7 +114,11 @@ placeholder/hint text rather than a description, preserving TalkBack editing act
 Shortlist checkboxes expose the session title, speakers, time and any blocking
 warning. User-initiated planning and save outcomes are announced once, including
 blocking validation; readiness and individual selection changes are not repeatedly
-announced.
+announced. Announcements are subscribed only while the view is loaded and gated
+on its active page/slide, so leaving during inference cannot announce over the
+reminder step. Saving freezes the shortlist and confirmation, persists a snapshot
+of the confirmed selection, and reports a reminder-refresh failure separately
+from a failed save.
 
 The reminder step explains the benefit before asking for OS notification
 permission, only on an explicit Enable tap. Reminders are device-local and tied

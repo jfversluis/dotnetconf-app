@@ -119,14 +119,13 @@
                     <Label Text="{Binding Validation}" IsVisible="{Binding HasValidationErrors}" AutomationId="planner-validation"
                            TextColor="{AppThemeBinding Light={StaticResource LightError}, Dark={StaticResource DarkError}}" />
                     <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-                        <CheckBox IsChecked="{Binding ConstraintsConfirmed}" IsEnabled="{Binding HasValidProposal}"
+                        <CheckBox IsChecked="{Binding ConstraintsConfirmed}" IsEnabled="{Binding CanConfirm}"
                                   MinimumHeightRequest="48" MinimumWidthRequest="48"
                                   SemanticProperties.Description="I have reviewed the selected sessions and their times"
                                   AutomationId="planner-confirm-constraints" />
                         <Label Grid.Column="1" Text="I've reviewed these sessions and times." VerticalOptions="Center" />
                     </Grid>
                     <Button Text="Add selected to My Schedule" LineBreakMode="WordWrap" Command="{Binding ApplyCommand}"
-                            Clicked="ApplyClicked"
                             IsEnabled="{Binding CanApply}" AutomationId="planner-apply" />
                 </VerticalStackLayout>
                 <Label Text="Fictional demo agenda. Talks and participation are not announced or endorsed."

@@ -4,6 +4,8 @@ using Microsoft.Extensions.AI;
 
 namespace DotNetConf.App.Services;
 
+public sealed record PlannerPageResult(string Text, int? NextSkip);
+
 public sealed class PlannerTools
 {
     private ConferenceDocument? document;
@@ -39,20 +41,23 @@ public sealed class PlannerTools
         return FormatPage(Agenda.Search(conference, query, null, null, timeZone).ToArray(), skip);
     }
 
-    public string SpeakerSessions(string name, int skip = 0)
+    public string SpeakerSessions(string name, int skip = 0) => SpeakerSessionsPage(name, skip).Text;
+
+    public PlannerPageResult SpeakerSessionsPage(string name, int skip = 0)
     {
         var conference = GetDocument();
         if (string.IsNullOrWhiteSpace(name))
-            return "Supply a speaker name.";
+            return new("Supply a speaker name.", null);
         var speakers = Agenda.FindSpeakers(conference, name);
         if (speakers.Count == 0)
-            return $"Speaker not found in this demo agenda: {name}. Do not invent participation.";
+            return new($"Speaker not found in this demo agenda: {name}. Do not invent participation.", null);
         if (speakers.Count > 1)
-            return $"Ambiguous speaker '{name}'. Ask the user to choose: {string.Join(", ", speakers.Select(s => s.Name))}.";
-        return $"Speaker: {speakers[0].Name}\n" + FormatPage(
+            return new($"Ambiguous speaker '{name}'. Ask the user to choose: {string.Join(", ", speakers.Select(s => s.Name))}.", null);
+        var page = ReadPage(
             conference.Sessions.Where(s => s.SpeakerIds.Contains(speakers[0].Id)
                 && (Preferences?.TopicFilter is not { RestrictToRequiredSpeakers: true } filter
                     || Agenda.MatchesTopics(s, filter))).OrderBy(s => s.StartsAt).ToArray(), skip);
+        return page with { Text = $"Speaker: {speakers[0].Name}\n" + page.Text };
     }
 
     public string TopicSessions(int skip = 0) => FormatPage(
@@ -141,7 +146,9 @@ public sealed class PlannerTools
         return rows.Length == 0 ? "No matching sessions." : string.Join("\n", rows);
     }
 
-    private string FormatPage(Session[] matching, int skip)
+    private string FormatPage(Session[] matching, int skip) => ReadPage(matching, skip).Text;
+
+    private PlannerPageResult ReadPage(Session[] matching, int skip)
     {
         var eligible = matching.Where(IsEligible).ToArray();
         var offset = Math.Clamp(skip, 0, matching.Length);
@@ -149,9 +156,10 @@ public sealed class PlannerTools
         foreach (var session in page)
             candidateIds.Add(session.Id);
         var excluded = matching.Length - eligible.Length;
-        return $"Matches: {matching.Length}; eligible: {eligible.Length}; shown with warnings for availability or liked-session conflicts: {excluded}. " +
+        int? nextSkip = offset + page.Length < matching.Length ? offset + page.Length : null;
+        return new($"Matches: {matching.Length}; eligible: {eligible.Length}; shown with warnings for availability or liked-session conflicts: {excluded}. " +
             (offset + page.Length < matching.Length ? $"Next page: skip={offset + page.Length}.\n" : "End of results.\n") +
-            Format(page);
+            Format(page), nextSkip);
     }
 
     public IReadOnlyList<AITool> CreateFunctions() =>

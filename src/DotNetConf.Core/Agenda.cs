@@ -5,6 +5,7 @@ namespace DotNetConf.Core;
 
 public static class Agenda
 {
+    private const string UnsupportedExclusion = "Excluding speakers or topics isn't supported yet. Request only the speakers and topics you want; nothing has been saved.";
     public static bool MatchesTopics(Session session, PlannerTopicFilter filter) => filter.MatchAll
         ? filter.Topics.All(t => session.Topics.Contains(t, StringComparer.OrdinalIgnoreCase))
         : filter.Topics.Any(t => session.Topics.Contains(t, StringComparer.OrdinalIgnoreCase));
@@ -59,6 +60,14 @@ public static class Agenda
     public static (string[] Speakers, string Query) GroundPlannerQuery(
         ConferenceDocument conference, string request, string[] names, string inferred)
     {
+        ValidatePlannerRequest(request);
+        var entities = names.Concat(conference.Speakers.SelectMany(s => s.Name.Split(' ').Append(s.Name)))
+            .Concat(conference.Sessions.SelectMany(s => s.Topics)).Where(n => !string.IsNullOrWhiteSpace(n))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+        foreach (var entity in entities)
+            if (Regex.IsMatch(request, $@"\b(?:not|no|without)\s+{Regex.Escape(entity)}(?![\p{{L}}\p{{N}}])",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
+                throw new InvalidDataException(UnsupportedExclusion);
         var topics = conference.Sessions.SelectMany(s => s.Topics).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
         var topicNames = names.Where(n => topics.Contains(n, StringComparer.OrdinalIgnoreCase)
             && FindSpeakers(conference, n).Count == 0).ToArray();
@@ -92,6 +101,21 @@ public static class Agenda
         return (speakers, query);
     }
 
+    public static void ValidatePlannerRequest(string request)
+    {
+        var exclusions = Regex.Matches(request,
+            @"\b(?:except|exclud(?:e|es|ing)|avoid(?:ing)?)\b|\b(?:don['’]?t|do not|not)\s+(?!want\s+(?:to\s+)?miss\b)(?:want|include|show|suggest|recommend|see|watch|attend|like|interested)\b|\b(?:no|not|without)\s+(?:any\s+)?(?:sessions?|talks?)\b|\b(?:but|and)\s+not\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        foreach (Match exclusion in exclusions)
+        {
+            // A clock cutoff is already supported by availability validation, not a negative entity filter.
+            var temporal = Regex.IsMatch(request[(exclusion.Index + exclusion.Length)..],
+                @"^\s+(?:(?:any\s+)?(?:sessions?|talks?)\s+)?(?:(?:if|that|which)\s+(?:(?:they\s+)?(?:are|start|end|finish)\s+)?|(?:starting|ending|finishing)\s+)?(?:after|before|outside|later\s+than|earlier\s+than)\s+(?:\d|noon\b|midnight\b)",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+            if (!temporal)
+                throw new InvalidDataException(UnsupportedExclusion);
+        }
+    }
     public static IReadOnlyList<Speaker> FindSpeakers(ConferenceDocument conference, string? name)
     {
         var terms = (name ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

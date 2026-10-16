@@ -21,7 +21,10 @@ public partial class ProposedSessionViewModel(Session session, string speakerNam
         $"{TimeZoneInfo.ConvertTime(session.EndsAt, zone):ddd, MMM d HH:mm}";
     public string Warning => warning;
     public bool HasWarning => warning.Length > 0;
-    public bool CanSelect => !HasWarning;
+    public bool CanSelect => !HasWarning && !IsBusy;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanSelect))]
+    public partial bool IsBusy { get; set; }
     public string SelectionDescription => $"{Title}. {SpeakerNames}. {Time}." +
         (HasWarning ? $" {Warning}" : "");
     [ObservableProperty] public partial bool IsSelected { get; set; } = selected && warning.Length == 0;
@@ -29,8 +32,8 @@ public partial class ProposedSessionViewModel(Session session, string speakerNam
 }
 
 public partial class PlannerViewModel(
-    IConferenceDataSource dataSource, ScheduleService schedule, OnDevicePlanner planner,
-    ConferenceViewModel conference, ILogger<PlannerViewModel> logger, SessionReminderService reminders) : ObservableObject
+    IConferenceDataSource dataSource, ScheduleService schedule, IOnDevicePlanner planner,
+    IPlannerScheduleUpdates scheduleUpdates, ILogger<PlannerViewModel> logger) : ObservableObject
 {
     private CancellationTokenSource? operation;
     private ConferenceDocument? document;
@@ -47,6 +50,7 @@ public partial class PlannerViewModel(
     [NotifyPropertyChangedFor(nameof(CanApply))]
     [NotifyPropertyChangedFor(nameof(CanEdit))]
     [NotifyPropertyChangedFor(nameof(CanRetryModel))]
+    [NotifyPropertyChangedFor(nameof(CanConfirm))]
     public partial bool IsBusy { get; set; }
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanGenerate))]
@@ -92,6 +96,8 @@ public partial class PlannerViewModel(
     public bool CanEdit => !IsBusy;
     public bool CanRetryModel => !IsReady && !IsBusy && planner.UnsupportedReason is null;
     public bool CanApply => HasValidProposal && ConstraintsConfirmed && !IsBusy;
+    public bool CanConfirm => HasValidProposal && !IsBusy;
+    public event EventHandler<string>? OutcomeAvailable;
     public bool HasStatus => !string.IsNullOrWhiteSpace(Status);
     public bool HasValidationErrors => !HasValidProposal && !string.IsNullOrWhiteSpace(Validation);
     public string MatchingDetailsAction => ShowMatchingDetails ? "Hide matching details" : "Show matching details";
@@ -268,6 +274,7 @@ public partial class PlannerViewModel(
         {
             operation = null;
             IsBusy = false;
+            AnnounceOutcome();
         }
     }
 
@@ -284,9 +291,9 @@ public partial class PlannerViewModel(
         if (document is null || proposal is null)
             return;
         // Keep original ID errors visible; filtering a preview must not hide hallucinated IDs.
-        var originalErrors = SchedulePlanner.Review(document, proposal, timeZone, SavedIds()).Errors
-            .Where(e => e.StartsWith("Unknown session ID:", StringComparison.Ordinal)
-                || e.StartsWith("Duplicate session:", StringComparison.Ordinal)).ToArray();
+        var originalErrors = SchedulePlanner.Review(document, proposal, timeZone, SavedIds()).Issues
+            .Where(issue => issue.Code is ProposalIssueCode.UnknownSession or ProposalIssueCode.DuplicateSession)
+            .Select(issue => issue.Message).ToArray();
         var review = SchedulePlanner.Review(document, SelectedProposal(), timeZone, SavedIds());
         HasValidProposal = review.CanApply && originalErrors.Length == 0;
         Validation = HasValidProposal
@@ -303,30 +310,49 @@ public partial class PlannerViewModel(
         {
             ClearProposal();
             Status = "Your device time zone changed. Generate a new proposal before saving.";
+            AnnounceOutcome();
             return;
         }
+        var selected = SelectedProposal();
         ReviewSelection();
         if (!HasValidProposal)
+        {
+            AnnounceOutcome();
             return;
+        }
         IsBusy = true;
         try
         {
-            await schedule.AddAsync(SelectedProposal().SessionIds);
-            conference.RefreshSavedState();
-            ClearProposal();
-            HasAddedSessions = true;
-            Status = "Selected proposals added to My Schedule. Your previous likes were kept.";
-            if (!await reminders.RefreshAsync())
-                Status += " Reminders couldn't be updated; check Settings.";
+            await schedule.AddAsync(selected.SessionIds);
         }
         catch (Exception exception) when (IsExpectedFailure(exception))
         {
             logger.LogError(exception, "Could not add planner proposals to the schedule.");
             Status = "Couldn't save the proposal. Your liked sessions have not changed. Check storage and retry.";
+            IsBusy = false;
+            AnnounceOutcome();
+            return;
+        }
+        try
+        {
+            scheduleUpdates.RefreshSavedState();
+            ClearProposal();
+            HasAddedSessions = true;
+            Status = "Selected proposals added to My Schedule. Your previous likes were kept.";
+            if (!await scheduleUpdates.RefreshRemindersAsync())
+                Status += " Reminders couldn't be updated; check Settings.";
+        }
+        catch (Exception exception) when (IsExpectedFailure(exception))
+        {
+            logger.LogError(exception, "Schedule saved, but the presentation or reminders could not be refreshed.");
+            ClearProposal();
+            HasAddedSessions = true;
+            Status = "Your selected sessions were saved, but the display or reminders couldn't be refreshed. Reopen My Schedule and check Settings.";
         }
         finally
         {
             IsBusy = false;
+            AnnounceOutcome();
         }
     }
 
@@ -342,6 +368,19 @@ public partial class PlannerViewModel(
         Cancel();
         ClearProposal();
     }
+
+    partial void OnIsBusyChanged(bool value)
+    {
+        foreach (var session in Sessions)
+            session.IsBusy = value;
+    }
+
+    partial void OnHasValidProposalChanged(bool value) => OnPropertyChanged(nameof(CanConfirm));
+
+    private void AnnounceOutcome() => OutcomeAvailable?.Invoke(this,
+        HasValidationErrors ? $"The shortlist cannot be saved. {Validation}"
+        : HasStatus ? Status
+        : $"{Sessions.Count} sessions in your shortlist. Review their times and confirm before saving.");
 
     private void ClearProposal()
     {

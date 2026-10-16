@@ -16,7 +16,7 @@
             <ScrollView SafeAreaEdges="None" AutomationId="onboarding-welcome-scroll">
                 <VerticalStackLayout Spacing="0" SafeAreaEdges="None">
                     <Grid SafeAreaEdges="None" Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}">
-                        <VerticalStackLayout Padding="{Binding HeroPadding}" Spacing="24" MaximumWidthRequest="600"
+                        <VerticalStackLayout Padding="24,32,24,28" Spacing="24" MaximumWidthRequest="600"
                                              HorizontalOptions="Fill" SafeAreaEdges="None">
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                                 <Image Source="{StaticResource OnboardingAgendaIcon}" HeightRequest="48" WidthRequest="48"
@@ -49,7 +49,7 @@
             <ScrollView SafeAreaEdges="None" AutomationId="onboarding-schedule-scroll">
                 <VerticalStackLayout Spacing="0" SafeAreaEdges="None">
                     <Grid SafeAreaEdges="None" Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}">
-                        <VerticalStackLayout Padding="{Binding HeroPadding}" Spacing="24" MaximumWidthRequest="600"
+                        <VerticalStackLayout Padding="24,32,24,28" Spacing="24" MaximumWidthRequest="600"
                                              HorizontalOptions="Fill" SafeAreaEdges="None">
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                                 <Image Source="{StaticResource OnboardingHeartIcon}" HeightRequest="48" WidthRequest="48"
@@ -86,7 +86,7 @@
             <ScrollView SafeAreaEdges="None" AutomationId="onboarding-reminders-scroll">
                 <VerticalStackLayout Spacing="0" SafeAreaEdges="None">
                     <Grid SafeAreaEdges="None" Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}">
-                        <VerticalStackLayout Padding="{Binding HeroPadding}" Spacing="24" MaximumWidthRequest="600"
+                        <VerticalStackLayout Padding="24,32,24,28" Spacing="24" MaximumWidthRequest="600"
                                              HorizontalOptions="Fill" SafeAreaEdges="None">
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                                 <Image Source="{StaticResource ReminderIcon}" HeightRequest="48" WidthRequest="48"
@@ -127,39 +127,43 @@
             </ScrollView>
         </DataTemplate>
     </ContentPage.Resources>
-    <Grid RowDefinitions="*,Auto" RowSpacing="0" SafeAreaEdges="None">
-        <CarouselView x:Name="Carousel" ItemsSource="{Binding Slides}" Loop="False"
-                      HorizontalScrollBarVisibility="Never"
-                      PositionChanged="PositionChanged" IndicatorView="Progress"
-                      AutomationId="onboarding-carousel">
-            <CarouselView.ItemTemplate>
-                <DataTemplate x:DataType="View">
-                    <ContentView Content="{Binding .}" SafeAreaEdges="None" />
-                </DataTemplate>
-            </CarouselView.ItemTemplate>
-        </CarouselView>
-        <Grid Grid.Row="1" RowDefinitions="Auto,Auto" SafeAreaEdges="None">
-            <BoxView HeightRequest="1" InputTransparent="True" />
-            <Grid Grid.Row="1" Padding="24,12,24,12" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12"
-                  MaximumWidthRequest="600" HorizontalOptions="Fill">
-                <ContentView MinimumWidthRequest="{Binding Source={x:Reference NextButton}, Path=Width, x:DataType=Button}">
-                    <Button x:Name="BackButton" Text="Back" Clicked="BackClicked" IsVisible="{Binding CanGoBack}" LineBreakMode="WordWrap"
-                            IsEnabled="{Binding CanNavigate}" Style="{StaticResource QuietButton}" BorderWidth="0"
-                            HorizontalOptions="Start" VerticalOptions="Center" AutomationId="onboarding-back" />
-                </ContentView>
-                <VerticalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center">
-                    <IndicatorView x:Name="Progress" IndicatorSize="7" HorizontalOptions="Center"
-                           IndicatorColor="{AppThemeBinding Light={StaticResource LightOutline}, Dark={StaticResource DarkOutline}}"
-                           SelectedIndicatorColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
-                           InputTransparent="True" />
-                    <Label Text="{Binding ProgressText}" Style="{StaticResource Secondary}" FontSize="12"
-                           HorizontalTextAlignment="Center" AutomationId="onboarding-progress" />
-                </VerticalStackLayout>
-                <ContentView Grid.Column="2" MinimumWidthRequest="{Binding Source={x:Reference BackButton}, Path=Width, x:DataType=Button}">
-                    <Button x:Name="NextButton" Text="{Binding NextText}" Clicked="NextClicked" IsEnabled="{Binding CanNavigate}"
-                            LineBreakMode="WordWrap" HorizontalOptions="End" VerticalOptions="Center"
-                            MinimumWidthRequest="80" AutomationId="onboarding-next" />
-                </ContentView>
+    <Grid SafeAreaEdges="None" Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}">
+        <Grid RowDefinitions="*,Auto" RowSpacing="0" SafeAreaEdges="None,Container,None,None">
+            <CarouselView x:Name="Carousel" ItemsSource="{Binding Slides}" Loop="False"
+                          BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}"
+                          HorizontalScrollBarVisibility="Never"
+                          PositionChanged="PositionChanged" IndicatorView="Progress"
+                          AutomationId="onboarding-carousel">
+                <CarouselView.ItemTemplate>
+                    <DataTemplate x:DataType="View">
+                        <ContentView Content="{Binding .}" SafeAreaEdges="None" />
+                    </DataTemplate>
+                </CarouselView.ItemTemplate>
+            </CarouselView>
+            <Grid Grid.Row="1" RowDefinitions="Auto,Auto" SafeAreaEdges="None"
+                  BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
+                <BoxView HeightRequest="1" InputTransparent="True" />
+                <Grid Grid.Row="1" Padding="24,12,24,12" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12"
+                      MaximumWidthRequest="600" HorizontalOptions="Fill">
+                    <ContentView MinimumWidthRequest="{Binding Source={x:Reference NextButton}, Path=Width, x:DataType=Button}">
+                        <Button x:Name="BackButton" Text="Back" Clicked="BackClicked" IsVisible="{Binding CanGoBack}" LineBreakMode="WordWrap"
+                                IsEnabled="{Binding CanNavigate}" Style="{StaticResource QuietButton}" BorderWidth="0"
+                                HorizontalOptions="Start" VerticalOptions="Center" AutomationId="onboarding-back" />
+                    </ContentView>
+                    <VerticalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center">
+                        <IndicatorView x:Name="Progress" IndicatorSize="7" HorizontalOptions="Center"
+                                       IndicatorColor="{AppThemeBinding Light={StaticResource LightOutline}, Dark={StaticResource DarkOutline}}"
+                                       SelectedIndicatorColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
+                                       InputTransparent="True" />
+                        <Label Text="{Binding ProgressText}" Style="{StaticResource Secondary}" FontSize="12"
+                               HorizontalTextAlignment="Center" AutomationId="onboarding-progress" />
+                    </VerticalStackLayout>
+                    <ContentView Grid.Column="2" MinimumWidthRequest="{Binding Source={x:Reference BackButton}, Path=Width, x:DataType=Button}">
+                        <Button x:Name="NextButton" Text="{Binding NextText}" Clicked="NextClicked" IsEnabled="{Binding CanNavigate}"
+                                LineBreakMode="WordWrap" HorizontalOptions="End" VerticalOptions="Center"
+                                MinimumWidthRequest="80" AutomationId="onboarding-next" />
+                    </ContentView>
+                </Grid>
             </Grid>
         </Grid>
     </Grid>

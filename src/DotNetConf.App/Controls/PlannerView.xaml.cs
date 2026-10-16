@@ -1,66 +1,54 @@
-using System.ComponentModel;
 using DotNetConf.App.ViewModels;
 
 namespace DotNetConf.App.Controls;
 
 public partial class PlannerView : ContentView
 {
-    public PlannerView() => InitializeComponent();
+    public PlannerView()
+    {
+        InitializeComponent();
+        Loaded += (_, _) => AttachViewModel();
+        Unloaded += (_, _) => DetachViewModel();
+    }
 
     private PlannerViewModel? viewModel;
-    private bool announceOutcome;
+    public bool IsActive { get; set; } = true;
 
     protected override void OnBindingContextChanged()
     {
-        if (viewModel is not null)
-            viewModel.PropertyChanged -= PlannerPropertyChanged;
+        DetachViewModel();
         base.OnBindingContextChanged();
-        viewModel = BindingContext as PlannerViewModel;
-        if (viewModel is not null)
-            viewModel.PropertyChanged += PlannerPropertyChanged;
-        announceOutcome = false;
+        if (IsLoaded)
+            AttachViewModel();
     }
 
     public void SetHeroAction(View action) => HeroAction.Content = action;
 
-    public void SetHeroPadding(Thickness padding)
+    public void UseOnboardingSafeArea()
     {
         PlannerScroll.SafeAreaEdges = SafeAreaEdges.None;
-        HeroContent.Padding = padding;
     }
 
-    private void GenerateClicked(object? sender, EventArgs args)
+    private void AttachViewModel()
     {
-        RequestEditor.Unfocus();
-        PrepareOutcomeAnnouncement();
+        DetachViewModel();
+        viewModel = BindingContext as PlannerViewModel;
+        if (viewModel is not null)
+            viewModel.OutcomeAvailable += OnOutcomeAvailable;
     }
 
-    private void ApplyClicked(object? sender, EventArgs args) => PrepareOutcomeAnnouncement();
-
-    private void PrepareOutcomeAnnouncement()
+    private void DetachViewModel()
     {
-        announceOutcome = viewModel?.IsBusy == true;
-        if (!announceOutcome)
-            AnnounceOutcome();
+        if (viewModel is not null)
+            viewModel.OutcomeAvailable -= OnOutcomeAvailable;
+        viewModel = null;
     }
 
-    private void PlannerPropertyChanged(object? sender, PropertyChangedEventArgs args)
+    private void OnOutcomeAvailable(object? sender, string message)
     {
-        if (args.PropertyName != nameof(PlannerViewModel.IsBusy) || viewModel is not { IsBusy: false }
-            || !announceOutcome)
-            return;
-        announceOutcome = false;
-        AnnounceOutcome();
+        if (IsActive && IsLoaded && Window is not null)
+            SemanticScreenReader.Announce(message);
     }
 
-    private void AnnounceOutcome()
-    {
-        if (Handler is null || Window is null || viewModel is null)
-            return;
-        var message = viewModel.HasValidationErrors
-            ? $"The shortlist cannot be saved. {viewModel.Validation}"
-            : viewModel.HasStatus ? viewModel.Status
-            : $"{viewModel.Sessions.Count} sessions in your shortlist. Review their times and confirm before saving.";
-        SemanticScreenReader.Announce(message);
-    }
+    private void GenerateClicked(object? sender, EventArgs args) => RequestEditor.Unfocus();
 }

@@ -9,7 +9,7 @@ namespace DotNetConf.App.Services;
 public sealed record PlannerResult(ScheduleProposal? Proposal, string Message);
 
 public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory,
-    IServiceProviderIsService registeredServices)
+    IServiceProviderIsService registeredServices) : IOnDevicePlanner
 {
     public string? UnsupportedReason => registeredServices.IsService(typeof(IChatClient)) ? null :
         "No on-device chat model is supported by this app on your device. You can build My Schedule using the hearts in the agenda.";
@@ -55,12 +55,19 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
         var first = TimeZoneInfo.ConvertTime(conference.Sessions.Min(s => s.StartsAt), zone);
         try
         {
+            Agenda.ValidatePlannerRequest(request);
             // The native preview constrains the shape but does not include the
             // schema descriptions in its prompt, so send those explicitly too.
             var interpretationSchema = PlannerSchemas.Interpretation(conference);
             var extracted = await client.GetResponseAsync(
                 [new ChatMessage(ChatRole.System,
-                    $"Turn a software conference attendee's request into query arguments, not recommendations. Never add names or time restrictions. Use none for unmentioned constraints. A topic is not a person. Respond using this schema and its field descriptions:\n{interpretationSchema.GetRawText()}"),
+                    $"Turn a software conference attendee's request into query arguments, not recommendations. Default speakerNames and availabilityText to none. Only replace speakerNames when the request names an actual PERSON, even if absent from the agenda. Software concepts, goals and noun phrases are not personal names. Do not copy an interest into speakerNames when no topic matches exactly. Never add names or time restrictions. Respond using this schema and its field descriptions:\n{interpretationSchema.GetRawText()}"),
+                 new ChatMessage(ChatRole.User, "I'd like to learn debugging techniques."),
+                 new ChatMessage(ChatRole.Assistant,
+                     """{"speakerNames":"none","availabilityText":"none","quantity":"some","searchQuery":"none"}"""),
+                 new ChatMessage(ChatRole.User, "Every talk from Pat Doe, please."),
+                 new ChatMessage(ChatRole.Assistant,
+                     """{"speakerNames":"Pat Doe","availabilityText":"none","quantity":"all","searchQuery":"none"}"""),
                  new ChatMessage(ChatRole.User, request)],
                 new ChatOptions { ResponseFormat = ChatResponseFormat.ForJsonSchema(interpretationSchema),
                     MaxOutputTokens = 500, Temperature = 0 }, cancellationToken);
@@ -96,9 +103,9 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
             var (speakerNames, _) = interpretation.Ground(conference, request);
             tools.CapturePreferences(speakerNames, windows, interpretation.RequestsAllSpeakers(request) && speakerNames.Length > 0);
             var nameErrors = SchedulePlanner.Review(conference, tools.Preferences
-                ?? throw new InvalidDataException("Invalid speaker preferences."), zone, savedIds).Errors
-                .Where(error => error.StartsWith("Speaker not found", StringComparison.Ordinal)
-                    || error.StartsWith("Ambiguous speaker", StringComparison.Ordinal)).ToArray();
+                ?? throw new InvalidDataException("Invalid speaker preferences."), zone, savedIds).Issues
+                .Where(issue => issue.Code is ProposalIssueCode.UnknownSpeaker or ProposalIssueCode.AmbiguousSpeaker)
+                .Select(issue => issue.Message).ToArray();
             if (nameErrors.Length > 0)
                 return new(tools.Preferences, string.Join("\n", nameErrors));
             var functions = tools.CreateFunctions().OfType<AIFunction>().ToDictionary(f => f.Name);
@@ -160,13 +167,11 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
             // in this preview can repeat callbacks indefinitely inside a single request.
             foreach (var speaker in preferences.RequiredSpeakers)
             {
-                for (var skip = 0; skip < conference.Sessions.Count; skip += 4)
+                int? skip = 0;
+                while (skip is { } offset)
                 {
-                    var result = await functions["speaker_sessions"].InvokeAsync(
-                        new AIFunctionArguments { ["name"] = speaker, ["skip"] = skip }, cancellationToken);
-                    var text = result?.ToString() ?? throw new InvalidDataException("The agenda function returned no result.");
-                    if (!text.Contains("Next page:", StringComparison.Ordinal))
-                        break;
+                    cancellationToken.ThrowIfCancellationRequested();
+                    skip = tools.SpeakerSessionsPage(speaker, offset).NextSkip;
                 }
             }
             if (topicFilter is not null)
