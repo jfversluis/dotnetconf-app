@@ -18,6 +18,7 @@ public partial class OnboardingPage : ContentPage
     private bool permissionAttempted;
     public IReadOnlyList<View> Slides { get; }
     public bool CanGoBack => Carousel.Position > 0;
+    public bool IsReminderStep => Carousel.Position == 2;
     public string ProgressText => $"{Carousel.Position + 1} of 3";
     public string NextText => Carousel.Position switch
     {
@@ -29,6 +30,7 @@ public partial class OnboardingPage : ContentPage
     public bool CanRequestReminders => !requestingReminders && !reminders.Enabled;
     public bool CanNavigate => !requestingReminders && !leaving;
     public string ReminderStatus => reminders.Status;
+    public bool ShowReminderStatus => permissionAttempted || reminders.Enabled;
     public bool ShowNotificationSettings => permissionAttempted && !reminders.Enabled;
 
     public OnboardingPage(PlannerViewModel planner, SessionReminderService reminders, ILogger<OnboardingPage> logger)
@@ -62,6 +64,7 @@ public partial class OnboardingPage : ContentPage
     private async void PositionChanged(object? sender, PositionChangedEventArgs args)
     {
         OnPropertyChanged(nameof(CanGoBack));
+        OnPropertyChanged(nameof(IsReminderStep));
         OnPropertyChanged(nameof(NextText));
         OnPropertyChanged(nameof(ProgressText));
         if (args.PreviousPosition == 1)
@@ -141,6 +144,7 @@ public partial class OnboardingPage : ContentPage
         OnPropertyChanged(nameof(CanRequestReminders));
         OnPropertyChanged(nameof(CanNavigate));
         OnPropertyChanged(nameof(ReminderStatus));
+        OnPropertyChanged(nameof(ShowReminderStatus));
         OnPropertyChanged(nameof(ShowNotificationSettings));
         Carousel.IsSwipeEnabled = !requestingReminders;
     }

@@ -61,6 +61,14 @@ navigation bar: welcome, optional AI session builder, and optional session
 reminders. Space Grotesk headings, typed Fluent icons and short explanatory
 copy focus each step on one task. Swipe and persistent Next/Back controls move
 between steps; Skip setup remains reachable outside the scrolling content.
+Welcome and reminders share a 34-unit heading, 48-unit Fluent icon, and the
+incumbent hero wash, with 24-unit gutters aligned to the builder. Supporting
+copy returns to the neutral reading surface. The separated footer groups dots
+and the step count in one compact row; Back/Skip remain secondary text actions.
+On the reminder step, Enable is primary and the finish action is outlined so
+two filled actions do not compete. Idle reminder status is hidden; permission
+results and recovery remain visible. Labels wrap and content scrolls at larger
+text sizes without disabling font scaling.
 Completion and skipping persist locally, while an interrupted launch remains
 eligible. Android back moves to the previous step or dismisses from welcome.
 My Schedule opens the regular native planner, which shares the builder view
