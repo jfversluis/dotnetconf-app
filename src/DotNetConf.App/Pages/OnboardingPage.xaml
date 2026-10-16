@@ -12,17 +12,6 @@
         <Style x:Key="OnboardingLead" TargetType="Label" BasedOn="{StaticResource BaseLabel}">
             <Setter Property="FontSize" Value="18" />
         </Style>
-        <Style x:Key="OnboardingNext" TargetType="Button" BasedOn="{StaticResource BaseButton}">
-            <Setter Property="LineBreakMode" Value="WordWrap" />
-            <Style.Triggers>
-                <DataTrigger TargetType="Button" Binding="{Binding IsReminderStep}" Value="True">
-                    <Setter Property="BackgroundColor" Value="Transparent" />
-                    <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
-                    <Setter Property="BorderColor" Value="{AppThemeBinding Light={StaticResource LightOutline}, Dark={StaticResource DarkOutline}}" />
-                    <Setter Property="BorderWidth" Value="1" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
         <DataTemplate x:Key="WelcomeTemplate" x:DataType="pages:OnboardingPage">
             <ScrollView SafeAreaEdges="None" AutomationId="onboarding-welcome-scroll">
                 <VerticalStackLayout Spacing="0" SafeAreaEdges="None">
@@ -101,31 +90,34 @@
                 </DataTemplate>
             </CarouselView.ItemTemplate>
         </CarouselView>
-        <Grid Grid.Row="1" RowDefinitions="Auto,Auto">
+        <Grid x:Name="SkipHeader" Padding="{Binding SkipPadding}" ColumnDefinitions="*,*"
+              SafeAreaEdges="None"
+              VerticalOptions="Start" MaximumWidthRequest="600" HorizontalOptions="Fill"
+              SizeChanged="SkipHeaderSizeChanged"
+              BackgroundColor="{AppThemeBinding Light={StaticResource LavenderLight}, Dark={StaticResource Midnight}}">
+            <Button Grid.Column="1" Text="Skip setup" Clicked="SkipClicked" IsEnabled="{Binding CanNavigate}"
+                    LineBreakMode="WordWrap" Style="{StaticResource QuietButton}" BorderWidth="0"
+                    HorizontalOptions="End" AutomationId="onboarding-skip" />
+        </Grid>
+        <Grid Grid.Row="1" RowDefinitions="Auto,Auto" SafeAreaEdges="None">
             <BoxView HeightRequest="1" InputTransparent="True" />
-            <VerticalStackLayout Grid.Row="1" Padding="24,16,24,8" Spacing="12"
-                                 MaximumWidthRequest="600" HorizontalOptions="Fill">
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
-                    <IndicatorView x:Name="Progress" IndicatorSize="7" HorizontalOptions="Start" VerticalOptions="Center"
+            <Grid Grid.Row="1" Padding="24,12,24,12" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12"
+                  MaximumWidthRequest="600" HorizontalOptions="Fill">
+                <Button Text="Back" Clicked="BackClicked" IsVisible="{Binding CanGoBack}" LineBreakMode="WordWrap"
+                        IsEnabled="{Binding CanNavigate}" Style="{StaticResource QuietButton}" BorderWidth="0"
+                        HorizontalOptions="Start" VerticalOptions="Center" AutomationId="onboarding-back" />
+                <VerticalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center">
+                    <IndicatorView x:Name="Progress" IndicatorSize="7" HorizontalOptions="Center"
                            IndicatorColor="{AppThemeBinding Light={StaticResource LightOutline}, Dark={StaticResource DarkOutline}}"
                            SelectedIndicatorColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
                            InputTransparent="True" />
-                    <Label Grid.Column="1" Text="{Binding ProgressText}" Style="{StaticResource Secondary}" FontSize="13"
-                           VerticalOptions="Center" AutomationId="onboarding-progress" />
-                </Grid>
-                <VerticalStackLayout Spacing="4">
-                    <Button Text="{Binding NextText}" Clicked="NextClicked" IsEnabled="{Binding CanNavigate}"
-                            Style="{StaticResource OnboardingNext}" AutomationId="onboarding-next" />
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
-                        <Button Text="Back" Clicked="BackClicked" IsVisible="{Binding CanGoBack}" LineBreakMode="WordWrap"
-                                IsEnabled="{Binding CanNavigate}" Style="{StaticResource QuietButton}" BorderWidth="0"
-                                HorizontalOptions="Start" AutomationId="onboarding-back" />
-                        <Button Grid.Column="1" Text="Skip setup" Clicked="SkipClicked" IsEnabled="{Binding CanNavigate}" LineBreakMode="WordWrap"
-                                Style="{StaticResource QuietButton}" BorderWidth="0"
-                                HorizontalOptions="End" AutomationId="onboarding-skip" />
-                    </Grid>
+                    <Label Text="{Binding ProgressText}" Style="{StaticResource Secondary}" FontSize="12"
+                           HorizontalTextAlignment="Center" AutomationId="onboarding-progress" />
                 </VerticalStackLayout>
-            </VerticalStackLayout>
+                <Button Grid.Column="2" Text="{Binding NextText}" Clicked="NextClicked" IsEnabled="{Binding CanNavigate}"
+                        LineBreakMode="WordWrap" HorizontalOptions="End" VerticalOptions="Center"
+                        MinimumWidthRequest="80" AutomationId="onboarding-next" />
+            </Grid>
         </Grid>
     </Grid>
 </ContentPage>

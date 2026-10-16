@@ -18,16 +18,12 @@ public partial class OnboardingPage : ContentPage
     private bool permissionAttempted;
     public IReadOnlyList<View> Slides { get; }
     public Thickness HeroPadding => new(24,
-        32 + Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.Page.GetSafeAreaInsets(this).Top, 24, 28);
+        Math.Max(SkipHeader?.Height ?? 0, SkipPadding.Top + 48) + 16, 24, 28);
+    public Thickness SkipPadding => new(24,
+        8 + Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.Page.GetSafeAreaInsets(this).Top, 24, 0);
     public bool CanGoBack => Carousel.Position > 0;
-    public bool IsReminderStep => Carousel.Position == 2;
     public string ProgressText => $"{Carousel.Position + 1} of 3";
-    public string NextText => Carousel.Position switch
-    {
-        0 => "Make it mine",
-        1 => planner.HasAddedSessions ? "Next: session reminders" : "Continue to reminders",
-        _ => "Let's explore"
-    };
+    public string NextText => Carousel.Position == 2 ? "Done" : "Next";
     public bool RequestingReminders => requestingReminders;
     public bool CanRequestReminders => !requestingReminders && !reminders.Enabled;
     public bool CanNavigate => !requestingReminders && !leaving;
@@ -48,7 +44,6 @@ public partial class OnboardingPage : ContentPage
         notificationStep.BindingContext = this;
         Slides = [welcome, new PlannerView { BindingContext = planner }, notificationStep];
         BindingContext = this;
-        planner.PropertyChanged += PlannerChanged;
         reminders.PropertyChanged += RemindersChanged;
     }
 
@@ -59,17 +54,19 @@ public partial class OnboardingPage : ContentPage
         base.OnPropertyChanged(propertyName);
         if (propertyName == Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.Page.SafeAreaInsetsProperty.PropertyName)
         {
-            OnPropertyChanged(nameof(HeroPadding));
-            if (Slides is not null)
-                foreach (var view in Slides.OfType<PlannerView>())
-                    view.SetHeroPadding(HeroPadding);
+            OnPropertyChanged(nameof(SkipPadding));
+            UpdateHeroPadding();
         }
     }
 
-    private void PlannerChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+    private void SkipHeaderSizeChanged(object? sender, EventArgs args) => UpdateHeroPadding();
+
+    private void UpdateHeroPadding()
     {
-        if (args.PropertyName == nameof(PlannerViewModel.HasAddedSessions))
-            OnPropertyChanged(nameof(NextText));
+        OnPropertyChanged(nameof(HeroPadding));
+        if (Slides is not null)
+            foreach (var view in Slides.OfType<PlannerView>())
+                view.SetHeroPadding(HeroPadding);
     }
 
     private void RemindersChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args) =>
@@ -78,7 +75,6 @@ public partial class OnboardingPage : ContentPage
     private async void PositionChanged(object? sender, PositionChangedEventArgs args)
     {
         OnPropertyChanged(nameof(CanGoBack));
-        OnPropertyChanged(nameof(IsReminderStep));
         OnPropertyChanged(nameof(NextText));
         OnPropertyChanged(nameof(ProgressText));
         if (args.PreviousPosition == 1)
@@ -125,7 +121,6 @@ public partial class OnboardingPage : ContentPage
         {
             state?.Complete();
             await Navigation.PopModalAsync();
-            planner.PropertyChanged -= PlannerChanged;
             reminders.PropertyChanged -= RemindersChanged;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException)
@@ -168,9 +163,8 @@ public partial class OnboardingPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        OnPropertyChanged(nameof(HeroPadding));
-        foreach (var view in Slides.OfType<PlannerView>())
-            view.SetHeroPadding(HeroPadding);
+        OnPropertyChanged(nameof(SkipPadding));
+        UpdateHeroPadding();
         if (permissionAttempted)
         {
             await reminders.RefreshAsync();
