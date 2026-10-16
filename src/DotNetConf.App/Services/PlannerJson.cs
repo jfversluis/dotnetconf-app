@@ -233,6 +233,7 @@ public sealed record PlannerWindow(string Start, string End, string Zone)
 [JsonSerializable(typeof(PlannerTopicIntent))]
 [JsonSerializable(typeof(PlannerAvailability))]
 [JsonSerializable(typeof(PlannerDailyAvailability))]
+[JsonSerializable(typeof(PlannerStartingPointTopics))]
 internal partial class PlannerJsonContext : JsonSerializerContext;
 
 internal static class PlannerSchemas

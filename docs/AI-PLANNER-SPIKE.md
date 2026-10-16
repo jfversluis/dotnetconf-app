@@ -11,6 +11,23 @@ availability; warning rows and blocking errors remain visible when collapsed.
 All talks and participation in this agenda are fictional. Real names do not
 imply announced participation or endorsement.
 
+## On-device starting points
+
+The horizontal starting-point strip shows curated prompts immediately. After
+readiness, a separate bounded local inference chooses three to five distinct
+topics from up to eight shuffled, real agenda topics. C# validates the output
+against both the candidate mix and the agenda, then builds input-only prompts.
+Nothing generates or saves a schedule until the attendee takes those actions.
+The batch stays stable for that planner instance; reopening creates a fresh mix.
+Cancellation, timeout or invalid output retains curated options with an explicit
+status. No model response is presented as a successful refresh on failure.
+
+A random seed in the prompt alone repeatedly returned the same five topics.
+Shuffling the bounded candidate pool before asking the model produced different
+mixes across three actual-client simulator launches. Each last/offscreen chip
+was scrolled into view and filled the correct prompt without saving; a generated
+prompt also produced a real, confirmation-gated preview.
+
 ## Why simple requests previously failed
 
 Speaker validation previously required a full-name match, so `Alex` could not

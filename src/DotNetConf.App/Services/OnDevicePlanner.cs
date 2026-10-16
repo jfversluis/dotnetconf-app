@@ -28,6 +28,27 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
         await client.GetResponseAsync("Reply with READY.", new ChatOptions { MaxOutputTokens = 16 }, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<PlannerStartingPoint>> SuggestStartingPointsAsync(
+        ConferenceDocument conference, CancellationToken cancellationToken)
+    {
+        var catalog = PlannerCatalog.DescribeTopics(conference);
+        var topics = conference.Sessions.SelectMany(s => s.Topics).Distinct().ToArray();
+        Random.Shared.Shuffle(topics);
+        var candidates = topics.Take(8).ToArray();
+        var schema = PlannerStartingPoints.Schema(conference, candidates);
+        using var client = CreateClient(null);
+        var response = await client.GetResponseAsync(
+            [new ChatMessage(ChatRole.System,
+                $"Choose {Math.Min(5, candidates.Length)} different, inviting starting topics for a software conference attendee from the provided candidate list. Use ONLY exact candidate names. Favor a varied mix, using this agenda as context. Return JSON with a topics array.\n{catalog}"),
+             new ChatMessage(ChatRole.User, $"Choose from these candidates:\n{string.Join('\n', candidates)}")],
+            new ChatOptions { ResponseFormat = ChatResponseFormat.ForJsonSchema(schema),
+                MaxOutputTokens = 160, Temperature = 0.8f }, cancellationToken);
+        var result = JsonSerializer.Deserialize(response.Text, PlannerJsonContext.Default.PlannerStartingPointTopics);
+        if (result?.Topics is { } selected && selected.Any(topic => !candidates.Contains(topic, StringComparer.Ordinal)))
+            throw new InvalidDataException("The model suggested a topic outside this visit's candidate mix.");
+        return PlannerStartingPoints.Ground(conference, result?.Topics);
+    }
+
     public async Task<PlannerResult> ProposeAsync(ConferenceDocument conference, string request,
         TimeZoneInfo zone, string[] savedIds, CancellationToken cancellationToken)
     {

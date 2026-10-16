@@ -30,7 +30,11 @@ explore on my own**, and native back dismiss it without changing saved sessions;
 dismissal is remembered across launches. An interrupted first run is offered
 again. Example prompts only fill the editor: you still choose when to generate,
 review the preview, and explicitly confirm before anything is added.
-Starting points sit above the input. The shortlist leads with sessions and times;
+Starting points sit in a horizontally scrolling row above the input. Curated
+examples appear immediately; once the local model is ready it picks a fresh mix
+of real agenda topics for this planner visit. Suggestions only fill the input.
+Generation failures keep curated examples available with an explicit status.
+The shortlist leads with sessions and times;
 optional **Show matching details** reveals the interpreted request. Warnings and
 blocking errors remain visible without opening those details.
 

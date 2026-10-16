@@ -61,7 +61,13 @@ Space Grotesk welcome heading and incumbent hero wash lead directly into one
 prompt. A native toolbar Skip action stays reachable while the page scrolls;
 the browse action and native back also dismiss it. Dismissal persists locally,
 while an interrupted launch remains eligible. My Schedule retains re-entry.
-Example buttons above the input fill the editor without generating or saving. Apple-only local
+Horizontally scrolling example chips above the input fill the editor without
+generating or saving. Curated examples appear immediately; the local model
+asynchronously selects three to five distinct, real agenda topics per planner
+instance from a shuffled subset of agenda topics. This encourages variety, not
+guaranteed uniqueness.
+Invalid output, cancellation or timeout keeps the curated options with explicit
+status rather than blocking input. Apple-only local
 model availability, privacy boundaries, and the fictional agenda are stated
 explicitly. Suggestions appear progressively as a reviewable shortlist with
 native checkboxes. Matching details are collapsed behind a text action, not an

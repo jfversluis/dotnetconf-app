@@ -35,6 +35,7 @@ public partial class PlannerViewModel(
     private ScheduleProposal? proposal;
     private TimeZoneInfo timeZone = TimeZoneInfo.Local;
     private bool initialized;
+    private CancellationTokenSource? startingPointsOperation;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanGenerate))]
@@ -70,6 +71,16 @@ public partial class PlannerViewModel(
     [NotifyPropertyChangedFor(nameof(MatchingDetailsAction))]
     public partial bool ShowMatchingDetails { get; set; }
     public ObservableCollection<ProposedSessionViewModel> Sessions { get; } = [];
+    public ObservableCollection<PlannerStartingPoint> StartingPoints { get; } =
+    [
+        new("AI + mobile", "I'm interested in AI and mobile development."),
+        new("Web", "I'd like to learn about web development and Blazor."),
+        new("Explore .NET", "I'm new to .NET. Suggest a varied introduction to the conference.")
+    ];
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasStartingPointsStatus))]
+    public partial string StartingPointsStatus { get; set; } = "";
+    public bool HasStartingPointsStatus => !string.IsNullOrWhiteSpace(StartingPointsStatus);
     public bool CanGenerate => IsReady && !IsBusy && !string.IsNullOrWhiteSpace(Request);
     public bool CanEdit => !IsBusy;
     public bool CanRetryModel => !IsReady && !IsBusy && OnDevicePlanner.UnsupportedReason is null;
@@ -119,6 +130,7 @@ public partial class PlannerViewModel(
             cancellation.Token.ThrowIfCancellationRequested();
             IsReady = true;
             Status = "";
+            _ = RefreshStartingPointsAsync();
         }
         catch (OperationCanceledException)
         {
@@ -141,12 +153,45 @@ public partial class PlannerViewModel(
         }
     }
 
+    private async Task RefreshStartingPointsAsync()
+    {
+        startingPointsOperation?.Cancel();
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        startingPointsOperation = cancellation;
+        StartingPointsStatus = "Finding more starting points on device...";
+        try
+        {
+            var agenda = await dataSource.LoadAsync(cancellation.Token);
+            var suggestions = await planner.SuggestStartingPointsAsync(agenda, cancellation.Token);
+            cancellation.Token.ThrowIfCancellationRequested();
+            StartingPoints.Clear();
+            foreach (var suggestion in suggestions)
+                StartingPoints.Add(suggestion);
+            StartingPointsStatus = "";
+        }
+        catch (OperationCanceledException)
+        {
+            StartingPointsStatus = "Showing curated starting points.";
+        }
+        catch (Exception exception) when (IsExpectedFailure(exception))
+        {
+            logger.LogWarning(exception, "Could not refresh local planner starting points.");
+            StartingPointsStatus = "Couldn't refresh suggestions. Curated starting points are available.";
+        }
+        finally
+        {
+            if (ReferenceEquals(startingPointsOperation, cancellation))
+                startingPointsOperation = null;
+        }
+    }
+
     [RelayCommand]
     private async Task GenerateAsync()
     {
         if (!CanGenerate)
             return;
         ClearProposal();
+        startingPointsOperation?.Cancel();
         IsBusy = true;
         Status = "Searching the real agenda with the on-device model...";
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(90));
@@ -271,7 +316,11 @@ public partial class PlannerViewModel(
     }
 
     [RelayCommand]
-    public void Cancel() => operation?.Cancel();
+    public void Cancel()
+    {
+        operation?.Cancel();
+        startingPointsOperation?.Cancel();
+    }
 
     [RelayCommand]
     private async Task SkipAsync()
