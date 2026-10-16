@@ -61,10 +61,13 @@ Space Grotesk welcome heading and incumbent hero wash lead directly into one
 prompt. A native toolbar Skip action stays reachable while the page scrolls;
 the browse action and native back also dismiss it. Dismissal persists locally,
 while an interrupted launch remains eligible. My Schedule retains re-entry.
-Example buttons fill the editor without generating or saving. Apple-only local
+Example buttons above the input fill the editor without generating or saving. Apple-only local
 model availability, privacy boundaries, and the fictional agenda are stated
 explicitly. Suggestions appear progressively as a reviewable shortlist with
-native checkboxes; interpreted constraints still require explicit confirmation.
+native checkboxes. Matching details are collapsed behind a text action, not an
+AI-debug section ahead of the sessions. Warnings and blocking validation stay
+visible; successful validation and idle-ready boilerplate do not compete with
+the task. Users review the selected sessions and times before confirming.
 After saving, View My Schedule provides the next step. The same semantic theme
 tokens, scalable text, 48-unit actions, and typed Fluent icons apply throughout.
 

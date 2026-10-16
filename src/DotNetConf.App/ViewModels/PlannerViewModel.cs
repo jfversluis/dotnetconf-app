@@ -50,23 +50,37 @@ public partial class PlannerViewModel(
     [NotifyPropertyChangedFor(nameof(CanEdit))]
     [NotifyPropertyChangedFor(nameof(CanRetryModel))]
     public partial bool IsReady { get; set; }
-    [ObservableProperty] public partial string Status { get; set; } = "Checking the on-device model...";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasStatus))]
+    public partial string Status { get; set; } = "Checking the on-device model...";
     [ObservableProperty] public partial string Constraints { get; set; } = "";
-    [ObservableProperty] public partial string Validation { get; set; } = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasValidationErrors))]
+    public partial string Validation { get; set; } = "";
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanApply))]
+    [NotifyPropertyChangedFor(nameof(HasValidationErrors))]
     public partial bool HasValidProposal { get; set; }
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanApply))]
     public partial bool ConstraintsConfirmed { get; set; }
     [ObservableProperty] public partial bool HasProposal { get; set; }
     [ObservableProperty] public partial bool HasAddedSessions { get; set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MatchingDetailsAction))]
+    public partial bool ShowMatchingDetails { get; set; }
     public ObservableCollection<ProposedSessionViewModel> Sessions { get; } = [];
     public bool CanGenerate => IsReady && !IsBusy && !string.IsNullOrWhiteSpace(Request);
     public bool CanEdit => !IsBusy;
     public bool CanRetryModel => !IsReady && !IsBusy && OnDevicePlanner.UnsupportedReason is null;
     public bool CanApply => HasValidProposal && ConstraintsConfirmed && !IsBusy;
+    public bool HasStatus => !string.IsNullOrWhiteSpace(Status);
+    public bool HasValidationErrors => !HasValidProposal && !string.IsNullOrWhiteSpace(Validation);
+    public string MatchingDetailsAction => ShowMatchingDetails ? "Hide matching details" : "Show matching details";
     public string TimeZoneLabel => $"Use dates and times in {TimeZoneInfo.Local.Id}, or explicitly name another time zone.";
+
+    [RelayCommand]
+    private void ToggleMatchingDetails() => ShowMatchingDetails = !ShowMatchingDetails;
 
     [RelayCommand]
     private void UseExample(string example)
@@ -104,7 +118,7 @@ public partial class PlannerViewModel(
             await planner.CheckReadinessAsync(cancellation.Token);
             cancellation.Token.ThrowIfCancellationRequested();
             IsReady = true;
-            Status = "Apple Intelligence is ready. Your request stays on this device.";
+            Status = "";
         }
         catch (OperationCanceledException)
         {
@@ -176,7 +190,7 @@ public partial class PlannerViewModel(
             ReviewSelection();
             Status = Sessions.Count == 0
                 ? "No schedule was proposed. Check the explanation below; your likes have not changed."
-                : "Review the interpreted constraints and matching sessions below. Warning rows remain visible but are not selected. AI can misunderstand your request. Nothing has been saved.";
+                : "";
         }
         catch (OperationCanceledException)
         {
@@ -277,6 +291,7 @@ public partial class PlannerViewModel(
         proposal = null;
         Sessions.Clear();
         HasProposal = false;
+        ShowMatchingDetails = false;
         HasValidProposal = false;
         ConstraintsConfirmed = false;
         Constraints = "";

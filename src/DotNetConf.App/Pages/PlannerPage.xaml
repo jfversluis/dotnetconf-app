@@ -10,20 +10,31 @@
     </ContentPage.ToolbarItems>
     <ScrollView SafeAreaEdges="Default" AutomationId="planner-scroll">
         <VerticalStackLayout Spacing="0" MaximumWidthRequest="720" HorizontalOptions="Fill" SafeAreaEdges="None">
-            <VerticalStackLayout Padding="24,28,24,24" Spacing="16" SafeAreaEdges="None"
+            <VerticalStackLayout Padding="24,24" Spacing="12" SafeAreaEdges="None"
                                  Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}">
-                <Label Text="Your conference,&#10;your way." Style="{StaticResource Heading}" FontSize="36"
+                <Label Text="Your conference,&#10;your way." Style="{StaticResource Heading}" FontSize="32"
                        AutomationId="planner-welcome" />
-                <BoxView HeightRequest="4" WidthRequest="56" HorizontalOptions="Start"
-                         Background="{AppThemeBinding Light={StaticResource ConferenceGradient}, Dark={StaticResource ConferenceDarkGradient}}"
-                         InputTransparent="True" />
                 <Label Text="Tell us what you want to learn. Get a personal shortlist, then choose what to save."
                        MaximumWidthRequest="520" HorizontalOptions="Start" />
-                <Label Text="Fictional demo agenda · not an announced lineup" FontSize="13"
-                       FontFamily="OpenSansSemibold"
-                       TextColor="{AppThemeBinding Light={StaticResource Midnight}, Dark={StaticResource LavenderLight}}" />
             </VerticalStackLayout>
-            <VerticalStackLayout Padding="24,8,24,24" Spacing="16" SafeAreaEdges="None">
+            <VerticalStackLayout Padding="24,20,24,24" Spacing="20" SafeAreaEdges="None">
+                <VerticalStackLayout Spacing="8" IsVisible="{Binding CanEdit}">
+                    <Label Text="Need a starting point?" Style="{StaticResource Secondary}" FontSize="14" />
+                    <VerticalStackLayout Spacing="8">
+                        <Button Text="AI + mobile" LineBreakMode="WordWrap" Style="{StaticResource QuietButton}"
+                                Command="{Binding UseExampleCommand}"
+                                CommandParameter="I'm interested in AI and mobile development."
+                                AutomationId="planner-example-ai-mobile" />
+                        <Button Text="Web development" LineBreakMode="WordWrap" Style="{StaticResource QuietButton}"
+                                Command="{Binding UseExampleCommand}"
+                                CommandParameter="I'd like to learn about web development and Blazor."
+                                AutomationId="planner-example-web" />
+                        <Button Text="Help me explore .NET" LineBreakMode="WordWrap" Style="{StaticResource QuietButton}"
+                                Command="{Binding UseExampleCommand}"
+                                CommandParameter="I'm new to .NET. Suggest a varied introduction to the conference."
+                                AutomationId="planner-example-explore" />
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
                 <VerticalStackLayout Spacing="8">
                     <Label Text="What interests you?" Style="{StaticResource Subheading}" />
                     <Border Padding="12,8" StrokeShape="RoundRectangle 8"
@@ -42,15 +53,11 @@
                 </VerticalStackLayout>
                 <Button Text="Find sessions for me" LineBreakMode="WordWrap" Command="{Binding GenerateCommand}" IsEnabled="{Binding CanGenerate}"
                         Clicked="GenerateClicked" AutomationId="planner-generate" />
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-                    <Image Source="{StaticResource AboutIcon}" HeightRequest="20" WidthRequest="20"
-                           VerticalOptions="Start" InputTransparent="True" />
-                    <Label Grid.Column="1" Text="Your request stays on this device. Apple Intelligence on supported iPhones; no account, API key or cloud fallback."
-                           Style="{StaticResource Secondary}" FontSize="13" />
-                </Grid>
+                <Label Text="On-device with Apple Intelligence on supported iPhones. No account or cloud."
+                       Style="{StaticResource Secondary}" FontSize="13" />
                 <VerticalStackLayout Spacing="8" AutomationId="planner-model-state">
                     <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" HorizontalOptions="Start" />
-                    <Label Text="{Binding Status}" AutomationId="planner-status"
+                    <Label Text="{Binding Status}" IsVisible="{Binding HasStatus}" AutomationId="planner-status"
                            SemanticProperties.Description="{Binding Status}" />
                     <Button Text="Check Apple Intelligence again" LineBreakMode="WordWrap" Command="{Binding CheckModelCommand}"
                             IsVisible="{Binding CanRetryModel}" Style="{StaticResource QuietButton}"
@@ -58,32 +65,9 @@
                     <Button Text="Cancel" LineBreakMode="WordWrap" Command="{Binding CancelCommand}" IsVisible="{Binding IsBusy}"
                             Style="{StaticResource QuietButton}" AutomationId="planner-cancel" />
                 </VerticalStackLayout>
-                <VerticalStackLayout Spacing="8" IsVisible="{Binding CanEdit}">
-                    <Label Text="Need a starting point?" Style="{StaticResource Secondary}" FontSize="14" />
-                    <VerticalStackLayout Spacing="8">
-                        <Button Text="AI + mobile" LineBreakMode="WordWrap" Style="{StaticResource QuietButton}"
-                                Command="{Binding UseExampleCommand}"
-                                CommandParameter="I'm interested in AI and mobile development."
-                                AutomationId="planner-example-ai-mobile" />
-                        <Button Text="Web development" LineBreakMode="WordWrap" Style="{StaticResource QuietButton}"
-                                Command="{Binding UseExampleCommand}"
-                                CommandParameter="I'd like to learn about web development and Blazor."
-                                AutomationId="planner-example-web" />
-                        <Button Text="Help me explore .NET" LineBreakMode="WordWrap" Style="{StaticResource QuietButton}"
-                                Command="{Binding UseExampleCommand}"
-                                CommandParameter="I'm new to .NET. Suggest a varied introduction to the conference."
-                                AutomationId="planner-example-explore" />
-                    </VerticalStackLayout>
-                </VerticalStackLayout>
                 <VerticalStackLayout IsVisible="{Binding HasProposal}" Spacing="16" AutomationId="planner-preview">
                     <BoxView HeightRequest="1" Margin="0,8" />
                     <Label Text="Your shortlist" Style="{StaticResource Heading}" />
-                    <VerticalStackLayout Spacing="8">
-                        <Label Text="First, check what AI understood" Style="{StaticResource Subheading}" />
-                        <Label Text="{Binding Constraints}" AutomationId="planner-constraints" />
-                        <Label Text="AI can misunderstand. If a speaker or time is missing or wrong, edit your request and try again. Nothing is saved yet."
-                               Style="{StaticResource Secondary}" />
-                    </VerticalStackLayout>
                     <VerticalStackLayout BindableLayout.ItemsSource="{Binding Sessions}" Spacing="20">
                         <BindableLayout.ItemTemplate>
                             <DataTemplate x:DataType="vm:ProposedSessionViewModel">
@@ -104,15 +88,24 @@
                             </DataTemplate>
                         </BindableLayout.ItemTemplate>
                     </VerticalStackLayout>
-                    <Label Text="Talks outside your times or conflicting with your likes stay visible with a warning. They won't be added."
-                           Style="{StaticResource Secondary}" FontSize="14" />
-                    <Label Text="{Binding Validation}" AutomationId="planner-validation" />
+                    <Button Text="{Binding MatchingDetailsAction}" LineBreakMode="WordWrap"
+                            Command="{Binding ToggleMatchingDetailsCommand}" Style="{StaticResource QuietButton}"
+                            BorderWidth="0" Padding="0,8" HorizontalOptions="Start"
+                            AutomationId="planner-toggle-details" />
+                    <VerticalStackLayout IsVisible="{Binding ShowMatchingDetails}" Spacing="8"
+                                         AutomationId="planner-matching-details">
+                        <Label Text="{Binding Constraints}" AutomationId="planner-constraints" />
+                        <Label Text="AI can misunderstand. If an interest, speaker or time is wrong, edit your request and try again."
+                               Style="{StaticResource Secondary}" FontSize="14" />
+                    </VerticalStackLayout>
+                    <Label Text="{Binding Validation}" IsVisible="{Binding HasValidationErrors}" AutomationId="planner-validation"
+                           TextColor="{AppThemeBinding Light={StaticResource LightError}, Dark={StaticResource DarkError}}" />
                     <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
                         <CheckBox IsChecked="{Binding ConstraintsConfirmed}" IsEnabled="{Binding HasValidProposal}"
                                   MinimumHeightRequest="48" MinimumWidthRequest="48"
-                                  SemanticProperties.Description="The interpreted speakers and availability match my request"
+                                  SemanticProperties.Description="I have reviewed the selected sessions and their times"
                                   AutomationId="planner-confirm-constraints" />
-                        <Label Grid.Column="1" Text="These speakers and times match my request." VerticalOptions="Center" />
+                        <Label Grid.Column="1" Text="I've reviewed these sessions and times." VerticalOptions="Center" />
                     </Grid>
                     <Button Text="Add selected to My Schedule" LineBreakMode="WordWrap" Command="{Binding ApplyCommand}"
                             IsEnabled="{Binding CanApply}" AutomationId="planner-apply" />
@@ -121,7 +114,7 @@
                         AutomationId="planner-view-schedule" />
                 <Button Text="I'll explore on my own" LineBreakMode="WordWrap" Clicked="SkipClicked"
                         Style="{StaticResource QuietButton}" AutomationId="planner-browse" />
-                <Label Text="Fictional demo talks and participation, including real .NET community names. Not an announced or endorsed lineup."
+                <Label Text="Fictional demo agenda. Talks and participation are not announced or endorsed."
                        Style="{StaticResource Secondary}" FontSize="13" />
             </VerticalStackLayout>
         </VerticalStackLayout>

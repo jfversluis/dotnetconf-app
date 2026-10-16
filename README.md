@@ -30,10 +30,16 @@ explore on my own**, and native back dismiss it without changing saved sessions;
 dismissal is remembered across launches. An interrupted first run is offered
 again. Example prompts only fill the editor: you still choose when to generate,
 review the preview, and explicitly confirm before anything is added.
+Starting points sit above the input. The shortlist leads with sessions and times;
+optional **Show matching details** reveals the interpreted request. Warnings and
+blocking errors remain visible without opening those details.
 
 Startup navigation is owned by `App`, not Home's appearance lifecycle. To repeat
 first-run QA, clear only this app's `planner-onboarding-completed-v1` preference.
 The legacy `planner-intro-shown-v1` preference is ignored and need not be reset.
+Installing an updated build over an existing installation preserves dismissal;
+it is not a fresh first launch. Reset the preference and restart the app to
+exercise onboarding again without deleting saved sessions.
 
 The spike uses `Microsoft.Maui.Essentials.AI`'s `AppleIntelligenceChatClient`
 on supported Apple Intelligence iPhones with **iOS 26+**, Apple Intelligence

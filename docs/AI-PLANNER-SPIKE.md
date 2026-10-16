@@ -3,8 +3,10 @@
 On first launch, use the skippable welcome, or reopen
 **My Schedule > Plan with on-device AI (spike)** on an Apple
 Intelligence-capable target. Wait for the actual local readiness inference,
-then enter a request and generate a preview. Review both the session list and
-the interpreted constraints before confirming and adding sessions.
+then choose a starting point above the input or enter a request and generate a
+preview. Review the sessions and times before confirming and adding them.
+**Show matching details** optionally reveals interpreted interests, speakers and
+availability; warning rows and blocking errors remain visible when collapsed.
 
 All talks and participation in this agenda are fictional. Real names do not
 imply announced participation or endorsement.
