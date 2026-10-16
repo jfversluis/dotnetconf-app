@@ -129,6 +129,7 @@
     </ContentPage.Resources>
     <Grid RowDefinitions="*,Auto" RowSpacing="0" SafeAreaEdges="None">
         <CarouselView x:Name="Carousel" ItemsSource="{Binding Slides}" Loop="False"
+                      HorizontalScrollBarVisibility="Never"
                       PositionChanged="PositionChanged" IndicatorView="Progress"
                       AutomationId="onboarding-carousel">
             <CarouselView.ItemTemplate>
