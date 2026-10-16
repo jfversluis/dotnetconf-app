@@ -4,7 +4,7 @@
              xmlns:pages="clr-namespace:DotNetConf.App.Pages"
              x:DataType="pages:OnboardingPage"
              Shell.NavBarIsVisible="False" NavigationPage.HasNavigationBar="False"
-             SafeAreaEdges="{OnPlatform iOS='All,None,All,All', Android=All}" AutomationId="onboarding-page">
+             SafeAreaEdges="All,None,All,All" AutomationId="onboarding-page">
     <ContentPage.Resources>
         <Style x:Key="OnboardingHeading" TargetType="Label" BasedOn="{StaticResource Heading}">
             <Setter Property="FontSize" Value="34" />

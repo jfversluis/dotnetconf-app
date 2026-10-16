@@ -69,8 +69,8 @@ All three steps share a 34-unit heading, 48-unit Fluent icon, and the
 incumbent hero wash, with 24-unit gutters aligned to the builder.
 The builder uses a sparkle glyph to distinguish AI-assisted planning from the
 welcome's agenda and reminder's bell; the shared in-app builder retains it.
-On iOS the onboarding hero background extends behind the status bar; its
-content padding follows the actual page safe-area inset. Bottom protection
+On iOS and Android the onboarding hero background extends behind the status bar;
+content padding follows the actual safe-area/system-bar and cutout inset. Bottom protection
 remains page-owned, and the regular in-app builder retains native scroll insets.
 Supporting copy returns to the neutral reading surface. Skip setup sits beside
 each onboarding hero icon, directly on the gradient without a separate bar.

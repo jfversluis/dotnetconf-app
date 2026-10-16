@@ -22,8 +22,21 @@ public partial class OnboardingPage : ContentPage
     private bool pageVisible;
     public bool PreparingScheduleStep { get; private set; } = true;
     public IReadOnlyList<View> Slides { get; }
-    public Thickness HeroPadding => new(24,
-        32 + Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.Page.GetSafeAreaInsets(this).Top, 24, 28);
+    public Thickness HeroPadding => new(24, 32 + TopInset, 24, 28);
+    private double TopInset
+    {
+        get
+        {
+#if ANDROID
+            if (Handler?.PlatformView is Android.Views.View view
+                && AndroidX.Core.View.ViewCompat.GetRootWindowInsets(view) is { } insets)
+                return insets.GetInsets(AndroidX.Core.View.WindowInsetsCompat.Type.SystemBars()
+                    | AndroidX.Core.View.WindowInsetsCompat.Type.DisplayCutout()).Top
+                    / (view.Resources?.DisplayMetrics?.Density ?? 1);
+#endif
+            return Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.Page.GetSafeAreaInsets(this).Top;
+        }
+    }
     public bool CanGoBack => Carousel.Position > 0;
     public string ProgressText => $"{Carousel.Position + 1} of 3";
     public string NextText => Carousel.Position == 2 ? "Done" : "Next";
@@ -103,6 +116,12 @@ public partial class OnboardingPage : ContentPage
     {
         OnPropertyChanged(nameof(HeroPadding));
         plannerView?.SetHeroPadding(HeroPadding);
+    }
+
+    protected override void OnSizeAllocated(double width, double height)
+    {
+        base.OnSizeAllocated(width, height);
+        UpdateHeroPadding();
     }
 
     private void RemindersChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args) =>
