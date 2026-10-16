@@ -65,6 +65,9 @@ All three steps share a 34-unit heading, 48-unit Fluent icon, and the
 incumbent hero wash, with 24-unit gutters aligned to the builder.
 The builder uses a sparkle glyph to distinguish AI-assisted planning from the
 welcome's agenda and reminder's bell; the shared in-app builder retains it.
+On iOS the onboarding hero background extends behind the status bar; its
+content padding follows the actual page safe-area inset. Bottom protection
+remains page-owned, and the regular in-app builder retains native scroll insets.
 Supporting copy returns to the neutral reading surface. The separated footer groups dots
 and the step count in one compact row; Back/Skip remain secondary text actions.
 On the reminder step, Enable is primary and the finish action is outlined so

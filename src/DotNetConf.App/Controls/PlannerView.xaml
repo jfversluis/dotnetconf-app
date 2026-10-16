@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
              xmlns:services="clr-namespace:DotNetConf.App.Services"
-             x:DataType="vm:PlannerViewModel">
+             x:DataType="vm:PlannerViewModel" SafeAreaEdges="None">
     <ContentView.Resources>
         <Style x:Key="StartingPointButton" TargetType="Button" BasedOn="{StaticResource QuietButton}">
             <Setter Property="Padding" Value="12,8" />
@@ -11,20 +11,21 @@
             <Setter Property="LineBreakMode" Value="WordWrap" />
         </Style>
     </ContentView.Resources>
-    <ScrollView SafeAreaEdges="Default" AutomationId="planner-scroll">
+    <ScrollView x:Name="PlannerScroll" SafeAreaEdges="Default" AutomationId="planner-scroll">
         <VerticalStackLayout Spacing="0" MaximumWidthRequest="720" HorizontalOptions="Fill" SafeAreaEdges="None">
-            <VerticalStackLayout Padding="24,32,24,28" Spacing="24" SafeAreaEdges="None"
-                                 Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}">
-                <Image Source="{StaticResource PlannerIcon}" HeightRequest="48" WidthRequest="48"
-                       HorizontalOptions="Start" InputTransparent="True"
-                       AutomationProperties.IsInAccessibleTree="False" AutomationId="planner-hero-icon" />
-                <VerticalStackLayout Spacing="16">
-                    <Label Text="Your conference,&#10;your way." Style="{StaticResource Heading}" FontSize="34"
-                           AutomationId="planner-welcome" />
-                    <Label Text="Tell us what you want to learn. Get a personal shortlist, then choose what to save."
-                           FontSize="18" MaximumWidthRequest="520" HorizontalOptions="Start" />
+            <Grid SafeAreaEdges="None" Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}">
+                <VerticalStackLayout x:Name="HeroContent" Padding="24,32,24,28" Spacing="24" SafeAreaEdges="None">
+                    <Image Source="{StaticResource PlannerIcon}" HeightRequest="48" WidthRequest="48"
+                           HorizontalOptions="Start" InputTransparent="True"
+                           AutomationProperties.IsInAccessibleTree="False" AutomationId="planner-hero-icon" />
+                    <VerticalStackLayout Spacing="16">
+                        <Label Text="Your conference,&#10;your way." Style="{StaticResource Heading}" FontSize="34"
+                               AutomationId="planner-welcome" />
+                        <Label Text="Tell us what you want to learn. Get a personal shortlist, then choose what to save."
+                               FontSize="18" MaximumWidthRequest="520" HorizontalOptions="Start" />
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
-            </VerticalStackLayout>
+            </Grid>
             <VerticalStackLayout Padding="24,20,24,24" Spacing="20" SafeAreaEdges="None">
                 <VerticalStackLayout Spacing="8" IsVisible="{Binding CanEdit}">
                     <Label Text="Need a starting point?" Style="{StaticResource Secondary}" FontSize="14" />

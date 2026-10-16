@@ -17,6 +17,8 @@ public partial class OnboardingPage : ContentPage
     private bool requestingReminders;
     private bool permissionAttempted;
     public IReadOnlyList<View> Slides { get; }
+    public Thickness HeroPadding => new(24,
+        32 + Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.Page.GetSafeAreaInsets(this).Top, 24, 28);
     public bool CanGoBack => Carousel.Position > 0;
     public bool IsReminderStep => Carousel.Position == 2;
     public string ProgressText => $"{Carousel.Position + 1} of 3";
@@ -51,6 +53,18 @@ public partial class OnboardingPage : ContentPage
     }
 
     public void Configure(FirstRunPlannerState onboarding) => state = onboarding;
+
+    protected override void OnPropertyChanged(string? propertyName = null)
+    {
+        base.OnPropertyChanged(propertyName);
+        if (propertyName == Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.Page.SafeAreaInsetsProperty.PropertyName)
+        {
+            OnPropertyChanged(nameof(HeroPadding));
+            if (Slides is not null)
+                foreach (var view in Slides.OfType<PlannerView>())
+                    view.SetHeroPadding(HeroPadding);
+        }
+    }
 
     private void PlannerChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
     {
@@ -154,6 +168,9 @@ public partial class OnboardingPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        OnPropertyChanged(nameof(HeroPadding));
+        foreach (var view in Slides.OfType<PlannerView>())
+            view.SetHeroPadding(HeroPadding);
         if (permissionAttempted)
         {
             await reminders.RefreshAsync();

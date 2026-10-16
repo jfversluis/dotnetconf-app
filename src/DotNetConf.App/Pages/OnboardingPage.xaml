@@ -4,7 +4,7 @@
              xmlns:pages="clr-namespace:DotNetConf.App.Pages"
              x:DataType="pages:OnboardingPage"
              Shell.NavBarIsVisible="False" NavigationPage.HasNavigationBar="False"
-             SafeAreaEdges="All" AutomationId="onboarding-page">
+             SafeAreaEdges="{OnPlatform iOS='All,None,All,All', Android=All}" AutomationId="onboarding-page">
     <ContentPage.Resources>
         <Style x:Key="OnboardingHeading" TargetType="Label" BasedOn="{StaticResource Heading}">
             <Setter Property="FontSize" Value="34" />
@@ -24,11 +24,11 @@
             </Style.Triggers>
         </Style>
         <DataTemplate x:Key="WelcomeTemplate" x:DataType="pages:OnboardingPage">
-            <ScrollView AutomationId="onboarding-welcome-scroll">
-                <VerticalStackLayout Spacing="0">
-                    <Grid Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}">
-                        <VerticalStackLayout Padding="24,32,24,28" Spacing="24" MaximumWidthRequest="600"
-                                             HorizontalOptions="Fill">
+            <ScrollView SafeAreaEdges="None" AutomationId="onboarding-welcome-scroll">
+                <VerticalStackLayout Spacing="0" SafeAreaEdges="None">
+                    <Grid SafeAreaEdges="None" Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}">
+                        <VerticalStackLayout Padding="{Binding HeroPadding}" Spacing="24" MaximumWidthRequest="600"
+                                             HorizontalOptions="Fill" SafeAreaEdges="None">
                             <Image Source="{StaticResource OnboardingAgendaIcon}" HeightRequest="48" WidthRequest="48"
                                    HorizontalOptions="Start" InputTransparent="True"
                                    AutomationProperties.IsInAccessibleTree="False" />
@@ -52,11 +52,11 @@
             </ScrollView>
         </DataTemplate>
         <DataTemplate x:Key="RemindersTemplate" x:DataType="pages:OnboardingPage">
-            <ScrollView AutomationId="onboarding-reminders-scroll">
-                <VerticalStackLayout Spacing="0">
-                    <Grid Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}">
-                        <VerticalStackLayout Padding="24,32,24,28" Spacing="24" MaximumWidthRequest="600"
-                                             HorizontalOptions="Fill">
+            <ScrollView SafeAreaEdges="None" AutomationId="onboarding-reminders-scroll">
+                <VerticalStackLayout Spacing="0" SafeAreaEdges="None">
+                    <Grid SafeAreaEdges="None" Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}">
+                        <VerticalStackLayout Padding="{Binding HeroPadding}" Spacing="24" MaximumWidthRequest="600"
+                                             HorizontalOptions="Fill" SafeAreaEdges="None">
                             <Image Source="{StaticResource ReminderIcon}" HeightRequest="48" WidthRequest="48"
                                    HorizontalOptions="Start" InputTransparent="True"
                                    AutomationProperties.IsInAccessibleTree="False" />
@@ -91,13 +91,13 @@
             </ScrollView>
         </DataTemplate>
     </ContentPage.Resources>
-    <Grid RowDefinitions="*,Auto" RowSpacing="0">
+    <Grid RowDefinitions="*,Auto" RowSpacing="0" SafeAreaEdges="None">
         <CarouselView x:Name="Carousel" ItemsSource="{Binding Slides}" Loop="False"
                       PositionChanged="PositionChanged" IndicatorView="Progress"
                       AutomationId="onboarding-carousel">
             <CarouselView.ItemTemplate>
                 <DataTemplate x:DataType="View">
-                    <ContentView Content="{Binding .}" />
+                    <ContentView Content="{Binding .}" SafeAreaEdges="None" />
                 </DataTemplate>
             </CarouselView.ItemTemplate>
         </CarouselView>
