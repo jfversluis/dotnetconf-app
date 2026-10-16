@@ -16,7 +16,25 @@ public static class PlannerStartingPoints
         var catalog = conference.Sessions.SelectMany(s => s.Topics).ToHashSet(StringComparer.Ordinal);
         if (topics.Any(topic => !catalog.Contains(topic)))
             throw new InvalidDataException("A suggested topic is not in the agenda.");
-        return topics.Select(topic => new PlannerStartingPoint($"Explore {topic}", $"I'm interested in {topic}.")).ToArray();
+        string[] invitations = ["Make me dangerous with {0}", "{0}, hold the boring bits", "Feed my {0} curiosity", "More {0}, less FOMO", "Down the {0} rabbit hole"];
+        var offset = Random.Shared.Next(invitations.Length);
+        List<PlannerStartingPoint> suggestions = topics.Select((topic, index) =>
+        {
+            var invitation = string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                invitations[(offset + index) % invitations.Length], topic);
+            return new PlannerStartingPoint(invitation, $"I'm interested in {topic}.");
+        }).ToList();
+        var scheduledIds = conference.Sessions.SelectMany(session => session.SpeakerIds).ToHashSet(StringComparer.Ordinal);
+        var speakers = conference.Speakers.Where(speaker => scheduledIds.Contains(speaker.Id)
+            && !string.IsNullOrWhiteSpace(speaker.Name))
+            .GroupBy(speaker => speaker.Name, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() == 1).Select(group => group.Single()).ToArray();
+        if (speakers.Length > 0)
+        {
+            var speaker = speakers[Random.Shared.Next(speakers.Length)];
+            suggestions.Insert(1, new($"Team {speaker.Name}", $"I want to see all sessions by {speaker.Name}."));
+        }
+        return suggestions;
     }
 
     public static JsonElement Schema(ConferenceDocument conference, string[]? candidates = null)

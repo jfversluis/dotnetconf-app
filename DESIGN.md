@@ -62,10 +62,13 @@ prompt. A native toolbar Skip action stays reachable while the page scrolls;
 the browse action and native back also dismiss it. Dismissal persists locally,
 while an interrupted launch remains eligible. My Schedule retains re-entry.
 Horizontally scrolling example chips above the input fill the editor without
-generating or saving. Curated examples appear immediately; the local model
+generating or saving. A small spinner replaces the strip during loading, and an
+atomic list replacement reveals the whole batch together. The local model
 asynchronously selects three to five distinct, real agenda topics per planner
 instance from a shuffled subset of agenda topics. This encourages variety, not
-guaranteed uniqueness.
+guaranteed uniqueness. Playful topic labels retain literal topic requests;
+a randomly chosen, unambiguously named scheduled speaker gets a "Team [name]"
+chip that requests all their sessions.
 Invalid output, cancellation or timeout keeps the curated options with explicit
 status rather than blocking input. Apple-only local
 model availability, privacy boundaries, and the fictional agenda are stated

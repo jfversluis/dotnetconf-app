@@ -71,12 +71,17 @@ public partial class PlannerViewModel(
     [NotifyPropertyChangedFor(nameof(MatchingDetailsAction))]
     public partial bool ShowMatchingDetails { get; set; }
     public ObservableCollection<ProposedSessionViewModel> Sessions { get; } = [];
-    public ObservableCollection<PlannerStartingPoint> StartingPoints { get; } =
+    [ObservableProperty]
+    public partial IReadOnlyList<PlannerStartingPoint> StartingPoints { get; set; } =
     [
         new("AI + mobile", "I'm interested in AI and mobile development."),
         new("Web", "I'd like to learn about web development and Blazor."),
         new("Explore .NET", "I'm new to .NET. Suggest a varied introduction to the conference.")
     ];
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowStartingPoints))]
+    public partial bool IsLoadingStartingPoints { get; set; } = true;
+    public bool ShowStartingPoints => !IsLoadingStartingPoints;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasStartingPointsStatus))]
     public partial string StartingPointsStatus { get; set; } = "";
@@ -115,9 +120,11 @@ public partial class PlannerViewModel(
             return;
         ClearProposal();
         IsReady = false;
+        IsLoadingStartingPoints = true;
         if (OnDevicePlanner.UnsupportedReason is { } unsupported)
         {
             Status = unsupported;
+            IsLoadingStartingPoints = false;
             return;
         }
         IsBusy = true;
@@ -150,6 +157,8 @@ public partial class PlannerViewModel(
         {
             operation = null;
             IsBusy = false;
+            if (!IsReady)
+                IsLoadingStartingPoints = false;
         }
     }
 
@@ -158,15 +167,14 @@ public partial class PlannerViewModel(
         startingPointsOperation?.Cancel();
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(20));
         startingPointsOperation = cancellation;
-        StartingPointsStatus = "Finding more starting points on device...";
+        IsLoadingStartingPoints = true;
+        StartingPointsStatus = "";
         try
         {
             var agenda = await dataSource.LoadAsync(cancellation.Token);
             var suggestions = await planner.SuggestStartingPointsAsync(agenda, cancellation.Token);
             cancellation.Token.ThrowIfCancellationRequested();
-            StartingPoints.Clear();
-            foreach (var suggestion in suggestions)
-                StartingPoints.Add(suggestion);
+            StartingPoints = suggestions;
             StartingPointsStatus = "";
         }
         catch (OperationCanceledException)
@@ -181,7 +189,10 @@ public partial class PlannerViewModel(
         finally
         {
             if (ReferenceEquals(startingPointsOperation, cancellation))
+            {
                 startingPointsOperation = null;
+                IsLoadingStartingPoints = false;
+            }
         }
     }
 

@@ -13,14 +13,18 @@ imply announced participation or endorsement.
 
 ## On-device starting points
 
-The horizontal starting-point strip shows curated prompts immediately. After
+The horizontal starting-point strip shows a small spinner until the whole batch
+is ready, without blocking typing or Skip. After
 readiness, a separate bounded local inference chooses three to five distinct
 topics from up to eight shuffled, real agenda topics. C# validates the output
-against both the candidate mix and the agenda, then builds input-only prompts.
+against both the candidate mix and the agenda, then builds input-only prompts
+with lighthearted labels. It also chooses a random, uniquely named speaker with
+scheduled sessions for an explicit "I want to see all sessions by [name]" prompt.
 Nothing generates or saves a schedule until the attendee takes those actions.
 The batch stays stable for that planner instance; reopening creates a fresh mix.
 Cancellation, timeout or invalid output retains curated options with an explicit
-status. No model response is presented as a successful refresh on failure.
+status, revealing all fallback chips together. No model response is presented as
+a successful refresh on failure.
 
 A random seed in the prompt alone repeatedly returned the same five topics.
 Shuffling the bounded candidate pool before asking the model produced different

@@ -28,7 +28,11 @@
             <VerticalStackLayout Padding="24,20,24,24" Spacing="20" SafeAreaEdges="None">
                 <VerticalStackLayout Spacing="8" IsVisible="{Binding CanEdit}">
                     <Label Text="Need a starting point?" Style="{StaticResource Secondary}" FontSize="14" />
-                    <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Default"
+                    <ActivityIndicator IsRunning="{Binding IsLoadingStartingPoints}" IsVisible="{Binding IsLoadingStartingPoints}"
+                                       HeightRequest="24" WidthRequest="24" HorizontalOptions="Start"
+                                       SemanticProperties.Description="Preparing starting points"
+                                       AutomationId="planner-starting-points-loading" />
+                    <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Default" IsVisible="{Binding ShowStartingPoints}"
                                 AutomationId="planner-starting-points">
                         <HorizontalStackLayout BindableLayout.ItemsSource="{Binding StartingPoints}">
                             <BindableLayout.ItemTemplate>
