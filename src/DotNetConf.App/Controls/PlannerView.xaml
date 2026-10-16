@@ -15,9 +15,12 @@
         <VerticalStackLayout Spacing="0" MaximumWidthRequest="720" HorizontalOptions="Fill" SafeAreaEdges="None">
             <Grid SafeAreaEdges="None" Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}">
                 <VerticalStackLayout x:Name="HeroContent" Padding="24,32,24,28" Spacing="24" SafeAreaEdges="None">
-                    <Image Source="{StaticResource PlannerIcon}" HeightRequest="48" WidthRequest="48"
-                           HorizontalOptions="Start" InputTransparent="True"
-                           AutomationProperties.IsInAccessibleTree="False" AutomationId="planner-hero-icon" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                        <Image Source="{StaticResource PlannerIcon}" HeightRequest="48" WidthRequest="48"
+                               HorizontalOptions="Start" InputTransparent="True"
+                               AutomationProperties.IsInAccessibleTree="False" AutomationId="planner-hero-icon" />
+                        <ContentView x:Name="HeroAction" Grid.Column="1" VerticalOptions="Center" />
+                    </Grid>
                     <VerticalStackLayout Spacing="16">
                         <Label Text="Your conference,&#10;your way." Style="{StaticResource Heading}" FontSize="34"
                                AutomationId="planner-welcome" />

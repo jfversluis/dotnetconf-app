@@ -18,9 +18,7 @@ public partial class OnboardingPage : ContentPage
     private bool permissionAttempted;
     public IReadOnlyList<View> Slides { get; }
     public Thickness HeroPadding => new(24,
-        Math.Max(SkipHeader?.Height ?? 0, SkipPadding.Top + 48) + 16, 24, 28);
-    public Thickness SkipPadding => new(24,
-        8 + Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.Page.GetSafeAreaInsets(this).Top, 24, 0);
+        32 + Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.Page.GetSafeAreaInsets(this).Top, 24, 28);
     public bool CanGoBack => Carousel.Position > 0;
     public string ProgressText => $"{Carousel.Position + 1} of 3";
     public string NextText => Carousel.Position == 2 ? "Done" : "Next";
@@ -42,7 +40,21 @@ public partial class OnboardingPage : ContentPage
         welcome.BindingContext = this;
         var notificationStep = (View)((DataTemplate)Resources["RemindersTemplate"]).CreateContent();
         notificationStep.BindingContext = this;
-        Slides = [welcome, new PlannerView { BindingContext = planner }, notificationStep];
+        var plannerView = new PlannerView { BindingContext = planner };
+        var skip = new Button
+        {
+            Text = "Skip setup",
+            Style = (Style)Microsoft.Maui.Controls.Application.Current!.Resources["QuietButton"],
+            BorderWidth = 0,
+            LineBreakMode = LineBreakMode.WordWrap,
+            HorizontalOptions = LayoutOptions.End,
+            VerticalOptions = LayoutOptions.Center,
+            AutomationId = "onboarding-skip"
+        };
+        skip.SetBinding(IsEnabledProperty, Binding.Create(static (OnboardingPage page) => page.CanNavigate, source: this));
+        skip.Clicked += SkipClicked;
+        plannerView.SetHeroAction(skip);
+        Slides = [welcome, plannerView, notificationStep];
         BindingContext = this;
         reminders.PropertyChanged += RemindersChanged;
     }
@@ -54,12 +66,9 @@ public partial class OnboardingPage : ContentPage
         base.OnPropertyChanged(propertyName);
         if (propertyName == Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.Page.SafeAreaInsetsProperty.PropertyName)
         {
-            OnPropertyChanged(nameof(SkipPadding));
             UpdateHeroPadding();
         }
     }
-
-    private void SkipHeaderSizeChanged(object? sender, EventArgs args) => UpdateHeroPadding();
 
     private void UpdateHeroPadding()
     {
@@ -163,7 +172,6 @@ public partial class OnboardingPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        OnPropertyChanged(nameof(SkipPadding));
         UpdateHeroPadding();
         if (permissionAttempted)
         {

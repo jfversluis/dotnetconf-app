@@ -18,9 +18,14 @@
                     <Grid SafeAreaEdges="None" Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}">
                         <VerticalStackLayout Padding="{Binding HeroPadding}" Spacing="24" MaximumWidthRequest="600"
                                              HorizontalOptions="Fill" SafeAreaEdges="None">
-                            <Image Source="{StaticResource OnboardingAgendaIcon}" HeightRequest="48" WidthRequest="48"
-                                   HorizontalOptions="Start" InputTransparent="True"
-                                   AutomationProperties.IsInAccessibleTree="False" />
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                                <Image Source="{StaticResource OnboardingAgendaIcon}" HeightRequest="48" WidthRequest="48"
+                                       HorizontalOptions="Start" InputTransparent="True"
+                                       AutomationProperties.IsInAccessibleTree="False" />
+                                <Button Grid.Column="1" Text="Skip setup" Clicked="SkipClicked" IsEnabled="{Binding CanNavigate}"
+                                        LineBreakMode="WordWrap" Style="{StaticResource QuietButton}" BorderWidth="0"
+                                        HorizontalOptions="End" VerticalOptions="Center" AutomationId="onboarding-skip" />
+                            </Grid>
                             <VerticalStackLayout Spacing="16">
                                 <Label Text="Big ideas.&#10;Your kind of .NET." Style="{StaticResource OnboardingHeading}"
                                        AutomationId="onboarding-welcome" />
@@ -46,9 +51,14 @@
                     <Grid SafeAreaEdges="None" Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}">
                         <VerticalStackLayout Padding="{Binding HeroPadding}" Spacing="24" MaximumWidthRequest="600"
                                              HorizontalOptions="Fill" SafeAreaEdges="None">
-                            <Image Source="{StaticResource ReminderIcon}" HeightRequest="48" WidthRequest="48"
-                                   HorizontalOptions="Start" InputTransparent="True"
-                                   AutomationProperties.IsInAccessibleTree="False" />
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                                <Image Source="{StaticResource ReminderIcon}" HeightRequest="48" WidthRequest="48"
+                                       HorizontalOptions="Start" InputTransparent="True"
+                                       AutomationProperties.IsInAccessibleTree="False" />
+                                <Button Grid.Column="1" Text="Skip setup" Clicked="SkipClicked" IsEnabled="{Binding CanNavigate}"
+                                        LineBreakMode="WordWrap" Style="{StaticResource QuietButton}" BorderWidth="0"
+                                        HorizontalOptions="End" VerticalOptions="Center" AutomationId="onboarding-skip" />
+                            </Grid>
                             <VerticalStackLayout Spacing="16">
                                 <Label Text="Less clock-watching.&#10;More conference." Style="{StaticResource OnboardingHeading}"
                                        AutomationId="onboarding-reminders-title" />
@@ -90,15 +100,6 @@
                 </DataTemplate>
             </CarouselView.ItemTemplate>
         </CarouselView>
-        <Grid x:Name="SkipHeader" Padding="{Binding SkipPadding}" ColumnDefinitions="*,*"
-              SafeAreaEdges="None"
-              VerticalOptions="Start" MaximumWidthRequest="600" HorizontalOptions="Fill"
-              SizeChanged="SkipHeaderSizeChanged"
-              BackgroundColor="{AppThemeBinding Light={StaticResource LavenderLight}, Dark={StaticResource Midnight}}">
-            <Button Grid.Column="1" Text="Skip setup" Clicked="SkipClicked" IsEnabled="{Binding CanNavigate}"
-                    LineBreakMode="WordWrap" Style="{StaticResource QuietButton}" BorderWidth="0"
-                    HorizontalOptions="End" AutomationId="onboarding-skip" />
-        </Grid>
         <Grid Grid.Row="1" RowDefinitions="Auto,Auto" SafeAreaEdges="None">
             <BoxView HeightRequest="1" InputTransparent="True" />
             <Grid Grid.Row="1" Padding="24,12,24,12" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12"

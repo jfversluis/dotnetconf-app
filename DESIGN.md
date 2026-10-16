@@ -68,12 +68,12 @@ welcome's agenda and reminder's bell; the shared in-app builder retains it.
 On iOS the onboarding hero background extends behind the status bar; its
 content padding follows the actual page safe-area inset. Bottom protection
 remains page-owned, and the regular in-app builder retains native scroll insets.
-Supporting copy returns to the neutral reading surface. Skip setup stays in a
-safe-area-aware top-right header, outside scrolling content. The footer is a
+Supporting copy returns to the neutral reading surface. Skip setup sits beside
+each onboarding hero icon, directly on the gradient without a separate bar.
+The hero content follows the actual top safe-area inset. The footer is a
 single compact row: quiet Back, progress dots/count, and a content-width Next
 button (Done on the final step). There is no full-width Continue action.
 Action columns size to their text so large fonts do not split short labels.
-The header's measured height reserves space above each hero's content.
 Idle reminder status is hidden; permission
 results and recovery remain visible. Labels wrap and content scrolls at larger
 text sizes without disabling font scaling.
