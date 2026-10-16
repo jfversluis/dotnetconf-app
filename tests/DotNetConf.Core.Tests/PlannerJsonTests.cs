@@ -108,6 +108,16 @@ public sealed class PlannerJsonTests
     [InlineData("I want to hear Ada Lovelace", "Ada Lovelace")]
     [InlineData("Catch Ada Lovelace and all the AI talks", "Ada Lovelace")]
     [InlineData("Ada Lovelace's sessions are a must", "Ada Lovelace")]
+    [InlineData("Show me sessions for Ada Lovelace", "Ada Lovelace")]
+    [InlineData("Ada Lovelace, please", "Ada Lovelace")]
+    [InlineData("Put Ada on my schedule", "Ada")]
+    [InlineData("ada lovelace", "Ada Lovelace")]
+    [InlineData("Talks involving Ada Lovelace, plus AI", "Ada Lovelace")]
+    [InlineData("I'd love a talk presented by Ada Lovelace.", "Ada Lovelace")]
+    [InlineData("Ada\nLovelace and AI", "Ada Lovelace")]
+    [InlineData("Sessions for Renée O'Connor", "Renée O'Connor")]
+    [InlineData("Jean-Luc Picard, please", "Jean-Luc Picard")]
+    [InlineData("Ada!", "Ada")]
     public async Task UnknownExtractedSpeakerRemainsABlockingConstraint(string request, string name)
     {
         await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
@@ -120,11 +130,11 @@ public sealed class PlannerJsonTests
     }
 
     [Fact]
-    public async Task ModelCannotTurnBackendWordsOrUnmentionedRealPeopleIntoRequiredSpeakers()
+    public async Task ModelCannotInventUnmentionedSpeakersOrCompleteAmbiguousNames()
     {
         await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
         var conference = await ConferenceJson.ReadAsync(stream);
-        Assert.Empty(new PlannerInterpretation("Backend", "none", "APIs", "some")
+        Assert.Empty(new PlannerInterpretation("Ada Lovelace", "none", "APIs", "some")
             .Ground(conference, "I need to build HTTP endpoints for my backend").Speakers);
         Assert.Empty(new PlannerInterpretation("Daniel Roth", "none", "APIs", "some")
             .Ground(conference, "I need to build HTTP endpoints for my backend").Speakers);
@@ -136,6 +146,40 @@ public sealed class PlannerJsonTests
             .Ground(conference, "Everything from Gerald").Speakers);
         Assert.Equal(["Scot"], new PlannerInterpretation("Scot", "none", "none", "all")
             .Ground(conference, "All talks by Scot").Speakers);
+    }
+
+    [Theory]
+    [InlineData("Backend", "I need to build HTTP endpoints for my backend", true)]
+    [InlineData("Ada", "I need database adapters", false)]
+    [InlineData("Ada", "Sessions for Adaline", false)]
+    [InlineData("Ada", "Sessions for ÉAda", false)]
+    [InlineData("Ada", "Sessions for Ada2", false)]
+    [InlineData("Ada Lovelace", "Talks by Ada", false)]
+    public async Task UnknownExtractionFailsClosedOnlyWithLiteralWholeNameEvidence(
+        string name, string request, bool retained)
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        var grounded = new PlannerInterpretation(name, "none", "APIs", "some").Ground(conference, request);
+        Assert.Equal(retained ? [name] : Array.Empty<string>(), grounded.Speakers);
+        if (retained)
+        {
+            var review = SchedulePlanner.Review(conference, new([], grounded.Speakers, []), TimeZoneInfo.Utc, []);
+            Assert.Contains(review.Errors, error => error.StartsWith("Speaker not found", StringComparison.Ordinal));
+            Assert.False(review.CanApply);
+        }
+    }
+
+    [Fact]
+    public async Task MixedKnownUnknownAndTopicExtractionsPreserveOnlyGroundedSpeakerConstraints()
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        var grounded = new PlannerInterpretation("Ada Lovelace;Daniel Roth;Blazor;Grace Hopper", "none", "Blazor", "all")
+            .Ground(conference, "Daniel Roth and Ada Lovelace, plus Blazor").Speakers;
+        Assert.Contains("Daniel Roth", grounded);
+        Assert.Contains("Ada Lovelace", grounded);
+        Assert.Equal(2, grounded.Length);
     }
 
     [Theory]

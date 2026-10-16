@@ -105,6 +105,12 @@ visible; successful validation and idle-ready boilerplate do not compete with
 the task. Users review the selected sessions and times before confirming.
 After saving, View My Schedule provides the next step. The same semantic theme
 tokens, scalable text, 48-unit actions, and typed Fluent icons apply throughout.
+The planner editor has an explicit iOS accessibility label; Android uses matching
+placeholder/hint text rather than a description, preserving TalkBack editing actions.
+Shortlist checkboxes expose the session title, speakers, time and any blocking
+warning. User-initiated planning and save outcomes are announced once, including
+blocking validation; readiness and individual selection changes are not repeatedly
+announced.
 
 The reminder step explains the benefit before asking for OS notification
 permission, only on an explicit Enable tap. Reminders are device-local and tied

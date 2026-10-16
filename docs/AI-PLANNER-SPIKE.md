@@ -82,10 +82,15 @@ explicit availability. All matching talks remain visible, including late talks
 and conflicts with existing likes: warning rows are unchecked and cannot be
 saved without changing the request. A don't-miss speaker request that cannot fit
 still reports its unsatisfied constraint.
-An unknown extracted person in "don't miss", "hear", "catch", or possessive
-session wording is retained for speaker-not-found validation, not silently
-discarded. Regression tests also ensure topic/backend words and unmentioned
-model-invented names do not become required speakers.
+An unknown extracted person is retained for speaker-not-found validation whenever
+the whole name literally appears in the request, regardless of surrounding phrasing
+("sessions for Ada Lovelace", "Ada Lovelace, please", or "put Ada on my schedule").
+Matching ignores case and allows whitespace differences, but does not accept
+substrings or unmentioned model-invented names. Catalog topics are still not people.
+If the model incorrectly extracts a literally mentioned non-catalog term such as
+"backend" as a person, the request conservatively fails validation instead of
+silently discarding a possible constraint; rephrasing is required. Adapter tests
+also verify absent speakers stop the pipeline before agenda queries or recommendations.
 
 Topic matching uses structured agenda tags, not arbitrary substrings: `AI`
 does not accidentally include every `MAUI` title. `MAUI` resolves to `.NET MAUI`.
@@ -234,6 +239,28 @@ were exercised on iOS only; Android delivery and actual background alert
 delivery on physical devices remain unverified. Existing AI dependency
 trim/AOT warnings remain. The notification package's empty privacy manifest
 is ignored because the app already supplies its own manifest.
+
+### Speaker grounding and accessibility follow-up
+
+186 core/adapter tests pass, including phrase-independent unknown-speaker,
+whole-name boundary, topic/hallucination and early-exit pipeline regressions.
+Both platform Debug builds pass. Real local inference on the isolated iOS
+simulator blocked "Show me sessions for Ada Lovelace", "Ada Lovelace, please",
+"Put Ada on my schedule" and "I like AI and sessions for Ada Lovelace".
+"all sessions by Alex" and the backend/HTTP-endpoints request still produced
+valid previews. These checks did not save or remove likes.
+
+Native inspection verified the iOS editor label and hint, entered text, and
+shortlist checkbox labels with title, speakers and time. Android's native
+accessibility tree verified an editable, focusable text field with the intended
+hint and no accessibility content description overriding editing. The planner
+was checked at the largest iOS accessibility text size and Android font scale
+2.0, then both device settings were restored.
+Planning/save outcomes now request a single semantic announcement.
+Actual VoiceOver/TalkBack spoken output and editing gestures remain unverified:
+before release, listen to the empty and populated editor, edit text, generate an
+absent-speaker error, then review/toggle a valid shortlist and hear the save outcome.
+Native metadata and large-text checks are not a substitute for that listening pass.
 
 ### Earlier planner verification
 

@@ -56,13 +56,15 @@
                     <Label Text="What interests you?" Style="{StaticResource Subheading}" />
                     <Border Padding="12,8" StrokeShape="RoundRectangle 8"
                             BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}">
+                        <!-- Android uses the shared hint/placeholder to preserve TalkBack editing actions. -->
                         <Editor x:Name="RequestEditor" Text="{Binding Request}" AutoSize="TextChanges" MinimumHeightRequest="112"
                                 MaxLength="1200" IsEnabled="{Binding CanEdit}" FontAutoScalingEnabled="True"
                                 FontFamily="OpenSansRegular" FontSize="16"
                                 TextColor="{AppThemeBinding Light={StaticResource LightText}, Dark={StaticResource DarkText}}"
                                 PlaceholderColor="{AppThemeBinding Light={StaticResource LightSecondary}, Dark={StaticResource DarkSecondary}}"
                                 BackgroundColor="Transparent"
-                                Placeholder="I'd like to explore AI and mobile development…"
+                                Placeholder="Describe topics, speakers, or available dates and times"
+                                SemanticProperties.Description="{OnPlatform iOS='What interests you?'}"
                                 SemanticProperties.Hint="Describe topics, speakers, or available dates and times"
                                 AutomationId="planner-request" />
                     </Border>
@@ -74,8 +76,7 @@
                        Style="{StaticResource Secondary}" FontSize="13" />
                 <VerticalStackLayout Spacing="8" AutomationId="planner-model-state">
                     <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" HorizontalOptions="Start" />
-                    <Label Text="{Binding Status}" IsVisible="{Binding HasStatus}" AutomationId="planner-status"
-                           SemanticProperties.Description="{Binding Status}" />
+                    <Label Text="{Binding Status}" IsVisible="{Binding HasStatus}" AutomationId="planner-status" />
                     <Button Text="Check Apple Intelligence again" LineBreakMode="WordWrap" Command="{Binding CheckModelCommand}"
                             IsVisible="{Binding CanRetryModel}" Style="{StaticResource QuietButton}"
                             AutomationId="planner-check-model" />
@@ -92,7 +93,7 @@
                                     <CheckBox IsChecked="{Binding IsSelected}" IsEnabled="{Binding CanSelect}"
                                               MinimumHeightRequest="48" MinimumWidthRequest="48" VerticalOptions="Start"
                                               AutomationId="{Binding SelectionAutomationId}"
-                                              SemanticProperties.Description="{Binding Title}" />
+                                              SemanticProperties.Description="{Binding SelectionDescription}" />
                                     <VerticalStackLayout Grid.Column="1" Spacing="4">
                                         <Label Text="{Binding Title}" FontFamily="OpenSansSemibold" />
                                         <Label Text="{Binding SpeakerNames}" Style="{StaticResource Secondary}" FontSize="14" />
@@ -125,6 +126,7 @@
                         <Label Grid.Column="1" Text="I've reviewed these sessions and times." VerticalOptions="Center" />
                     </Grid>
                     <Button Text="Add selected to My Schedule" LineBreakMode="WordWrap" Command="{Binding ApplyCommand}"
+                            Clicked="ApplyClicked"
                             IsEnabled="{Binding CanApply}" AutomationId="planner-apply" />
                 </VerticalStackLayout>
                 <Label Text="Fictional demo agenda. Talks and participation are not announced or endorsed."

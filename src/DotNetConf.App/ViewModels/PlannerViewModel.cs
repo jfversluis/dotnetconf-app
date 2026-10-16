@@ -22,6 +22,8 @@ public partial class ProposedSessionViewModel(Session session, string speakerNam
     public string Warning => warning;
     public bool HasWarning => warning.Length > 0;
     public bool CanSelect => !HasWarning;
+    public string SelectionDescription => $"{Title}. {SpeakerNames}. {Time}." +
+        (HasWarning ? $" {Warning}" : "");
     [ObservableProperty] public partial bool IsSelected { get; set; } = selected && warning.Length == 0;
     partial void OnIsSelectedChanged(bool value) => changed();
 }
