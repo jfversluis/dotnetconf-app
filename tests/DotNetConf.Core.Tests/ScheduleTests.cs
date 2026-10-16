@@ -72,68 +72,85 @@ public sealed class ScheduleTests : IDisposable
     }
 
     [Fact]
-    public async Task ValueStoreSavesAndRemovesAcrossRestarts()
+    public async Task KeyedStoreSavesAndRemovesAcrossRestarts()
     {
-        string? value = null;
-        ValueScheduleStore Store() => new(() => value, json => value = json);
-        var service = new ScheduleService(Store());
+        var storage = new HashSet<string>(StringComparer.Ordinal);
+        var service = new ScheduleService(SharedStore(storage));
         Assert.True(await service.ToggleAsync("two"));
         Assert.True(await service.ToggleAsync("one"));
-        Assert.Equal("[\"one\",\"two\"]", value);
-        var restarted = new ScheduleService(Store());
+        Assert.Equal(["one", "two"], storage.Order());
+        var restarted = new ScheduleService(SharedStore(storage));
         await restarted.InitializeAsync();
         Assert.True(restarted.IsSaved("one"));
         Assert.False(await restarted.ToggleAsync("one"));
-        Assert.Equal(["two"], await Store().ReadAsync());
+        Assert.Equal(["two"], storage);
     }
 
     [Fact]
     public async Task ToggleKeepsSessionsSavedInAnotherTab()
     {
-        string? value = null;
-        ValueScheduleStore Store() => new(() => value, json => value = json);
-        var first = new ScheduleService(Store());
-        var second = new ScheduleService(Store());
+        var storage = new HashSet<string>(StringComparer.Ordinal);
+        var first = new ScheduleService(SharedStore(storage));
+        var second = new ScheduleService(SharedStore(storage));
         await first.InitializeAsync();
         await second.InitializeAsync();
         Assert.True(await first.ToggleAsync("one"));
         Assert.True(await second.ToggleAsync("two"));
         Assert.True(second.IsSaved("one"));
-        Assert.Equal("[\"one\",\"two\"]", value);
+        Assert.Equal(["one", "two"], storage.Order());
     }
 
     [Fact]
     public async Task ToggleRemovesASessionSavedInAnotherTab()
     {
-        string? value = null;
-        ValueScheduleStore Store() => new(() => value, json => value = json);
-        var first = new ScheduleService(Store());
-        var second = new ScheduleService(Store());
+        var storage = new HashSet<string>(StringComparer.Ordinal);
+        var first = new ScheduleService(SharedStore(storage));
+        var second = new ScheduleService(SharedStore(storage));
         await first.InitializeAsync();
         await second.InitializeAsync();
         Assert.True(await first.ToggleAsync("one"));
         // The second tab loaded before the first saved, but toggles what's stored now.
         Assert.False(await second.ToggleAsync("one"));
         Assert.False(second.IsSaved("one"));
-        Assert.Equal("[]", value);
+        Assert.Empty(storage);
     }
 
     [Fact]
-    public async Task CorruptValueIsNotOverwritten()
+    public async Task TabsSavingDifferentSessionsAtOnceKeepBoth()
     {
-        var value = "corrupt";
-        var service = new ScheduleService(new ValueScheduleStore(() => value, json => value = json));
-        await Assert.ThrowsAsync<JsonException>(() => service.ToggleAsync("one"));
-        Assert.Equal("corrupt", value);
+        // Each tab reads its own copy of storage, which has not heard about the other tab's save yet.
+        var storage = new HashSet<string>(StringComparer.Ordinal);
+        var first = new ScheduleService(TabStore(storage, new HashSet<string>(StringComparer.Ordinal)));
+        var second = new ScheduleService(TabStore(storage, new HashSet<string>(StringComparer.Ordinal)));
+        await first.InitializeAsync();
+        await second.InitializeAsync();
+        Assert.True(await first.ToggleAsync("one"));
+        Assert.True(await second.ToggleAsync("two"));
+        Assert.Equal(["one", "two"], storage.Order());
+    }
+
+    [Fact]
+    public async Task ARemovalIsNotUndoneByAnotherTabSavingAtOnce()
+    {
+        var storage = new HashSet<string>(["one"], StringComparer.Ordinal);
+        var first = new ScheduleService(TabStore(storage, new HashSet<string>(storage, StringComparer.Ordinal)));
+        var second = new ScheduleService(TabStore(storage, new HashSet<string>(storage, StringComparer.Ordinal)));
+        await first.InitializeAsync();
+        await second.InitializeAsync();
+        Assert.False(await first.ToggleAsync("one"));
+        Assert.True(await second.ToggleAsync("two"));
+        Assert.Equal(["two"], storage);
     }
 
     [Theory]
-    [InlineData("null")]
-    [InlineData("[\"\"]")]
-    [InlineData("[null]")]
-    public async Task InvalidIdsInValueAreRejected(string json)
+    [InlineData("")]
+    [InlineData(" ")]
+    public async Task InvalidStoredIdsAreRejectedAndKept(string id)
     {
-        await Assert.ThrowsAsync<InvalidDataException>(() => new ValueScheduleStore(() => json, _ => { }).ReadAsync());
+        var storage = new HashSet<string>([id, "one"], StringComparer.Ordinal);
+        var service = new ScheduleService(SharedStore(storage));
+        await Assert.ThrowsAsync<InvalidDataException>(() => service.ToggleAsync("two"));
+        Assert.Equal([id, "one"], storage.Order());
     }
 
     public void Dispose()
@@ -141,6 +158,20 @@ public sealed class ScheduleTests : IDisposable
         if (Directory.Exists(directory))
             Directory.Delete(directory, recursive: true);
     }
+
+    /// <summary>
+    /// Storage every tab can see at once.
+    /// </summary>
+    private static KeyedScheduleStore SharedStore(HashSet<string> storage) =>
+        new(() => storage, id => storage.Add(id), id => storage.Remove(id));
+
+    /// <summary>
+    /// A browser tab that reads its own copy of storage, which learns only about this tab's changes.
+    /// </summary>
+    private static KeyedScheduleStore TabStore(HashSet<string> storage, HashSet<string> copy) => new(
+        () => copy,
+        id => { copy.Add(id); storage.Add(id); },
+        id => { copy.Remove(id); storage.Remove(id); });
 
     private sealed class FailingStore : IScheduleStore
     {

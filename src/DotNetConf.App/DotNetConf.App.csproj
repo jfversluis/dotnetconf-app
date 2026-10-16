@@ -26,6 +26,8 @@
   <PropertyGroup Condition="'$(TargetFramework)' == 'net11.0' or '$(TargetFramework)' == 'net11.0-browser'">
     <UseAvalonia>true</UseAvalonia>
     <DefineConstants>$(DefineConstants);AVALONIA</DefineConstants>
+    <!-- [JSImport], used for browser local storage, generates unsafe code. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyTitle>$(ApplicationTitle)</AssemblyTitle>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">

@@ -60,24 +60,6 @@ public sealed class JsonScheduleStore(string path) : IScheduleStore
     }
 }
 
-public sealed class ValueScheduleStore(Func<string?> read, Action<string> write) : IScheduleStore
-{
-    public Task<IReadOnlyCollection<string>> ReadAsync(CancellationToken cancellationToken = default)
-    {
-        var json = read();
-        return Task.FromResult<IReadOnlyCollection<string>>(json is null
-            ? []
-            : JsonScheduleStore.Validate(JsonSerializer.Deserialize(json, ConferenceJsonContext.Default.StringArray)));
-    }
-
-    public Task WriteAsync(IReadOnlyCollection<string> sessionIds, CancellationToken cancellationToken = default)
-    {
-        write(JsonSerializer.Serialize(
-            sessionIds.Order(StringComparer.Ordinal).ToArray(), ConferenceJsonContext.Default.StringArray));
-        return Task.CompletedTask;
-    }
-}
-
 public sealed class ScheduleService(IScheduleStore store)
 {
     private readonly SemaphoreSlim gate = new(1, 1);

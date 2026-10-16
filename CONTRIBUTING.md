@@ -101,7 +101,7 @@ Differences from the mobile apps:
 - DevFlow, MAUI Maps and the CommunityToolkit.Maui initializer are mobile-only. `UserStoppedTypingBehavior` still drives search. The save toast does nothing, so the heart and saved count are the confirmation, and tab and toolbar badges are not drawn.
 - Avalonia.Controls.Maui has no Map handler yet, so Community events open as the event list, as on Android builds without a Maps key.
 - Syncfusion.Maui.Toolkit 1.0.11 has native views only for Android, iOS, Mac Catalyst and Windows. `Platforms/Avalonia/AvaloniaSyncfusion.cs` hosts its views with Avalonia's layout handler and forwards pointer input to the views that listen to their own touches. Their own drawing, such as ripple effects and scroll arrows, is not rendered; the Sessions day tabs (`SfTabView`) draw nothing visible as configured. Check other toolkit controls before using them on these targets.
-- Saved sessions are kept in `~/.config/DotNetConf.App/schedule.json` on Linux and in the browser's local storage (through `Preferences`) on the web.
+- Saved sessions are kept in `~/.config/DotNetConf.App/schedule.json` on Linux and in the browser's local storage on the web, one `dotnetconf.saved.<id>` item per session, so tabs don't overwrite each other. If the browser blocks storage, `wwwroot/main.js` keeps them in memory for that visit.
 - Website links go through Avalonia's launcher: `xdg-open` on Linux, a new tab in the browser.
 - The Linux window icon is `Resources/Splash/splash.png`. The browser's page icon and loading screen use `wwwroot/splash.png`, a copy of that file with the `MauiSplashScreen` colors; update both together.
 

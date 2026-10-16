@@ -66,10 +66,15 @@ internal static class AvaloniaHost
     }
 
     /// <summary>
-    /// Files do not survive a page reload in the browser, so the schedule lives in local storage, under its own key
-    /// rather than in preferences, which each tab holds its own copy of.
+    /// Files don't survive a page reload in the browser, so the schedule is kept in local storage, one item per
+    /// session. It doesn't use preferences because each tab holds its own copy of them.
     /// </summary>
     [System.Runtime.Versioning.SupportedOSPlatform("browser")]
     private static IScheduleStore CreateBrowserScheduleStore()
-        => new ValueScheduleStore(() => BrowserStorage.Get("dotnetconf.schedule"), json => BrowserStorage.Set("dotnetconf.schedule", json));
+        => new KeyedScheduleStore(
+            () => BrowserStorage.Keys(SavedSessionPrefix),
+            id => BrowserStorage.Set(SavedSessionPrefix + id, "1"),
+            id => BrowserStorage.Remove(SavedSessionPrefix + id));
+
+    private const string SavedSessionPrefix = "dotnetconf.saved.";
 }
