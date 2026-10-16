@@ -4,6 +4,13 @@
              xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
              x:DataType="vm:PlannerViewModel" Title="Plan my schedule"
              Shell.TabBarIsVisible="False">
+    <ContentPage.Resources>
+        <Style x:Key="StartingPointButton" TargetType="Button" BasedOn="{StaticResource QuietButton}">
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="Margin" Value="0,0,8,8" />
+            <Setter Property="LineBreakMode" Value="WordWrap" />
+        </Style>
+    </ContentPage.Resources>
     <ContentPage.ToolbarItems>
         <ToolbarItem Text="Skip" Clicked="SkipClicked" AutomationId="planner-skip"
                      SemanticProperties.Hint="Leave the planner and browse without adding sessions" />
@@ -20,20 +27,20 @@
             <VerticalStackLayout Padding="24,20,24,24" Spacing="20" SafeAreaEdges="None">
                 <VerticalStackLayout Spacing="8" IsVisible="{Binding CanEdit}">
                     <Label Text="Need a starting point?" Style="{StaticResource Secondary}" FontSize="14" />
-                    <VerticalStackLayout Spacing="8">
-                        <Button Text="AI + mobile" LineBreakMode="WordWrap" Style="{StaticResource QuietButton}"
+                    <FlexLayout Direction="Row" Wrap="Wrap" AlignItems="Start" Margin="0,0,-8,-8">
+                        <Button Text="AI + mobile" Style="{StaticResource StartingPointButton}"
                                 Command="{Binding UseExampleCommand}"
                                 CommandParameter="I'm interested in AI and mobile development."
                                 AutomationId="planner-example-ai-mobile" />
-                        <Button Text="Web development" LineBreakMode="WordWrap" Style="{StaticResource QuietButton}"
+                        <Button Text="Web" Style="{StaticResource StartingPointButton}"
                                 Command="{Binding UseExampleCommand}"
                                 CommandParameter="I'd like to learn about web development and Blazor."
                                 AutomationId="planner-example-web" />
-                        <Button Text="Help me explore .NET" LineBreakMode="WordWrap" Style="{StaticResource QuietButton}"
+                        <Button Text="Explore .NET" Style="{StaticResource StartingPointButton}"
                                 Command="{Binding UseExampleCommand}"
                                 CommandParameter="I'm new to .NET. Suggest a varied introduction to the conference."
                                 AutomationId="planner-example-explore" />
-                    </VerticalStackLayout>
+                    </FlexLayout>
                 </VerticalStackLayout>
                 <VerticalStackLayout Spacing="8">
                     <Label Text="What interests you?" Style="{StaticResource Subheading}" />
