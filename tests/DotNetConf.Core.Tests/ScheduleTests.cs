@@ -103,6 +103,22 @@ public sealed class ScheduleTests : IDisposable
     }
 
     [Fact]
+    public async Task ToggleRemovesASessionSavedInAnotherTab()
+    {
+        string? value = null;
+        ValueScheduleStore Store() => new(() => value, json => value = json);
+        var first = new ScheduleService(Store());
+        var second = new ScheduleService(Store());
+        await first.InitializeAsync();
+        await second.InitializeAsync();
+        Assert.True(await first.ToggleAsync("one"));
+        // The second tab loaded before the first saved, but toggles what's stored now.
+        Assert.False(await second.ToggleAsync("one"));
+        Assert.False(second.IsSaved("one"));
+        Assert.Equal("[]", value);
+    }
+
+    [Fact]
     public async Task CorruptValueIsNotOverwritten()
     {
         var value = "corrupt";
