@@ -20,15 +20,20 @@ The agenda opens immediately from the last downloaded update. No sessions or spe
 
 ### On-device schedule planner (experimental spike)
 
-An optional first-run screen lets you describe interests, must-see speakers and
-availability in natural language. Skip it at any time, or reopen it from
+An optional first-run carousel introduces the app, lets you describe interests,
+must-see speakers and availability in natural language, and offers session
+reminders. The separate in-app builder remains available from
 **My Schedule → Plan with on-device AI (spike)**. This is not a hosted chatbot:
 there are no API keys, accounts, fake responses or cloud fallback.
 
-The welcome screen opens automatically on a fresh install. **Skip**, **I'll
-explore on my own**, and native back dismiss it without changing saved sessions;
-dismissal is remembered across launches. An interrupted first run is offered
-again. Example prompts only fill the editor: you still choose when to generate,
+The full-screen welcome modal opens automatically on a fresh install without a
+navigation bar. Swipe or use Next/Back to move between the three steps.
+**Skip setup** dismisses the carousel at any point without discarding sessions
+you explicitly saved. Completion and skipping are remembered across launches;
+an interrupted first run is offered again. Android back moves to the previous
+step, or dismisses from the welcome step. The regular in-app builder has native
+back navigation, but no onboarding Skip or explore-on-my-own actions.
+Example prompts only fill the editor: you still choose when to generate,
 review the preview, and explicitly confirm before anything is added.
 Starting points sit in a horizontally scrolling row above the input. A small
 spinner appears while the local model picks a fresh mix of real agenda topics,
@@ -38,6 +43,19 @@ Generation failures reveal curated examples with an explicit status.
 The shortlist leads with sessions and times;
 optional **Show matching details** reveals the interpreted request. Warnings and
 blocking errors remain visible without opening those details.
+
+**Session reminders** are optional local notifications, inspired by
+`jfversluis/app-myconference`. The app requests device permission only after
+**Enable session reminders** is tapped. Saved future sessions get a reminder at
+their start time; removing a like cancels its reminder. No APNs/FCM backend,
+account or push token is needed. The device controls delivery, including Focus,
+notification settings and Android scheduling delays. At most the next 60
+sessions are scheduled; app activation and saved-session changes refresh them.
+Android restores pending reminders after reboot and allows delayed delivery
+only until the session ends, without requesting exact-alarm access.
+Denied permission never blocks onboarding or browsing. Settings provides
+enable/retry, turn-off and device-settings actions. Fictional agenda reminders
+are labeled as demo sessions.
 
 Startup navigation is owned by `App`, not Home's appearance lifecycle. To repeat
 first-run QA, clear only this app's `planner-onboarding-completed-v1` preference.

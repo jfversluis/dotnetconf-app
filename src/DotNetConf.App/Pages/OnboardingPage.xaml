@@ -1,0 +1,83 @@
+<ContentPage x:Class="DotNetConf.App.Pages.OnboardingPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:pages="clr-namespace:DotNetConf.App.Pages"
+             x:DataType="pages:OnboardingPage"
+             Shell.NavBarIsVisible="False" NavigationPage.HasNavigationBar="False"
+             SafeAreaEdges="All" AutomationId="onboarding-page">
+    <ContentPage.Resources>
+        <DataTemplate x:Key="WelcomeTemplate" x:DataType="pages:OnboardingPage">
+            <ScrollView>
+                <VerticalStackLayout Padding="28,40,28,24" Spacing="28" MaximumWidthRequest="600"
+                                     HorizontalOptions="Center">
+                    <Image Source="{StaticResource SessionsIcon}" HeightRequest="72" WidthRequest="72"
+                           HorizontalOptions="Start" InputTransparent="True" />
+                    <Label Text="Big ideas.&#10;Your kind of .NET." FontSize="38" Style="{StaticResource Heading}"
+                           SemanticProperties.HeadingLevel="Level1" AutomationId="onboarding-welcome" />
+                    <Label Text="Find your next rabbit hole, save the talks you love, and make the conference your own."
+                           FontSize="20" />
+                    <Label Text="Start with a few interests. Our on-device session builder can turn them into a shortlist you review before saving."
+                           Style="{StaticResource Secondary}" />
+                    <Label Text="No account. No cloud AI. Just you and the agenda."
+                           FontFamily="OpenSansSemibold" />
+                    <Label Text="Fictional demo agenda. Talks and participation are not announced or endorsed."
+                           Style="{StaticResource Secondary}" FontSize="13" />
+                </VerticalStackLayout>
+            </ScrollView>
+        </DataTemplate>
+        <DataTemplate x:Key="RemindersTemplate" x:DataType="pages:OnboardingPage">
+            <ScrollView>
+                <VerticalStackLayout Padding="28,40,28,24" Spacing="24" MaximumWidthRequest="600"
+                                     HorizontalOptions="Center">
+                    <Image Source="{StaticResource ReminderIcon}" HeightRequest="72" WidthRequest="72"
+                           HorizontalOptions="Start" InputTransparent="True" />
+                    <Label Text="Less clock-watching.&#10;More conference." FontSize="36" Style="{StaticResource Heading}"
+                           SemanticProperties.HeadingLevel="Level1" AutomationId="onboarding-reminders-title" />
+                    <Label Text="Get a reminder when a session in My Schedule begins. We'll ask your device for notification permission only if you choose to enable it."
+                           FontSize="18" />
+                    <Label Text="Reminders stay on this device. No marketing messages, no account, and no push server. Your device controls delivery."
+                           Style="{StaticResource Secondary}" />
+                    <Button Text="Enable session reminders" Clicked="EnableRemindersClicked" LineBreakMode="WordWrap"
+                            IsEnabled="{Binding CanRequestReminders}" AutomationId="onboarding-enable-reminders" />
+                    <ActivityIndicator IsRunning="{Binding RequestingReminders}" IsVisible="{Binding RequestingReminders}"
+                                       HorizontalOptions="Start" />
+                    <Label Text="{Binding ReminderStatus}" AutomationId="onboarding-reminder-status"
+                           SemanticProperties.Description="{Binding ReminderStatus}" />
+                    <Button Text="Open notification settings" Style="{StaticResource QuietButton}" LineBreakMode="WordWrap"
+                            IsVisible="{Binding ShowNotificationSettings}" Clicked="OpenSettingsClicked"
+                            AutomationId="onboarding-notification-settings" />
+                    <Label Text="Not now? That's fine. You can enable reminders later in Settings."
+                           Style="{StaticResource Secondary}" />
+                </VerticalStackLayout>
+            </ScrollView>
+        </DataTemplate>
+    </ContentPage.Resources>
+    <Grid RowDefinitions="*,Auto" RowSpacing="0">
+        <CarouselView x:Name="Carousel" ItemsSource="{Binding Slides}" Loop="False"
+                      PositionChanged="PositionChanged" IndicatorView="Progress"
+                      AutomationId="onboarding-carousel">
+            <CarouselView.ItemTemplate>
+                <DataTemplate x:DataType="View">
+                    <ContentView Content="{Binding .}" />
+                </DataTemplate>
+            </CarouselView.ItemTemplate>
+        </CarouselView>
+        <VerticalStackLayout Grid.Row="1" Padding="24,12,24,16" Spacing="8">
+            <IndicatorView x:Name="Progress" IndicatorSize="8" HorizontalOptions="Center"
+                           IndicatorColor="{AppThemeBinding Light={StaticResource LightOutline}, Dark={StaticResource DarkOutline}}"
+                           SelectedIndicatorColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
+                           InputTransparent="True" />
+            <Label Text="{Binding ProgressText}" Style="{StaticResource Secondary}" FontSize="13"
+                   HorizontalTextAlignment="Center" AutomationId="onboarding-progress" />
+            <Button Text="{Binding NextText}" Clicked="NextClicked" IsEnabled="{Binding CanNavigate}"
+                    LineBreakMode="WordWrap" AutomationId="onboarding-next" />
+            <Grid ColumnDefinitions="*,*">
+                <Button Text="Back" Clicked="BackClicked" IsVisible="{Binding CanGoBack}" LineBreakMode="WordWrap"
+                        IsEnabled="{Binding CanNavigate}" Style="{StaticResource QuietButton}" BorderWidth="0"
+                        AutomationId="onboarding-back" />
+                <Button Grid.Column="1" Text="Skip setup" Clicked="SkipClicked" IsEnabled="{Binding CanNavigate}" LineBreakMode="WordWrap"
+                        Style="{StaticResource QuietButton}" BorderWidth="0" AutomationId="onboarding-skip" />
+            </Grid>
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

@@ -56,11 +56,15 @@ Five Shell destinations: Home, Sessions, Speakers, My Schedule, Community. Andro
 
 ## Content and states
 
-The first-run planner is a native pushed page, not a tour or account gate. Its
-Space Grotesk welcome heading and incumbent hero wash lead directly into one
-prompt. A native toolbar Skip action stays reachable while the page scrolls;
-the browse action and native back also dismiss it. Dismissal persists locally,
-while an interrupted launch remains eligible. My Schedule retains re-entry.
+First-run onboarding is a separate full-screen modal carousel without a
+navigation bar: welcome, optional AI session builder, and optional session
+reminders. Space Grotesk headings, typed Fluent icons and short explanatory
+copy focus each step on one task. Swipe and persistent Next/Back controls move
+between steps; Skip setup remains reachable outside the scrolling content.
+Completion and skipping persist locally, while an interrupted launch remains
+eligible. Android back moves to the previous step or dismisses from welcome.
+My Schedule opens the regular native planner, which shares the builder view
+but has no onboarding Skip or explore actions.
 Horizontally scrolling example chips above the input fill the editor without
 generating or saving. A small spinner replaces the strip during loading, and an
 atomic list replacement reveals the whole batch together. The local model
@@ -79,6 +83,15 @@ visible; successful validation and idle-ready boilerplate do not compete with
 the task. Users review the selected sessions and times before confirming.
 After saving, View My Schedule provides the next step. The same semantic theme
 tokens, scalable text, 48-unit actions, and typed Fluent icons apply throughout.
+
+The reminder step explains the benefit before asking for OS notification
+permission, only on an explicit Enable tap. Reminders are device-local and tied
+to saved session starts; no push backend or registration is involved. Denial
+has a visible recovery state and never blocks completion. Settings offers
+enable/retry, disable and system-settings controls. Saved-session edits and app
+activation reconcile owned pending notifications without touching unrelated
+requests. A nearest-60 budget stays below Apple's pending-notification limit;
+OS policy still controls delivery. Fictional content remains labeled in alerts.
 
 Sessions keeps search clearing in the Entry and topic clearing beside the summary
 and in Filters. Clearing topics leaves day selection and search unchanged.

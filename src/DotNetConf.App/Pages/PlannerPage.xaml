@@ -1,135 +1,14 @@
 <ContentPage x:Class="DotNetConf.App.Pages.PlannerPage"
              xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:DotNetConf.App.Controls"
              xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
-             xmlns:services="clr-namespace:DotNetConf.App.Services"
              x:DataType="vm:PlannerViewModel" Title="Plan my schedule"
              Shell.TabBarIsVisible="False">
-    <ContentPage.Resources>
-        <Style x:Key="StartingPointButton" TargetType="Button" BasedOn="{StaticResource QuietButton}">
-            <Setter Property="Padding" Value="12,8" />
-            <Setter Property="Margin" Value="0,0,8,0" />
-            <Setter Property="LineBreakMode" Value="WordWrap" />
-        </Style>
-    </ContentPage.Resources>
-    <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Skip" Clicked="SkipClicked" AutomationId="planner-skip"
-                     SemanticProperties.Hint="Leave the planner and browse without adding sessions" />
-    </ContentPage.ToolbarItems>
-    <ScrollView SafeAreaEdges="Default" AutomationId="planner-scroll">
-        <VerticalStackLayout Spacing="0" MaximumWidthRequest="720" HorizontalOptions="Fill" SafeAreaEdges="None">
-            <VerticalStackLayout Padding="24,24" Spacing="12" SafeAreaEdges="None"
-                                 Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}">
-                <Label Text="Your conference,&#10;your way." Style="{StaticResource Heading}" FontSize="32"
-                       AutomationId="planner-welcome" />
-                <Label Text="Tell us what you want to learn. Get a personal shortlist, then choose what to save."
-                       MaximumWidthRequest="520" HorizontalOptions="Start" />
-            </VerticalStackLayout>
-            <VerticalStackLayout Padding="24,20,24,24" Spacing="20" SafeAreaEdges="None">
-                <VerticalStackLayout Spacing="8" IsVisible="{Binding CanEdit}">
-                    <Label Text="Need a starting point?" Style="{StaticResource Secondary}" FontSize="14" />
-                    <ActivityIndicator IsRunning="{Binding IsLoadingStartingPoints}" IsVisible="{Binding IsLoadingStartingPoints}"
-                                       HeightRequest="24" WidthRequest="24" HorizontalOptions="Start"
-                                       SemanticProperties.Description="Preparing starting points"
-                                       AutomationId="planner-starting-points-loading" />
-                    <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Default" IsVisible="{Binding ShowStartingPoints}"
-                                AutomationId="planner-starting-points">
-                        <HorizontalStackLayout BindableLayout.ItemsSource="{Binding StartingPoints}">
-                            <BindableLayout.ItemTemplate>
-                                <DataTemplate x:DataType="services:PlannerStartingPoint">
-                                    <Button Text="{Binding Label}" Style="{StaticResource StartingPointButton}"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:PlannerViewModel}}, Path=UseExampleCommand}"
-                                            CommandParameter="{Binding Request}"
-                                            AutomationId="{Binding Label, StringFormat='planner-example-{0}'}" />
-                                </DataTemplate>
-                            </BindableLayout.ItemTemplate>
-                        </HorizontalStackLayout>
-                    </ScrollView>
-                    <Label Text="{Binding StartingPointsStatus}" IsVisible="{Binding HasStartingPointsStatus}"
-                           Style="{StaticResource Secondary}" FontSize="12" AutomationId="planner-starting-points-status" />
-                </VerticalStackLayout>
-                <VerticalStackLayout Spacing="8">
-                    <Label Text="What interests you?" Style="{StaticResource Subheading}" />
-                    <Border Padding="12,8" StrokeShape="RoundRectangle 8"
-                            BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}">
-                        <Editor x:Name="RequestEditor" Text="{Binding Request}" AutoSize="TextChanges" MinimumHeightRequest="112"
-                                MaxLength="1200" IsEnabled="{Binding CanEdit}" FontAutoScalingEnabled="True"
-                                FontFamily="OpenSansRegular" FontSize="16"
-                                TextColor="{AppThemeBinding Light={StaticResource LightText}, Dark={StaticResource DarkText}}"
-                                PlaceholderColor="{AppThemeBinding Light={StaticResource LightSecondary}, Dark={StaticResource DarkSecondary}}"
-                                BackgroundColor="Transparent"
-                                Placeholder="I'd like to explore AI and mobile development…"
-                                SemanticProperties.Hint="Describe topics, speakers, or available dates and times"
-                                AutomationId="planner-request" />
-                    </Border>
-                    <Label Text="{Binding TimeZoneLabel}" Style="{StaticResource Secondary}" FontSize="13" />
-                </VerticalStackLayout>
-                <Button Text="Find sessions for me" LineBreakMode="WordWrap" Command="{Binding GenerateCommand}" IsEnabled="{Binding CanGenerate}"
-                        Clicked="GenerateClicked" AutomationId="planner-generate" />
-                <Label Text="On-device with Apple Intelligence on supported iPhones. No account or cloud."
-                       Style="{StaticResource Secondary}" FontSize="13" />
-                <VerticalStackLayout Spacing="8" AutomationId="planner-model-state">
-                    <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" HorizontalOptions="Start" />
-                    <Label Text="{Binding Status}" IsVisible="{Binding HasStatus}" AutomationId="planner-status"
-                           SemanticProperties.Description="{Binding Status}" />
-                    <Button Text="Check Apple Intelligence again" LineBreakMode="WordWrap" Command="{Binding CheckModelCommand}"
-                            IsVisible="{Binding CanRetryModel}" Style="{StaticResource QuietButton}"
-                            AutomationId="planner-check-model" />
-                    <Button Text="Cancel" LineBreakMode="WordWrap" Command="{Binding CancelCommand}" IsVisible="{Binding IsBusy}"
-                            Style="{StaticResource QuietButton}" AutomationId="planner-cancel" />
-                </VerticalStackLayout>
-                <VerticalStackLayout IsVisible="{Binding HasProposal}" Spacing="16" AutomationId="planner-preview">
-                    <BoxView HeightRequest="1" Margin="0,8" />
-                    <Label Text="Your shortlist" Style="{StaticResource Heading}" />
-                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding Sessions}" Spacing="20">
-                        <BindableLayout.ItemTemplate>
-                            <DataTemplate x:DataType="vm:ProposedSessionViewModel">
-                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" AutomationId="{Binding AutomationId}">
-                                    <CheckBox IsChecked="{Binding IsSelected}" IsEnabled="{Binding CanSelect}"
-                                              MinimumHeightRequest="48" MinimumWidthRequest="48" VerticalOptions="Start"
-                                              AutomationId="{Binding SelectionAutomationId}"
-                                              SemanticProperties.Description="{Binding Title}" />
-                                    <VerticalStackLayout Grid.Column="1" Spacing="4">
-                                        <Label Text="{Binding Title}" FontFamily="OpenSansSemibold" />
-                                        <Label Text="{Binding SpeakerNames}" Style="{StaticResource Secondary}" FontSize="14" />
-                                        <Label Text="{Binding Time}" Style="{StaticResource Secondary}" FontSize="14" />
-                                        <Label Text="{Binding Warning}" IsVisible="{Binding HasWarning}"
-                                               TextColor="{AppThemeBinding Light={StaticResource LightError}, Dark={StaticResource DarkError}}"
-                                               AutomationId="{Binding WarningAutomationId}" FontFamily="OpenSansSemibold" />
-                                    </VerticalStackLayout>
-                                </Grid>
-                            </DataTemplate>
-                        </BindableLayout.ItemTemplate>
-                    </VerticalStackLayout>
-                    <Button Text="{Binding MatchingDetailsAction}" LineBreakMode="WordWrap"
-                            Command="{Binding ToggleMatchingDetailsCommand}" Style="{StaticResource QuietButton}"
-                            BorderWidth="0" Padding="0,8" HorizontalOptions="Start"
-                            AutomationId="planner-toggle-details" />
-                    <VerticalStackLayout IsVisible="{Binding ShowMatchingDetails}" Spacing="8"
-                                         AutomationId="planner-matching-details">
-                        <Label Text="{Binding Constraints}" AutomationId="planner-constraints" />
-                        <Label Text="AI can misunderstand. If an interest, speaker or time is wrong, edit your request and try again."
-                               Style="{StaticResource Secondary}" FontSize="14" />
-                    </VerticalStackLayout>
-                    <Label Text="{Binding Validation}" IsVisible="{Binding HasValidationErrors}" AutomationId="planner-validation"
-                           TextColor="{AppThemeBinding Light={StaticResource LightError}, Dark={StaticResource DarkError}}" />
-                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-                        <CheckBox IsChecked="{Binding ConstraintsConfirmed}" IsEnabled="{Binding HasValidProposal}"
-                                  MinimumHeightRequest="48" MinimumWidthRequest="48"
-                                  SemanticProperties.Description="I have reviewed the selected sessions and their times"
-                                  AutomationId="planner-confirm-constraints" />
-                        <Label Grid.Column="1" Text="I've reviewed these sessions and times." VerticalOptions="Center" />
-                    </Grid>
-                    <Button Text="Add selected to My Schedule" LineBreakMode="WordWrap" Command="{Binding ApplyCommand}"
-                            IsEnabled="{Binding CanApply}" AutomationId="planner-apply" />
-                </VerticalStackLayout>
-                <Button Text="View My Schedule" LineBreakMode="WordWrap" IsVisible="{Binding HasAddedSessions}" Clicked="ViewScheduleClicked"
-                        AutomationId="planner-view-schedule" />
-                <Button Text="I'll explore on my own" LineBreakMode="WordWrap" Clicked="SkipClicked"
-                        Style="{StaticResource QuietButton}" AutomationId="planner-browse" />
-                <Label Text="Fictional demo agenda. Talks and participation are not announced or endorsed."
-                       Style="{StaticResource Secondary}" FontSize="13" />
-            </VerticalStackLayout>
-        </VerticalStackLayout>
-    </ScrollView>
+    <Grid RowDefinitions="*,Auto">
+        <controls:PlannerView />
+        <Button Grid.Row="1" Text="View My Schedule" Margin="24,8,24,16" LineBreakMode="WordWrap"
+                IsVisible="{Binding HasAddedSessions}" Clicked="ViewScheduleClicked"
+                AutomationId="planner-view-schedule" />
+    </Grid>
 </ContentPage>

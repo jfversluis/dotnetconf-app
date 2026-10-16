@@ -28,7 +28,7 @@ public partial class ProposedSessionViewModel(Session session, string speakerNam
 
 public partial class PlannerViewModel(
     IConferenceDataSource dataSource, ScheduleService schedule, OnDevicePlanner planner,
-    ConferenceViewModel conference, ILogger<PlannerViewModel> logger) : ObservableObject
+    ConferenceViewModel conference, ILogger<PlannerViewModel> logger, SessionReminderService reminders) : ObservableObject
 {
     private CancellationTokenSource? operation;
     private ConferenceDocument? document;
@@ -314,6 +314,8 @@ public partial class PlannerViewModel(
             ClearProposal();
             HasAddedSessions = true;
             Status = "Selected proposals added to My Schedule. Your previous likes were kept.";
+            if (!await reminders.RefreshAsync())
+                Status += " Reminders couldn't be updated; check Settings.";
         }
         catch (Exception exception) when (IsExpectedFailure(exception))
         {
@@ -331,13 +333,6 @@ public partial class PlannerViewModel(
     {
         operation?.Cancel();
         startingPointsOperation?.Cancel();
-    }
-
-    [RelayCommand]
-    private async Task SkipAsync()
-    {
-        Cancel();
-        await Shell.Current.GoToAsync("..");
     }
 
     partial void OnRequestChanged(string value)

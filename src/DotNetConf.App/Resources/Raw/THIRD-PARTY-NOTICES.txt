@@ -25,6 +25,11 @@ Copyright (c) .NET Foundation and Contributors
 https://github.com/dotnet/extensions
 MIT license: LICENSE-DotNetFoundation.txt
 
+Plugin.LocalNotification 14.0.0 and Plugin.LocalNotification.Core 1.0.0
+Copyright (c) 2018 Elvin (Tharindu)
+https://github.com/thudugala/Plugin.LocalNotification
+MIT license: LICENSE-LocalNotification.txt
+
 CommunityToolkit.Mvvm 8.4.2
 Copyright © .NET Foundation and Contributors
 https://github.com/CommunityToolkit/dotnet

@@ -18,7 +18,7 @@ public sealed record DayFilter(string Label, DateOnly? Day)
 public partial class ConferenceViewModel(
     IConferenceRepository repository, ScheduleService schedule, DetailNavigationService navigation,
     IBrowser browser, IConnectivity connectivity, SpeakerImageCache images,
-    ILogger<ConferenceViewModel> logger) : ObservableObject
+    ILogger<ConferenceViewModel> logger, SessionReminderService reminders) : ObservableObject
 {
     private readonly SemaphoreSlim loadGate = new(1, 1);
     private ConferenceDocument? document;
@@ -567,10 +567,12 @@ public partial class ConferenceViewModel(
             return;
         }
 
+        var remindersUpdated = await reminders.RefreshAsync();
         try
         {
             await Shell.Current.Dispatcher.DispatchAsync(() =>
-                Toast.Make(session.IsSaved ? "Added to My Schedule" : "Removed from My Schedule",
+                Toast.Make(!remindersUpdated ? "Schedule saved. Reminders need attention in Settings."
+                    : session.IsSaved ? "Added to My Schedule" : "Removed from My Schedule",
                     ToastDuration.Short).Show());
         }
         catch (Exception exception) when (exception is InvalidOperationException or FeatureNotSupportedException)

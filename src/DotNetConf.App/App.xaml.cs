@@ -39,7 +39,10 @@ public partial class App : Application
         window.Activated += (_, _) =>
         {
             if (shell.IsLoaded)
+            {
                 shell.Dispatcher.Dispatch(() => ShowOnboardingAsync(shell));
+                shell.Dispatcher.Dispatch(async () => await services.GetRequiredService<Services.SessionReminderService>().RefreshAsync());
+            }
         };
         window.StatusBarTheme = RequestedTheme == AppTheme.Dark ? StatusBarTheme.Dark : StatusBarTheme.Light;
         window.Resumed += async (_, _) => await services.GetRequiredService<ViewModels.ConferenceViewModel>().ResumeAsync();
@@ -53,10 +56,9 @@ public partial class App : Application
             return;
         try
         {
-            await shell.GoToAsync("planner", new ShellNavigationQueryParameters
-            {
-                ["firstRun"] = onboarding
-            });
+            var page = services.GetRequiredService<Pages.OnboardingPage>();
+            page.Configure(onboarding);
+            await shell.Navigation.PushModalAsync(page);
         }
         catch (Exception exception) when (exception is InvalidOperationException or ArgumentException)
         {

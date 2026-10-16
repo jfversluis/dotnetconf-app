@@ -73,6 +73,7 @@
     <PackageReference Include="Avalonia.Controls.Maui" Version="11.0.0-rc.2.26287.618" />
     <PackageReference Include="Microsoft.Maui.Essentials.AI" Version="11.0.0-preview.7.26512.5" />
     <PackageReference Include="Microsoft.Extensions.AI" Version="10.4.1" />
+    <PackageReference Include="Plugin.LocalNotification" Version="14.0.0" />
   </ItemGroup>
   <ItemGroup Condition="'$(UseAvalonia)' == 'true'">
     <MauiPlatformSpecificFolder Include="Platforms/Avalonia" />

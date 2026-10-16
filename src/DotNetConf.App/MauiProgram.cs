@@ -6,6 +6,7 @@ using DotNetConf.Core;
 using IconFont.Maui.FluentIcons;
 using DotNetConf.App.Controls;
 using CommunityToolkit.Maui;
+using Plugin.LocalNotification;
 using Syncfusion.Maui.Toolkit.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 #if ANDROID
@@ -103,6 +104,15 @@ public static class MauiProgram
         });
 #endif
 
+        builder.UseLocalNotification(options => options.AddAndroid(android => android.AddChannel(
+            new Plugin.LocalNotification.Core.Models.AndroidOption.AndroidNotificationChannelRequest
+            {
+                Id = SessionReminderService.ChannelId,
+                Name = "Session reminders",
+                Description = "Reminders when sessions in My Schedule begin"
+            })));
+        builder.Services.AddSingleton<SessionReminderService>();
+        builder.Services.AddTransient<OnboardingPage>();
         builder.Services.AddSingleton<IConferenceDataSource, ConferenceMetadataDataSource>();
         builder.Services.AddSingleton(_ => new HttpClient { Timeout = TimeSpan.FromSeconds(20) });
         builder.Services.AddKeyedSingleton<HttpClient>("speaker-portraits", (_, _) =>

@@ -180,6 +180,50 @@ availability, existing likes and the 12-selection limit still apply.
 
 ## Verification and limitations
 
+### Current onboarding and reminder follow-up
+
+First-run onboarding now uses a separate full-screen modal carousel:
+welcome, shared AI builder, then optional reminder consent. It has no native
+navigation bar; swipe and persistent Next/Back/Skip controls remain available.
+The regular planner retains native back and a post-save My Schedule action,
+but no onboarding-only Skip or explore action. The older pushed-page lifecycle
+results below describe the previous iteration, not the current navigation.
+
+On the isolated iOS 26.5 simulator, six current lifecycle checks passed:
+fresh modal startup, all three steps/back, completion persistence, Skip
+persistence, no permission request before opt-in, and normal in-app builder
+without onboarding actions. Native swipe navigation was exercised separately.
+Dark-mode visual checks at maximum iOS accessibility text size exposed clipped
+Skip text and animated page changes disrupted by a resizing footer. Footer
+labels now wrap, and Next/Back use nonanimated native scrolling; all three
+steps were rechecked at that size. Swipe gestures retain native paging.
+The actual iOS consent alert was shown on explicit Enable; denial displayed a
+visible recovery state without trapping the user. A separate temporary QA
+bundle identity then exercised Allow without resetting the original app's
+permission or likes. Returning to the builder, real local inference for
+"I care about accessibility" produced a preview; explicit confirmation saved
+the session and the native notification service accepted its reminder.
+
+Reminders use Plugin.LocalNotification 14.0.0, the same toolkit as
+`jfversluis/app-myconference`. They schedule future saved sessions at their
+start time, reconcile stable IDs on schedule changes/activation, and cap pending
+requests at the nearest 60. Settings exposes opt-in/retry, disabling and a
+device-settings link. These are local reminders, not remote APNs/FCM push.
+Review caught Android's default one-minute delivery grace period and missing
+boot permission. The app now permits inexact delivery until the session ends
+and declares boot permission for the plugin's existing restore receiver.
+The simulator's device-settings link opened the Settings root rather than a
+per-app pane; that shortcut still needs physical-device verification.
+
+The follow-up passed 154 core/adapter tests, iOS simulator and Android Debug
+builds, and unsigned iOS NativeAOT publishing. Native consent and scheduling
+were exercised on iOS only; Android delivery and actual background alert
+delivery on physical devices remain unverified. Existing AI dependency
+trim/AOT warnings remain. The notification package's empty privacy manifest
+is ignored because the app already supplies its own manifest.
+
+### Earlier planner verification
+
 Runtime checks use the isolated `dotnetconf-planner-iPhone17Pro` simulator
 (iOS 26.5, Europe/Amsterdam). The expanded **44-case matrix ran twice:
 88/88 strict checks passed**, including the original requests, shorthand,

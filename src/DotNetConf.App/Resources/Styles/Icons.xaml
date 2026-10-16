@@ -30,6 +30,9 @@
     <FontImageSource x:Key="SessionsIcon" Glyph="{x:Static icons:FluentIconsRegular.CalendarAgenda24}"
                      FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
                      Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+    <FontImageSource x:Key="ReminderIcon" Glyph="{x:Static icons:FluentIconsRegular.Alert24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="72"
+                     Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
     <FontImageSource x:Key="SpeakersIcon" Glyph="{x:Static icons:FluentIconsRegular.People24}"
                      FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
                      Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
