@@ -16,6 +16,11 @@ public partial class OnboardingPage : ContentPage
     private bool leaving;
     private bool requestingReminders;
     private bool permissionAttempted;
+    private readonly ContentView scheduleStep;
+    private PlannerView? plannerView;
+    private Task? schedulePreparation;
+    private bool pageVisible;
+    public bool PreparingScheduleStep { get; private set; } = true;
     public IReadOnlyList<View> Slides { get; }
     public Thickness HeroPadding => new(24,
         32 + Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.Page.GetSafeAreaInsets(this).Top, 24, 28);
@@ -40,7 +45,32 @@ public partial class OnboardingPage : ContentPage
         welcome.BindingContext = this;
         var notificationStep = (View)((DataTemplate)Resources["RemindersTemplate"]).CreateContent();
         notificationStep.BindingContext = this;
-        var plannerView = new PlannerView { BindingContext = planner };
+        var intro = (View)((DataTemplate)Resources["ScheduleIntroTemplate"]).CreateContent();
+        intro.BindingContext = this;
+        scheduleStep = new ContentView { Content = intro, SafeAreaEdges = SafeAreaEdges.None };
+        Slides = [welcome, scheduleStep, notificationStep];
+        BindingContext = this;
+        reminders.PropertyChanged += RemindersChanged;
+    }
+
+    private async Task PrepareScheduleStepAsync()
+    {
+        try
+        {
+            await planner.InitializeAsync();
+        }
+        finally
+        {
+            PreparingScheduleStep = false;
+            OnPropertyChanged(nameof(PreparingScheduleStep));
+        }
+    }
+
+    private void ShowReadyPlanner()
+    {
+        if (!pageVisible || !planner.IsReady || plannerView is not null)
+            return;
+        plannerView = new PlannerView { BindingContext = planner };
         var skip = new Button
         {
             Text = "Skip setup",
@@ -54,9 +84,8 @@ public partial class OnboardingPage : ContentPage
         skip.SetBinding(IsEnabledProperty, Binding.Create(static (OnboardingPage page) => page.CanNavigate, source: this));
         skip.Clicked += SkipClicked;
         plannerView.SetHeroAction(skip);
-        Slides = [welcome, plannerView, notificationStep];
-        BindingContext = this;
-        reminders.PropertyChanged += RemindersChanged;
+        plannerView.SetHeroPadding(HeroPadding);
+        scheduleStep.Content = plannerView;
     }
 
     public void Configure(FirstRunPlannerState onboarding) => state = onboarding;
@@ -73,23 +102,19 @@ public partial class OnboardingPage : ContentPage
     private void UpdateHeroPadding()
     {
         OnPropertyChanged(nameof(HeroPadding));
-        if (Slides is not null)
-            foreach (var view in Slides.OfType<PlannerView>())
-                view.SetHeroPadding(HeroPadding);
+        plannerView?.SetHeroPadding(HeroPadding);
     }
 
     private void RemindersChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args) =>
         UpdatePermissionState();
 
-    private async void PositionChanged(object? sender, PositionChangedEventArgs args)
+    private void PositionChanged(object? sender, PositionChangedEventArgs args)
     {
         OnPropertyChanged(nameof(CanGoBack));
         OnPropertyChanged(nameof(NextText));
         OnPropertyChanged(nameof(ProgressText));
-        if (args.PreviousPosition == 1)
+        if (args.PreviousPosition == 1 && !PreparingScheduleStep)
             planner.Cancel();
-        if (args.CurrentPosition == 1)
-            await planner.InitializeAsync();
     }
 
     private async void NextClicked(object? sender, EventArgs args)
@@ -172,16 +197,20 @@ public partial class OnboardingPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        pageVisible = true;
         UpdateHeroPadding();
         if (permissionAttempted)
         {
             await reminders.RefreshAsync();
             UpdatePermissionState();
         }
+        await (schedulePreparation ??= PrepareScheduleStepAsync());
+        ShowReadyPlanner();
     }
 
     protected override void OnDisappearing()
     {
+        pageVisible = false;
         planner.Cancel();
         base.OnDisappearing();
     }

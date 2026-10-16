@@ -8,6 +8,15 @@ preview. Review the sessions and times before confirming and adding them.
 **Show matching details** optionally reveals interpreted interests, speakers and
 availability; warning rows and blocking errors remain visible when collapsed.
 
+Onboarding starts the real readiness check while showing the welcome. Its middle
+step contains the builder only when that succeeds; missing clients, unavailable
+models and timeouts leave a simple hearts/My Schedule explanation instead.
+There are no session examples and no saves on that explanatory step. The
+in-app builder remains available for readiness retries.
+Essentials AI currently exposes no public availability property and no Android
+chat implementation. The gate uses registered `IChatClient` support plus actual
+inference, so adding a future Android client registration reuses the same logic.
+
 All talks and participation in this agenda are fictional. Real names do not
 imply announced participation or endorsement.
 
@@ -73,6 +82,10 @@ explicit availability. All matching talks remain visible, including late talks
 and conflicts with existing likes: warning rows are unchecked and cannot be
 saved without changing the request. A don't-miss speaker request that cannot fit
 still reports its unsatisfied constraint.
+An unknown extracted person in "don't miss", "hear", "catch", or possessive
+session wording is retained for speaker-not-found validation, not silently
+discarded. Regression tests also ensure topic/backend words and unmentioned
+model-invented names do not become required speakers.
 
 Topic matching uses structured agenda tags, not arbitrary substrings: `AI`
 does not accidentally include every `MAUI` title. `MAUI` resolves to `.NET MAUI`.

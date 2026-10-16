@@ -9,6 +9,10 @@ using CommunityToolkit.Maui;
 using Plugin.LocalNotification;
 using Syncfusion.Maui.Toolkit.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.AI;
+#if IOS
+using Microsoft.Maui.Essentials.AI;
+#endif
 #if ANDROID
 using Microsoft.Maui.Platform;
 using Microsoft.Maui.LifecycleEvents;
@@ -135,6 +139,19 @@ public static class MauiProgram
         builder.Services.AddSingleton<DetailNavigationService>();
         builder.Services.TryAddSingleton(Browser.Default);
         builder.Services.AddSingleton<ConferenceViewModel>();
+#if IOS
+        if (OperatingSystem.IsIOSVersionAtLeast(26))
+        {
+#pragma warning disable MAUIAI0001
+            builder.Services.AddTransient<IChatClient>(services =>
+            {
+                if (!OperatingSystem.IsIOSVersionAtLeast(26))
+                    throw new PlatformNotSupportedException("Apple Intelligence requires iOS 26 or later.");
+                return new AppleIntelligenceChatClient(services.GetRequiredService<ILoggerFactory>(), services);
+            });
+#pragma warning restore MAUIAI0001
+        }
+#endif
         builder.Services.AddSingleton<OnDevicePlanner>();
         builder.Services.AddScoped<PlannerTools>();
         builder.Services.AddTransient<PlannerViewModel>();

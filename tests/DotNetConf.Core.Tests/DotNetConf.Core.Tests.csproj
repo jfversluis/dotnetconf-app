@@ -20,6 +20,7 @@
     <Using Include="Xunit" />
     <Compile Include="../../src/DotNetConf.App/FirstRunPlannerState.cs" Link="FirstRunPlannerState.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerTools.cs" Link="PlannerTools.cs" />
+    <Compile Include="../../src/DotNetConf.App/Services/OnDevicePlanner.cs" Link="OnDevicePlanner.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerJson.cs" Link="PlannerJson.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerCatalog.cs" Link="PlannerCatalog.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerStartingPoints.cs" Link="PlannerStartingPoints.cs" />

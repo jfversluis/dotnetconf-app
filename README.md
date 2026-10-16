@@ -28,6 +28,11 @@ there are no API keys, accounts, fake responses or cloud fallback.
 
 The full-screen welcome modal opens automatically on a fresh install without a
 navigation bar. Swipe or use Next/Back to move between the three steps.
+While the welcome is visible, the app checks the registered on-device chat
+client with a short local inference. The middle step shows the AI builder only
+after that succeeds. Otherwise it explains how hearts save talks to My Schedule,
+without a disabled AI form, sample sessions, or automatic changes to likes.
+Next and Skip remain available while readiness is being checked.
 **Skip setup** dismisses the carousel at any point without discarding sessions
 you explicitly saved. Completion and skipping are remembered across launches;
 an interrupted first run is offered again. Android back moves to the previous
@@ -68,8 +73,14 @@ The spike uses `Microsoft.Maui.Essentials.AI`'s `AppleIntelligenceChatClient`
 on supported Apple Intelligence iPhones with **iOS 26+**, Apple Intelligence
 enabled, a supported language, and the local model downloaded. It checks
 readiness with a short real local inference because this preview package has no
-public model-availability API. Android shows an unavailable message; normal
-browsing and likes still work. A simulator build alone does **not** establish
+public model-availability API. Onboarding uses the hearts explanation when no
+client is registered or inference is unavailable. The in-app builder retains
+its explicit unavailable/retry state. The capability gate depends on the
+registered `IChatClient` and its real readiness, not an onboarding platform check;
+when Essentials AI supplies Android chat, register that local client in
+`MauiProgram` and the same gate applies without onboarding changes.
+A package update alone cannot register an API that does not yet exist.
+Normal browsing and likes still work. A simulator build alone does **not** establish
 that the model is ready or that inference works.
 
 The local model produces schema-constrained query arguments and, when needed,
@@ -103,6 +114,9 @@ and unavailable for saving; they are not silently hidden. A don't-miss speaker
 request that cannot fit remains an explicit conflict. Only the topic
 vocabulary and bounded query results enter prompts, not the complete catalog.
 No function can change likes.
+Unknown extracted speakers explicitly requested with phrases such as
+"don't miss Ada Lovelace" or "Ada Lovelace's sessions" remain blocking
+speaker-not-found constraints rather than being discarded during grounding.
 `NLEmbeddingGenerator` is not needed for this small grounded agenda.
 Requests are bounded to four topics, eight speakers, twelve availability windows
 and twelve selected talks, with one time zone per request. Matching talks are

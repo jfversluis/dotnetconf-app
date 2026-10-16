@@ -36,11 +36,48 @@
                     </Grid>
                     <VerticalStackLayout Padding="24,28,24,24" Spacing="24" MaximumWidthRequest="600"
                                          HorizontalOptions="Fill">
-                        <Label Text="Start with a few interests. Our on-device session builder can turn them into a shortlist you review before saving." />
+                        <Label Text="Discover talks that interest you and keep your favorites together in My Schedule." />
                         <Label Text="No account. No cloud AI. Just you and the agenda."
                                FontFamily="OpenSansSemibold" FontSize="14" />
                         <Label Text="Fictional demo agenda. Talks and participation are not announced or endorsed."
                                Style="{StaticResource Secondary}" FontSize="13" />
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </ScrollView>
+        </DataTemplate>
+        <DataTemplate x:Key="ScheduleIntroTemplate" x:DataType="pages:OnboardingPage">
+            <ScrollView SafeAreaEdges="None" AutomationId="onboarding-schedule-scroll">
+                <VerticalStackLayout Spacing="0" SafeAreaEdges="None">
+                    <Grid SafeAreaEdges="None" Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}">
+                        <VerticalStackLayout Padding="{Binding HeroPadding}" Spacing="24" MaximumWidthRequest="600"
+                                             HorizontalOptions="Fill" SafeAreaEdges="None">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                                <Image Source="{StaticResource OnboardingHeartIcon}" HeightRequest="48" WidthRequest="48"
+                                       HorizontalOptions="Start" InputTransparent="True" AutomationProperties.IsInAccessibleTree="False" />
+                                <Button Grid.Column="1" Text="Skip setup" Clicked="SkipClicked" IsEnabled="{Binding CanNavigate}"
+                                        LineBreakMode="WordWrap" Style="{StaticResource QuietButton}" BorderWidth="0"
+                                        HorizontalOptions="End" VerticalOptions="Center" AutomationId="onboarding-skip" />
+                            </Grid>
+                            <VerticalStackLayout Spacing="16">
+                                <Label Text="A little heart.&#10;Your own lineup." Style="{StaticResource OnboardingHeading}"
+                                       AutomationId="onboarding-manual-title" />
+                                <Label Text="Tap the heart on any talk to save it to My Schedule. Tap again to remove it."
+                                       Style="{StaticResource OnboardingLead}" />
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                    </Grid>
+                    <VerticalStackLayout Padding="24,24" Spacing="16" MaximumWidthRequest="600" HorizontalOptions="Fill">
+                        <ActivityIndicator IsRunning="{Binding PreparingScheduleStep}" IsVisible="{Binding PreparingScheduleStep}"
+                                           HorizontalOptions="Start" AutomationId="onboarding-model-check"
+                                           SemanticProperties.Description="Checking on-device planning availability" />
+                        <Label Text="Checking whether on-device planning is available. You can keep going."
+                               IsVisible="{Binding PreparingScheduleStep}" Style="{StaticResource Secondary}" FontSize="14" />
+                        <Label Text="Find the full agenda in Sessions. Explore topics and speakers, then heart the talks you don't want to miss."
+                               AutomationId="onboarding-manual-explanation" />
+                        <Label Text="Your saved talks stay together in My Schedule. You can change your mind any time."
+                               Style="{StaticResource Secondary}" FontSize="14" />
+                        <Label Text="No account needed. Your schedule stays on this device."
+                               Style="{StaticResource Secondary}" FontSize="14" />
                     </VerticalStackLayout>
                 </VerticalStackLayout>
             </ScrollView>

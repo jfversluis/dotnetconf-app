@@ -36,6 +36,9 @@
     <FontImageSource x:Key="PlannerIcon" Glyph="{x:Static icons:FluentIconsRegular.Sparkle24}"
                      FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="48"
                      Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+    <FontImageSource x:Key="OnboardingHeartIcon" Glyph="{x:Static icons:FluentIconsRegular.Heart24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="48"
+                     Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
     <FontImageSource x:Key="ReminderIcon" Glyph="{x:Static icons:FluentIconsRegular.Alert24}"
                      FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="48"
                      Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />

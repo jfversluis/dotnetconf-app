@@ -57,10 +57,14 @@ Five Shell destinations: Home, Sessions, Speakers, My Schedule, Community. Andro
 ## Content and states
 
 First-run onboarding is a separate full-screen modal carousel without a
-navigation bar: welcome, optional AI session builder, and optional session
+navigation bar: welcome, personal schedule introduction, and optional session
 reminders. Space Grotesk headings, typed Fluent icons and short explanatory
 copy focus each step on one task. Swipe and persistent Next/Back controls move
-between steps; Skip setup remains reachable outside the scrolling content.
+between steps; Skip setup sits alongside each hero icon.
+The middle step becomes the AI builder only after a registered local model
+passes readiness. Otherwise a heart-led introduction explains Sessions and
+My Schedule, without disabled AI inputs or session examples. A small loading
+state explains the check without blocking Next or Skip.
 All three steps share a 34-unit heading, 48-unit Fluent icon, and the
 incumbent hero wash, with 24-unit gutters aligned to the builder.
 The builder uses a sparkle glyph to distinguish AI-assisted planning from the

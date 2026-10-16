@@ -2,27 +2,22 @@ using DotNetConf.Core;
 using System.Text.Json;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
-#if IOS
-using Microsoft.Maui.Essentials.AI;
-#endif
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DotNetConf.App.Services;
 
 public sealed record PlannerResult(ScheduleProposal? Proposal, string Message);
 
-public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
+public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory,
+    IServiceProviderIsService registeredServices)
 {
-    public static string? UnsupportedReason =>
-#if IOS
-        OperatingSystem.IsIOSVersionAtLeast(26) ? null :
-        "This spike needs iOS 26 or later with Apple Intelligence enabled and its model downloaded.";
-#else
-        "On-device planning is currently available only on supported Apple Intelligence iPhones running iOS 26+. Android inference is not available in this package.";
-#endif
+    public string? UnsupportedReason => registeredServices.IsService(typeof(IChatClient)) ? null :
+        "No on-device chat model is supported by this app on your device. You can build My Schedule using the hearts in the agenda.";
 
     public async Task CheckReadinessAsync(CancellationToken cancellationToken)
     {
-        using var client = CreateClient(null);
+        using var scope = scopeFactory.CreateScope();
+        var client = CreateClient(scope.ServiceProvider);
         // This package has no public availability API. A real, short local inference
         // checks model readiness, not just the OS version or device name.
         await client.GetResponseAsync("Reply with READY.", new ChatOptions { MaxOutputTokens = 16 }, cancellationToken);
@@ -36,7 +31,8 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
         Random.Shared.Shuffle(topics);
         var candidates = topics.Take(8).ToArray();
         var schema = PlannerStartingPoints.Schema(conference, candidates);
-        using var client = CreateClient(null);
+        using var scope = scopeFactory.CreateScope();
+        var client = CreateClient(scope.ServiceProvider);
         var response = await client.GetResponseAsync(
             [new ChatMessage(ChatRole.System,
                 $"Choose {Math.Min(5, candidates.Length)} different, inviting starting topics for a software conference attendee from the provided candidate list. Use ONLY exact candidate names. Favor a varied mix, using this agenda as context. Return JSON with a topics array.\n{catalog}"),
@@ -55,7 +51,7 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
         using var scope = scopeFactory.CreateScope();
         var tools = scope.ServiceProvider.GetRequiredService<PlannerTools>();
         tools.Initialize(conference, zone, savedIds);
-        using var client = CreateClient(scope.ServiceProvider);
+        var client = CreateClient(scope.ServiceProvider);
         var first = TimeZoneInfo.ConvertTime(conference.Sessions.Min(s => s.StartsAt), zone);
         try
         {
@@ -204,16 +200,10 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
         return new(tools.Proposal ?? tools.Preferences, "");
     }
 
-    private IChatClient CreateClient(IServiceProvider? services)
+    private IChatClient CreateClient(IServiceProvider services)
     {
         if (UnsupportedReason is { } reason)
             throw new PlatformNotSupportedException(reason);
-#if IOS
-        if (OperatingSystem.IsIOSVersionAtLeast(26))
-#pragma warning disable MAUIAI0001
-            return new AppleIntelligenceChatClient(loggerFactory, services);
-#pragma warning restore MAUIAI0001
-#endif
-        throw new PlatformNotSupportedException("Apple Intelligence is unavailable.");
+        return services.GetRequiredService<IChatClient>();
     }
 }

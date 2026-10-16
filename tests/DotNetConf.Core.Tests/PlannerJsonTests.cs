@@ -100,6 +100,25 @@ public sealed class PlannerJsonTests
                 .Ground(conference, $"I must see {name}").Speakers);
     }
 
+    [Theory]
+    [InlineData("I don't want to miss Ada Lovelace", "Ada Lovelace")]
+    [InlineData("Don't miss Ada", "Ada")]
+    [InlineData("I don’t want to miss Ada Lovelace", "Ada Lovelace")]
+    [InlineData("Do not miss Ada Lovelace", "Ada Lovelace")]
+    [InlineData("I want to hear Ada Lovelace", "Ada Lovelace")]
+    [InlineData("Catch Ada Lovelace and all the AI talks", "Ada Lovelace")]
+    [InlineData("Ada Lovelace's sessions are a must", "Ada Lovelace")]
+    public async Task UnknownExtractedSpeakerRemainsABlockingConstraint(string request, string name)
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        var grounded = new PlannerInterpretation(name, "none", "AI", "all").Ground(conference, request);
+        Assert.Equal([name], grounded.Speakers);
+        var review = SchedulePlanner.Review(conference, new([], grounded.Speakers, []), TimeZoneInfo.Utc, []);
+        Assert.False(review.CanApply);
+        Assert.Contains(review.Errors, error => error.StartsWith("Speaker not found", StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task ModelCannotTurnBackendWordsOrUnmentionedRealPeopleIntoRequiredSpeakers()
     {

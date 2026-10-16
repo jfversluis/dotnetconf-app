@@ -76,9 +76,10 @@ public static class Agenda
             && Regex.IsMatch(remainder, $@"\b{Regex.Escape(name)}\b",
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)));
         var unknown = names.Except(topicNames, StringComparer.OrdinalIgnoreCase)
-            .Where(name => FindSpeakers(conference, name).Count == 0 && Regex.IsMatch(request,
-                $@"\b(?:by|from|with|see)\s+{Regex.Escape(name)}\b",
-                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)));
+            .Where(name => FindSpeakers(conference, name).Count == 0
+                && Regex.IsMatch(request,
+                    $@"\b(?:by|from|with|see|miss|watch|hear|catch|featuring|speaker)\s+{Regex.Escape(name)}\b|\b{Regex.Escape(name)}['’]s\s+(?:talks?|sessions?|presentations?)\b",
+                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)));
         var speakers = fullNames.Concat(aliases).Concat(prefixes).Concat(unknown).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
         var explicitTopics = topics.Where(t => Regex.IsMatch(request,
                 $$"""(?<![\p{L}\p{N}]){{Regex.Escape(t)}}(?![\p{L}\p{N}])""",

@@ -88,7 +88,7 @@ public partial class PlannerViewModel(
     public bool HasStartingPointsStatus => !string.IsNullOrWhiteSpace(StartingPointsStatus);
     public bool CanGenerate => IsReady && !IsBusy && !string.IsNullOrWhiteSpace(Request);
     public bool CanEdit => !IsBusy;
-    public bool CanRetryModel => !IsReady && !IsBusy && OnDevicePlanner.UnsupportedReason is null;
+    public bool CanRetryModel => !IsReady && !IsBusy && planner.UnsupportedReason is null;
     public bool CanApply => HasValidProposal && ConstraintsConfirmed && !IsBusy;
     public bool HasStatus => !string.IsNullOrWhiteSpace(Status);
     public bool HasValidationErrors => !HasValidProposal && !string.IsNullOrWhiteSpace(Validation);
@@ -121,7 +121,7 @@ public partial class PlannerViewModel(
         ClearProposal();
         IsReady = false;
         IsLoadingStartingPoints = true;
-        if (OnDevicePlanner.UnsupportedReason is { } unsupported)
+        if (planner.UnsupportedReason is { } unsupported)
         {
             Status = unsupported;
             IsLoadingStartingPoints = false;
