@@ -74,6 +74,8 @@ The hero content follows the actual top safe-area inset. The footer is a
 single compact row: quiet Back, progress dots/count, and a content-width Next
 button (Done on the final step). There is no full-width Continue action.
 Action columns size to their text so large fonts do not split short labels.
+Both action slots reserve matching widths, keeping progress centered even when
+Back is hidden on the first slide.
 Idle reminder status is hidden; permission
 results and recovery remain visible. Labels wrap and content scrolls at larger
 text sizes without disabling font scaling.
