@@ -13,12 +13,17 @@
     </ContentView.Resources>
     <ScrollView SafeAreaEdges="Default" AutomationId="planner-scroll">
         <VerticalStackLayout Spacing="0" MaximumWidthRequest="720" HorizontalOptions="Fill" SafeAreaEdges="None">
-            <VerticalStackLayout Padding="24,24" Spacing="12" SafeAreaEdges="None"
+            <VerticalStackLayout Padding="24,32,24,28" Spacing="24" SafeAreaEdges="None"
                                  Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}">
-                <Label Text="Your conference,&#10;your way." Style="{StaticResource Heading}" FontSize="32"
-                       AutomationId="planner-welcome" />
-                <Label Text="Tell us what you want to learn. Get a personal shortlist, then choose what to save."
-                       MaximumWidthRequest="520" HorizontalOptions="Start" />
+                <Image Source="{StaticResource PlannerIcon}" HeightRequest="48" WidthRequest="48"
+                       HorizontalOptions="Start" InputTransparent="True"
+                       AutomationProperties.IsInAccessibleTree="False" AutomationId="planner-hero-icon" />
+                <VerticalStackLayout Spacing="16">
+                    <Label Text="Your conference,&#10;your way." Style="{StaticResource Heading}" FontSize="34"
+                           AutomationId="planner-welcome" />
+                    <Label Text="Tell us what you want to learn. Get a personal shortlist, then choose what to save."
+                           FontSize="18" MaximumWidthRequest="520" HorizontalOptions="Start" />
+                </VerticalStackLayout>
             </VerticalStackLayout>
             <VerticalStackLayout Padding="24,20,24,24" Spacing="20" SafeAreaEdges="None">
                 <VerticalStackLayout Spacing="8" IsVisible="{Binding CanEdit}">

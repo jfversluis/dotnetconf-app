@@ -61,9 +61,11 @@ navigation bar: welcome, optional AI session builder, and optional session
 reminders. Space Grotesk headings, typed Fluent icons and short explanatory
 copy focus each step on one task. Swipe and persistent Next/Back controls move
 between steps; Skip setup remains reachable outside the scrolling content.
-Welcome and reminders share a 34-unit heading, 48-unit Fluent icon, and the
-incumbent hero wash, with 24-unit gutters aligned to the builder. Supporting
-copy returns to the neutral reading surface. The separated footer groups dots
+All three steps share a 34-unit heading, 48-unit Fluent icon, and the
+incumbent hero wash, with 24-unit gutters aligned to the builder.
+The builder uses a sparkle glyph to distinguish AI-assisted planning from the
+welcome's agenda and reminder's bell; the shared in-app builder retains it.
+Supporting copy returns to the neutral reading surface. The separated footer groups dots
 and the step count in one compact row; Back/Skip remain secondary text actions.
 On the reminder step, Enable is primary and the finish action is outlined so
 two filled actions do not compete. Idle reminder status is hidden; permission
