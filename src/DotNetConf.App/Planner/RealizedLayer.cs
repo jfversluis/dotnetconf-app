@@ -12,6 +12,8 @@ internal sealed class RealizedLayer<TKey, TControl>(Canvas canvas) where TKey : 
     private readonly HashSet<TKey> shown = [];
     private readonly List<TKey> stale = [];
 
+    public IReadOnlyDictionary<TKey, TControl> Realized => realized;
+
     public void Begin() => shown.Clear();
 
     public TControl Show(TKey key, Func<TControl> create, double x, double y, double width, double height)

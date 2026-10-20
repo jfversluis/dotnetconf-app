@@ -176,10 +176,11 @@ public sealed class TimelineLayout
 
     /// <summary>
     /// Whether an item gets counted instead of shown when <paramref name="columns"/> lanes fit side by side:
-    /// a group that needs more lanes keeps its last visible column for the count.
+    /// a group that needs more lanes keeps its last visible column for the count. A single column still shows the
+    /// first lane, with the count beside it.
     /// </summary>
     public static bool IsHidden(int lane, int laneCount, int columns) =>
-        laneCount > columns && lane >= columns - 1;
+        laneCount > columns && lane >= Math.Max(columns - 1, 1);
 
     /// <summary>
     /// Items of a day overlapping the given range of timeline minutes that are shown with this many columns.
@@ -218,6 +219,29 @@ public sealed class TimelineLayout
     }
 
     /// <summary>
+    /// The items <see cref="HiddenBetween"/> counts, in start order.
+    /// </summary>
+    public IEnumerable<int> HiddenItemsBetween(int day, double from, double to, int columns)
+    {
+        var (lower, upper) = (Math.Ceiling(from), Math.Ceiling(to));
+        var dayEnd = day + 1 < dayFirst.Length ? dayFirst[day + 1] : Count;
+        var (start, end) = (dayFirst[day], dayEnd);
+        while (start < end)
+        {
+            var middle = (start + end) / 2;
+            if (Starts[middle] < lower)
+                start = middle + 1;
+            else
+                end = middle;
+        }
+        for (var item = start; item < dayEnd && Math.Floor(Starts[item]) < upper; item++)
+        {
+            if (IsHidden(Lanes[item], LaneCounts[item], columns))
+                yield return item;
+        }
+    }
+
+    /// <summary>
     /// Whether any session is running at this instant.
     /// </summary>
     public bool AnyLive(DateTimeOffset now)
@@ -251,18 +275,18 @@ public sealed class TimelineLayout
     public (int Day, double Offset)? Locate(DateTimeOffset instant) => Timeline.Locate(Days, instant, timeZone);
 
     /// <summary>
-    /// The shown items just before and after one, in time order, or -1 where there is none.
+    /// The shown items just before and after one, in time order, or -1 where there is none. The item itself may be
+    /// counted instead of shown, and <paramref name="include"/> can skip more, such as sessions outside a filter.
     /// </summary>
-    public (int Previous, int Next) ShownNeighbours(int item, int columns)
+    public (int Previous, int Next) ShownNeighbours(int item, int columns, Func<int, bool>? include = null)
     {
         var position = Array.BinarySearch(shownStorage, item);
-        if (position < 0)
-            return (-1, -1);
-        var previous = position - 1;
-        while (previous >= 0 && IsHidden(Lanes[shownStorage[previous]], LaneCounts[shownStorage[previous]], columns))
+        var (previous, next) = position >= 0 ? (position - 1, position + 1) : (~position - 1, ~position);
+        bool Skip(int index) =>
+            IsHidden(Lanes[shownStorage[index]], LaneCounts[shownStorage[index]], columns) || include?.Invoke(shownStorage[index]) == false;
+        while (previous >= 0 && Skip(previous))
             previous--;
-        var next = position + 1;
-        while (next < shownStorage.Length && IsHidden(Lanes[shownStorage[next]], LaneCounts[shownStorage[next]], columns))
+        while (next < shownStorage.Length && Skip(next))
             next++;
         return (previous >= 0 ? shownStorage[previous] : -1, next < shownStorage.Length ? shownStorage[next] : -1);
     }

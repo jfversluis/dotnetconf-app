@@ -44,6 +44,43 @@ public sealed class TimelineLayoutTests
     }
 
     [Fact]
+    public void ASingleColumnStillShowsTheFirstSessionOfAnOverlap()
+    {
+        var layout = TimelineLayout.Build(Sessions, Utc);
+        var length = layout.Days[0].Length;
+
+        Assert.Equal(["a", "d"], Ids(layout, layout.ShownBetween(0, 0, length, columns: 1)));
+        Assert.Equal(2, layout.HiddenBetween(0, 0, length, columns: 1));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void TheCountedSessionsCanBeListed(int columns)
+    {
+        var layout = TimelineLayout.Build([.. Sessions, At("e", "2026-11-11T16:00Z", "2026-11-11T16:45Z")], Utc);
+        var day = layout.Days[0];
+        double Offset(string time) => day.OffsetOf(DateTimeOffset.Parse($"2026-11-10T{time}Z"))!.Value;
+
+        Assert.Equal(["b", "c"], Ids(layout, layout.HiddenItemsBetween(0, 0, double.MaxValue, columns)));
+        Assert.Equal(["b"], Ids(layout, layout.HiddenItemsBetween(0, Offset("16:00"), Offset("16:20"), columns)));
+        Assert.Equal(layout.HiddenBetween(0, Offset("16:20"), Offset("16:40"), columns),
+            layout.HiddenItemsBetween(0, Offset("16:20"), Offset("16:40"), columns).Count());
+        Assert.Empty(layout.HiddenItemsBetween(1, 0, double.MaxValue, columns));
+    }
+
+    [Fact]
+    public void NeighboursSkipFilteredSessionsAndCanStartFromACountedOne()
+    {
+        var layout = TimelineLayout.Build(Sessions, Utc);
+        var (a, b, c, d) = (Item(layout, "a"), Item(layout, "b"), Item(layout, "c"), Item(layout, "d"));
+
+        Assert.Equal((-1, c), layout.ShownNeighbours(a, columns: 3, item => item != b));
+        Assert.Equal((-1, -1), layout.ShownNeighbours(a, columns: 2, item => item != d));
+        Assert.Equal((a, d), layout.ShownNeighbours(b, columns: 2));
+    }
+
+    [Fact]
     public void OnlySessionsOverlappingTheRangeAreShown()
     {
         var layout = TimelineLayout.Build(Sessions, Utc);

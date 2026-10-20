@@ -57,6 +57,7 @@ public sealed class PlannerView : UserControl
     // The gap a card keeps from the times it starts and ends.
     private const double CardInset = 2;
     private const double OverflowSliceMinutes = 15;
+    private const double OverflowStripWidth = 44;
     // During the conference the timeline opens with the current time this far down the screen.
     private const double NowFromTop = 0.3;
     private const double MaxTextScale = 1.6;
@@ -96,7 +97,7 @@ public sealed class PlannerView : UserControl
     private readonly OverviewRail rail;
     private readonly Style[] motion;
     private readonly RealizedLayer<int, DayHeader> headers;
-    private readonly RealizedLayer<(int Day, int Minute, int Count), OverflowMarker> overflow;
+    private readonly RealizedLayer<(int Day, int From, int To, int Columns), OverflowMarker> overflow;
     private readonly Dictionary<int, SessionCard> cards = [];
     private readonly Stack<SessionCard> pool = new();
     private readonly HashSet<int> placed = [];
@@ -158,7 +159,7 @@ public sealed class PlannerView : UserControl
         ];
 
         chips = new WrapPanel { Margin = new Thickness(SideMargin, 4, SideMargin, 0) };
-        summary = new TextBlock { FontFamily = PlannerTheme.BodyFont, FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
+        summary = new TextBlock { FontFamily = PlannerTheme.BodyFont, FontSize = 13, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
         statusDot = new Ellipse { Width = 8, Height = 8, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
         statusDot.Classes.Add("live-dot");
         status = new TextBlock { FontFamily = PlannerTheme.BodyFont, FontSize = 13, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center };
@@ -181,7 +182,7 @@ public sealed class PlannerView : UserControl
         KeyboardNavigation.SetTabNavigation(canvas, KeyboardNavigationMode.Local);
         canvas.Children.AddRange([backdrop, route, message]);
         headers = new RealizedLayer<int, DayHeader>(canvas);
-        overflow = new RealizedLayer<(int, int, int), OverflowMarker>(canvas);
+        overflow = new RealizedLayer<(int, int, int, int), OverflowMarker>(canvas);
         scroller = new ScrollViewer
         {
             Content = canvas,
@@ -626,24 +627,28 @@ public sealed class PlannerView : UserControl
         var from = scroller.Offset.Y - buffer;
         var to = scroller.Offset.Y + scroller.Viewport.Height + buffer;
         var columns = Math.Clamp((int)((cardsWidth + LaneGap) / (MinLaneWidth + LaneGap)), 1, TimelineLayout.MaxColumns);
+        // Each overflow marker covers a slice of the day, inset like a card; zoomed out, slices merge so the markers
+        // never overlap.
+        var sliceMinutes = (int)(OverflowSliceMinutes * Math.Ceiling((OverflowMarker.MarkerHeight + 2 * CardInset) / (OverflowSliceMinutes * minuteHeight)));
         placed.Clear();
         headers.Begin();
         overflow.Begin();
         backdrop.Clear();
         for (var day = FirstDayEndingAfter(from); day < timeline.Days.Count && dayTops[day] <= to; day++)
-            RealizeDay(timeline, theme, day, from, to, columns);
+            RealizeDay(timeline, theme, day, from, to, columns, sliceMinutes);
         foreach (var (day, start, end, overlap) in bands)
             backdrop.Bands.Add((DayTop(day) + start * minuteHeight, (end - start) * minuteHeight, overlap));
         headers.End();
+        var focusedMarker = KeepFocusedMarker(timeline, theme, columns, sliceMinutes);
         overflow.End();
-        KeepFocusedRealized(timeline, theme, columns);
+        KeepFocusedRealized(timeline, theme, columns, focusedMarker?.FirstItem ?? -1);
         RecycleStale();
         PlayEntrance();
         WarmPool();
     }
 
     // One day's header, hours, breaks, cards and overflow counts between two points on the canvas.
-    private void RealizeDay(TimelineLayout timeline, PlannerTheme theme, int day, double from, double to, int columns)
+    private void RealizeDay(TimelineLayout timeline, PlannerTheme theme, int day, double from, double to, int columns, int sliceMinutes)
     {
         var timelineDay = timeline.Days[day];
         var top = DayTop(day);
@@ -671,23 +676,45 @@ public sealed class PlannerView : UserControl
         foreach (var item in timeline.ShownBetween(day, fromMinute, toMinute, columns))
             PlaceCard(timeline, theme, item, day, columns);
 
-        // Sessions past the lanes that fit are counted on markers in the last column. Each marker covers a slice of
-        // the day, inset like a card; zoomed out, slices merge so the markers never overlap.
-        var sliceMinutes = OverflowSliceMinutes * Math.Ceiling((OverflowMarker.MarkerHeight + 2 * CardInset) / (OverflowSliceMinutes * minuteHeight));
-        var columnWidth = (cardsWidth - LaneGap * (columns - 1)) / columns;
-        var columnX = cardsLeft + (columns - 1) * (columnWidth + LaneGap);
-        for (var slice = Math.Max(0, Math.Floor(fromMinute / sliceMinutes)); slice * sliceMinutes <= Math.Min(toMinute, timelineDay.Length); slice++)
+        // Sessions past the lanes that fit are counted on markers in the last column.
+        for (var slice = Math.Max(0, (int)Math.Floor(fromMinute / sliceMinutes)); slice * sliceMinutes <= Math.Min(toMinute, timelineDay.Length); slice++)
         {
-            var count = timeline.HiddenBetween(day, slice * sliceMinutes, (slice + 1) * sliceMinutes, columns);
-            if (count > 0)
-                overflow.Show((day, (int)(slice * sliceMinutes), count), () => new OverflowMarker(count, theme),
-                    columnX, top + slice * sliceMinutes * minuteHeight + CardInset, columnWidth, OverflowMarker.MarkerHeight);
+            if (timeline.HiddenBetween(day, slice * sliceMinutes, (slice + 1) * sliceMinutes, columns) > 0)
+                ShowMarker(timeline, theme, (day, slice * sliceMinutes, (slice + 1) * sliceMinutes, columns));
         }
     }
 
-    // The focused card and its neighbours in time stay realized, even off screen: scrolling with the wheel doesn't drop
-    // keyboard focus, and Tab always has the next session to go to.
-    private void KeepFocusedRealized(TimelineLayout timeline, PlannerTheme theme, int columns)
+    private OverflowMarker ShowMarker(TimelineLayout timeline, PlannerTheme theme, (int Day, int From, int To, int Columns) slice)
+    {
+        // A single column has no last column to spare, so the markers take the strip its overlapping cards leave.
+        var width = slice.Columns == 1 ? OverflowStripWidth : (cardsWidth - LaneGap * (slice.Columns - 1)) / slice.Columns;
+        var marker = overflow.Show(slice, () => NewMarker(timeline, theme, slice),
+            cardsLeft + cardsWidth - width, DayTop(slice.Day) + slice.From * minuteHeight + CardInset, width, OverflowMarker.MarkerHeight);
+        marker.Fit(width);
+        return marker;
+    }
+
+    private OverflowMarker NewMarker(TimelineLayout timeline, PlannerTheme theme, (int Day, int From, int To, int Columns) slice)
+    {
+        var items = timeline.HiddenItemsBetween(slice.Day, slice.From, slice.To, slice.Columns).ToArray();
+        return new OverflowMarker(items[0], [.. items.Select(item => layoutSessions[timeline.Sessions[item]])], Matches, theme);
+    }
+
+    // A focused marker stays realized like a focused card, unless zooming or resizing has replaced its slice.
+    private OverflowMarker? KeepFocusedMarker(TimelineLayout timeline, PlannerTheme theme, int columns, int sliceMinutes)
+    {
+        foreach (var (slice, marker) in overflow.Realized)
+        {
+            if (marker.IsKeyboardFocusWithin && slice.Columns == columns && slice.To - slice.From == sliceMinutes)
+                return ShowMarker(timeline, theme, slice);
+        }
+        return null;
+    }
+
+    // The focused card or marker and the matching sessions either side of it stay realized, even off screen: scrolling
+    // with the wheel doesn't drop keyboard focus, and Tab always has the next session to go to, past filtered-out
+    // cards, which can't take focus.
+    private void KeepFocusedRealized(TimelineLayout timeline, PlannerTheme theme, int columns, int focusedMarkerItem)
     {
         var focused = -1;
         foreach (var (item, card) in cards)
@@ -695,9 +722,12 @@ public sealed class PlannerView : UserControl
             if (card.IsKeyboardFocusWithin)
                 focused = item;
         }
-        if (focused < 0 || TimelineLayout.IsHidden(timeline.Lanes[focused], timeline.LaneCounts[focused], columns))
+        if (focused >= 0 && TimelineLayout.IsHidden(timeline.Lanes[focused], timeline.LaneCounts[focused], columns))
             return;
-        var (previous, next) = timeline.ShownNeighbours(focused, columns);
+        var anchor = focused >= 0 ? focused : focusedMarkerItem;
+        if (anchor < 0)
+            return;
+        var (previous, next) = timeline.ShownNeighbours(anchor, columns, item => Matches(layoutSessions[timeline.Sessions[item]]));
         foreach (var item in (ReadOnlySpan<int>)[focused, previous, next])
         {
             if (item >= 0 && !placed.Contains(item))
@@ -720,7 +750,8 @@ public sealed class PlannerView : UserControl
     private void PlaceCard(TimelineLayout timeline, PlannerTheme theme, int item, int day, int columns)
     {
         var lanes = Math.Min(timeline.LaneCounts[item], columns);
-        var laneWidth = (cardsWidth - LaneGap * (lanes - 1)) / lanes;
+        var width = columns == 1 && timeline.LaneCounts[item] > 1 ? cardsWidth - OverflowStripWidth - LaneGap : cardsWidth;
+        var laneWidth = (width - LaneGap * (lanes - 1)) / lanes;
         var height = (timeline.Ends[item] - timeline.Starts[item]) * minuteHeight - 2 * CardInset;
         var card = Realized(timeline, theme, item);
         Place(card, cardsLeft + timeline.Lanes[item] * (laneWidth + LaneGap), DayTop(day) + timeline.Starts[item] * minuteHeight + CardInset,
@@ -816,8 +847,13 @@ public sealed class PlannerView : UserControl
         rail.InvalidateVisual();
     }
 
-    private void OnCanvasGotFocus(object? sender, FocusChangedEventArgs e) =>
+    private void OnCanvasGotFocus(object? sender, FocusChangedEventArgs e)
+    {
         focusFromKeyboard = e.NavigationMethod is NavigationMethod.Tab or NavigationMethod.Directional;
+        // Focus moving to a card already on screen doesn't scroll, so its neighbours are realized here for the next Tab.
+        if (focusFromKeyboard)
+            Realize();
+    }
 
     // Keyboard focus brings a card into view with room above for the pinned day header and below for a tab bar drawn
     // over the timeline, so the focused card is never left underneath either. Taps and screen readers keep the default.
