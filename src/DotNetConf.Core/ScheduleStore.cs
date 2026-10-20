@@ -15,12 +15,8 @@ public sealed class JsonScheduleStore(string path) : IScheduleStore
         try
         {
             await using var stream = File.OpenRead(path);
-            var ids = await JsonSerializer.DeserializeAsync(
-                stream, ConferenceJsonContext.Default.StringArray, cancellationToken)
-                ?? throw new InvalidDataException("The saved schedule is empty or invalid.");
-            if (ids.Any(string.IsNullOrWhiteSpace))
-                throw new InvalidDataException("The saved schedule contains invalid session IDs.");
-            return ids.Distinct(StringComparer.Ordinal).ToArray();
+            return Validate(await JsonSerializer.DeserializeAsync(
+                stream, ConferenceJsonContext.Default.StringArray, cancellationToken));
         }
         catch (FileNotFoundException)
         {
@@ -30,6 +26,15 @@ public sealed class JsonScheduleStore(string path) : IScheduleStore
         {
             return [];
         }
+    }
+
+    internal static IReadOnlyCollection<string> Validate(string[]? ids)
+    {
+        if (ids is null)
+            throw new InvalidDataException("The saved schedule is empty or invalid.");
+        if (ids.Any(string.IsNullOrWhiteSpace))
+            throw new InvalidDataException("The saved schedule contains invalid session IDs.");
+        return ids.Distinct(StringComparer.Ordinal).ToArray();
     }
 
     public async Task WriteAsync(IReadOnlyCollection<string> sessionIds, CancellationToken cancellationToken = default)
@@ -86,9 +91,12 @@ public sealed class ScheduleService(IScheduleStore store)
         await gate.WaitAsync(cancellationToken);
         try
         {
-            var next = new HashSet<string>(savedIds, StringComparer.Ordinal);
-            var added = next.Add(sessionId);
-            if (!added)
+            // Another browser tab may have changed the schedule since this one loaded, so start from what's stored.
+            var next = new HashSet<string>(await store.ReadAsync(cancellationToken), StringComparer.Ordinal);
+            var added = !next.Contains(sessionId);
+            if (added)
+                next.Add(sessionId);
+            else
                 next.Remove(sessionId);
             await store.WriteAsync(next, cancellationToken);
             savedIds = next;

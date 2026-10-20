@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Stand-in for IconFont.Maui.FluentIcons on the Avalonia targets. The 1.1.1 package only has Android, iOS,
+       Mac Catalyst and Windows assemblies, so this keeps its assembly name, namespace and API for net11.0 and
+       net11.0-browser. The package id differs so NuGet still restores the real package, which supplies the fonts.
+       Remove this project once the package adds a platform-neutral target. -->
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <AssemblyName>IconFont.Maui.FluentIcons</AssemblyName>
+    <PackageId>DotNetConf.FluentIcons</PackageId>
+    <RootNamespace>IconFont.Maui.FluentIcons</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Core" Version="11.0.0-rc.1.26451.6" />
+  </ItemGroup>
+
+</Project>

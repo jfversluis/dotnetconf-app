@@ -27,7 +27,7 @@ The app is **in development and not yet available in the App Store or Google Pla
 
 Saved sessions and your appearance preference are stored locally on your device. There is no account or cloud sync in the current app. Links to the conference website open in your browser.
 
-Community maps use Apple Maps on iOS and Google Maps on Android, with an internet connection for map tiles. The app does not request your location. The event list remains available without map tiles; Android builds without a configured Maps key use the list.
+Community maps use Apple Maps on iOS and Google Maps on Android, with an internet connection for map tiles. The app does not request your location. The event list remains available without map tiles; Android builds without a configured Maps key, Linux and the browser use the list.
 
 Read the [privacy policy](https://jfversluis.dev/dotnetconf-privacy-policy.html),
 also available under Settings → About.
@@ -37,7 +37,7 @@ offline under Settings → About → Third-party dependencies.
 
 ## About the project
 
-Built with [.NET MAUI](https://dotnet.microsoft.com/apps/maui) and .NET 11 RC2 technology, with styling inspired by the .NET Conf website. This is an unofficial project, not an official Microsoft conference app.
+Built with [.NET MAUI](https://dotnet.microsoft.com/apps/maui) and .NET 11 RC2 technology, with styling inspired by the .NET Conf website. The same app also runs on Linux desktop and in the browser, drawn by [Avalonia.Controls.Maui](https://github.com/AvaloniaUI/Avalonia.Controls.Maui). This is an unofficial project, not an official Microsoft conference app.
 
 The rocket-bot artwork is used with permission. That permission does not grant a general license to reuse the artwork; bundled third-party notices include its provenance and font licenses.
 
