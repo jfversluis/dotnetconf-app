@@ -55,8 +55,8 @@ dependency graph also includes Windows and macOS native libraries; their
 inclusion here does not claim support for those platforms.
 
 Microsoft.Maui.Graphics.Skia 11.0.0-rc.1.26451.6
-Copyright (c) Microsoft Corporation
-https://github.com/dotnet/Microsoft.Maui.Graphics
+Copyright (c) .NET Foundation and Contributors
+https://github.com/dotnet/maui
 MIT license: LICENSE-DotNetFoundation.txt
 This transitive Avalonia renderer dependency is versioned independently from
 the MAUI Controls/Graphics packages listed above.
