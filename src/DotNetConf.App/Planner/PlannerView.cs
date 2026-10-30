@@ -24,8 +24,8 @@ using DotNetConf.App.ViewModels;
 using DotNetConf.Core;
 
 /// <summary>
-/// The My Schedule timeline, drawn by Avalonia on every target: each local day to scale, saved sessions
-/// highlighted, overlaps hatched, topics filtered in place and a live marker for the current time.
+/// The My Schedule timeline, drawn by Avalonia on every target: saved sessions on each local day to scale,
+/// overlaps hatched, topics filtered in place and a live marker for the current time.
 /// Only what is on screen gets controls, so it stays smooth with very large agendas, and it zooms by pinch,
 /// trackpad, Ctrl + wheel, keyboard or its zoom buttons.
 /// </summary>
@@ -272,7 +272,7 @@ public sealed class PlannerView : UserControl
     }
 
     /// <summary>
-    /// Every session of the conference, which the timeline is built from.
+    /// The saved sessions the timeline is built from, as a snapshot rebuilt whenever the schedule changes.
     /// </summary>
     public void SetSessions(IReadOnlyList<SessionViewModel>? value)
     {
@@ -492,7 +492,7 @@ public sealed class PlannerView : UserControl
             BuildChips(theme);
             if (sessions.Count == 0)
             {
-                ShowMessage("Your timeline appears here once the agenda has loaded.");
+                ShowMessage("Save sessions from the agenda to see your personal timeline.");
                 UpdateFilter();
                 return;
             }
@@ -523,7 +523,7 @@ public sealed class PlannerView : UserControl
             if (version != buildVersion)
                 return;
             ClearTimeline();
-            ShowMessage("The timeline couldn't be shown. The List view has every session.");
+            ShowMessage("The timeline couldn't be shown. The List view has your saved sessions.");
         }
     }
 

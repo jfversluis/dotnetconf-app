@@ -5,11 +5,28 @@ namespace DotNetConf.App.Pages;
 
 public partial class SchedulePage : ConferencePage
 {
+    private bool timelineSelected = true;
+
     public SchedulePage(ConferenceViewModel conference) : base(conference)
     {
         InitializeComponent();
         ShowTimeline(true);
     }
+
+    protected override void OnAppearing()
+    {
+        Conference.ScheduleChanged += OnScheduleChanged;
+        base.OnAppearing();
+        UpdatePresentation();
+    }
+
+    protected override void OnDisappearing()
+    {
+        Conference.ScheduleChanged -= OnScheduleChanged;
+        base.OnDisappearing();
+    }
+
+    private void OnScheduleChanged(object? sender, EventArgs e) => UpdatePresentation();
 
     // On iOS the timeline runs under the translucent tab bar; the page's safe area says how far.
     protected override void OnPropertyChanged(string? propertyName = null)
@@ -25,10 +42,17 @@ public partial class SchedulePage : ConferencePage
 
     private void ShowTimeline(bool timeline)
     {
-        Planner.IsVisible = timeline;
-        SavedList.IsVisible = !timeline;
+        timelineSelected = timeline;
+        UpdatePresentation();
         Select(TimelineButton, timeline);
         Select(ListButton, !timeline);
+    }
+
+    private void UpdatePresentation()
+    {
+        var showPlanner = timelineSelected && Conference.SavedTimelineSessions.Count > 0;
+        Planner.IsVisible = showPlanner;
+        SavedList.IsVisible = !showPlanner;
     }
 
     private static void Select(Button button, bool selected)

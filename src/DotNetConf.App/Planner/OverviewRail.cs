@@ -8,7 +8,7 @@ using Avalonia.Media;
 using Avalonia.Media.Immutable;
 
 /// <summary>
-/// The whole agenda in one strip beside the timeline, in place of its scrollbar: how busy each part is, the saved
+/// The personal schedule in one strip beside the timeline, in place of its scrollbar: how busy each part is, the saved
 /// sessions, the current time and the part on screen. Drag it, or tap anywhere on it, to get there.
 /// </summary>
 internal sealed class OverviewRail : Control

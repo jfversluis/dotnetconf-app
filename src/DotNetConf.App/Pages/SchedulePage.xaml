@@ -17,7 +17,7 @@
                 <HorizontalStackLayout Spacing="2" Padding="3">
                     <Button x:Name="TimelineButton" Text="Timeline" Clicked="OnTimelineClicked" CornerRadius="17"
                             Padding="18,0" MinimumHeightRequest="36" BorderWidth="0" AutomationId="schedule-timeline-mode"
-                            SemanticProperties.Hint="Shows every session on a timeline with your saved ones highlighted" />
+                            SemanticProperties.Hint="Shows only your saved sessions on a timeline" />
                     <Button x:Name="ListButton" Text="List" Clicked="OnListClicked" CornerRadius="17"
                             Padding="18,0" MinimumHeightRequest="36" BorderWidth="0" AutomationId="schedule-list-mode"
                             SemanticProperties.Hint="Shows only your saved sessions as a list" />
@@ -26,7 +26,7 @@
             <Label Text="{Binding TimeZoneLabel}" Style="{StaticResource Secondary}" FontSize="12" />
             <controls:StatusBanner AutomationId="schedule-status" />
         </VerticalStackLayout>
-        <planner:SchedulePlanner x:Name="Planner" Grid.Row="1" Sessions="{Binding AllSessions}"
+        <planner:SchedulePlanner x:Name="Planner" Grid.Row="1" Sessions="{Binding SavedTimelineSessions}"
                                  SavedSessions="{Binding SavedSessions}" Topics="{Binding Topics}"
                                  ClearTopicsCommand="{Binding ClearTopicFiltersCommand}" AutomationId="schedule-planner" />
         <RefreshView x:Name="SavedList" Grid.Row="1" IsVisible="False"

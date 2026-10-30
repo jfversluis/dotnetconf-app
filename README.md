@@ -11,7 +11,7 @@ Your .NET Conf, in your pocket. An **unofficial companion app for iOS and Androi
 - **Find your next idea.** Browse sessions and search by title, topic, or speaker. Switch between local days with scrolling day tabs, or narrow the agenda by topic.
 - **Meet the speakers.** Read their biographies and explore their talks, with easy navigation between speakers and sessions.
 - **Find your community.** Discover ways to watch together, meet local presenters, or organize a gathering. No community events ship with the app, and an official event feed is not connected yet. The empty event list links to the official website; the map stays hidden without events.
-- **Build your schedule.** Tap a heart to save a session. My Schedule opens on a timeline of every day: saved sessions stand out, overlaps are marked with how long they clash, topic filters fade what you don't need, and during the conference a live marker shows where you are. Pinch or use the zoom buttons to see more or less of the day, or switch to a plain list. Your choices stay on your device.
+- **Build your schedule.** Tap a heart to save a session. My Schedule shows only your saved sessions, as a timeline or a plain list. Only days with saved sessions appear on the timeline; overlaps are marked with how long they clash, topic filters fade what you don't need, and during the conference a live marker shows where you are. Pinch or use the zoom buttons to see more or less of the day. Your choices stay on your device.
 - **See times that make sense to you.** Session times use your device's local time zone.
 - **Feel at home.** Follow your device's appearance or choose Light or Dark in Settings. The app supports larger text.
 

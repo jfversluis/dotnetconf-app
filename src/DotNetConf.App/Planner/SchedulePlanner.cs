@@ -31,7 +31,7 @@ public sealed class SchedulePlanner : View
     public SchedulePlanner() => this.SetAppTheme(ThemeProperty, AppTheme.Light, AppTheme.Dark);
 
     /// <summary>
-    /// Every session of the conference; saved ones are highlighted.
+    /// A snapshot of the saved sessions to show on the timeline.
     /// </summary>
     public IReadOnlyList<SessionViewModel> Sessions
     {

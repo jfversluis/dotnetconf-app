@@ -151,7 +151,6 @@ internal sealed class SessionCard : Button
         topicColor = topic;
         startLabel = TimeZoneInfo.ConvertTime(session.Model.StartsAt, TimeZoneInfo.Local).ToString("t");
         time.Text = session.TimeLabel;
-        title.Text = session.Title;
         speakers.Text = session.SpeakerNames;
         Command = session.OpenCommand;
         Heart.Bind(session);
@@ -229,6 +228,7 @@ internal sealed class SessionCard : Button
     {
         if (Session is not { } session)
             return;
+        title.Text = session.IsWithdrawn ? $"Withdrawn: {session.Title}" : session.Title;
         var saved = session.IsSaved;
         savedFill.Opacity = saved ? 1 : 0;
         time.Foreground = saved ? SavedTime : Brush(topicColor);
@@ -250,7 +250,8 @@ internal sealed class SessionCard : Button
         });
         glow.Classes.Set("conflict", session.HasConflict);
 
-        var (label, color, showDot) = live ? ("LIVE", theme.Magenta, true)
+        var (label, color, showDot) = session.IsWithdrawn ? ("WITHDRAWN", theme.Conflict, false)
+            : live ? ("LIVE", theme.Magenta, true)
             : session.HasConflict ? ("OVERLAPS", theme.Conflict, false)
             : ended ? ("ENDED", theme.Secondary, false)
             : ("", theme.Secondary, false);

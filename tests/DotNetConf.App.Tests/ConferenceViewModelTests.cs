@@ -131,9 +131,61 @@ public sealed class ConferenceViewModelTests
         Assert.Equal(withdrawn, session.IsWithdrawn);
         Assert.Equal("old", Assert.Single(session.Speakers).Id);
         Assert.Equal(1, viewModel.SavedCount);
+        Assert.Same(session, Assert.Single(viewModel.SavedTimelineSessions));
         Assert.Contains("Saved.", session.SaveHint);
         Assert.Contains("id", store.SavedIds);
         Assert.Equal(access == NetworkAccess.None ? 0 : 1, repository.RefreshCalls);
+    }
+
+    [Fact]
+    public async Task TimelineContainsOnlyFavoritesAndRebuildsItsDaysWhenFavoritesChange()
+    {
+        var original = Snapshot();
+        var later = original.Document.Sessions[0] with
+        {
+            Id = "later",
+            Title = "Synthetic later session",
+            StartsAt = original.Document.Sessions[0].StartsAt.AddDays(1),
+            EndsAt = original.Document.Sessions[0].EndsAt.AddDays(1)
+        };
+        var snapshot = original with { Document = original.Document with
+        {
+            Sessions = [.. original.Document.Sessions, later]
+        } };
+        var store = new TestScheduleStore();
+        var schedule = new ScheduleService(store);
+        var viewModel = Create(new TestRepository(snapshot), store, new TestConnectivity
+        {
+            NetworkAccess = NetworkAccess.None
+        }, schedule);
+        await viewModel.InitializeAsync();
+        await (viewModel.RefreshCommand.ExecutionTask ?? Task.CompletedTask);
+
+        Assert.Equal(2, viewModel.Sessions.Count);
+        var firstSnapshot = viewModel.SavedTimelineSessions;
+        Assert.Equal("id", Assert.Single(firstSnapshot).Id);
+        Assert.Same(viewModel.SavedSessions[0], firstSnapshot[0]);
+        var firstDay = Assert.Single(Timeline.Build(firstSnapshot.Select(session => session.Model), TimeZoneInfo.Utc));
+        Assert.Equal(new DateOnly(2026, 11, 10), firstDay.Day);
+
+        await schedule.ToggleAsync("later");
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+        Assert.Equal(2, viewModel.SavedTimelineSessions.Count);
+        Assert.Single(firstSnapshot);
+        Assert.Equal(2, Timeline.Build(viewModel.SavedTimelineSessions.Select(session => session.Model), TimeZoneInfo.Utc).Count);
+
+        await schedule.ToggleAsync("id");
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+        Assert.Equal("later", Assert.Single(viewModel.SavedTimelineSessions).Id);
+        var laterDay = Assert.Single(Timeline.Build(viewModel.SavedTimelineSessions.Select(session => session.Model), TimeZoneInfo.Utc));
+        Assert.Equal(new DateOnly(2026, 11, 11), laterDay.Day);
+        Assert.Equal(later.StartsAt, Assert.Single(laterDay.Items).Start);
+
+        await schedule.ToggleAsync("later");
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+        Assert.Empty(viewModel.SavedTimelineSessions);
+        Assert.Empty(viewModel.SavedSessions);
+        Assert.Equal("Make it your conference", viewModel.ScheduleEmptyTitle);
     }
 
     [Fact]
@@ -192,14 +244,16 @@ public sealed class ConferenceViewModelTests
 
         var session = Assert.Single(viewModel.SavedSessions);
         Assert.True(session.IsWithdrawn);
+        Assert.Same(session, Assert.Single(viewModel.SavedTimelineSessions));
         Assert.Contains("No longer in the published agenda", session.NavigationDescription);
         Assert.Contains("No longer in the published agenda", session.SaveHint);
         Assert.Equal("Archived speaker", Assert.Single(session.Speakers).Name);
         Assert.Equal("future", Assert.Single(viewModel.Speakers).Id);
     }
 
-    private static ConferenceViewModel Create(TestRepository repository, TestScheduleStore store, TestConnectivity connectivity) =>
-        new(repository, new ScheduleService(store), new DetailNavigationService(), null!, connectivity,
+    private static ConferenceViewModel Create(TestRepository repository, TestScheduleStore store, TestConnectivity connectivity,
+        ScheduleService? schedule = null) =>
+        new(repository, schedule ?? new ScheduleService(store), new DetailNavigationService(), null!, connectivity,
             new SpeakerImageCache(new HttpClient(), Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()),
                 NullLogger<SpeakerImageCache>.Instance),
             NullLogger<ConferenceViewModel>.Instance);
