@@ -47,6 +47,64 @@ Copyright 2020 The Space Grotesk Project Authors
 https://github.com/floriankarsten/space-grotesk
 SIL Open Font License 1.1: LICENSE-SpaceGrotesk.txt
 
+Linux desktop and browser dependencies
+The following packages support the optional Avalonia targets, not the native
+Android/iOS UI. The Desktop and D-Bus components are desktop-only.
+
+Avalonia.Controls.Maui, Essentials, Desktop 11.0.0-rc.1.26252.343
+Copyright (c) 2025 AvaloniaUI
+Package copyright: Copyright 2025-2026 The AvaloniaUI Project
+https://github.com/AvaloniaUI/Avalonia.Controls.Maui
+MIT license: LICENSE-AvaloniaMaui.txt
+Additional upstream notices, including the Apache 2.0 license for ASP.NET Core
+MIME mappings: NOTICE-AvaloniaMaui.txt
+Legal texts from source commit fc2d40824774d8788dff1b0f2ec2706c1f16d71b
+and the matching NuGet package.
+
+Avalonia 12.1.2
+Includes Browser, Desktop, Fonts.Inter, FreeDesktop, FreeDesktop.AtSpi, HarfBuzz,
+Native, Remote.Protocol, Skia, Themes.Fluent, Win32 and X11 packages as applicable.
+Copyright (c) AvaloniaUI OÜ
+Package copyright: Copyright 2013-2026 The AvaloniaUI Project
+https://github.com/AvaloniaUI/Avalonia
+MIT license: LICENSE-Avalonia.txt
+Additional upstream copyright and license notices: NOTICE-Avalonia.txt
+Legal texts from source commit d3c867a9e2de379249b03dbeb3495bd7f076a81a.
+
+Avalonia.Controls.WebView 12.0.0
+Copyright 2019-2026 AvaloniaUI OÜ
+https://www.nuget.org/packages/Avalonia.Controls.WebView/12.0.0
+MIT license (same copyright holder and terms): LICENSE-Avalonia.txt
+
+Inter (embedded by Avalonia.Fonts.Inter; font version 3.019)
+Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)
+https://github.com/rsms/inter
+SIL Open Font License 1.1: LICENSE-Inter.txt
+License text from the upstream v3.19 release; the package's MIT license covers
+the Avalonia wrapper, not the font.
+
+SkiaSharp and native assets 4.151.0
+HarfBuzzSharp and native assets 14.2.1.102
+Copyright (c) 2015-2016 Xamarin, Inc.
+Copyright (c) 2017-2018 Microsoft Corporation.
+https://github.com/mono/SkiaSharp
+MIT license: LICENSE-SkiaSharp.txt
+The native packages include additional third-party material under its own
+licenses, including Skia and HarfBuzz: NOTICE-SkiaSharp.txt
+License and notices are reproduced verbatim from the matching NuGet packages.
+The SkiaSharp and HarfBuzzSharp native notice files are identical in these versions.
+
+MicroCom.Runtime 0.11.6
+Copyright (c) 2021 Nikita Tsukanov
+https://github.com/kekekeks/MicroCom
+MIT license: LICENSE-MicroCom.txt
+Legal text from source commit 76785efcafd91b5902fd19dd11145f6dd655b7b4.
+
+Tmds.DBus.Protocol 0.94.1 (Linux desktop)
+https://github.com/tmds/Tmds.DBus
+MIT license and copyright notices: LICENSE-TmdsDBus.txt
+Legal text from source commit b4a7fed0b878f74cb54f7cca84d2889af4e596ba.
+
 .NET Conf two-robots-on-a-rocket artwork
 Source: https://www.dotnetconf.net/img/conf-hero.b21gztz2hl.svg
 Used in launcher and splash assets with redistribution permission confirmed by
