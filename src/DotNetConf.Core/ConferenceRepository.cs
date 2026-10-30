@@ -35,11 +35,9 @@ public sealed class ConferenceRepository(
     public const string CommunitySource = "Sessionize";
     public const string CacheSource = "Cache";
     public const string MicrosoftUrl = "https://dotnet.microsoft.com/blob-assets/json/conf/conference-2026.json";
-    public const string CommunityUrl = "https://sessionize.com/api/v2/di6h1fo3/view/All";
-    private const int CacheSchemaVersion = 5;
+    private const int CacheSchemaVersion = 6;
     private const int MaximumFeedBytes = 4 * 1024 * 1024;
     private const int MaximumCacheBytes = 16 * 1024 * 1024;
-    private static readonly TimeZoneInfo Pacific = TimeZoneInfo.FindSystemTimeZoneById("America/Los_Angeles");
     private readonly TimeProvider clock = timeProvider ?? TimeProvider.System;
     private readonly SemaphoreSlim gate = new(1, 1);
     private readonly object refreshLock = new();
@@ -95,22 +93,36 @@ public sealed class ConferenceRepository(
             var cached = await JsonSerializer.DeserializeAsync(content,
                 RemoteAgendaJsonContext.Default.ConferenceCache, token).ConfigureAwait(false)
                 ?? throw new InvalidDataException("The agenda cache is null.");
-            if (cached.SchemaVersion is 1 or 2 or 3 or 4)
+            if (cached.SchemaVersion is 1 or 2 or 3 or 4 or 5)
             {
-                migrate = true;
-                if (cached.SchemaVersion is 2 or 3 or 4)
+                if (cached.SchemaVersion is 2 or 3 or 4 or 5)
                 {
                     ValidateCache(cached, legacy: true);
                     legacy = cached with
                     {
-                        Microsoft = SeparateLegacyProfiles(cached.Microsoft),
-                        Community = SeparateLegacyProfiles(cached.Community)
+                        Microsoft = SeparateLegacyProfiles(cached.Microsoft) with { RequiresProfileRefresh = true },
+                        Community = SeparateLegacyProfiles(cached.Community!)
                     };
                 }
+                migrate = true;
             }
             else
             {
                 ValidateCache(cached);
+                try
+                {
+                    var metadata = await LoadMetadataAsync(token).ConfigureAwait(false);
+                    var changed = metadata.StartDate != cached.Metadata.StartDate;
+                    var updated = ApplyMetadata(cached, metadata);
+                    ValidateCache(updated);
+                    cached = updated;
+                    if (changed)
+                        await SaveAsync(cached, token).ConfigureAwait(false);
+                }
+                catch (Exception exception) when (IsDataFailure(exception))
+                {
+                    issues.Add(new(CacheSource, exception));
+                }
                 state = cached;
                 Publish(Snapshot(state, true, issues));
                 return;
@@ -123,20 +135,29 @@ public sealed class ConferenceRepository(
             issues.Add(new(CacheSource, exception));
         }
 
-        var document = await metadataSource.LoadAsync(token).ConfigureAwait(false);
-        ConferenceJson.Validate(document);
-        if (document.Sessions.Count != 0 || document.Speakers.Count != 0 || document.WithdrawnSpeakers.Count != 0 ||
-            document.WithdrawnSessions.Count != 0 ||
-            document.CommunityEvents.Count != 0)
-            throw new InvalidDataException("App metadata must not contain sessions, speaker profiles or community events.");
+        var document = await LoadMetadataAsync(token).ConfigureAwait(false);
         var seeded = new ConferenceCache
         {
             SchemaVersion = CacheSchemaVersion,
             Metadata = document,
             Microsoft = DownloadedOrEmpty(legacy?.Microsoft),
-            Community = DownloadedOrEmpty(legacy?.Community)
+            Community = legacy is null ? null : DownloadedOrEmpty(legacy.Community)
         };
-        ValidateCache(seeded);
+        try
+        {
+            seeded = LegacyAgendaMigration.Upgrade(seeded);
+            ValidateCache(seeded);
+        }
+        catch (Exception exception) when (IsDataFailure(exception))
+        {
+            issues.Add(new(CacheSource, exception));
+            migrate = false;
+            seeded = new ConferenceCache
+            {
+                SchemaVersion = CacheSchemaVersion, Metadata = document,
+                Microsoft = DownloadedOrEmpty(null)
+            };
+        }
         if (migrate)
         {
             // Discard untraceable legacy content and shipped seeds, never the separate bookmarks.
@@ -150,6 +171,56 @@ public sealed class ConferenceRepository(
         Publish(Snapshot(state, legacy is not null, issues));
     }
 
+    private async Task<ConferenceDocument> LoadMetadataAsync(CancellationToken token)
+    {
+        var document = await metadataSource.LoadAsync(token).ConfigureAwait(false);
+        ConferenceJson.Validate(document);
+        if (document.Sessions.Count != 0 || document.Speakers.Count != 0 || document.WithdrawnSpeakers.Count != 0 ||
+            document.WithdrawnSessions.Count != 0 || document.CommunityEvents.Count != 0 || document.SessionAliases.Count != 0)
+            throw new InvalidDataException("App metadata must not contain sessions, speaker profiles, aliases or community events.");
+        if (document.StartDate is null)
+            throw new InvalidDataException("Conference metadata must specify the published start date.");
+        return document;
+    }
+
+    private static ConferenceCache ApplyMetadata(ConferenceCache cache, ConferenceDocument metadata)
+    {
+        if (metadata.StartDate == cache.Metadata.StartDate)
+            return cache with { Metadata = metadata };
+        var pacific = MicrosoftAgendaJson.GetPacificTimeZone();
+        var oldStart = cache.Metadata.StartDate!.Value;
+        var newStart = metadata.StartDate!.Value;
+        DateTimeOffset Shift(DateTimeOffset value)
+        {
+            var oldLocal = TimeZoneInfo.ConvertTime(value, pacific);
+            DateTime local;
+            try
+            {
+                var day = DateOnly.FromDateTime(oldLocal.DateTime).DayNumber - oldStart.DayNumber;
+                local = newStart.AddDays(day).ToDateTime(TimeOnly.FromDateTime(oldLocal.DateTime), DateTimeKind.Unspecified);
+            }
+            catch (ArgumentOutOfRangeException exception)
+            {
+                throw new InvalidDataException("The corrected conference start date exceeds the supported calendar.", exception);
+            }
+            if (pacific.IsInvalidTime(local) || pacific.IsAmbiguousTime(local))
+                throw new InvalidDataException("The corrected conference start date produces an invalid or ambiguous Pacific time.");
+            return new DateTimeOffset(local, pacific.GetUtcOffset(local));
+        }
+        Session ShiftSession(Session session) => session with { StartsAt = Shift(session.StartsAt), EndsAt = Shift(session.EndsAt) };
+        return LegacyAgendaMigration.Resolve(cache with
+        {
+            Metadata = metadata,
+            Microsoft = cache.Microsoft with
+            {
+                Sessions = cache.Microsoft.Sessions.Select(ShiftSession).ToList(),
+                WithdrawnSessions = cache.Microsoft.WithdrawnSessions.Select(session =>
+                    cache.LegacySessionIds.Contains(session.Id, StringComparer.Ordinal) ? session : ShiftSession(session)).ToList(),
+                RequiresProfileRefresh = true
+            }
+        });
+    }
+
     private static CachedAgenda DownloadedOrEmpty(CachedAgenda? agenda) =>
         agenda is { PayloadHash.Length: > 0, LastCheckedAt: not null }
             ? agenda : new() { Sessions = [], Speakers = [], PayloadHash = "" };
@@ -160,59 +231,41 @@ public sealed class ConferenceRepository(
         try
         {
             await LoadCoreAsync(token).ConfigureAwait(false);
-            var original = state!;
-            var pending = new List<Task<FetchResult>>
-            {
-                FetchAsync(MicrosoftSource, MicrosoftUrl, original.Microsoft, original.Metadata, token),
-                FetchAsync(CommunitySource, CommunityUrl, original.Community, original.Metadata, token)
-            };
+            var result = await FetchAsync(state!.Microsoft, state.Metadata, token).ConfigureAwait(false);
+            token.ThrowIfCancellationRequested();
             var issues = snapshot!.Issues.Where(issue => issue.Source == CacheSource).ToList();
-            while (pending.Count != 0)
+            if (result.Issue is not null)
+                issues.Add(result.Issue);
+            if (result.Agenda is null)
             {
-                var completed = await Task.WhenAny(pending).ConfigureAwait(false);
-                pending.Remove(completed);
-                FetchResult result;
-                try { result = await completed.ConfigureAwait(false); }
-                catch (OperationCanceledException) when (token.IsCancellationRequested)
-                {
-                    // Drain other completed sources before propagating caller cancellation.
-                    continue;
-                }
-                if (result.Issue is not null)
-                    issues.Add(result.Issue);
-                if (result.Agenda is null)
-                {
-                    Publish(snapshot! with { Issues = issues.ToArray() });
-                    continue;
-                }
-                var next = result.Source == MicrosoftSource
-                    ? state! with { Microsoft = result.Agenda }
-                    : state! with { Community = result.Agenda };
-                try
-                {
-                    ValidateCache(next);
-                }
-                catch (Exception exception) when (IsDataFailure(exception))
-                {
-                    issues.Add(new(result.Source, exception));
-                    Publish(snapshot! with { Issues = issues.ToArray() });
-                    continue;
-                }
-                state = next;
-                Publish(Snapshot(next, false, issues.ToArray()));
-                try
-                {
-                    // A completed validated source is an independent transaction, even if its sibling is canceled.
-                    await SaveAsync(next, CancellationToken.None).ConfigureAwait(false);
-                    issues.RemoveAll(issue => issue.Source == CacheSource);
-                }
-                catch (Exception exception) when (IsDataFailure(exception))
-                {
-                    issues.Add(new(CacheSource, exception));
-                }
-                Publish(Snapshot(next, false, issues.ToArray()));
-                progress?.Report(snapshot!);
+                Publish(snapshot! with { Issues = issues.ToArray() });
+                return snapshot!;
             }
+            ConferenceCache next;
+            try
+            {
+                next = LegacyAgendaMigration.Resolve(state! with { Microsoft = result.Agenda }, retireUnmatched: result.Issue is null);
+                ValidateCache(next);
+            }
+            catch (Exception exception) when (IsDataFailure(exception))
+            {
+                issues.Add(new(MicrosoftSource, exception));
+                Publish(snapshot! with { Issues = issues.ToArray() });
+                return snapshot!;
+            }
+            state = next;
+            Publish(Snapshot(next, false, issues.ToArray()));
+            try
+            {
+                await SaveAsync(next, CancellationToken.None).ConfigureAwait(false);
+                issues.RemoveAll(issue => issue.Source == CacheSource);
+            }
+            catch (Exception exception) when (IsDataFailure(exception))
+            {
+                issues.Add(new(CacheSource, exception));
+            }
+            Publish(Snapshot(next, false, issues.ToArray()));
+            progress?.Report(snapshot!);
             token.ThrowIfCancellationRequested();
             return snapshot!;
         }
@@ -220,8 +273,9 @@ public sealed class ConferenceRepository(
     }
 
     private async Task<FetchResult> FetchAsync(
-        string source, string url, CachedAgenda previous, ConferenceDocument metadata, CancellationToken token)
+        CachedAgenda previous, ConferenceDocument metadata, CancellationToken token)
     {
+        const string source = MicrosoftSource;
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
         timeout.CancelAfter(TimeSpan.FromSeconds(15));
         var requestToken = timeout.Token;
@@ -234,7 +288,7 @@ public sealed class ConferenceRepository(
                     // Custom revalidation headers require a CORS preflight that the public feeds do not support.
                     var browser = OperatingSystem.IsBrowser();
                     using var request = new HttpRequestMessage(HttpMethod.Get,
-                        browser ? $"{url}?refresh={Guid.NewGuid():N}" : url);
+                        browser ? $"{MicrosoftUrl}?refresh={Guid.NewGuid():N}" : MicrosoftUrl);
                     request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
                     if (!browser)
                     {
@@ -277,10 +331,7 @@ public sealed class ConferenceRepository(
                     else
                     {
                         var profileFallback = priorDocument with { Speakers = AllSpeakers(previous), WithdrawnSpeakers = [] };
-                        document = source == MicrosoftSource
-                            ? await MicrosoftAgendaJson.ReadAsync(content, profileFallback, requestToken).ConfigureAwait(false)
-                            : RemoteProfiles.Retain(await SessionizeJson.ReadAsync(
-                                content, profileFallback, Pacific, requestToken).ConfigureAwait(false), profileFallback);
+                        document = await MicrosoftAgendaJson.ReadAsync(content, profileFallback, requestToken).ConfigureAwait(false);
                         if (document.Sessions.Count == 0)
                             throw new InvalidDataException("An empty remote agenda cannot replace last-known-good sessions.");
                     }
@@ -383,26 +434,45 @@ public sealed class ConferenceRepository(
         };
     }
 
-    private static ConferenceDocument Combine(ConferenceCache cache) => cache.Metadata with
+    private static ConferenceDocument Combine(ConferenceCache cache)
     {
-        Speakers = [.. cache.Microsoft.Speakers, .. cache.Community.Speakers],
-        WithdrawnSpeakers = [.. cache.Microsoft.WithdrawnSpeakers, .. cache.Community.WithdrawnSpeakers],
-        Sessions = [.. cache.Microsoft.Sessions, .. cache.Community.Sessions],
-        WithdrawnSessions = [.. cache.Microsoft.WithdrawnSessions, .. cache.Community.WithdrawnSessions]
-    };
+        var fallbackIds = cache.LegacyActiveSessionIds.ToHashSet(StringComparer.Ordinal);
+        var fallback = cache.Microsoft.WithdrawnSessions.Where(session => fallbackIds.Contains(session.Id)).ToList();
+        var fallbackSpeakers = fallback.SelectMany(session => session.SpeakerIds).ToHashSet(StringComparer.Ordinal);
+        return cache.Metadata with
+        {
+            Speakers = [.. cache.Microsoft.Speakers, .. cache.Microsoft.WithdrawnSpeakers.Where(speaker => fallbackSpeakers.Contains(speaker.Id))],
+            WithdrawnSpeakers = cache.Microsoft.WithdrawnSpeakers.Where(speaker => !fallbackSpeakers.Contains(speaker.Id)).ToList(),
+            Sessions = [.. cache.Microsoft.Sessions, .. fallback],
+            WithdrawnSessions = cache.Microsoft.WithdrawnSessions.Where(session => !fallbackIds.Contains(session.Id)).ToList(),
+            SessionAliases = cache.SessionAliases
+        };
+    }
 
     private static void ValidateCache(ConferenceCache cache, bool legacy = false)
     {
-        if ((legacy ? cache.SchemaVersion is not (2 or 3 or 4) : cache.SchemaVersion != CacheSchemaVersion) ||
-            cache.Metadata is null || cache.Microsoft is null || cache.Community is null)
+        if ((legacy ? cache.SchemaVersion is not (2 or 3 or 4 or 5) : cache.SchemaVersion != CacheSchemaVersion) ||
+            cache.Metadata is null || cache.Microsoft is null ||
+            (legacy ? cache.Community is null : cache.Community is not null) ||
+            cache.SessionAliases is null || cache.LegacySessionIds is null || cache.LegacyActiveSessionIds is null)
             throw new InvalidDataException("Unsupported or incomplete agenda cache.");
         ConferenceJson.Validate(cache.Metadata);
         ValidatePhotos(cache.Metadata.Speakers.Concat(cache.Metadata.WithdrawnSpeakers));
-        if ((!legacy || cache.SchemaVersion == 4) && (cache.Metadata.Sessions.Count != 0 || cache.Metadata.Speakers.Count != 0 ||
+        if ((!legacy || cache.SchemaVersion >= 4) && (cache.Metadata.Sessions.Count != 0 || cache.Metadata.Speakers.Count != 0 ||
             cache.Metadata.WithdrawnSpeakers.Count != 0 ||
             cache.Metadata.WithdrawnSessions.Count != 0 || cache.Metadata.CommunityEvents.Count != 0))
             throw new InvalidDataException("Cached app metadata must not contain an agenda or community events.");
-        foreach (var (source, agenda) in new[] { (MicrosoftSource, cache.Microsoft), (CommunitySource, cache.Community) })
+        if (!legacy && (cache.Metadata.StartDate is null || cache.Metadata.SessionAliases.Count != 0))
+            throw new InvalidDataException("Cached metadata requires a start date and must not contain session aliases.");
+        if (cache.LegacyPayloadHash is { } legacyHash &&
+            (legacyHash.Length != 64 || !legacyHash.All(Uri.IsHexDigit)))
+            throw new InvalidDataException("Legacy provenance requires a valid remote payload hash.");
+        if (!legacy && cache.LegacySessionIds.Count > 0 && cache.LegacyPayloadHash is null)
+            throw new InvalidDataException("Legacy archived sessions require validated remote provenance.");
+        var sources = new List<(string Source, CachedAgenda Agenda)> { (MicrosoftSource, cache.Microsoft) };
+        if (legacy)
+            sources.Add((CommunitySource, cache.Community!));
+        foreach (var (source, agenda) in sources)
         {
             if (agenda.Sessions is null || agenda.WithdrawnSessions is null || agenda.Speakers is null ||
                 agenda.WithdrawnSpeakers is null || agenda.PayloadHash is null)
@@ -412,8 +482,9 @@ public sealed class ConferenceRepository(
                 throw new InvalidDataException($"{source} cache has an invalid pending reduction hash.");
             ConferenceJson.Validate(cache.Metadata with
             {
-                Sessions = agenda.Sessions, Speakers = legacy ? AllSpeakers(agenda) : agenda.Speakers,
-                WithdrawnSpeakers = legacy ? [] : agenda.WithdrawnSpeakers, WithdrawnSessions = agenda.WithdrawnSessions
+                Sessions = agenda.Sessions, Speakers = legacy && cache.SchemaVersion < 5 ? AllSpeakers(agenda) : agenda.Speakers,
+                WithdrawnSpeakers = legacy && cache.SchemaVersion < 5 ? [] : agenda.WithdrawnSpeakers,
+                WithdrawnSessions = agenda.WithdrawnSessions
             });
             if (!legacy)
             {
@@ -425,11 +496,13 @@ public sealed class ConferenceRepository(
                 throw new InvalidDataException($"{source} cache PayloadHash must be empty or a 64-character hexadecimal SHA-256 hash.");
             if (agenda.PayloadHash.Length != 0 && agenda.Sessions.Count == 0)
                 throw new InvalidDataException($"{source} cache has a remote PayloadHash but no active sessions.");
-            if ((!legacy || cache.SchemaVersion == 4) && agenda.PayloadHash.Length == 0 && (agenda.Sessions.Count != 0 ||
-                agenda.Speakers.Count != 0 || agenda.WithdrawnSpeakers.Count != 0 || agenda.WithdrawnSessions.Count != 0 ||
+            var legacyArchivesOnly = !legacy && cache.LegacyPayloadHash is not null &&
+                agenda.WithdrawnSessions.All(session => cache.LegacySessionIds.Contains(session.Id, StringComparer.Ordinal));
+            if ((!legacy || cache.SchemaVersion >= 4) && agenda.PayloadHash.Length == 0 && (agenda.Sessions.Count != 0 ||
+                agenda.Speakers.Count != 0 || (!legacyArchivesOnly && (agenda.WithdrawnSpeakers.Count != 0 || agenda.WithdrawnSessions.Count != 0)) ||
                 agenda.LastCheckedAt is not null || agenda.LastUpdatedAt is not null))
                 throw new InvalidDataException($"{source} cache contains content without a validated remote payload.");
-            if ((!legacy || cache.SchemaVersion == 4) && agenda.PayloadHash.Length != 0 && agenda.LastCheckedAt is null)
+            if ((!legacy || cache.SchemaVersion >= 4) && agenda.PayloadHash.Length != 0 && agenda.LastCheckedAt is null)
                 throw new InvalidDataException($"{source} cache has a remote payload without a check time.");
             if (agenda.PayloadHash.Length == 0 && (agenda.ETag is not null || agenda.LastModified is not null))
                 throw new InvalidDataException($"{source} cache has ETag/LastModified validators without a remote PayloadHash.");
@@ -443,10 +516,22 @@ public sealed class ConferenceRepository(
             ValidatePhotos(AllSpeakers(agenda));
         }
 
-        var document = legacy
-            ? Combine(cache) with { Speakers = [.. AllSpeakers(cache.Microsoft), .. AllSpeakers(cache.Community)], WithdrawnSpeakers = [] }
-            : Combine(cache);
+        var document = Combine(cache);
+        if (legacy)
+            document = document with
+            {
+                Speakers = [.. AllSpeakers(cache.Microsoft), .. AllSpeakers(cache.Community!)],
+                WithdrawnSpeakers = [],
+                Sessions = [.. cache.Microsoft.Sessions, .. cache.Community!.Sessions],
+                WithdrawnSessions = [.. cache.Microsoft.WithdrawnSessions, .. cache.Community.WithdrawnSessions]
+            };
         ConferenceJson.Validate(document);
+        if (!legacy && (cache.LegacySessionIds.Distinct(StringComparer.Ordinal).Count() != cache.LegacySessionIds.Count ||
+            cache.LegacySessionIds.Any(id => !cache.Microsoft.WithdrawnSessions.Any(session => session.Id == id))))
+            throw new InvalidDataException("Legacy session IDs must identify distinct retained withdrawn sessions.");
+        if (!legacy && (cache.LegacyActiveSessionIds.Distinct(StringComparer.Ordinal).Count() != cache.LegacyActiveSessionIds.Count ||
+            cache.LegacyActiveSessionIds.Any(id => !cache.LegacySessionIds.Contains(id, StringComparer.Ordinal))))
+            throw new InvalidDataException("Legacy fallback IDs must identify distinct unresolved legacy sessions.");
     }
 
     private static void ValidatePhotos(IEnumerable<Speaker> speakers)
@@ -458,10 +543,7 @@ public sealed class ConferenceRepository(
 
     private static ConferenceSnapshot Snapshot(ConferenceCache cache, bool isCached, IReadOnlyList<ConferenceDataIssue> issues) =>
         new(Combine(cache),
-            cache.Microsoft.LastCheckedAt is not null && cache.Community.LastCheckedAt is not null
-                ? (cache.Microsoft.LastCheckedAt < cache.Community.LastCheckedAt
-                    ? cache.Microsoft.LastCheckedAt : cache.Community.LastCheckedAt) : null,
-            new[] { cache.Microsoft.LastUpdatedAt, cache.Community.LastUpdatedAt }.Max(), isCached, issues);
+            cache.Microsoft.LastCheckedAt, cache.Microsoft.LastUpdatedAt, isCached, issues);
 
     private void Publish(ConferenceSnapshot current) => Volatile.Write(ref snapshot, current);
 
@@ -501,7 +583,12 @@ public sealed record ConferenceCache
     public required int SchemaVersion { get; init; }
     public required ConferenceDocument Metadata { get; init; }
     public required CachedAgenda Microsoft { get; init; }
-    public required CachedAgenda Community { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public CachedAgenda? Community { get; init; }
+    public Dictionary<string, string> SessionAliases { get; init; } = new(StringComparer.Ordinal);
+    public List<string> LegacySessionIds { get; init; } = [];
+    public List<string> LegacyActiveSessionIds { get; init; } = [];
+    public string? LegacyPayloadHash { get; init; }
 }
 
 public sealed record CachedAgenda

@@ -24,7 +24,7 @@ public static class ConferenceJson
             throw new InvalidDataException("The conference website must be an absolute HTTPS URL.");
         if (document.Speakers is null || document.WithdrawnSpeakers is null ||
             document.Sessions is null || document.WithdrawnSessions is null ||
-            document.CommunityEvents is null)
+            document.CommunityEvents is null || document.SessionAliases is null)
             throw new InvalidDataException("Session, speaker, and community event collections are required.");
 
         var eventIds = new HashSet<string>(StringComparer.Ordinal);
@@ -70,6 +70,14 @@ public static class ConferenceJson
                 session.SpeakerIds.Distinct(StringComparer.Ordinal).Count() != session.SpeakerIds.Count ||
                 session.Topics.Any(string.IsNullOrWhiteSpace))
                 throw new InvalidDataException($"Session '{session.Id}' has invalid speaker references or topics.");
+        }
+
+        foreach (var (alias, canonical) in document.SessionAliases)
+        {
+            if (string.IsNullOrWhiteSpace(alias) || string.IsNullOrWhiteSpace(canonical) ||
+                sessionIds.Contains(alias) || !sessionIds.Contains(canonical) ||
+                document.SessionAliases.ContainsKey(canonical))
+                throw new InvalidDataException("Session aliases must map retired IDs directly to existing sessions.");
         }
     }
 }

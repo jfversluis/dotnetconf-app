@@ -268,6 +268,7 @@ public partial class ConferenceViewModel(
             ? "Couldn't read or save the offline agenda. Check storage and retry."
             : sourceErrors.Count > 0 ? string.Join(" ", sourceErrors) : null;
         var loaded = value.Document;
+        schedule.SetAliases(loaded.SessionAliases);
         document = loaded;
         NotifyAgendaState();
         ConferenceName = loaded.Name;
@@ -533,7 +534,8 @@ public partial class ConferenceViewModel(
         }
     }
 
-    public SessionViewModel? FindSession(string? id) => allSessions.Find(session => session.Id == id);
+    public SessionViewModel? FindSession(string? id) => allSessions.Find(session =>
+        session.Id == (id is not null && document?.SessionAliases.TryGetValue(id, out var canonical) == true ? canonical : id));
     public SpeakerViewModel? FindSpeaker(string? id) => allSpeakers.Find(speaker => speaker.Id == id);
     public Task OpenSessionAsync(string id) => navigation.OpenSessionAsync(id);
     public Task OpenSpeakerAsync(string id) => navigation.OpenSpeakerAsync(id);
@@ -544,7 +546,7 @@ public partial class ConferenceViewModel(
     {
         try
         {
-            session.IsSaved = await schedule.ToggleAsync(session.Id);
+            session.IsSaved = await schedule.SetSavedAsync(session.Id, !session.IsSaved);
             // Also shows sessions saved in another browser tab.
             foreach (var other in allSessions)
                 other.IsSaved = schedule.IsSaved(other.Id);

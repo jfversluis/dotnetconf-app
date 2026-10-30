@@ -161,6 +161,178 @@ public sealed class ScheduleTests : IDisposable
         Assert.Equal([id, "one"], storage.Order());
     }
 
+    private static readonly Dictionary<string, string> Aliases = new() { ["1338204"] = "20261100", ["1353047"] = "20261101" };
+
+    [Fact]
+    public async Task AliasedSavesAreLogicallyEquivalentAndInitializeNeverRewrites()
+    {
+        var storage = new HashSet<string>(["1338204", "legacy-gone"], StringComparer.Ordinal);
+        var service = new ScheduleService(SharedStore(storage));
+        service.SetAliases(Aliases);
+        await service.InitializeAsync();
+        Assert.True(service.IsSaved("20261100"));
+        Assert.True(service.IsSaved("1338204"));
+        Assert.False(service.IsSaved("20261101"));
+        Assert.Equal(2, service.SavedCount);
+        Assert.Equal(["1338204", "legacy-gone"], storage.Order());
+    }
+
+    [Fact]
+    public async Task AliasesMayArriveAfterLoadAndAreReplacedAtomically()
+    {
+        var storage = new HashSet<string>(["1338204"], StringComparer.Ordinal);
+        var service = new ScheduleService(SharedStore(storage));
+        await service.InitializeAsync();
+        Assert.False(service.IsSaved("20261100"));
+        service.SetAliases(Aliases);
+        Assert.True(service.IsSaved("20261100"));
+        Assert.Throws<ArgumentException>(() => service.SetAliases(new Dictionary<string, string> { ["a"] = "b", ["b"] = "c" }));
+        Assert.True(service.IsSaved("20261100"));
+        service.SetAliases(new Dictionary<string, string>());
+        Assert.False(service.IsSaved("20261100"));
+        Assert.Equal(1, service.SavedCount);
+    }
+
+    [Fact]
+    public async Task BothIdsOfOneSessionCountOnceAndToggleRemovesTheWholeGroup()
+    {
+        var storage = new HashSet<string>(["20261100", "1338204", "other"], StringComparer.Ordinal);
+        var service = new ScheduleService(SharedStore(storage));
+        service.SetAliases(Aliases);
+        await service.InitializeAsync();
+        Assert.Equal(2, service.SavedCount);
+        Assert.False(await service.ToggleAsync("1338204"));
+        Assert.Equal(["other"], storage);
+        Assert.False(service.IsSaved("20261100"));
+        Assert.Equal(1, service.SavedCount);
+    }
+
+    [Theory]
+    [InlineData("20261100")]
+    [InlineData("1338204")]
+    public async Task TogglingEitherIdSavesTheCanonicalIdAndKeepsUnknownIds(string toggled)
+    {
+        var storage = new HashSet<string>(["unknown"], StringComparer.Ordinal);
+        var service = new ScheduleService(SharedStore(storage));
+        service.SetAliases(Aliases);
+        Assert.True(await service.ToggleAsync(toggled));
+        Assert.Equal(["20261100", "unknown"], storage.Order());
+        Assert.True(service.IsSaved("1338204"));
+        Assert.Equal(2, service.SavedCount);
+    }
+
+    [Fact]
+    public async Task AliasedSaveSurvivesRestartWithJsonStore()
+    {
+        var first = new ScheduleService(new JsonScheduleStore(FilePath));
+        first.SetAliases(Aliases);
+        Assert.True(await first.ToggleAsync("1353047"));
+        var restarted = new ScheduleService(new JsonScheduleStore(FilePath));
+        restarted.SetAliases(Aliases);
+        await restarted.InitializeAsync();
+        Assert.True(restarted.IsSaved("1353047"));
+        Assert.True(restarted.IsSaved("20261101"));
+        Assert.Equal(["20261101"], await new JsonScheduleStore(FilePath).ReadAsync());
+    }
+
+    [Fact]
+    public async Task ToggleUsesLatestStoreAcrossBrowserTabsWithAliases()
+    {
+        var storage = new HashSet<string>(StringComparer.Ordinal);
+        var first = new ScheduleService(SharedStore(storage));
+        var second = new ScheduleService(SharedStore(storage));
+        first.SetAliases(Aliases);
+        second.SetAliases(Aliases);
+        await first.InitializeAsync();
+        await second.InitializeAsync();
+        Assert.True(await first.ToggleAsync("20261100"));
+        // The second tab loaded before the save and must remove the whole group it finds stored now.
+        storage.Add("1338204");
+        Assert.False(await second.ToggleAsync("1338204"));
+        Assert.Empty(storage);
+        Assert.False(second.IsSaved("20261100"));
+    }
+
+    [Fact]
+    public async Task SetSavedIsIdempotentAcrossStaleTabs()
+    {
+        var storage = new HashSet<string>(StringComparer.Ordinal);
+        var first = new ScheduleService(SharedStore(storage));
+        var second = new ScheduleService(SharedStore(storage));
+        first.SetAliases(Aliases);
+        second.SetAliases(Aliases);
+        await first.InitializeAsync();
+        await second.InitializeAsync();
+        Assert.True(await first.SetSavedAsync("20261100", true));
+        Assert.True(await second.SetSavedAsync("20261100", true));
+        Assert.Equal(["20261100"], storage);
+        Assert.True(second.IsSaved("1338204"));
+        storage.Add("1338204");
+        Assert.False(await second.SetSavedAsync("1338204", false));
+        Assert.Empty(storage);
+        Assert.False(second.IsSaved("20261100"));
+    }
+
+    [Fact]
+    public async Task SetSavedFailureLeavesMemoryUnchanged()
+    {
+        var store = new ToggleFailingStore(["unknown"]);
+        var service = new ScheduleService(store);
+        service.SetAliases(Aliases);
+        await service.InitializeAsync();
+        await Assert.ThrowsAsync<IOException>(() => service.SetSavedAsync("20261100", true));
+        Assert.False(service.IsSaved("20261100"));
+        Assert.Equal(["unknown"], store.Ids);
+    }
+
+    [Fact]
+    public async Task FailedAliasedWriteChangesNothing()
+    {
+        var store = new ToggleFailingStore(["1338204", "unknown"]);
+        var service = new ScheduleService(store);
+        service.SetAliases(Aliases);
+        await service.InitializeAsync();
+        await Assert.ThrowsAsync<IOException>(() => service.ToggleAsync("20261100"));
+        Assert.True(service.IsSaved("20261100"));
+        Assert.Equal(2, service.SavedCount);
+        Assert.Equal(["1338204", "unknown"], store.Ids.Order());
+        store.Fail = false;
+        Assert.False(await service.ToggleAsync("20261100"));
+        Assert.Equal(["unknown"], store.Ids);
+    }
+
+    [Theory]
+    [InlineData("", "a")]
+    [InlineData("a", " ")]
+    [InlineData("a", "a")]
+    public void InvalidAliasesAreRejected(string alias, string canonical) =>
+        Assert.Throws<ArgumentException>(() => new ScheduleService(new FailingStore())
+            .SetAliases(new Dictionary<string, string> { [alias] = canonical }));
+
+    [Fact]
+    public void AliasChainsAndCyclesAreRejected()
+    {
+        var service = new ScheduleService(new FailingStore());
+        Assert.Throws<ArgumentException>(() => service.SetAliases(new Dictionary<string, string> { ["a"] = "b", ["b"] = "c" }));
+        Assert.Throws<ArgumentException>(() => service.SetAliases(new Dictionary<string, string> { ["a"] = "b", ["b"] = "a" }));
+    }
+
+    private sealed class ToggleFailingStore(IEnumerable<string> ids) : IScheduleStore
+    {
+        public HashSet<string> Ids { get; } = new(ids, StringComparer.Ordinal);
+        public bool Fail { get; set; } = true;
+        public Task<IReadOnlyCollection<string>> ReadAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyCollection<string>>(Ids.ToArray());
+        public Task WriteAsync(IReadOnlyCollection<string> sessionIds, CancellationToken cancellationToken = default)
+        {
+            if (Fail)
+                throw new IOException("Simulated storage failure.");
+            Ids.Clear();
+            Ids.UnionWith(sessionIds);
+            return Task.CompletedTask;
+        }
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(directory))

@@ -10,6 +10,7 @@ public sealed class RemoteAgendaTests
     internal static readonly ConferenceDocument Bundle = new()
     {
         SchemaVersion = 1, Name = ".NET Conf", Description = "Conference", WebsiteUrl = "https://dotnetconf.net",
+        StartDate = new DateOnly(2026, 11, 10),
         Speakers =
         [
             new() { Id = GeraldId, Name = "Gerald Versluis", Bio = "Rich bundled bio", Tagline = "Bundled tagline",
@@ -144,24 +145,53 @@ public sealed class RemoteAgendaTests
     }
 
     [Theory]
-    [InlineData(1, "BRK006", "20261006", "2026-11-10T19:30:00Z")]
-    [InlineData(2, "BRK032", "20261032", "2026-11-11T19:30:00Z")]
-    [InlineData(3, "BRK100", "20261100", "2026-11-12T19:30:00Z")]
-    [InlineData(4, "BRK135", "20261135", "2026-11-13T19:30:00Z")]
-    public async Task AllPublishedDaysKeepStableIdsAndPacificTimes(
-        int day, string sourceId, string expectedId, string expectedStart)
+    [InlineData(1, "BRK006", "20261006", "2040-02-03")]
+    [InlineData(5, "BRK100", "20261100", "2040-02-07")]
+    [InlineData(10, "BRK135", "20261135", "2040-02-12")]
+    public async Task ArbitraryPositiveDaysUseTheExplicitConferenceStartDate(
+        int day, string sourceId, string expectedId, string expectedDate)
     {
         var data = Microsoft;
         var result = await ReadAsync(data with
         {
             Sessions = [data.Sessions[0] with { Day = day, Id = sourceId }]
-        });
+        }, Bundle with { StartDate = new DateOnly(2040, 2, 3) });
         var session = Assert.Single(result.Sessions);
         Assert.Equal(expectedId, session.Id);
-        Assert.Equal(DateTimeOffset.Parse(expectedStart), session.StartsAt);
-        Assert.Equal(TimeSpan.FromHours(-8), session.StartsAt.Offset);
+        Assert.Equal(DateOnly.Parse(expectedDate), DateOnly.FromDateTime(session.StartsAt.Date));
+        Assert.Equal(new TimeOnly(11, 30), TimeOnly.FromDateTime(session.StartsAt.DateTime));
         Assert.Equal(TimeSpan.FromMinutes(30), session.EndsAt - session.StartsAt);
         Assert.Equal([GeraldId], session.SpeakerIds);
+    }
+
+    [Fact]
+    public async Task MissingConferenceStartDateIsRejected()
+    {
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            ReadAsync(Microsoft, Bundle with { StartDate = null }));
+    }
+
+    [Fact]
+    public async Task DayOutsideDateOnlyRangeIsRejectedDuringDateArithmetic()
+    {
+        var data = Microsoft;
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(data with
+        {
+            Sessions = [data.Sessions[0] with { Day = int.MaxValue }]
+        }));
+    }
+
+    [Theory]
+    [InlineData(2026, 3, 8, "02:00:00", "02:30:00")]
+    [InlineData(2026, 11, 1, "01:00:00", "01:30:00")]
+    public async Task InvalidOrAmbiguousPacificTimesAreRejected(
+        int year, int month, int day, string start, string end)
+    {
+        var data = Microsoft;
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(data with
+        {
+            Sessions = [data.Sessions[0] with { StartTime = start, EndTime = end }]
+        }, Bundle with { StartDate = new DateOnly(year, month, day) }));
     }
 
     [Theory]
@@ -242,7 +272,6 @@ public sealed class RemoteAgendaTests
 
     [Theory]
     [InlineData(0, "PST", "08:00:00", "09:00:00")]
-    [InlineData(5, "PST", "08:00:00", "09:00:00")]
     [InlineData(-1, "PST", "08:00:00", "09:00:00")]
     [InlineData(1, "UTC", "08:00:00", "09:00:00")]
     [InlineData(1, "PDT", "08:00:00", "09:00:00")]

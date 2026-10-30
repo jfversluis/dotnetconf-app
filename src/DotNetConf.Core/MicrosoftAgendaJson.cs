@@ -6,8 +6,6 @@ namespace DotNetConf.Core;
 
 public static class MicrosoftAgendaJson
 {
-    private static readonly TimeZoneInfo Pacific = TimeZoneInfo.FindSystemTimeZoneById("America/Los_Angeles");
-
     // These are the identities shipped in the original snapshot, not hashes of mutable display names.
     private static readonly Dictionary<string, string> SpeakerAliases = new(StringComparer.Ordinal)
     {
@@ -50,11 +48,15 @@ public static class MicrosoftAgendaJson
     public static async Task<ConferenceDocument> ReadAsync(
         Stream stream, ConferenceDocument previous, CancellationToken cancellationToken = default)
     {
+        if (previous.StartDate is not DateOnly firstDay)
+            throw new InvalidDataException("The conference start date is required for the Microsoft agenda.");
+
         var data = await JsonSerializer.DeserializeAsync(
             stream, RemoteAgendaJsonContext.Default.MicrosoftAgenda, cancellationToken)
             ?? throw new InvalidDataException("The Microsoft agenda is null.");
         if (data.Sessions is null || data.Speakers is null || data.Sessions.Count == 0)
             throw new InvalidDataException("Microsoft sessions and speakers are required; an empty agenda is not an update.");
+        var pacific = GetPacificTimeZone();
 
         var sourceIds = new HashSet<string>(StringComparer.Ordinal);
         var speakers = new List<Speaker>();
@@ -77,14 +79,14 @@ public static class MicrosoftAgendaJson
         foreach (var source in data.Sessions)
         {
             if (source is null || source.SpeakerIds is null || source.SpeakerIds.Any(string.IsNullOrWhiteSpace) ||
-                source.Topics is null ||
-                source.Day is < 1 or > 4 || source.Timezone != "PST")
+                source.Topics is null || source.Day < 1 || source.Timezone != "PST")
                 throw new InvalidDataException("Microsoft sessions require valid days, Pacific timezone, and references.");
             sessions.Add(new Session
             {
                 Id = SessionId(source.Id), Title = source.Title ?? "",
                 Description = RemoteProfiles.IsUseful(source.Abstract) ? source.Abstract! : "",
-                StartsAt = Time(source.StartTime, source.Day), EndsAt = Time(source.EndTime, source.Day),
+                StartsAt = Time(source.StartTime, source.Day, firstDay, source.Id, pacific),
+                EndsAt = Time(source.EndTime, source.Day, firstDay, source.Id, pacific),
                 // This sentinel represents an unanswered optional co-speaker, not a person.
                 SpeakerIds = source.SpeakerIds.Where(id => id != "speaker-no-response")
                     .Select(id => SpeakerAliases.GetValueOrDefault(id) ?? id).ToList(),
@@ -109,12 +111,34 @@ public static class MicrosoftAgendaJson
         };
     }
 
-    private static DateTimeOffset Time(string? value, int day)
+    internal static TimeZoneInfo GetPacificTimeZone()
+    {
+        try { return TimeZoneInfo.FindSystemTimeZoneById("America/Los_Angeles"); }
+        catch (Exception exception) when (exception is TimeZoneNotFoundException or InvalidTimeZoneException)
+        {
+            throw new InvalidDataException("Pacific timezone data is unavailable. Install system timezone data to load the agenda.", exception);
+        }
+    }
+
+    private static DateTimeOffset Time(string? value, int day, DateOnly firstDay, string? sessionId, TimeZoneInfo pacific)
     {
         if (!TimeOnly.TryParseExact(value, "HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var time))
             throw new InvalidDataException("Invalid Microsoft session time.");
-        var local = new DateOnly(2026, 11, 9 + day).ToDateTime(time, DateTimeKind.Unspecified);
-        return new DateTimeOffset(local, Pacific.GetUtcOffset(local));
+        DateOnly date;
+        try
+        {
+            date = firstDay.AddDays(checked(day - 1));
+        }
+        catch (Exception exception) when (exception is ArgumentOutOfRangeException or OverflowException)
+        {
+            throw new InvalidDataException(
+                $"Microsoft session '{sessionId}' has a day outside the representable calendar.", exception);
+        }
+        var local = date.ToDateTime(time, DateTimeKind.Unspecified);
+        if (pacific.IsInvalidTime(local) || pacific.IsAmbiguousTime(local))
+            throw new InvalidDataException(
+                $"Microsoft session '{sessionId}' has an invalid or ambiguous Pacific time.");
+        return new DateTimeOffset(local, pacific.GetUtcOffset(local));
     }
 }
 

@@ -8,6 +8,48 @@ namespace DotNetConf.App.Tests;
 
 public sealed class ConferenceViewModelTests
 {
+    [Fact]
+    public async Task LegacyAndCurrentBookmarksProduceOneSavedTalkAndResolveOldNavigation()
+    {
+        var snapshot = Snapshot() with { Document = Snapshot().Document with
+        {
+            SessionAliases = new() { ["legacy-id"] = "id" }
+        } };
+        var store = new TestScheduleStore();
+        store.SavedIds.Add("legacy-id");
+        var viewModel = Create(new TestRepository(snapshot), store, new TestConnectivity());
+        await viewModel.InitializeAsync();
+        await (viewModel.RefreshCommand.ExecutionTask ?? Task.CompletedTask);
+
+        var session = Assert.Single(viewModel.SavedSessions);
+        Assert.Equal("id", session.Id);
+        Assert.Same(session, viewModel.FindSession("legacy-id"));
+        Assert.Equal(1, viewModel.SavedCount);
+        Assert.Equal(2, store.SavedIds.Count);
+        Assert.False(session.HasConflict);
+    }
+
+    [Fact]
+    public async Task DayFiltersFollowDownloadedDatesBeyondFourDays()
+    {
+        var original = Snapshot();
+        var session = original.Document.Sessions[0];
+        var snapshot = original with { Document = original.Document with
+        {
+            Sessions = Enumerable.Range(0, 7).Select(day => session with
+            {
+                Id = $"day-{day}", StartsAt = session.StartsAt.AddDays(day), EndsAt = session.EndsAt.AddDays(day)
+            }).ToList()
+        } };
+        var viewModel = Create(new TestRepository(snapshot), new TestScheduleStore(), new TestConnectivity());
+        await viewModel.InitializeAsync();
+        await (viewModel.RefreshCommand.ExecutionTask ?? Task.CompletedTask);
+
+        Assert.Equal(8, viewModel.Days.Count);
+        Assert.Equal(7, viewModel.Days.Where(day => day.Day is not null).Select(day => day.Day).Distinct().Count());
+        Assert.Equal(7, viewModel.Sessions.Count);
+    }
+
     [Theory]
     [InlineData("validation")]
     [InlineData("json")]
