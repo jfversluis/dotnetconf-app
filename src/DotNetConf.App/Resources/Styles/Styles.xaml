@@ -1,7 +1,15 @@
 <ResourceDictionary x:Class="DotNetConf.App.Resources.Styles.Styles">
     <Style TargetType="ContentPage" ApplyToDerivedTypes="True">
         <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}" />
-        <Setter Property="SafeAreaEdges" Value="{OnPlatform iOS=None, Android=SoftInput}" />
+        <Setter Property="SafeAreaEdges">
+            <Setter.Value>
+                <OnPlatform x:TypeArguments="SafeAreaEdges">
+                    <On Platform="iOS" Value="None" />
+                    <On Platform="Android" Value="SoftInput" />
+                </OnPlatform>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Shell.BackgroundColor" Value="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}" />
     </Style>
     <Style x:Key="BaseLabel" TargetType="Label">
         <Setter Property="FontFamily" Value="OpenSansRegular" />

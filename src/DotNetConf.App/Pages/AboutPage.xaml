@@ -3,11 +3,23 @@
                       xmlns:controls="clr-namespace:DotNetConf.App.Controls"
                       xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
                       x:DataType="vm:ConferenceViewModel" Title="About">
+    <Grid SafeAreaEdges="Container,None,Container,None">
     <ScrollView SafeAreaEdges="Default" AutomationId="about-scroll">
         <VerticalStackLayout Padding="24" Spacing="24" MaximumWidthRequest="720" HorizontalOptions="Center" SafeAreaEdges="None">
             <Label Text="A celebration of .NET" Style="{StaticResource Heading}" />
             <Label Text="{Binding ConferenceDescription}" />
-            <controls:StatusBanner />
+            <Label Text="{Binding AgendaNotice}" Style="{StaticResource Secondary}" AutomationId="agenda-source-disclosure" />
+            <VerticalStackLayout Spacing="8">
+                <Label Text="Refresh the agenda" Style="{StaticResource Subheading}" />
+                <Label Text="Pull down on Home, Sessions, Speakers, or the Schedule screen to check for updates. If an update fails, choose Retry. Downloaded sessions stay available offline."
+                       Style="{StaticResource Secondary}" AutomationId="refresh-help" />
+                <Button Text="Check for agenda updates" Command="{Binding RequestRefreshCommand}"
+                        IsEnabled="{Binding CanRefresh}" Style="{StaticResource QuietButton}"
+                        AutomationId="about-refresh"
+                        SemanticProperties.Hint="An alternative to pulling down on an agenda screen." />
+            </VerticalStackLayout>
+            <Label Text="Community events and venues are fictional examples, not confirmed gatherings."
+                   IsVisible="{Binding CommunityEventsAreMock}" Style="{StaticResource Secondary}" />
             <VerticalStackLayout Spacing="12" IsVisible="{Binding IsMock}">
                 <Label Text="About the sample agenda" Style="{StaticResource Subheading}" />
                 <Label Text="All sessions and speakers in this preview are fictional examples, not the confirmed conference lineup."
@@ -29,12 +41,14 @@
                 <Label Text="Your schedule stays here" Style="{StaticResource Subheading}" />
                 <Label Text="No account or app-managed cloud sync. Bookmarks and your appearance preference are stored on this device; operating-system backups may include app data. Opening the official website uses your browser and that site's privacy policy."
                        Style="{StaticResource Secondary}" />
+                <Button Text="Privacy policy" Clicked="OnPrivacyClicked" Style="{StaticResource QuietButton}"
+                        AutomationId="about-privacy" SemanticProperties.Hint="Read this version's policy offline." />
                 <Label Text="Development builds include local DevFlow inspection. The inspection agent is excluded from Release builds."
                        Style="{StaticResource Secondary}" />
             </VerticalStackLayout>
             <VerticalStackLayout Spacing="12">
                 <Label Text="Built with .NET MAUI 11" Style="{StaticResource Subheading}" />
-                <Label Text="Native mobile UI, CoreCLR, source-generated XAML, Fluent icons, and native maps with clustered custom pins. Reminders, local AI, and partner video integration are future additions."
+                <Label Text="Native mobile UI, source-generated XAML, Fluent icons, and native maps with clustered custom pins. Reminders, local AI, and partner video integration are future additions."
                        Style="{StaticResource Secondary}" />
                 <Label Text="Fluent UI System Icons and IconFont.Maui.FluentIcons are MIT licensed. Open Sans is Apache 2.0 licensed; Space Grotesk uses the SIL Open Font License. License notices are included with the app."
                        Style="{StaticResource Secondary}" />
@@ -44,4 +58,5 @@
             </VerticalStackLayout>
         </VerticalStackLayout>
     </ScrollView>
+    </Grid>
 </pages:ConferencePage>

@@ -27,7 +27,9 @@ public partial class CommunityEventsPage : ContentPage, IQueryAttributable
     public string ExplorerTitle => ShowMap ? "Event map" : "Community events";
     public bool HasSelection => selectedEvent is not null;
     public double DetailHeight => Height * 0.35;
-    public string ListHelp => !CanShowMap
+    public string ListHelp => Conference.CommunityEvents.Count == 0
+        ? "Community listings need an official event source, which is not connected yet."
+        : !CanShowMap
         ? "Map unavailable in this build. Explore the events below."
         : "Watch parties and in-person talks. Select an event to find out more.";
 

@@ -14,7 +14,6 @@
                    Text="{Binding Text, Source={x:Reference Control}, Mode=TwoWay}"
                    Placeholder="{Binding Placeholder, Source={x:Reference Control}}"
                    AutomationId="{Binding SearchAutomationId, Source={x:Reference Control}}"
-                   SemanticProperties.Description="{OnPlatform Android={x:Null}, iOS={Binding SearchDescription, Source={x:Reference Control}}}"
                    ReturnType="Search" Completed="OnCompleted" Focused="OnFocusChanged" Unfocused="OnFocusChanged">
                 <controls:SearchEntry.Behaviors>
                     <toolkit:UserStoppedTypingBehavior StoppedTypingTimeThreshold="300" MinimumLengthThreshold="0"

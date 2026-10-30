@@ -3,19 +3,29 @@
              xmlns:controls="clr-namespace:DotNetConf.App.Controls"
              xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
              x:DataType="vm:SpeakerViewModel" Title="Speaker">
-    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="16" SafeAreaEdges="None">
-        <controls:StatusBanner x:Name="Status" Margin="24,0" />
+    <Grid RowDefinitions="Auto,*" SafeAreaEdges="Container,Container,Container,None">
+        <controls:StatusBanner x:Name="Status" Margin="24,8,24,0" />
         <Label x:Name="NotFound" Grid.Row="1" Text="Speaker not found. Go back to the directory and choose a speaker."
                AutomationId="speaker-not-found" Margin="24,0" />
-        <CollectionView x:Name="Details" Grid.Row="2" ItemsSource="{Binding Sessions}" SelectionMode="None"
-                        IsVisible="False" AutomationId="speaker-session-list">
+        <CollectionView x:Name="Details" Grid.Row="1" ItemsSource="{Binding Sessions}" SelectionMode="None"
+                        IsVisible="False" ItemsUpdatingScrollMode="KeepScrollOffset" AutomationId="speaker-session-list">
             <CollectionView.Footer>
                 <controls:SafeAreaFooter Page="{x:Reference Page}" />
             </CollectionView.Footer>
             <CollectionView.Header>
                 <VerticalStackLayout Spacing="16" Padding="24,16" SafeAreaEdges="None">
-                    <Label Text="{Binding Name}" Style="{StaticResource Heading}" AutomationId="speaker-detail-name" />
-                    <Label Text="{Binding Tagline}" Style="{StaticResource Secondary}" />
+                    <Grid ColumnDefinitions="96,*" ColumnSpacing="16" RowDefinitions="Auto,Auto">
+                        <Border Grid.RowSpan="2" HeightRequest="96" WidthRequest="96" StrokeThickness="0"
+                                StrokeShape="RoundRectangle 48"
+                                Background="{AppThemeBinding Light={StaticResource ConferenceGradient}, Dark={StaticResource ConferenceDarkGradient}}">
+                            <controls:SpeakerPortrait
+                                   AutomationProperties.IsInAccessibleTree="False" />
+                        </Border>
+                        <Label Grid.Column="1" Text="{Binding Name}" Style="{StaticResource Heading}"
+                               AutomationId="speaker-detail-name" SemanticProperties.HeadingLevel="Level1" />
+                        <Label Grid.Row="1" Grid.Column="1" Text="{Binding Tagline}"
+                               Style="{StaticResource Secondary}" VerticalOptions="Start" />
+                    </Grid>
                     <Label Text="{Binding Bio}" />
                     <Label Text="Sessions" Style="{StaticResource Subheading}" />
                 </VerticalStackLayout>

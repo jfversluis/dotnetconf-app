@@ -10,8 +10,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 #if ANDROID
 using Microsoft.Maui.Platform;
 #endif
-#if DEBUG
 using Microsoft.Extensions.Logging;
+#if DEBUG
 #if !AVALONIA
 using Microsoft.Maui.DevFlow.Agent;
 #endif
@@ -43,6 +43,7 @@ public static class MauiProgram
             });
 
 #if ANDROID
+        DotNetConf.App.Platforms.Android.ShellToolbarAppearance.Register();
         Microsoft.Maui.Handlers.EntryHandler2.Mapper.AppendToMapping(nameof(IEntry.Placeholder), (handler, view) =>
         {
             if (view is not SearchEntry)
@@ -79,7 +80,22 @@ public static class MauiProgram
         });
 #endif
 
-        builder.Services.AddSingleton<IConferenceDataSource, BundledConferenceDataSource>();
+        builder.Services.AddSingleton<IConferenceDataSource, ConferenceMetadataDataSource>();
+        builder.Services.AddSingleton(_ => new HttpClient { Timeout = TimeSpan.FromSeconds(20) });
+        builder.Services.AddKeyedSingleton<HttpClient>("speaker-portraits", (_, _) =>
+            OperatingSystem.IsBrowser()
+                ? new HttpClient { Timeout = TimeSpan.FromSeconds(20) }
+                : new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(20) });
+        builder.Services.AddSingleton<IConferenceRepository>(services => new ConferenceRepository(
+            services.GetRequiredService<IConferenceDataSource>(), services.GetRequiredService<HttpClient>(),
+            services.GetService<IConferenceCacheStore>() ??
+                new FileConferenceCacheStore(Path.Combine(FileSystem.AppDataDirectory, "agenda-cache.json"))));
+#if !AVALONIA
+        builder.Services.AddSingleton<IConnectivity>(_ => Connectivity.Current);
+#endif
+        builder.Services.AddSingleton(services => new SpeakerImageCache(
+            services.GetRequiredKeyedService<HttpClient>("speaker-portraits"), Path.Combine(FileSystem.CacheDirectory, "speaker-portraits"),
+            services.GetRequiredService<ILogger<SpeakerImageCache>>(), services.GetService<ISpeakerImagePersistence>()));
         builder.Services.TryAddSingleton<IScheduleStore>(_ =>
             new JsonScheduleStore(Path.Combine(FileSystem.AppDataDirectory, "schedule.json")));
         builder.Services.AddSingleton<ScheduleService>();

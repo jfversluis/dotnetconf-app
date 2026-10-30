@@ -4,11 +4,17 @@ public sealed record ConferenceDocument
 {
     public int SchemaVersion { get; init; }
     public bool IsMock { get; init; }
+    public bool CommunityEventsAreMock { get; init; } = true;
+    public string AgendaNotice { get; init; } = "";
     public string Name { get; init; } = "";
     public string Description { get; init; } = "";
     public string WebsiteUrl { get; init; } = "";
     public List<Speaker> Speakers { get; init; } = [];
+    /// <summary>Profiles retained only to resolve withdrawn saved talks, not current directory entries.</summary>
+    public List<Speaker> WithdrawnSpeakers { get; init; } = [];
     public List<Session> Sessions { get; init; } = [];
+    /// <summary>Last-known withdrawn talks for resolving saved IDs; these are not part of the active agenda.</summary>
+    public List<Session> WithdrawnSessions { get; init; } = [];
     public List<CommunityEvent> CommunityEvents { get; init; } = [];
 }
 
@@ -41,6 +47,7 @@ public sealed record Speaker
     public string Name { get; init; } = "";
     public string Tagline { get; init; } = "";
     public string Bio { get; init; } = "";
+    public string ProfilePicture { get; init; } = "";
 }
 
 public sealed record Session

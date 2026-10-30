@@ -5,6 +5,7 @@ using Avalonia.Media;
 using Avalonia.Platform;
 using DotNetConf.App.Controls;
 using DotNetConf.Core;
+using DotNetConf.App.Services;
 using AvaloniaHandlers = Avalonia.Controls.Maui.Handlers;
 
 namespace DotNetConf.App;
@@ -21,8 +22,14 @@ internal static class AvaloniaHost
             // Buttons and Shell tabs resolve the image service by concrete type, which MAUI registers for itself.
             .ConfigureImageSources(services => services.AddService<FontImageSource, AvaloniaFontImageSourceService>());
         builder.Services.AddSingleton<IBrowser, AvaloniaBrowser>();
+        builder.Services.AddSingleton<IConnectivity, AvaloniaConnectivity>();
         if (OperatingSystem.IsBrowser())
+        {
             builder.Services.AddSingleton(CreateBrowserScheduleStore());
+            var cache = BrowserStorage.CreateCache();
+            builder.Services.AddSingleton<IConferenceCacheStore>(cache);
+            builder.Services.AddSingleton<ISpeakerImagePersistence>(cache);
+        }
         builder.UseAvaloniaSyncfusion();
 
         AvaloniaHandlers.WindowHandler.Mapper.AppendToMapping(nameof(IWindow.Title), (handler, window) =>

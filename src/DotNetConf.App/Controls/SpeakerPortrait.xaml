@@ -1,0 +1,12 @@
+<Grid x:Class="DotNetConf.App.Controls.SpeakerPortrait"
+      xmlns:controls="clr-namespace:DotNetConf.App.Controls"
+      xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
+      x:DataType="vm:SpeakerViewModel">
+    <!-- A native decoder can return an empty result without a failure event. -->
+    <Image Source="speaker_placeholder.png" Aspect="AspectFill"
+           AutomationId="{Binding Id, StringFormat='speaker-placeholder-{0}'}"
+           AutomationProperties.IsInAccessibleTree="False" />
+    <controls:PortraitImage Source="{Binding ProfilePicture}" Aspect="AspectFill"
+                            AutomationId="{Binding Id, StringFormat='speaker-photo-{0}'}"
+                            AutomationProperties.IsInAccessibleTree="False" />
+</Grid>

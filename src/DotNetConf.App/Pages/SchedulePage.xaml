@@ -4,7 +4,13 @@
                       xmlns:controls="clr-namespace:DotNetConf.App.Controls"
                       xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
                       x:DataType="vm:ConferenceViewModel" Title="My Schedule">
-    <CollectionView ItemsSource="{Binding SavedSessions}" SelectionMode="None" AutomationId="saved-session-list">
+    <Grid SafeAreaEdges="Container,None,Container,None">
+    <RefreshView IsRefreshing="{Binding IsPullRefreshing, Mode=TwoWay}"
+                 Command="{Binding RequestRefreshCommand}"
+                 RefreshColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
+                 AutomationId="schedule-refresh">
+    <CollectionView ItemsSource="{Binding SavedSessions}" SelectionMode="None"
+                    ItemsUpdatingScrollMode="KeepScrollOffset" AutomationId="saved-session-list">
         <CollectionView.Footer>
             <controls:SafeAreaFooter Page="{x:Reference Page}" />
         </CollectionView.Footer>
@@ -27,10 +33,14 @@
             <VerticalStackLayout Padding="40,32" Spacing="16">
                 <Image Source="{StaticResource HeartOutlineIcon}" WidthRequest="32" HeightRequest="32"
                        HorizontalOptions="Start" AutomationProperties.IsInAccessibleTree="False" />
-                <Label Text="Save a session from the agenda to build your personal viewing schedule. Your choices stay on this device."
-                       Style="{StaticResource Secondary}" />
+                <ActivityIndicator IsRunning="{Binding IsInitialAgendaLoading}" IsVisible="{Binding IsInitialAgendaLoading}"
+                                   HorizontalOptions="Start" AutomationId="schedule-initial-loading" />
+                <Label Text="{Binding ScheduleEmptyTitle}" Style="{StaticResource Subheading}" AutomationId="schedule-empty-title" />
+                <Label Text="{Binding ScheduleEmptyMessage}" Style="{StaticResource Secondary}" AutomationId="schedule-empty-message" />
                 <Button Text="Find a session" Command="{Binding BrowseSessionsCommand}" AutomationId="schedule-browse" />
             </VerticalStackLayout>
         </CollectionView.EmptyView>
     </CollectionView>
+    </RefreshView>
+    </Grid>
 </pages:ConferencePage>

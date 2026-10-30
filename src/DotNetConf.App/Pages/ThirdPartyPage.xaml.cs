@@ -17,6 +17,9 @@ public partial class ThirdPartyPage : ContentPage
         new("Fluent UI System Icons", "Regular and Filled icon fonts · MIT", "LICENSE-FluentSystemIcons.txt"),
         new("Open Sans", "Regular and Semibold · Apache 2.0", "LICENSE-OpenSans.txt"),
         new("Space Grotesk", "Bold · SIL Open Font License 1.1", "LICENSE-SpaceGrotesk.txt"),
+#if ANDROID
+        new("Google Maps SDK & Google Play services native components", "Maps 20.0.0 · Base/Basement 18.10.0 · Tasks 18.4.1 · upstream third-party licenses", "NOTICE-GooglePlayServices.txt"),
+#endif
 #if AVALONIA
         new("Avalonia", "12.1.2 · MIT", "LICENSE-Avalonia.txt"),
         new("Avalonia third-party components", "Upstream copyright and license notices", "NOTICE-Avalonia.txt"),

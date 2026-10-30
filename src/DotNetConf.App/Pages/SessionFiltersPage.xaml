@@ -20,6 +20,10 @@
                     <Label Text="No selection shows all topics." Style="{StaticResource Secondary}" FontSize="14" />
                 </VerticalStackLayout>
             </CollectionView.Header>
+            <CollectionView.EmptyView>
+                <Label Text="Topics haven't been published for this agenda yet. You can still search talks and speakers."
+                       Margin="24" Style="{StaticResource Secondary}" AutomationId="filter-topics-empty" />
+            </CollectionView.EmptyView>
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:TopicFilterViewModel">
                     <Grid Padding="24,4" ColumnDefinitions="*,Auto" ColumnSpacing="16"

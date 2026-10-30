@@ -20,7 +20,7 @@ An unofficial app, not an organizer product. Match the published dotnetconf.net 
 
 ## Evidence on hand
 
-The website provides event information and a purple/magenta visual identity. Its date ranges disagree; no authoritative range is asserted here. Bundled sessions and speakers are explicitly fictional development data, not announcements. The real agenda feed and its owner remain undecided.
+The website provides event information and a purple/magenta visual identity. Conference sessions and speaker profiles are remote-only: Microsoft's conference JSON supplies days 1-2 and the public Sessionize All feed supplies days 3-4, without private organizer enrichment. Nothing seeds a conference agenda from packaged data. A fresh install needs a connection; subsequent launches immediately show previously downloaded data while independently checking both feeds. Speaker photographs are downloaded and cached for offline use, never bundled or fetched from GitHub; unavailable photos use the local .NET Bot placeholder. Only previously downloaded approved profiles can fill incomplete updates; explicit placeholders are omitted and no unpublished profiles are invented. Legacy enriched content and undownloaded snapshot seeds are removed before display without resetting bookmarks. Loading and first-download errors are explicit, cached refresh is quiet, and valid remote data remains browsable with a storage warning if offline persistence fails. Fictional community gatherings and venues are removed, including from legacy cache metadata. Until an official event source is connected, Community shows an honest empty list and an official-website link rather than invented gatherings or an empty map.
 
 ## Principles
 

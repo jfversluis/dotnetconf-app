@@ -105,7 +105,7 @@ jobs:
           printf '%s' "$KEY_PASSWORD" > "$signing_dir/key-password"
           printf '%s' "$STORE_PASSWORD" > "$signing_dir/store-password"
           dotnet publish src/DotNetConf.App/DotNetConf.App.csproj -c Release \
-            -f net11.0-android -p:MobileTargetFramework=net11.0-android \
+            -f net11.0-android -r android-arm64 -p:MobileTargetFramework=net11.0-android \
             "-p:ApplicationId=$APP_ID" "-p:ApplicationDisplayVersion=$VERSION" "-p:ApplicationVersion=$BUILD_NUMBER" \
             -p:AndroidPackageFormats=aab -p:AndroidKeyStore=true \
             "-p:AndroidSigningKeyStore=$signing_dir/upload.keystore" "-p:AndroidSigningKeyAlias=$KEY_ALIAS" \
@@ -113,7 +113,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: android-${{ inputs.version }}-${{ inputs.build_number }}
-          path: src/DotNetConf.App/bin/Release/net11.0-android/publish/*-Signed.aab
+          path: src/DotNetConf.App/bin/Release/net11.0-android/android-arm64/publish/*-Signed.aab
           if-no-files-found: error
           retention-days: 14
       - name: Upload to internal testing only
@@ -121,7 +121,7 @@ jobs:
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: ${{ vars.ANDROID_APPLICATION_ID }}
-          releaseFiles: src/DotNetConf.App/bin/Release/net11.0-android/publish/*-Signed.aab
+          releaseFiles: src/DotNetConf.App/bin/Release/net11.0-android/android-arm64/publish/*-Signed.aab
           track: internal
           status: completed
 

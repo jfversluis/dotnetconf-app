@@ -36,6 +36,19 @@ internal static partial class BrowserStorage
         return true;
     });
 
+    public static BrowserCache CreateCache() => new(
+        key => Use(() => GetCacheItem(key)),
+        (key, value) => Use(() => { SetCacheItem(key, value); return true; }),
+        key => Use(() => { RemoveCacheItem(key); return true; }),
+        prefix => Use(() =>
+        {
+            var result = new List<string>();
+            for (var index = 0; CacheKey(index) is { } key; index++)
+                if (key.StartsWith(prefix, StringComparison.Ordinal))
+                    result.Add(key[prefix.Length..]);
+            return result;
+        }));
+
     private static T Use<T>(Func<T> access)
     {
         try
@@ -56,4 +69,16 @@ internal static partial class BrowserStorage
 
     [JSImport("globalThis.localStorage.removeItem")]
     private static partial void RemoveItem(string key);
+
+    [JSImport("globalThis.dotnetConfCache.key")]
+    private static partial string? CacheKey(int index);
+
+    [JSImport("globalThis.dotnetConfCache.getItem")]
+    private static partial string? GetCacheItem(string key);
+
+    [JSImport("globalThis.dotnetConfCache.setItem")]
+    private static partial void SetCacheItem(string key, string value);
+
+    [JSImport("globalThis.dotnetConfCache.removeItem")]
+    private static partial void RemoveCacheItem(string key);
 }

@@ -1,0 +1,1692 @@
+{
+  "sessions": [
+    {
+      "id": "20260001",
+      "title": "Keynote",
+      "description": "",
+      "startsAt": "2026-11-10T08:00:00-08:00",
+      "endsAt": "2026-11-10T09:00:00-08:00",
+      "speakers": [
+        "f02cb577-40a8-5307-b39c-223e1b08c7d5"
+      ],
+      "categoryItems": [],
+      "roomId": null
+    },
+    {
+      "id": "20261001",
+      "title": "What\u0027s new in C#",
+      "description": "Synthetic test description for session 20261001. Not conference program copy.",
+      "startsAt": "2026-11-10T09:00:00-08:00",
+      "endsAt": "2026-11-10T09:30:00-08:00",
+      "speakers": [
+        "7e3d731b-e9fe-5e0e-a37a-646f9c1774cc",
+        "ab8935df-8c51-5d75-8058-a9a280d417f4"
+      ],
+      "categoryItems": [
+        506052
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261002",
+      "title": "Modern web development with ASP.NET Core \u0026 Blazor in .NET 11",
+      "description": "Synthetic test description for session 20261002. Not conference program copy.",
+      "startsAt": "2026-11-10T09:30:00-08:00",
+      "endsAt": "2026-11-10T10:00:00-08:00",
+      "speakers": [
+        "15b37374-dd05-5089-9979-6e50ba60d7ad"
+      ],
+      "categoryItems": [
+        506053,
+        506054
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261003",
+      "title": "Moving \u0060dotnet\u0060 Ahead (of Time)!",
+      "description": "Synthetic test description for session 20261003. Not conference program copy.",
+      "startsAt": "2026-11-10T10:00:00-08:00",
+      "endsAt": "2026-11-10T10:30:00-08:00",
+      "speakers": [
+        "25073f93-5b07-593e-aa13-bed4e851c866"
+      ],
+      "categoryItems": [
+        506055,
+        506052
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261004",
+      "title": "Why WinForms must not change - yet reinvented itself with .NET 11!",
+      "description": "Synthetic test description for session 20261004. Not conference program copy.",
+      "startsAt": "2026-11-10T10:30:00-08:00",
+      "endsAt": "2026-11-10T11:00:00-08:00",
+      "speakers": [
+        "9830b785-e466-5b14-8108-abd86b40125e"
+      ],
+      "categoryItems": [
+        506052,
+        506056,
+        506055,
+        506057
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261005",
+      "title": "The .NET AI Stack: What\u0027s New, What\u0027s Next, and How It Fits Together",
+      "description": "Synthetic test description for session 20261005. Not conference program copy.",
+      "startsAt": "2026-11-10T11:00:00-08:00",
+      "endsAt": "2026-11-10T11:30:00-08:00",
+      "speakers": [
+        "664bcc26-6e57-5f48-8a9a-cd87bb757493"
+      ],
+      "categoryItems": [
+        506056
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261006",
+      "title": "What\u2019s New in .NET MAUI in .NET 11",
+      "description": "Synthetic test description for session 20261006. Not conference program copy.",
+      "startsAt": "2026-11-10T11:30:00-08:00",
+      "endsAt": "2026-11-10T12:00:00-08:00",
+      "speakers": [
+        "7871d1fd-13e8-5c11-be64-fc52a0091913"
+      ],
+      "categoryItems": [
+        506058,
+        506056
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261007",
+      "title": ".NET \u002B Foundry: Better Together",
+      "description": "Synthetic test description for session 20261007. Not conference program copy.",
+      "startsAt": "2026-11-10T12:00:00-08:00",
+      "endsAt": "2026-11-10T12:30:00-08:00",
+      "speakers": [
+        "94360b77-3474-583d-b801-f43acafa2725"
+      ],
+      "categoryItems": [
+        506052,
+        506056
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261008",
+      "title": "More Processes, More Problems - how to speed up your builds with Multithreaded MSBuild",
+      "description": "Synthetic test description for session 20261008. Not conference program copy.",
+      "startsAt": "2026-11-10T12:30:00-08:00",
+      "endsAt": "2026-11-10T13:00:00-08:00",
+      "speakers": [
+        "25073f93-5b07-593e-aa13-bed4e851c866"
+      ],
+      "categoryItems": [
+        506055,
+        506059
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261009",
+      "title": "What\u0027s New in Aspire for .NET Developers",
+      "description": "Synthetic test description for session 20261009. Not conference program copy.",
+      "startsAt": "2026-11-10T13:00:00-08:00",
+      "endsAt": "2026-11-10T13:30:00-08:00",
+      "speakers": [
+        "17ca67c0-2a3e-5a4c-90e1-e2ab2a9be74a",
+        "39734651-893e-5672-b749-9d47d21fb224"
+      ],
+      "categoryItems": [
+        506052,
+        506056,
+        506055
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261010",
+      "title": "2 Secure 2 Curmudgeonly",
+      "description": "Synthetic test description for session 20261010. Not conference program copy.",
+      "startsAt": "2026-11-10T13:30:00-08:00",
+      "endsAt": "2026-11-10T14:00:00-08:00",
+      "speakers": [
+        "8889dd11-13a9-53ca-a6fb-e1dea098e01b"
+      ],
+      "categoryItems": [
+        506053,
+        506054,
+        506052,
+        506059,
+        506057,
+        506060
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261011",
+      "title": "Beyond Autocomplete: Getting the Most from GitHub Copilot for .NET",
+      "description": "Synthetic test description for session 20261011. Not conference program copy.",
+      "startsAt": "2026-11-10T14:00:00-08:00",
+      "endsAt": "2026-11-10T14:30:00-08:00",
+      "speakers": [
+        "6856fe48-5e3c-5eb1-831f-5a60a818283b"
+      ],
+      "categoryItems": [
+        506055
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261012",
+      "title": ".NET 11 Numerics",
+      "description": "Synthetic test description for session 20261012. Not conference program copy.",
+      "startsAt": "2026-11-10T14:30:00-08:00",
+      "endsAt": "2026-11-10T15:00:00-08:00",
+      "speakers": [
+        "615a58ec-bcaa-5544-917f-1f840f2c9897"
+      ],
+      "categoryItems": [
+        506052,
+        506059,
+        506057
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261013",
+      "title": "How Aspire uses .NET to build an agent-first toolchain for any programming language",
+      "description": "Synthetic test description for session 20261013. Not conference program copy.",
+      "startsAt": "2026-11-10T15:00:00-08:00",
+      "endsAt": "2026-11-10T15:30:00-08:00",
+      "speakers": [
+        "17ca67c0-2a3e-5a4c-90e1-e2ab2a9be74a",
+        "a118fad0-3ac6-504f-8b31-d55cfc0f38a9"
+      ],
+      "categoryItems": [
+        506056,
+        506053,
+        506054,
+        506055,
+        506059,
+        506057
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261014",
+      "title": ".NET Runtime vNext: Memory Safety and Runtime Async",
+      "description": "Synthetic test description for session 20261014. Not conference program copy.",
+      "startsAt": "2026-11-10T15:30:00-08:00",
+      "endsAt": "2026-11-10T16:00:00-08:00",
+      "speakers": [
+        "73683d96-d255-5c41-ac8e-8870123e3446",
+        "5103459b-4a1c-5c05-9bfd-c6235f95f852"
+      ],
+      "categoryItems": [
+        506052,
+        506057,
+        506059
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261015",
+      "title": "Post-Quantum Cryptography with .NET 11",
+      "description": "Synthetic test description for session 20261015. Not conference program copy.",
+      "startsAt": "2026-11-10T16:00:00-08:00",
+      "endsAt": "2026-11-10T16:30:00-08:00",
+      "speakers": [
+        "7be2ab4d-4642-5bb2-ad1e-cb2f9ca43cd8"
+      ],
+      "categoryItems": [
+        506052,
+        506059
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261016",
+      "title": "Bringing dotnet run, test, and watch to .NET MAUI",
+      "description": "Synthetic test description for session 20261016. Not conference program copy.",
+      "startsAt": "2026-11-10T16:30:00-08:00",
+      "endsAt": "2026-11-10T17:00:00-08:00",
+      "speakers": [
+        "7630ca28-de3e-5976-b228-7da8ca048f05"
+      ],
+      "categoryItems": [
+        506052,
+        506058,
+        506055,
+        506059
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20260002",
+      "title": "Keynote",
+      "description": "Synthetic test description for session 20260002. Not conference program copy.",
+      "startsAt": "2026-11-11T08:00:00-08:00",
+      "endsAt": "2026-11-11T09:00:00-08:00",
+      "speakers": [
+        "0014dc28-8e17-5fea-bf57-266b77e175d8"
+      ],
+      "categoryItems": [
+        506061,
+        506062,
+        506063,
+        506064
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261017",
+      "title": "The State of AI in Visual Studio",
+      "description": "Synthetic test description for session 20261017. Not conference program copy.",
+      "startsAt": "2026-11-11T09:00:00-08:00",
+      "endsAt": "2026-11-11T09:30:00-08:00",
+      "speakers": [
+        "ec2db9e8-88ef-5ef4-b1ea-c909b5d8c804"
+      ],
+      "categoryItems": [],
+      "roomId": null
+    },
+    {
+      "id": "20261018",
+      "title": "What\u0027s new in Visual Studio",
+      "description": "Synthetic test description for session 20261018. Not conference program copy.",
+      "startsAt": "2026-11-11T09:30:00-08:00",
+      "endsAt": "2026-11-11T10:00:00-08:00",
+      "speakers": [
+        "bc2d1688-316f-581d-ab3a-234256f184b7"
+      ],
+      "categoryItems": [],
+      "roomId": null
+    },
+    {
+      "id": "20261019",
+      "title": "Get the most out of git in Visual Studio",
+      "description": "Synthetic test description for session 20261019. Not conference program copy.",
+      "startsAt": "2026-11-11T10:00:00-08:00",
+      "endsAt": "2026-11-11T10:30:00-08:00",
+      "speakers": [
+        "031327b2-2852-5a07-9298-1c9bdc6d60bc"
+      ],
+      "categoryItems": [
+        506065,
+        506066,
+        506062,
+        506067,
+        506061
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261020",
+      "title": "What\u2019s New in Visual Studio Debugging and Diagnostics",
+      "description": "Synthetic test description for session 20261020. Not conference program copy.",
+      "startsAt": "2026-11-11T10:30:00-08:00",
+      "endsAt": "2026-11-11T11:00:00-08:00",
+      "speakers": [
+        "7cffb9bd-ac02-5a8d-8f77-cb7d5a03b285"
+      ],
+      "categoryItems": [],
+      "roomId": null
+    },
+    {
+      "id": "20261021",
+      "title": "What\u0027s new in the MCP C# SDK",
+      "description": "Synthetic test description for session 20261021. Not conference program copy.",
+      "startsAt": "2026-11-11T11:00:00-08:00",
+      "endsAt": "2026-11-11T11:30:00-08:00",
+      "speakers": [
+        "afb89ca3-235b-5f5e-ba59-fb09fe16459d"
+      ],
+      "categoryItems": [
+        506052,
+        506053
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261022",
+      "title": "Building great Windows apps with WinUI and agents",
+      "description": "Synthetic test description for session 20261022. Not conference program copy.",
+      "startsAt": "2026-11-11T11:30:00-08:00",
+      "endsAt": "2026-11-11T12:00:00-08:00",
+      "speakers": [
+        "3c3219cc-9c59-54a9-909d-c589cbed5ffe",
+        "3d469f67-1e57-5368-b3cb-b01872ee34c0"
+      ],
+      "categoryItems": [
+        506052,
+        506055,
+        506068
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261023",
+      "title": "Building the future of agentic UI with Blazor",
+      "description": "Synthetic test description for session 20261023. Not conference program copy.",
+      "startsAt": "2026-11-11T12:00:00-08:00",
+      "endsAt": "2026-11-11T12:30:00-08:00",
+      "speakers": [
+        "15b37374-dd05-5089-9979-6e50ba60d7ad"
+      ],
+      "categoryItems": [
+        506054,
+        506053,
+        506056
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261024",
+      "title": "CsWinRT 3.0: Modernizing the Windows Projections for .NET",
+      "description": "Synthetic test description for session 20261024. Not conference program copy.",
+      "startsAt": "2026-11-11T12:30:00-08:00",
+      "endsAt": "2026-11-11T13:00:00-08:00",
+      "speakers": [
+        "ac0ad33b-3e93-50d8-b287-249426194d3e",
+        "5c3461db-7904-5664-afa6-81dd89af2c67"
+      ],
+      "categoryItems": [
+        506052,
+        506059,
+        506068
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261025",
+      "title": "GitHub Copilot modernization",
+      "description": "Synthetic test description for session 20261025. Not conference program copy.",
+      "startsAt": "2026-11-11T13:00:00-08:00",
+      "endsAt": "2026-11-11T13:30:00-08:00",
+      "speakers": [
+        "36adbaaf-0567-5514-af27-0d3278758b02"
+      ],
+      "categoryItems": [
+        506056
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261026",
+      "title": "Beyond Code Generation: Give AI Eyes and Hands for .NET MAUI",
+      "description": "Synthetic test description for session 20261026. Not conference program copy.",
+      "startsAt": "2026-11-11T13:30:00-08:00",
+      "endsAt": "2026-11-11T14:00:00-08:00",
+      "speakers": [
+        "7871d1fd-13e8-5c11-be64-fc52a0091913"
+      ],
+      "categoryItems": [
+        506058,
+        506056,
+        506055
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261027",
+      "title": "No XAML Required: Native Windows Apps in Pure C#",
+      "description": "Synthetic test description for session 20261027. Not conference program copy.",
+      "startsAt": "2026-11-11T14:00:00-08:00",
+      "endsAt": "2026-11-11T14:30:00-08:00",
+      "speakers": [
+        "d8517691-45a3-541c-8561-19cd33516b2a"
+      ],
+      "categoryItems": [
+        506052,
+        506055,
+        506059,
+        506068
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261028",
+      "title": "Azure\u0027s new lineup for .NET developers (Part 1)",
+      "description": "Synthetic test description for session 20261028. Not conference program copy.",
+      "startsAt": "2026-11-11T14:30:00-08:00",
+      "endsAt": "2026-11-11T15:00:00-08:00",
+      "speakers": [
+        "1d438637-c125-56f9-b673-b9e35546651d",
+        "344cc785-2d59-5e03-ac0f-8e8ca845984b"
+      ],
+      "categoryItems": [],
+      "roomId": null
+    },
+    {
+      "id": "20261029",
+      "title": "Azure\u0027s new lineup for .NET developers (Part 2)",
+      "description": "Synthetic test description for session 20261029. Not conference program copy.",
+      "startsAt": "2026-11-11T15:00:00-08:00",
+      "endsAt": "2026-11-11T15:30:00-08:00",
+      "speakers": [
+        "1d438637-c125-56f9-b673-b9e35546651d",
+        "344cc785-2d59-5e03-ac0f-8e8ca845984b"
+      ],
+      "categoryItems": [],
+      "roomId": null
+    },
+    {
+      "id": "20261030",
+      "title": "C# File-based apps turned up to 11!",
+      "description": "Synthetic test description for session 20261030. Not conference program copy.",
+      "startsAt": "2026-11-11T15:30:00-08:00",
+      "endsAt": "2026-11-11T16:00:00-08:00",
+      "speakers": [
+        "39734651-893e-5672-b749-9d47d21fb224"
+      ],
+      "categoryItems": [
+        506052,
+        506055
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261031",
+      "title": "Beyond Localhost: .NET Agents in Foundry",
+      "description": "Synthetic test description for session 20261031. Not conference program copy.",
+      "startsAt": "2026-11-11T16:00:00-08:00",
+      "endsAt": "2026-11-11T16:30:00-08:00",
+      "speakers": [
+        "94360b77-3474-583d-b801-f43acafa2725"
+      ],
+      "categoryItems": [
+        506056,
+        506052,
+        506069
+      ],
+      "roomId": null
+    },
+    {
+      "id": "20261032",
+      "title": "EF Core 11: Vector Search, Smarter LINQ, and a Friendlier dotnet ef",
+      "description": "Synthetic test description for session 20261032. Not conference program copy.",
+      "startsAt": "2026-11-11T16:30:00-08:00",
+      "endsAt": "2026-11-11T17:00:00-08:00",
+      "speakers": [
+        "02700bec-df06-5bcd-8c3c-a9c6e492df4c"
+      ],
+      "categoryItems": [
+        506055,
+        506052
+      ],
+      "roomId": null
+    },
+    {
+      "id": "1338204",
+      "title": "Beyond the Agent Trace: Operating Foundry Agents with .NET Aspire",
+      "description": "Synthetic test description for session 1338204. Not conference program copy.",
+      "startsAt": "2026-11-12T08:00:00-08:00",
+      "endsAt": "2026-11-12T08:30:00-08:00",
+      "speakers": [
+        "1d07823b-6f40-41bc-96c6-7579e1e1e236"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1353047",
+      "title": "AI Journey with Telerik UI for Blazor: From Developer Productivity to Intelligent User Experiences",
+      "description": "Synthetic test description for session 1353047. Not conference program copy.",
+      "startsAt": "2026-11-12T08:30:00-08:00",
+      "endsAt": "2026-11-12T09:00:00-08:00",
+      "speakers": [
+        "02a06608-eeb9-4882-acf3-5d3416af3e41"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1329697",
+      "title": "Miniservices not Microservices in Azure",
+      "description": "Synthetic test description for session 1329697. Not conference program copy.",
+      "startsAt": "2026-11-12T09:00:00-08:00",
+      "endsAt": "2026-11-12T09:30:00-08:00",
+      "speakers": [
+        "e0d63ad2-9848-425f-a130-10b610726dec"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1339217",
+      "title": "Build a .NET TUI in 30 Minutes",
+      "description": "Synthetic test description for session 1339217. Not conference program copy.",
+      "startsAt": "2026-11-12T09:30:00-08:00",
+      "endsAt": "2026-11-12T10:00:00-08:00",
+      "speakers": [
+        "e8681f45-d491-4821-82bd-8857593ece05"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1343913",
+      "title": "Lessons from Blazor WASM in Production",
+      "description": "Synthetic test description for session 1343913. Not conference program copy.",
+      "startsAt": "2026-11-12T10:00:00-08:00",
+      "endsAt": "2026-11-12T10:30:00-08:00",
+      "speakers": [
+        "1c6307c8-7d76-4656-bbb4-72fc1734a41b"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1351447",
+      "title": "Building a multi agent solution using Aspire",
+      "description": "Synthetic test description for session 1351447. Not conference program copy.",
+      "startsAt": "2026-11-12T10:30:00-08:00",
+      "endsAt": "2026-11-12T11:00:00-08:00",
+      "speakers": [
+        "b0b86be8-c57e-4b84-8eb4-d7bbd0777e4a"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1351531",
+      "title": "Taking Cake 7 to Eleven: Pipelines as Code with C# and .NET 11",
+      "description": "Synthetic test description for session 1351531. Not conference program copy.",
+      "startsAt": "2026-11-12T11:00:00-08:00",
+      "endsAt": "2026-11-12T11:30:00-08:00",
+      "speakers": [
+        "94bb2a0c-aa81-4039-84a0-7196d4bbbb41"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1335152",
+      "title": "Killing Session Theft: Device Bound Session Credentials using ASP.NET Core",
+      "description": "Synthetic test description for session 1335152. Not conference program copy.",
+      "startsAt": "2026-11-12T11:30:00-08:00",
+      "endsAt": "2026-11-12T12:00:00-08:00",
+      "speakers": [
+        "36a0edaf-4f66-4f54-a522-94a92e6a7f3a"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1344005",
+      "title": "Async Rx.NET",
+      "description": "Synthetic test description for session 1344005. Not conference program copy.",
+      "startsAt": "2026-11-12T12:00:00-08:00",
+      "endsAt": "2026-11-12T12:30:00-08:00",
+      "speakers": [
+        "9f59e249-ee35-4542-ae4e-7cbf07c00273"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1349927",
+      "title": "Silent Superpowers: Why Breaking Production Isn\u2019t Scary Anymore",
+      "description": "Synthetic test description for session 1349927. Not conference program copy.",
+      "startsAt": "2026-11-12T12:30:00-08:00",
+      "endsAt": "2026-11-12T13:00:00-08:00",
+      "speakers": [
+        "26a8c1f7-66e6-407a-968a-67ee0d89c202"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1351925",
+      "title": "The Most Overengineered Pocketwatch Ever Made",
+      "description": "Synthetic test description for session 1351925. Not conference program copy.",
+      "startsAt": "2026-11-12T13:00:00-08:00",
+      "endsAt": "2026-11-12T13:30:00-08:00",
+      "speakers": [
+        "3fd9cade-10ef-43df-b124-944015042549"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1349922",
+      "title": "Developer Workflows in AI Age - Local or Cloud \uD83E\uDDE0\uD83E\uDD16",
+      "description": "Synthetic test description for session 1349922. Not conference program copy.",
+      "startsAt": "2026-11-12T13:30:00-08:00",
+      "endsAt": "2026-11-12T14:00:00-08:00",
+      "speakers": [
+        "fc1d0cd3-9675-4188-aa98-e0088069f1a4"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1351776",
+      "title": "Clean Architecture AND MORE with ASP.NET Core",
+      "description": "Synthetic test description for session 1351776. Not conference program copy.",
+      "startsAt": "2026-11-12T14:00:00-08:00",
+      "endsAt": "2026-11-12T14:30:00-08:00",
+      "speakers": [
+        "a5d50f4e-f021-4983-97a9-73f9415b3d5b"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1328504",
+      "title": "How Do AI Systems Like ChatGPT Work? A Clear Explanation for Everyone!",
+      "description": "Synthetic test description for session 1328504. Not conference program copy.",
+      "startsAt": "2026-11-12T14:30:00-08:00",
+      "endsAt": "2026-11-12T15:00:00-08:00",
+      "speakers": [
+        "904d7e8c-14f4-44aa-af15-86ac72f39a70"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1345276",
+      "title": ".NET AI Architecture and DevOps",
+      "description": "Synthetic test description for session 1345276. Not conference program copy.",
+      "startsAt": "2026-11-12T15:00:00-08:00",
+      "endsAt": "2026-11-12T15:30:00-08:00",
+      "speakers": [
+        "30f886ef-decb-49a9-a50e-db3ccff459e1"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1342328",
+      "title": "Godot \u002B C#15 and You!",
+      "description": "Synthetic test description for session 1342328. Not conference program copy.",
+      "startsAt": "2026-11-12T15:30:00-08:00",
+      "endsAt": "2026-11-12T16:00:00-08:00",
+      "speakers": [
+        "fbb81c58-54e7-479c-b1b8-77fef79a988b"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1329010",
+      "title": "What NOT to AI: Hand-Crafting Your App\u2019s Core Foundation",
+      "description": "Synthetic test description for session 1329010. Not conference program copy.",
+      "startsAt": "2026-11-12T16:00:00-08:00",
+      "endsAt": "2026-11-12T16:30:00-08:00",
+      "speakers": [
+        "ae9ea57b-e388-4d3b-ad25-9d7539fb723c"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1333689",
+      "title": "Your .NET MAUI App Works. Now Give It to a Real User.",
+      "description": "Synthetic test description for session 1333689. Not conference program copy.",
+      "startsAt": "2026-11-12T16:30:00-08:00",
+      "endsAt": "2026-11-12T17:00:00-08:00",
+      "speakers": [
+        "2b2f535f-0eed-4782-8a90-e828e399e98a"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1348159",
+      "title": "One Codebase, Two Worlds: Sharing Razor Components Across Blazor Web and .NET MAUI Hybrid",
+      "description": "Synthetic test description for session 1348159. Not conference program copy.",
+      "startsAt": "2026-11-13T08:00:00-08:00",
+      "endsAt": "2026-11-13T08:30:00-08:00",
+      "speakers": [
+        "496f79e4-6409-47e1-a81e-d426f41a2e10"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1352937",
+      "title": "Building an AI-Powered Community Platform with Blazor, .NET MAUI, Aspire, and Azure AI Foundry",
+      "description": "Synthetic test description for session 1352937. Not conference program copy.",
+      "startsAt": "2026-11-13T08:30:00-08:00",
+      "endsAt": "2026-11-13T09:00:00-08:00",
+      "speakers": [
+        "32dd0ebc-cbfb-4f45-acf4-cfc60c55f573"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1338744",
+      "title": "Let\u2019s catch up with C#!",
+      "description": "Synthetic test description for session 1338744. Not conference program copy.",
+      "startsAt": "2026-11-13T09:00:00-08:00",
+      "endsAt": "2026-11-13T09:30:00-08:00",
+      "speakers": [
+        "1f8704d7-04db-4f09-9c0e-d5abcbc7c9ff"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1353022",
+      "title": "Eliminating Hidden Dangers to Your Applications: Patterns for Reliable Systems",
+      "description": "Synthetic test description for session 1353022. Not conference program copy.",
+      "startsAt": "2026-11-13T09:30:00-08:00",
+      "endsAt": "2026-11-13T10:00:00-08:00",
+      "speakers": [
+        "1aeeb749-1d7f-4bf8-be80-6c78ab20429a"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1353123",
+      "title": "Building Dual-Screen Experiences with Avalonia",
+      "description": "Synthetic test description for session 1353123. Not conference program copy.",
+      "startsAt": "2026-11-13T10:00:00-08:00",
+      "endsAt": "2026-11-13T10:30:00-08:00",
+      "speakers": [
+        "f64820d0-6d4c-4a53-9cfe-d2a0289879cc"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1329327",
+      "title": "Shipping a VS Code extension backed by a .NET Tool based analyzer",
+      "description": "Synthetic test description for session 1329327. Not conference program copy.",
+      "startsAt": "2026-11-13T10:30:00-08:00",
+      "endsAt": "2026-11-13T11:00:00-08:00",
+      "speakers": [
+        "41e47bce-834b-4bba-8ada-39633a3e696f"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1330082",
+      "title": "When Unit tests are not enough: Property-based testing and Snapshot tests",
+      "description": "Synthetic test description for session 1330082. Not conference program copy.",
+      "startsAt": "2026-11-13T11:00:00-08:00",
+      "endsAt": "2026-11-13T11:30:00-08:00",
+      "speakers": [
+        "663ad0ce-b9ce-48f5-8d11-a7bab1a6f946"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1353102",
+      "title": "ASP.NET Core 11 \uD83D\uDC96 OpenTelemetry",
+      "description": "Synthetic test description for session 1353102. Not conference program copy.",
+      "startsAt": "2026-11-13T11:30:00-08:00",
+      "endsAt": "2026-11-13T12:00:00-08:00",
+      "speakers": [
+        "bcdf362f-6ac2-4d3b-99a1-a3d6d954a493"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1337818",
+      "title": "Why not both? Bringing Modern Web Development to .NET",
+      "description": "Synthetic test description for session 1337818. Not conference program copy.",
+      "startsAt": "2026-11-13T12:00:00-08:00",
+      "endsAt": "2026-11-13T12:30:00-08:00",
+      "speakers": [
+        "4e54596f-f5c8-422e-8249-132bde23b52b"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1346496",
+      "title": "SE.Redis in .NET 11",
+      "description": "Synthetic test description for session 1346496. Not conference program copy.",
+      "startsAt": "2026-11-13T12:30:00-08:00",
+      "endsAt": "2026-11-13T13:00:00-08:00",
+      "speakers": [
+        "4154a21a-5498-4b3d-ba60-d93ea5a6a36f"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1353474",
+      "title": "Beyond Prototypes: Building Production Ready AI Workflows",
+      "description": "Synthetic test description for session 1353474. Not conference program copy.",
+      "startsAt": "2026-11-13T13:00:00-08:00",
+      "endsAt": "2026-11-13T13:30:00-08:00",
+      "speakers": [
+        "6149d10d-7400-4b81-b4a2-125c8351942f"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1333022",
+      "title": "Meeple-Driven Design: Modeling Board Game Domains with C# 15 \u0026 .NET 11",
+      "description": "Synthetic test description for session 1333022. Not conference program copy.",
+      "startsAt": "2026-11-13T13:30:00-08:00",
+      "endsAt": "2026-11-13T14:00:00-08:00",
+      "speakers": [
+        "9bde9de9-7bcb-4077-8087-47bf492a1344"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1352911",
+      "title": "Introducing BlazorKit",
+      "description": "Synthetic test description for session 1352911. Not conference program copy.",
+      "startsAt": "2026-11-13T14:00:00-08:00",
+      "endsAt": "2026-11-13T14:30:00-08:00",
+      "speakers": [
+        "465bbfe0-24ba-4431-abdc-80615a7a7aa0"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1352044",
+      "title": "Infrastructure as (Actual) Code with C# 15 and .NET 11",
+      "description": "Synthetic test description for session 1352044. Not conference program copy.",
+      "startsAt": "2026-11-13T14:30:00-08:00",
+      "endsAt": "2026-11-13T15:00:00-08:00",
+      "speakers": [
+        "43667691-72b8-4f23-bdec-425c2c6debf9"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1329588",
+      "title": "IaC Forged in Code: Building Resilient Infrastructure with Modules",
+      "description": "Synthetic test description for session 1329588. Not conference program copy.",
+      "startsAt": "2026-11-13T15:00:00-08:00",
+      "endsAt": "2026-11-13T15:30:00-08:00",
+      "speakers": [
+        "952d3b14-a231-4cc6-a97f-95940dac3fa5"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1342476",
+      "title": "Rethinking Microservices with Orleans",
+      "description": "Synthetic test description for session 1342476. Not conference program copy.",
+      "startsAt": "2026-11-13T15:30:00-08:00",
+      "endsAt": "2026-11-13T16:00:00-08:00",
+      "speakers": [
+        "2824a814-c107-4bc8-9c15-a46a0f1a41f1"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1349627",
+      "title": "Building Oracle AI Apps with .NET and EF Core 11",
+      "description": "Synthetic test description for session 1349627. Not conference program copy.",
+      "startsAt": "2026-11-13T16:00:00-08:00",
+      "endsAt": "2026-11-13T16:30:00-08:00",
+      "speakers": [
+        "fc942537-8236-4e04-8987-b7c15ed7346f"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    },
+    {
+      "id": "1343476",
+      "title": "All in one E2E testing of ASP.NET Core web apps with UI/security/accessibility tests and more",
+      "description": "Synthetic test description for session 1343476. Not conference program copy.",
+      "startsAt": "2026-11-13T16:30:00-08:00",
+      "endsAt": "2026-11-13T17:00:00-08:00",
+      "speakers": [
+        "7f29b9a9-a17b-41a7-bf14-24e7edbcd260"
+      ],
+      "categoryItems": [],
+      "roomId": 89297
+    }
+  ],
+  "speakers": [
+    {
+      "id": "d8517691-45a3-541c-8561-19cd33516b2a",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Alexandre Zollinger Chohfi",
+      "bio": "Synthetic test biography for speaker d8517691-45a3-541c-8561-19cd33516b2a. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "5103459b-4a1c-5c05-9bfd-c6235f95f852",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Andy Gocke",
+      "bio": "Synthetic test biography for speaker 5103459b-4a1c-5c05-9bfd-c6235f95f852. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "8889dd11-13a9-53ca-a6fb-e1dea098e01b",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Barry Dorrans",
+      "bio": "Synthetic test biography for speaker 8889dd11-13a9-53ca-a6fb-e1dea098e01b. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "94360b77-3474-583d-b801-f43acafa2725",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Bruno Capuano",
+      "bio": "Synthetic test biography for speaker 94360b77-3474-583d-b801-f43acafa2725. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "25073f93-5b07-593e-aa13-bed4e851c866",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Chet Husk",
+      "bio": "Synthetic test biography for speaker 25073f93-5b07-593e-aa13-bed4e851c866. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "39734651-893e-5672-b749-9d47d21fb224",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Damian Edwards",
+      "bio": "Synthetic test biography for speaker 39734651-893e-5672-b749-9d47d21fb224. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "15b37374-dd05-5089-9979-6e50ba60d7ad",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Daniel Roth",
+      "bio": "Synthetic test biography for speaker 15b37374-dd05-5089-9979-6e50ba60d7ad. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "ab8935df-8c51-5d75-8058-a9a280d417f4",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Dustin Campbell",
+      "bio": "Synthetic test biography for speaker ab8935df-8c51-5d75-8058-a9a280d417f4. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "7871d1fd-13e8-5c11-be64-fc52a0091913",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Gerald Versluis",
+      "bio": "Synthetic test biography for speaker 7871d1fd-13e8-5c11-be64-fc52a0091913. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "7cffb9bd-ac02-5a8d-8f77-cb7d5a03b285",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Harshada Hole",
+      "bio": "Synthetic test biography for speaker 7cffb9bd-ac02-5a8d-8f77-cb7d5a03b285. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "bc2d1688-316f-581d-ab3a-234256f184b7",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Jason Chlus",
+      "bio": "Synthetic test biography for speaker bc2d1688-316f-581d-ab3a-234256f184b7. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "7be2ab4d-4642-5bb2-ad1e-cb2f9ca43cd8",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Jeremy Barton",
+      "bio": "Synthetic test biography for speaker 7be2ab4d-4642-5bb2-ad1e-cb2f9ca43cd8. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "02700bec-df06-5bcd-8c3c-a9c6e492df4c",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Jiri Cincura",
+      "bio": "Synthetic test biography for speaker 02700bec-df06-5bcd-8c3c-a9c6e492df4c. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "7630ca28-de3e-5976-b228-7da8ca048f05",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Jonathan Peppers",
+      "bio": "Synthetic test biography for speaker 7630ca28-de3e-5976-b228-7da8ca048f05. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "a118fad0-3ac6-504f-8b31-d55cfc0f38a9",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Jose Perez Rodriguez",
+      "bio": "Synthetic test biography for speaker a118fad0-3ac6-504f-8b31-d55cfc0f38a9. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "9830b785-e466-5b14-8108-abd86b40125e",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Klaus L\u00F6ffelmann",
+      "bio": "Synthetic test biography for speaker 9830b785-e466-5b14-8108-abd86b40125e. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "664bcc26-6e57-5f48-8a9a-cd87bb757493",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Luis Quintanilla",
+      "bio": "Synthetic test biography for speaker 664bcc26-6e57-5f48-8a9a-cd87bb757493. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "17ca67c0-2a3e-5a4c-90e1-e2ab2a9be74a",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Maddy Montaquila",
+      "bio": "Synthetic test biography for speaker 17ca67c0-2a3e-5a4c-90e1-e2ab2a9be74a. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "0014dc28-8e17-5fea-bf57-266b77e175d8",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Mads Kristensen",
+      "bio": "Synthetic test biography for speaker 0014dc28-8e17-5fea-bf57-266b77e175d8. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "7e3d731b-e9fe-5e0e-a37a-646f9c1774cc",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Mads Torgersen",
+      "bio": "Synthetic test biography for speaker 7e3d731b-e9fe-5e0e-a37a-646f9c1774cc. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "ac0ad33b-3e93-50d8-b287-249426194d3e",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Manodasan Wignarajah",
+      "bio": "Synthetic test biography for speaker ac0ad33b-3e93-50d8-b287-249426194d3e. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "1d438637-c125-56f9-b673-b9e35546651d",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Matt Soucoup",
+      "bio": "",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "36adbaaf-0567-5514-af27-0d3278758b02",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Mika Dumont",
+      "bio": "Synthetic test biography for speaker 36adbaaf-0567-5514-af27-0d3278758b02. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "3c3219cc-9c59-54a9-909d-c589cbed5ffe",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Morten Nielsen",
+      "bio": "Synthetic test biography for speaker 3c3219cc-9c59-54a9-909d-c589cbed5ffe. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "3d469f67-1e57-5368-b3cb-b01872ee34c0",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Niels Laute",
+      "bio": "Synthetic test biography for speaker 3d469f67-1e57-5368-b3cb-b01872ee34c0. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "344cc785-2d59-5e03-ac0f-8e8ca845984b",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Paul Yuknewicz",
+      "bio": "",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "ec2db9e8-88ef-5ef4-b1ea-c909b5d8c804",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Rachel Kang",
+      "bio": "Synthetic test biography for speaker ec2db9e8-88ef-5ef4-b1ea-c909b5d8c804. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "73683d96-d255-5c41-ac8e-8870123e3446",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Richard Lander",
+      "bio": "Synthetic test biography for speaker 73683d96-d255-5c41-ac8e-8870123e3446. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "f02cb577-40a8-5307-b39c-223e1b08c7d5",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Scott Hanselman",
+      "bio": "",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "031327b2-2852-5a07-9298-1c9bdc6d60bc",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Sebastian Hernandez",
+      "bio": "Synthetic test biography for speaker 031327b2-2852-5a07-9298-1c9bdc6d60bc. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "5c3461db-7904-5664-afa6-81dd89af2c67",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Sergio Pedri",
+      "bio": "Synthetic test biography for speaker 5c3461db-7904-5664-afa6-81dd89af2c67. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "afb89ca3-235b-5f5e-ba59-fb09fe16459d",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Stephen Halter",
+      "bio": "Synthetic test biography for speaker afb89ca3-235b-5f5e-ba59-fb09fe16459d. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "615a58ec-bcaa-5544-917f-1f840f2c9897",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Tanner Gooding",
+      "bio": "",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "6856fe48-5e3c-5eb1-831f-5a60a818283b",
+      "firstName": "",
+      "lastName": "",
+      "fullName": "Wendy Breiding",
+      "bio": "Synthetic test biography for speaker 6856fe48-5e3c-5eb1-831f-5a60a818283b. Not a real speaker biography.",
+      "tagLine": "",
+      "profilePicture": ""
+    },
+    {
+      "id": "fc942537-8236-4e04-8987-b7c15ed7346f",
+      "firstName": "Alex",
+      "lastName": "Keh",
+      "fullName": "Alex Keh",
+      "bio": "Synthetic test biography for speaker fc942537-8236-4e04-8987-b7c15ed7346f. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/4aa1-400o400o1-Uut54XoatPX13JnMQvCWiE.jpg"
+    },
+    {
+      "id": "26a8c1f7-66e6-407a-968a-67ee0d89c202",
+      "firstName": "Andr\u00E9",
+      "lastName": "Silva",
+      "fullName": "Andr\u00E9 Silva",
+      "bio": "Synthetic test biography for speaker 26a8c1f7-66e6-407a-968a-67ee0d89c202. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/226e-400o400o1-NR6UBqq9r3vuJ4AKY3q9b1.jpg"
+    },
+    {
+      "id": "a5d50f4e-f021-4983-97a9-73f9415b3d5b",
+      "firstName": "Ardalis",
+      "lastName": ".",
+      "fullName": "Ardalis .",
+      "bio": "Synthetic test biography for speaker a5d50f4e-f021-4983-97a9-73f9415b3d5b. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/b762-400o400o1-V1pbMSGqsyXsxWq8eTbUde.jpg"
+    },
+    {
+      "id": "32dd0ebc-cbfb-4f45-acf4-cfc60c55f573",
+      "firstName": "Augustine",
+      "lastName": "Correa",
+      "fullName": "Augustine Correa",
+      "bio": "Synthetic test biography for speaker 32dd0ebc-cbfb-4f45-acf4-cfc60c55f573. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/da4a-400o400o1-QXhp1B7AzSZk56S683A3YV.png"
+    },
+    {
+      "id": "1aeeb749-1d7f-4bf8-be80-6c78ab20429a",
+      "firstName": "Barry",
+      "lastName": "Stahl",
+      "fullName": "Barry Stahl",
+      "bio": "Synthetic test biography for speaker 1aeeb749-1d7f-4bf8-be80-6c78ab20429a. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/8177-400o400o1-49-1d7f-4bf8-be80-6c78ab20429a.283d3e7b-2ac4-4bb2-89cd-b36cfcf5a465.jpg"
+    },
+    {
+      "id": "43667691-72b8-4f23-bdec-425c2c6debf9",
+      "firstName": "Cam",
+      "lastName": "Soper",
+      "fullName": "Cam Soper",
+      "bio": "Synthetic test biography for speaker 43667691-72b8-4f23-bdec-425c2c6debf9. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/26ec-400o400o1-fXCXsMeMv5n9PrWwCvdEG1.jpg"
+    },
+    {
+      "id": "6149d10d-7400-4b81-b4a2-125c8351942f",
+      "firstName": "Cecil",
+      "lastName": "Phillip",
+      "fullName": "Cecil Phillip",
+      "bio": "Synthetic test biography for speaker 6149d10d-7400-4b81-b4a2-125c8351942f. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/d3ac-400o400o1-hpvZE9G3HDttGZwpsQfUsf.jpg"
+    },
+    {
+      "id": "4e54596f-f5c8-422e-8249-132bde23b52b",
+      "firstName": "David",
+      "lastName": "Whitney",
+      "fullName": "David Whitney",
+      "bio": "Synthetic test biography for speaker 4e54596f-f5c8-422e-8249-132bde23b52b. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/d209-400o400o1-QftsPY37vCRJU3gt7PbT2K.jpg"
+    },
+    {
+      "id": "663ad0ce-b9ce-48f5-8d11-a7bab1a6f946",
+      "firstName": "Davide",
+      "lastName": "Bellone",
+      "fullName": "Davide Bellone",
+      "bio": "Synthetic test biography for speaker 663ad0ce-b9ce-48f5-8d11-a7bab1a6f946. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/fff3-400o400o1-TzD4AU6EPPk2ZQF7fdya5p.jpg"
+    },
+    {
+      "id": "3fd9cade-10ef-43df-b124-944015042549",
+      "firstName": "Ed",
+      "lastName": "Charbeneau",
+      "fullName": "Ed Charbeneau",
+      "bio": "Synthetic test biography for speaker 3fd9cade-10ef-43df-b124-944015042549. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/eaa9-400o400o1-7HuHMgWphuKbPVZHn5J1ix.jpg"
+    },
+    {
+      "id": "41e47bce-834b-4bba-8ada-39633a3e696f",
+      "firstName": "Erik",
+      "lastName": "Ejlskov Jensen",
+      "fullName": "Erik Ejlskov Jensen",
+      "bio": "Synthetic test biography for speaker 41e47bce-834b-4bba-8ada-39633a3e696f. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/8f4c-400o400o1-JooCopot7cjUQL4CFnGjxM.png"
+    },
+    {
+      "id": "1f8704d7-04db-4f09-9c0e-d5abcbc7c9ff",
+      "firstName": "Filip",
+      "lastName": "Ekberg",
+      "fullName": "Filip Ekberg",
+      "bio": "Synthetic test biography for speaker 1f8704d7-04db-4f09-9c0e-d5abcbc7c9ff. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/85f2-400o400o1-EMynvrM6r1nHvbjiN4VFRD.jpg"
+    },
+    {
+      "id": "9f59e249-ee35-4542-ae4e-7cbf07c00273",
+      "firstName": "Ian",
+      "lastName": "Griffiths",
+      "fullName": "Ian Griffiths",
+      "bio": "Synthetic test biography for speaker 9f59e249-ee35-4542-ae4e-7cbf07c00273. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/3c9e-400o400o1-VQXc4suMzRUDnT2LK5VLEX.png"
+    },
+    {
+      "id": "e8681f45-d491-4821-82bd-8857593ece05",
+      "firstName": "Isaac",
+      "lastName": "Levin",
+      "fullName": "Isaac Levin",
+      "bio": "Synthetic test biography for speaker e8681f45-d491-4821-82bd-8857593ece05. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/921a-400o400o1-45-d491-4821-82bd-8857593ece05.e06de169-7ea3-4f50-b41c-4cb701a906e1.jpg"
+    },
+    {
+      "id": "1c6307c8-7d76-4656-bbb4-72fc1734a41b",
+      "firstName": "James",
+      "lastName": "Hutchison",
+      "fullName": "James Hutchison",
+      "bio": "Synthetic test biography for speaker 1c6307c8-7d76-4656-bbb4-72fc1734a41b. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/b8e9-400o400o1-fCx8Ac5ztWfZffxFKZ7M44.png"
+    },
+    {
+      "id": "f64820d0-6d4c-4a53-9cfe-d2a0289879cc",
+      "firstName": "Javier",
+      "lastName": "Su\u00E1rez",
+      "fullName": "Javier Su\u00E1rez",
+      "bio": "Synthetic test biography for speaker f64820d0-6d4c-4a53-9cfe-d2a0289879cc. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/8f37-400o400o1-Vg9FBNsH93ZbnaG7AKeLW9.png"
+    },
+    {
+      "id": "30f886ef-decb-49a9-a50e-db3ccff459e1",
+      "firstName": "Jeffrey",
+      "lastName": "Palermo",
+      "fullName": "Jeffrey Palermo",
+      "bio": "Synthetic test biography for speaker 30f886ef-decb-49a9-a50e-db3ccff459e1. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/053e-400o400o1-4oAjXrY37EEBsc9MJtNhGr.jpg"
+    },
+    {
+      "id": "b0b86be8-c57e-4b84-8eb4-d7bbd0777e4a",
+      "firstName": "Juergen",
+      "lastName": "Gutsch",
+      "fullName": "Juergen Gutsch",
+      "bio": "Synthetic test biography for speaker b0b86be8-c57e-4b84-8eb4-d7bbd0777e4a. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/ec54-400o400o1-e8-c57e-4b84-8eb4-d7bbd0777e4a.e3fa4eda-b361-4f0f-a51a-f5da8dfcd2a8.png"
+    },
+    {
+      "id": "4154a21a-5498-4b3d-ba60-d93ea5a6a36f",
+      "firstName": "Marc",
+      "lastName": "Gravell",
+      "fullName": "Marc Gravell",
+      "bio": "Synthetic test biography for speaker 4154a21a-5498-4b3d-ba60-d93ea5a6a36f. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/38ef-400o400o1-77W66Rrd93ymW3eQSjvyrx.png"
+    },
+    {
+      "id": "bcdf362f-6ac2-4d3b-99a1-a3d6d954a493",
+      "firstName": "Martin",
+      "lastName": "Costello",
+      "fullName": "Martin Costello",
+      "bio": "Synthetic test biography for speaker bcdf362f-6ac2-4d3b-99a1-a3d6d954a493. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/9a34-400o400o1-pZTmtCsWsXmtYNKRCGcq18.jpg"
+    },
+    {
+      "id": "94bb2a0c-aa81-4039-84a0-7196d4bbbb41",
+      "firstName": "Mattias",
+      "lastName": "Karlsson",
+      "fullName": "Mattias Karlsson",
+      "bio": "Synthetic test biography for speaker 94bb2a0c-aa81-4039-84a0-7196d4bbbb41. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/6ee6-400o400o1-0c-aa81-4039-84a0-7196d4bbbb41.d471c733-49ae-4ff4-932a-872c49ac7423.PNG"
+    },
+    {
+      "id": "02a06608-eeb9-4882-acf3-5d3416af3e41",
+      "firstName": "Maya",
+      "lastName": "Mateva",
+      "fullName": "Maya Mateva",
+      "bio": "Synthetic test biography for speaker 02a06608-eeb9-4882-acf3-5d3416af3e41. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/e346-400o400o1-EdYpbYHiiYadErQJdRhxJv.jpg"
+    },
+    {
+      "id": "fbb81c58-54e7-479c-b1b8-77fef79a988b",
+      "firstName": "Michael",
+      "lastName": "Hawker",
+      "fullName": "Michael Hawker",
+      "bio": "Synthetic test biography for speaker fbb81c58-54e7-479c-b1b8-77fef79a988b. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/ace8-400o400o1-DAy7nhxdGL4N79ab95YkGP.jpg"
+    },
+    {
+      "id": "ae9ea57b-e388-4d3b-ad25-9d7539fb723c",
+      "firstName": "Michael",
+      "lastName": "Washington",
+      "fullName": "Michael Washington",
+      "bio": "Synthetic test biography for speaker ae9ea57b-e388-4d3b-ad25-9d7539fb723c. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/3065-400o400o1-MecQ2KRdm74NpQ2Kq9qVZ3.png"
+    },
+    {
+      "id": "952d3b14-a231-4cc6-a97f-95940dac3fa5",
+      "firstName": "Mike",
+      "lastName": "Benkovich",
+      "fullName": "Mike Benkovich",
+      "bio": "Synthetic test biography for speaker 952d3b14-a231-4cc6-a97f-95940dac3fa5. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/7ad7-400o400o1-14-a231-4cc6-a97f-95940dac3fa5.e6f98402-92a3-4dcd-bed8-aa0aa6196a08.jpg"
+    },
+    {
+      "id": "904d7e8c-14f4-44aa-af15-86ac72f39a70",
+      "firstName": "Otto",
+      "lastName": "Dobretsberger",
+      "fullName": "Otto Dobretsberger",
+      "bio": "Synthetic test biography for speaker 904d7e8c-14f4-44aa-af15-86ac72f39a70. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/081e-400o400o1-3pJcKohEsxoWh6KmHXJoNr.jpg"
+    },
+    {
+      "id": "2b2f535f-0eed-4782-8a90-e828e399e98a",
+      "firstName": "Paul",
+      "lastName": "Usher",
+      "fullName": "Paul Usher",
+      "bio": "Synthetic test biography for speaker 2b2f535f-0eed-4782-8a90-e828e399e98a. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/9306-400o400o1-hxjKadi96U5kREsGjoLdEV.jpg"
+    },
+    {
+      "id": "2824a814-c107-4bc8-9c15-a46a0f1a41f1",
+      "firstName": "Ryan",
+      "lastName": "Karg",
+      "fullName": "Ryan Karg",
+      "bio": "Synthetic test biography for speaker 2824a814-c107-4bc8-9c15-a46a0f1a41f1. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/8c96-400o400o1-LSnc2zsu76oQ76TY5TEsG.jpg"
+    },
+    {
+      "id": "fc1d0cd3-9675-4188-aa98-e0088069f1a4",
+      "firstName": "Sam",
+      "lastName": "Basu",
+      "fullName": "Sam Basu",
+      "bio": "Synthetic test biography for speaker fc1d0cd3-9675-4188-aa98-e0088069f1a4. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/9947-400o400o1-d3-9675-4188-aa98-e0088069f1a4.0788eacd-acef-44d2-868e-cf111b1f2516.jpg"
+    },
+    {
+      "id": "9bde9de9-7bcb-4077-8087-47bf492a1344",
+      "firstName": "Sarah",
+      "lastName": "Dutkiewicz",
+      "fullName": "Sarah Dutkiewicz",
+      "bio": "Synthetic test biography for speaker 9bde9de9-7bcb-4077-8087-47bf492a1344. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/a3f1-400o400o1-B43xnTmyo6SjNASY5FdSAV.png"
+    },
+    {
+      "id": "465bbfe0-24ba-4431-abdc-80615a7a7aa0",
+      "firstName": "Shaun",
+      "lastName": "Walker",
+      "fullName": "Shaun Walker",
+      "bio": "Synthetic test biography for speaker 465bbfe0-24ba-4431-abdc-80615a7a7aa0. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/20fe-400o400o1-e0-24ba-4431-abdc-80615a7a7aa0.f13d4d55-3bfe-423a-b41f-42ddc0a5f1ca.jpg"
+    },
+    {
+      "id": "e0d63ad2-9848-425f-a130-10b610726dec",
+      "firstName": "Shawn",
+      "lastName": "Wildermuth",
+      "fullName": "Shawn Wildermuth",
+      "bio": "Synthetic test biography for speaker e0d63ad2-9848-425f-a130-10b610726dec. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/c919-400o400o1-KyvAkvVUUBbyk3fKPGVvbg.jpg"
+    },
+    {
+      "id": "496f79e4-6409-47e1-a81e-d426f41a2e10",
+      "firstName": "Shriram",
+      "lastName": "Sankaran",
+      "fullName": "Shriram Sankaran",
+      "bio": "Synthetic test biography for speaker 496f79e4-6409-47e1-a81e-d426f41a2e10. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/83b8-400o400o1-hcxK3bDKzzFCdKHuMDxMG8.jpg"
+    },
+    {
+      "id": "1d07823b-6f40-41bc-96c6-7579e1e1e236",
+      "firstName": "Shweta",
+      "lastName": "Iyer",
+      "fullName": "Shweta Iyer",
+      "bio": "Synthetic test biography for speaker 1d07823b-6f40-41bc-96c6-7579e1e1e236. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/161b-400o400o1-K7PsXC75SLjXpKCSBffKxM.jpg"
+    },
+    {
+      "id": "36a0edaf-4f66-4f54-a522-94a92e6a7f3a",
+      "firstName": "Wesley",
+      "lastName": "Cabus",
+      "fullName": "Wesley Cabus",
+      "bio": "Synthetic test biography for speaker 36a0edaf-4f66-4f54-a522-94a92e6a7f3a. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/6e94-400o400o1-7qC5nXiqPu9JXS5i6nxJMk.jpg"
+    },
+    {
+      "id": "7f29b9a9-a17b-41a7-bf14-24e7edbcd260",
+      "firstName": "Zolt\u00E1n",
+      "lastName": "Leh\u00F3czky",
+      "fullName": "Zolt\u00E1n Leh\u00F3czky",
+      "bio": "Synthetic test biography for speaker 7f29b9a9-a17b-41a7-bf14-24e7edbcd260. Not a real speaker biography.",
+      "tagLine": "Synthetic test speaker tagline.",
+      "profilePicture": "https://cdn.sessionize.com/image/ce76-400o400o1-f2QF13ZkRJ8mE8ZMFWui7X.jpg"
+    }
+  ],
+  "categories": [
+    {
+      "id": 139509,
+      "title": "Day",
+      "items": [
+        {
+          "id": 506050,
+          "name": "1"
+        },
+        {
+          "id": 506051,
+          "name": "2"
+        }
+      ]
+    },
+    {
+      "id": 139510,
+      "title": "Topic",
+      "items": [
+        {
+          "id": 506052,
+          "name": "C#"
+        },
+        {
+          "id": 506053,
+          "name": "ASP.NET Core"
+        },
+        {
+          "id": 506054,
+          "name": "Blazor"
+        },
+        {
+          "id": 506055,
+          "name": "Developer Tools"
+        },
+        {
+          "id": 506056,
+          "name": ".NET AI"
+        },
+        {
+          "id": 506057,
+          "name": "Runtime"
+        },
+        {
+          "id": 506058,
+          "name": ".NET MAUI"
+        },
+        {
+          "id": 506059,
+          "name": "Platform"
+        },
+        {
+          "id": 506060,
+          "name": "Security"
+        },
+        {
+          "id": 506061,
+          "name": "Visual Studio"
+        },
+        {
+          "id": 506062,
+          "name": "AI"
+        },
+        {
+          "id": 506063,
+          "name": "Copilot"
+        },
+        {
+          "id": 506064,
+          "name": ".NET"
+        },
+        {
+          "id": 506065,
+          "name": "Code Review"
+        },
+        {
+          "id": 506066,
+          "name": "Pull Requests"
+        },
+        {
+          "id": 506067,
+          "name": "Version Control"
+        },
+        {
+          "id": 506068,
+          "name": "Windows"
+        },
+        {
+          "id": 506069,
+          "name": "Azure"
+        }
+      ]
+    }
+  ],
+  "rooms": [
+    {
+      "id": 89297,
+      "name": "StreamYard Track"
+    }
+  ],
+  "questions": []
+}

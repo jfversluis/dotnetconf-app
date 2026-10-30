@@ -2,7 +2,7 @@
 
 An **unofficial**, native .NET MAUI app for iOS and Android. The same project also has **experimental Linux desktop and browser targets**, where [Avalonia.Controls.Maui](https://github.com/AvaloniaUI/Avalonia.Controls.Maui) draws the controls. This first slice includes five Shell tabs, session/speaker details, search and day/topic filters, local-time agenda display, persistent My Schedule bookmarks, overlap warnings, community-event maps, and website links.
 
-**All bundled speakers and sessions are fictional sample data.** The real lineup and the authoritative event date range still need to be confirmed. This is a development foundation, not a store-ready release.
+**Conference sessions and speaker profiles are remote-only**, downloaded from the public Microsoft and Sessionize conference feeds and cached for offline use. None ship in the app. A first install needs an internet connection; private organizer enrichment and GitHub-hosted portraits are not used. Branding and the Bot placeholder remain local. Fictional community-event examples are removed; the event list stays empty until an official source is connected. This is a development foundation, not a store-ready release.
 
 Report security vulnerabilities privately using [SECURITY.md](SECURITY.md), not a public issue or pull request.
 
@@ -27,6 +27,7 @@ Install the SDK selected by `global.json`, then:
 dotnet workload install maui-android maui-ios wasm-tools --version 11.0.100-rc.2.26513.2
 dotnet tool restore
 dotnet test tests/DotNetConf.Core.Tests
+dotnet test tests/DotNetConf.App.Tests -c Release -p:MobileTargetFramework=net11.0
 ```
 
 On Linux, omit `maui-ios`; the project drops the iOS target there.
@@ -37,7 +38,7 @@ The iOS head uses the scene lifecycle: `Info.plist` registers the single-window 
 
 The current RC2/Xcode 27.0 build pairing does not claim Xcode 27.1 build support. The scene-forwarding paths for App Actions, authentication URL returns, and user activities still need validation with this workload before adding deep links or authentication.
 
-The earlier scene-enabled RC1 build was launched on an iPhone 18 Pro with iOS 27.0 and an iPhone Duo with iOS 27.1. Ordinary iPhone startup and search work. On Duo, the app occupied a 375 x 667 compatibility window inside a 466 x 678 native scene, leaving a black right margin; adding the scene manifest alone did not fix this older-SDK geometry. Do not force window dimensions or disguise the margin with layout offsets. Full Duo geometry and folding remain release gates: verify both postures with the pinned RC2/Xcode 27.0 toolchain.
+The current RC2 build was inspected on an iPhone 18 Pro and iPhone Duo simulator. The Duo uses its full 466 x 678 scene, and Settings and detail/document pages respect its side chrome through shared safe-area controls, not fixed offsets. Local validation used installed Xcode 27.1 with `ValidateXcodeVersion=false`, which is not the workload's supported pairing. Physical-device execution and folding transitions still need release validation.
 
 After changing the scene manifest, clean and rebuild the iOS target and inspect the generated app bundle's `Info.plist` before reinstalling. During the RC1 migration, an incremental build retained the previous manifest; a successful compilation alone did not prove that the installed app used scenes.
 
@@ -63,6 +64,14 @@ The app uses source-generated XAML with compiled bindings and Debug-only increme
 
 The RC1 incremental XAML generator was observed to retain stale resource-style updates and report `Style.Setters` as read-only after a style edit. If this recurs, a targeted `dotnet clean src/DotNetConf.App -f net11.0-android -p:RuntimeIdentifier=android-arm64` (or the corresponding iOS target/RID), followed by the normal build, clears that preview state. Do not disable incremental Hot Reload or edit generated sources to work around it.
 
+The pinned Android Material 3 handler skips applying explicit toolbar backgrounds.
+`Platforms/Android/ShellToolbarAppearance.cs` narrowly maps that existing color
+to the native toolbar, preserving Material 3 and shared theme bindings. Recheck
+this workaround when updating MAUI. Runtime light/dark switching and per-control
+save-heart colors are covered by native screenshot checks; retain those checks
+when changing themes. Platform values in XAML use typed `OnPlatform<T>` rather
+than the reflection-based, trim-unsafe markup extension.
+
 ### NativeAOT builds
 
 The app enables `PublishAot=true` by default for both mobile targets, without
@@ -82,8 +91,10 @@ dotnet publish src/DotNetConf.App -c Release -f net11.0-ios \
 Android's signed local APK is under
 `src/DotNetConf.App/bin/Release/net11.0-android/android-arm64/publish/`.
 It uses the local debug signing key unless release signing is configured.
-The iOS publish requires device signing; simulator builds are not a substitute
-for a NativeAOT device publish.
+An installable iOS publish requires device signing; simulator builds are not a
+substitute for a NativeAOT device publish. For compile-only validation without
+signing, add `-p:EnableCodeSigning=false -p:BuildIpa=false` to the device publish.
+That produces native device code but does not verify execution on a physical iPhone.
 
 The pinned Android workload requests NativeAOT runtime
 `11.0.0-rc.2.26504.105`, which is available on NuGet.org. `NuGet.Config` uses
@@ -92,6 +103,11 @@ the RC1-only daily-feed mapping is no longer needed.
 Android NativeAOT is experimental in this workload (`XA1040`) and is not yet
 suitable for production use. Do not suppress compatibility warnings. A Debug
 build is not a substitute for a Release NativeAOT publish and runtime verification.
+The pinned Syncfusion toolkit also reports an iOS `IL2070` trim warning
+(`IL2104` in the default summary) in `SfHorizontalContent`'s reflective tap
+handling. Use `-p:TrimmerSingleWarn=false` to inspect it. Do not suppress the
+warning or treat a successful cross-publish as proof that vendor controls are
+trim-safe at runtime.
 
 ## Linux desktop and browser (experimental)
 
@@ -192,7 +208,23 @@ The app-development and specialist skills were installed using an isolated night
 - `src/DotNetConf.FluentIcons`: Fluent icon glyphs for the Avalonia targets.
 - `tests/DotNetConf.Core.Tests`: contract, search, date-boundary/DST, overlap, persistence, concurrency, and failure-path tests.
 
-`Resources/Raw/conference.mock.json` is versioned, explicitly marked `isMock`, and loaded through `IConferenceDataSource`. Times are offset-aware instants converted using the device timezone. Multiple speakers and overlapping sessions are supported. Bookmarks are stored by stable ID in private app storage, independently of the agenda. Invalid data or storage failures are shown rather than silently discarded; corrupt bookmark files are never overwritten.
+The community feed uses the Sessionize **All data** (`/api/v2/{endpoint}/view/All`) JSON shape, documented in the [Sessionize API playbook](https://sessionize.com/playbook/api#what-does-the-json-look-like-4). Microsoft's [conference JSON](https://dotnet.microsoft.com/blob-assets/json/conf/conference-2026.json) supplies days 1-2, including published abstracts, topics and biographies. **https://sessionize.com/api/v2/di6h1fo3/view/All** supplies days 3-4 and their public profiles. A contract fixture derived from the October 30, 2026 public-feed structure is retained only in `tests/DotNetConf.Core.Tests/Fixtures/sessionize.json`, never as an app resource or runtime fallback. Its long descriptions, biographies and taglines are explicitly synthetic test prose; factual names, titles and identifiers remain for stable-identity coverage. It has 70 sessions and 70 speakers; these are fixture counts, not a required baseline for a first download. Do not use private organizer issues, unpublished fields or inferred profile data. Runtime adapters preserve published wording while filtering explicit unfinished bio/abstract placeholders and the "*No response*" pseudo-speaker.
+
+That test capture has 66 supplied bios, 36 permitted portrait URLs, and 18 topic labels. All 36 community biographies and portraits are supplied by Sessionize. At capture time Microsoft published 30 useful bios; Matt Soucoup, Paul Yuknewicz, Scott Hanselman and Tanner Gooding had no finished public-feed bio. Speaker photographs are not bundled in `Resources/Images`; approved `profilePicture` HTTPS URLs support background downloading and offline caching. Missing, unavailable, or invalid portraits use the bundled `speaker_placeholder.png`, the exact .NET Bot image from https://www.dotnetconf.net/img/speakers/dotnet-bot.png. A first offline launch has no sessions or profiles and explains how to download them. Verify reuse rights for supplied photos/artwork before public release. Days 1-2 have no supplied taglines or room assignments; days 3-4 retain those fields from Sessionize.
+
+Remote-only photos intentionally do not preserve identical photo availability to older bundled-portrait builds. GitHub-hosted images are prohibited even when public: the policy blocks GitHub, its subdomains, GitHub user-content/assets/Pages domains and GitHub-named AWS buckets. It also rejects non-HTTPS and credential-bearing URLs. The same shared policy applies during parsing, profile retention, cache validation, cached-file lookup and before following each portrait redirect. The dedicated portrait HTTP client disables automatic redirects; at most four approved redirects are followed manually. A browser may hide redirect details, in which case the download fails safely to the last approved cache or Bot.
+
+The October 30 refresh removes organizer-only Tanner Gooding biography content and all ten Microsoft/organizer portrait URLs from the earlier snapshot. Even ordinary GitHub avatars for Bruno Capuano and Mads Torgersen are excluded. Microsoft's public Chet Husk and Damian Edwards biographies remain; the incomplete "Chet is" and Copilot-request note are filtered. A missing or unreachable photo is not a reason to add credentials or bundled photographs. HTTP 200 alone does not establish that an image passes format and size limits.
+
+The Sessionize root has `sessions`, `speakers`, `questions`, `categories`, and `rooms`. Sessions use string `id`, `speakers` ID arrays, numeric `categoryItems`, and nullable numeric `roomId`; speaker objects use `fullName`, optional `firstName`/`lastName`, `bio`, **`tagLine`**, and `profilePicture`. Upstream may also provide numeric speaker `sessions` arrays. There is no app-specific wrapper around this payload. `SessionizeJson` uses source-generated serialization and maps this wire contract to the existing Core presentation/search models; unused fields (questions, links, service/plenum flags, etc.) are tolerated. Category item names supply topic filters when a feed publishes them. Unscheduled sessions with both times null stay out of the timed agenda; partially missing times, broken references, duplicate IDs, malformed/insecure profile-picture URLs, and invalid intervals fail explicitly. Otherwise valid GitHub portrait URLs are omitted rather than rejecting their sessions.
+
+The test capture retains the agenda page's explicit Pacific offsets (`-08:00`). Remote timestamps with `Z` or an explicit offset retain their instant; offsetless timestamps are interpreted in the configured conference timezone, **America/Los_Angeles**, never the device timezone. Invalid/ambiguous DST wall times require an explicit offset and are rejected. Only display/day filtering converts instants to the device timezone.
+
+For days 1-2, website session codes are mapped deterministically to local numeric IDs: `KEY001` -> `20260001`, `KEY002` -> `20260002`, and `BRK001`-`BRK032` -> `20261001`-`20261032`. Their speaker IDs are UUIDv5 values in the URL namespace, based on `https://dotnet.microsoft.com/en-us/conf/2026/agenda#` plus the exact published name. These are **app-generated IDs, not organizer-issued Sessionize IDs**. Keep them stable when updating the remote adapter or test capture, even though the website URL changed. Days 3-4 retain the original Sessionize session and speaker IDs; no IDs or names currently collide across the two sources. Before replacing the existing synthetic IDs with live Sessionize IDs, provide an explicit ID/bookmark migration; neither names nor titles alone guarantee identity.
+
+`Resources/Raw/conference.json` holds only app-owned presentation metadata, never conference sessions, speaker profiles, community events or photo mappings. Both mock flags are false. `agendaNotice` explains the remote sources, first-download requirement and lack of an official community-event feed in About. `ConferenceMetadataDataSource` loads this metadata through `IConferenceDataSource`; the repository rejects metadata containing an agenda or event examples. Fictional agenda/community fixtures live only in `tests/DotNetConf.Core.Tests/Fixtures/conference.mock.json`, preserving search, overlap, topic, timezone and map-contract edge cases without shipping fictional content.
+
+Multiple speakers and overlapping sessions are supported. Bookmarks are stored by stable ID in private app storage, independently of the agenda. Invalid data or storage failures are shown rather than silently discarded; corrupt bookmark files are never overwritten.
 
 Session/speaker links reuse a matching detail already in the active Shell tab's navigation stack, popping back to that page rather than building circular history. New IDs still push normal details; the other tabs' histories remain independent. Native list scroll viewports span the page, while content templates retain 24-unit gutters, so scrollbars stay at the outer edge.
 
@@ -218,15 +250,49 @@ same topics apply to every day tab and All days. Clear (also available beside th
 main summary) removes all topics but preserves search and day. The main toolbar
 binds MAUI 11 `BadgeText`, `BadgeColor`, and `BadgeTextColor`. The count is the
 number of selected topics, not days, matching sessions or query terms; zero maps
-to null. iOS renders toolbar badges
+to null. The page recreates the empty filter toolbar entry using shared MAUI
+collection APIs to clear the stale native badge seen on iOS 27.1; do not map
+zero to an empty string, which means an indicator badge. iOS renders toolbar badges
 only on iOS 26+, so retain the visible selection summary. Native toolbar labels
 and hints may retain their initial values when bindings change; don't rely on
 them alone to announce the active count. Do not add a custom badge renderer for
 older iOS.
 
-The next data stage replaces the bundled source with a validated HTTPS feed and last-known-good offline cache. Do not just flip `isMock` on fictional content. Reminders, local AI, and Avalonia-owned video integration are intentionally deferred. PR build validation and manual Google Play internal-testing/TestFlight release lanes are described in [CI and release setup](docs/CI.md); production promotion remains manual and store credentials must be configured by the owner.
+### Remote updates and offline boundaries
 
-App-owned icons use [IconFont.Maui.FluentIcons](https://github.com/jfversluis/IconFont.Maui.FluentIcons). Website-matched Space Grotesk headings and Open Sans body fonts, gradients, Entry-based search, and heart save actions are documented in `DESIGN.md`. iOS uses MAUI safe-area controls and native automatic scroll insets to scroll beneath the system tab material without fixed offsets.
+`IConferenceRepository` loads a validated, versioned JSON cache without making HTTP requests. Without a usable cache, it returns metadata with an empty agenda, then the ViewModel initiates a first download. A separate refresh merges two independent HTTPS sources: [Microsoft's conference JSON](https://dotnet.microsoft.com/blob-assets/json/conf/conference-2026.json) and the [Sessionize All feed](https://sessionize.com/api/v2/di6h1fo3/view/All). The website's `/api/agenda` combines all sessions but omits Microsoft IDs and speaker profiles, so it is not the application's source.
+
+The Microsoft adapter maps event codes to the existing session IDs and explicit source-slug aliases to existing speaker UUIDs. Display-name/title edits cannot change bookmark identity. Its day numbers and clock times are interpreted against the conference dates in America/Los_Angeles. The adapter rejects invalid references and filters explicit placeholders; incomplete profiles retain only useful previously downloaded source data, with portrait fallbacks rechecked against the shared URL policy. The Sessionize contract remains the community interchange format and test-fixture format.
+
+Agenda cache schema 5 allows only downloaded conference data and separates withdrawn speaker profiles from the current directory. Schema-1 merged fields have untraceable provenance and are discarded before display. Schema-2/3/4 approved caches retain only validated sources with a remote payload hash and check time; ambiguous legacy profiles require source revalidation, and unvalidated snapshot seeds and all agenda/community-event fields in metadata are removed. A source that has never downloaded is genuinely empty. Only the agenda cache is atomically replaced; stable IDs and independent bookmark/appearance stores remain intact, including saved IDs whose details are not downloaded yet. A failed migration write surfaces a storage issue without displaying discarded content. Warm caches retain fast no-metadata/no-network startup. Unreferenced portrait files are pruned only once an agenda is available, avoiding destructive pruning on an empty first load.
+
+Agenda/profile data is read-only cached reference data. Bookmarks and appearance remain separate local user state and are never uploaded. Public conference data needs no secret or database encryption; if sensitive data is added later, encrypt it and protect keys with `SecureStorage`. Never embed organizer/GitHub credentials.
+
+Cache writes use temporary files and atomic replacement. Valid remote data remains browsable in memory if persistence fails, with a visible storage warning; the preceding file is not replaced. Completed sources are published and persisted independently, including when a sibling request is slow or canceled. Each source retains its last-good data, hash, validators and check/update timestamps; a failed source never removes another source's sessions. Bad JSON, empty feeds, duplicate IDs, broken references and invalid dates cannot replace the last-good source. A drop of more than 25% requires two identical complete validated responses; the pending confirmation survives restart, preventing both transient truncation and indefinite rejection of legitimate changes. Exactly 25% removal is accepted immediately. A first download has no packaged count baseline. Removals are archived separately, so saved withdrawn sessions remain understandable without keeping their profiles in the current directory or deleting bookmarks. A corrupt bookmark file disables saving with a visible error but does not block agenda browsing or overwrite that file. Retry rereads unavailable local schedule data even offline and reconciles existing session save flags after recovery.
+
+The Microsoft response advertises a one-year cache lifetime, so refresh explicitly revalidates using `Cache-Control: no-cache` and ETags. Unchanged payloads/304s retain content. Requests have bounded timeouts, size limits, cancellation and transient-only retries. Cached data renders before the silent background refresh. Home, Sessions, Speakers and My Schedule expose native pull-to-refresh without refresh toolbar items. Failure-only inline Retry actions remain available. Gesture progress is separate from background work; automatic checks are quiet when data exists, while a genuinely empty agenda shows small first-download progress. Repeat requests join an existing refresh rather than starting duplicate work. Offline/update/storage problems show a compact inline Retry message. Expected lifecycle cancellation stops progress without creating a new error notice or clearing an existing failure. In-place ViewModel/collection reconciliation preserves identities, open details, searches, topics, local-day selection and scroll offsets.
+
+Browser fetches omit custom revalidation headers, which Sessionize does not allow in CORS preflights. A unique query value bypasses browser HTTP-cache reuse while the app still compares payload hashes and retains its own offline cache. Sessionize can therefore populate and refresh a fresh browser install. Microsoft's feed does not grant browser CORS access at all; a fresh browser install cannot download its sessions, and its failure is disclosed without blocking community sessions. No relay/backend is included; full browser coverage requires upstream CORS support or a separately designed same-origin service.
+
+The October 30 review-remediation pass has 366 passing Core/helper tests and seven actual App ViewModel tests. The headless App suite references the ordinary desktop assembly without starting MAUI; it disables transitive asset/bootstrap generation only in its test host. It covers saved-state recovery online/offline, withdrawn saved details, and stop/resume cancellation races. Repository tests cover independent source completion, repeated contraction confirmation, malformed-cache recovery, and migrations without bookmark resets.
+
+Earlier DevFlow checks on the dedicated Duo and Android covered fresh offline startup, slow first-download progress, each source failing independently, partial-cache restarts/recovery, legacy migration, preserved bookmarks/counts, and real public portraits. The browser now starts without duplicate font registration. Real Edge verification loaded 36 community sessions and ten portraits, retained them and a bookmark across reload with external requests blocked, handled online/offline events, and reported no page exceptions. The app-shell host stayed reachable; this does not establish offline PWA bootstrap. Browser caches use bounded local storage (1 MiB agenda, 256 KiB per portrait, 700 KiB aggregate encoded portraits) and report storage failures. Browser builds require the pinned `wasm-tools` workload and native WASM linking for Skia/HarfBuzz.
+
+The UI follow-up removed all four refresh toolbar items. Native pulls on all four surfaces were verified on the Duo and Android, including an empty saved schedule on iOS. About also exposes a keyboard/screen-reader-friendly refresh action. All three filter-clear paths clear the native badge while preserving day/search; actual screenshots verify the previously stale iOS badge disappears. The Duo speaker portrait moved from y=74 (under chrome ending at y=82) to y=98, retaining its full 96-unit height, using the shared top safe-area setting. Android portraits remain fully visible.
+
+Final local validation passed Android/iOS Debug builds, ARM64 Android NativeAOT AAB publication, unsigned iOS-device NativeAOT publication, and Linux ARM64/browser builds. App-authored `OnPlatformExtension` trim warnings were removed using typed platform values and a typed iOS search-description binding. The existing Syncfusion iOS trim warning and Android experimental-NativeAOT warning remain. iOS used installed Xcode 27.1 with the workload-version check explicitly disabled. Simulator/emulator UI checks are not physical-device NativeAOT, store-signing, or store-approval evidence.
+
+Agenda cache files live in MAUI `FileSystem.AppDataDirectory`; portrait files use `FileSystem.CacheDirectory` and may be evicted by the OS. Photos download in background batches of three, with a 30-second batch budget, a 4 MiB download cap and a 64 MiB newest-download-first disk budget. Only static JPEG, PNG and WebP images up to 2048 pixels per axis and 1,048,576 total pixels are accepted; GIF/APNG/animated WebP are rejected before native decoding. A shared layered MAUI portrait keeps the bundled website placeholder behind the downloaded cached image, including while loading and when a native decoder returns an empty result without a failure event. There are no bundled speaker photographs or platform image handlers. Missing/unreachable images retain a cached portrait or show the placeholder. Only UI changes marshal through MAUI `MainThread`.
+
+`nikneem/sessionize-api-client` (`Sessionize.Api.Client` 2.1.3, MIT) was evaluated but is not used. Its reflection-based JSON path and incomplete category/nullable-schedule modeling would require keeping our source-generated adapter, while it provides neither the Microsoft source nor offline persistence. Retain the current typed Sessionize contract and bounded transport instead of adding an unused dependency.
+
+Akavache v13 and its source-generated `System.Text.Json` path were evaluated. Its Rx/Splat APIs and SQLite/native persistence dependencies add no value for this small read-only snapshot. BCL `System.Text.Json` source generation plus atomic files provides the required AOT-safe persistence without another runtime package or native database. All new serialization supplies generated type metadata; keep the Core AOT/trim analyzers enabled.
+
+Microsoft's endpoint currently has no browser CORS permission. Native iOS/Android and Linux can fetch both feeds; browser failures retain any previously downloaded Microsoft data and remain visible. Full browser refresh needs upstream CORS support or a same-origin relay, not a platform-specific bypass. Do not silently skip that source.
+
+Reminders, local AI, and Avalonia-owned video integration remain deferred. PR build validation and manual Google Play internal-testing/TestFlight release lanes are described in [CI and release setup](docs/CI.md); production promotion remains manual and store credentials must be configured by the owner.
+
+App-owned icons use [IconFont.Maui.FluentIcons](https://github.com/jfversluis/IconFont.Maui.FluentIcons). Website-matched Space Grotesk headings and Open Sans body fonts, gradients, Entry-based search, and heart save actions are documented in `DESIGN.md`. iOS uses MAUI safe-area controls and native automatic scroll insets to scroll beneath the system tab material without fixed offsets. The speaker-detail root also respects the top container safe area so its header does not begin under the Duo's navigation chrome; its bottom remains edge-to-edge.
 
 Launcher and light/dark splash screens use the website's two-robots-on-a-rocket graphic, with redistribution permission confirmed by the project owner on October 7, 2026. Android's themed launcher uses a matching monochrome silhouette. Artwork provenance and font licenses/notices are bundled under `Resources/Raw`; the artwork permission is not a general open-source license. The app follows the system theme and preserves native navigation. Its Android package name and iOS bundle ID are both `dev.jfversluis.dotnetconf`.
 
@@ -258,7 +324,7 @@ RC2 version as Controls. `UseMauiMaps()` enables native MapKit/Google Maps handl
 MAUI 11's `IsClusteringEnabled` and `Pin.ImageSource` APIs supply native clustering,
 default cluster-tap zoom, and custom pin images; no custom map handler or
 third-party clustering implementation is used. MAUI's `MapSpan.FromLocations`
-frames the bundled regional examples, with extra zoom-out padding to keep marker
+frames available event locations, with extra zoom-out padding to keep marker
 images away from the viewport edges. Map and list selections expose the
 same event details and website action. The map starts with all event locations in
 view; selecting from the list focuses that location.
@@ -267,10 +333,11 @@ view; selecting from the list focuses that location.
 default to an empty list). Each event requires a stable `id`, `name`, `kind`
 (`watch-party` or `community-conference`), `venue`, `city`, `country`, finite
 `latitude`/`longitude` within geographic bounds, and an absolute HTTPS `websiteUrl`.
-The 24 bundled events and venues are fictional; their websites intentionally
-use `example.com`. Mixed watch-party/presentation hubs in Amsterdam, London,
-Paris, and Berlin exercise clustering at different zoom levels. Seven isolated
-city examples keep individual pins visible. `community-conference` is the data
+No community events are bundled or supplied by the currently connected agenda feeds.
+The empty list links to the official website and does not construct a map.
+The 24 fictional events remain only in the Core test fixture, with `example.com`
+links and mixed/dense locations for contract and clustering examples.
+`community-conference` is the data
 contract name for in-person talks presenting the latest .NET Conf materials.
 
 `CommunityPinImages` draws a white-outlined teardrop using MAUI Graphics and typed
@@ -321,8 +388,8 @@ control remains available. A configured Android map and its clustering must be
 verified before release.
 
 No GPS permission is requested and `IsShowingUser` is false. Map tiles use the
-platform provider's network services; offline availability applies to the bundled
-event list, not the basemap.
+platform provider's network services; an event list does not make the basemap
+available offline. Currently no event dataset is connected.
 
 The October 8 verification covered the Community overview, full-screen explorer,
 direct list entry, compact selection preview, and event-detail/back navigation.

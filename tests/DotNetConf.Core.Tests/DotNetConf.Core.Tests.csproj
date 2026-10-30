@@ -17,7 +17,12 @@
   <ItemGroup>
     <Using Include="Xunit" />
     <ProjectReference Include="../../src/DotNetConf.Core/DotNetConf.Core.csproj" />
-    <None Include="../../src/DotNetConf.App/Resources/Raw/conference.mock.json" Link="conference.mock.json" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="../../src/DotNetConf.App/Services/SpeakerImageCache.cs" Link="AppHelpers/SpeakerImageCache.cs" />
+    <Compile Include="../../src/DotNetConf.App/Platforms/Avalonia/BrowserCache.cs" Link="AppHelpers/BrowserCache.cs" />
+    <Compile Include="../../src/DotNetConf.App/ViewModels/CollectionUpdates.cs" Link="AppHelpers/CollectionUpdates.cs" />
+    <None Update="Fixtures/*.json" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/DotNetConf.App/Resources/Raw/conference.json" Link="conference.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/DotNetConf.App/Resources/Images/speaker_placeholder.png" Link="speaker_placeholder.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
