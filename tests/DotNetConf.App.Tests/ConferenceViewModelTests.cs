@@ -9,6 +9,47 @@ namespace DotNetConf.App.Tests;
 public sealed class ConferenceViewModelTests
 {
     [Theory]
+    [InlineData("validation")]
+    [InlineData("json")]
+    [InlineData("network")]
+    [InlineData("timeout")]
+    [InlineData("mixed")]
+    [InlineData("cache")]
+    public async Task RefreshErrorsDistinguishInvalidSourceDataFromConnectionAndStorageFailures(string failure)
+    {
+        var issue = failure switch
+        {
+            "json" => new ConferenceDataIssue(ConferenceRepository.MicrosoftSource, new System.Text.Json.JsonException("Synthetic malformed JSON")),
+            "network" => new ConferenceDataIssue(ConferenceRepository.MicrosoftSource, new HttpRequestException("Synthetic network failure")),
+            "timeout" => new ConferenceDataIssue(ConferenceRepository.MicrosoftSource, new TimeoutException("Synthetic timeout")),
+            "cache" => new ConferenceDataIssue(ConferenceRepository.CacheSource, new InvalidDataException("Synthetic invalid cache")),
+            _ => new ConferenceDataIssue(ConferenceRepository.MicrosoftSource, new InvalidDataException("Synthetic invalid agenda"))
+        };
+        var snapshot = Snapshot() with { Issues = failure == "mixed"
+            ? [issue, new(ConferenceRepository.CommunitySource, new HttpRequestException("Synthetic network failure"))]
+            : [issue] };
+        var repository = new TestRepository(snapshot);
+        var viewModel = Create(repository, new TestScheduleStore(), new TestConnectivity());
+        await viewModel.InitializeAsync();
+        await (viewModel.RefreshCommand.ExecutionTask ?? Task.CompletedTask);
+
+        Assert.True(viewModel.HasRefreshError);
+        Assert.True(viewModel.HasAgenda);
+        Assert.Contains(failure == "cache" ? "Check storage" :
+            failure is "network" or "timeout" ? "Couldn't download Microsoft" : "Microsoft agenda update because its data was invalid",
+            viewModel.RefreshMessage);
+        if (failure is "validation" or "json" or "cache")
+            Assert.DoesNotContain("connection", viewModel.RefreshMessage);
+        if (failure == "mixed")
+            Assert.Contains("Couldn't download community", viewModel.RefreshMessage);
+
+        repository.Snapshot = snapshot with { Issues = [] };
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+        Assert.False(viewModel.HasRefreshError);
+        Assert.Empty(viewModel.RefreshMessage);
+    }
+
+    [Theory]
     [InlineData(NetworkAccess.None, false)]
     [InlineData(NetworkAccess.Internet, false)]
     [InlineData(NetworkAccess.None, true)]
@@ -162,11 +203,12 @@ public sealed class ConferenceViewModelTests
 
     private sealed class TestRepository(ConferenceSnapshot snapshot) : IConferenceRepository
     {
+        public ConferenceSnapshot Snapshot { get; set; } = snapshot;
         public bool HoldFirstRequest { get; init; }
         public int RefreshCalls { get; private set; }
         public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        public Task<ConferenceSnapshot> LoadAsync(CancellationToken cancellationToken = default) => Task.FromResult(snapshot);
+        public Task<ConferenceSnapshot> LoadAsync(CancellationToken cancellationToken = default) => Task.FromResult(Snapshot);
         public async Task<ConferenceSnapshot> RefreshAsync(CancellationToken cancellationToken = default,
             IProgress<ConferenceSnapshot>? progress = null)
         {
@@ -175,7 +217,7 @@ public sealed class ConferenceViewModelTests
             if (HoldFirstRequest && RefreshCalls == 1)
                 await Release.Task;
             cancellationToken.ThrowIfCancellationRequested();
-            return snapshot;
+            return Snapshot;
         }
     }
 }

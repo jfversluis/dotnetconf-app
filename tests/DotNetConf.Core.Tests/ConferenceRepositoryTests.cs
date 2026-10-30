@@ -122,6 +122,42 @@ public sealed class ConferenceRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task FourDayMicrosoftUpdatePersistsWithoutChangingExistingIdsOrWithdrawingSessions()
+    {
+        var repository = Repository();
+        var original = await repository.RefreshAsync();
+        var oldMicrosoft = Assert.Single((await ReadCacheAsync()).Microsoft.Sessions);
+        clock.Advance();
+        var microsoft = RemoteAgendaTests.Microsoft;
+        handler.Respond = (request, _) => Task.FromResult(request.RequestUri!.Host == "sessionize.com"
+            ? new HttpResponseMessage(HttpStatusCode.NotModified)
+            : Ok(Json(microsoft with
+            {
+                Sessions =
+                [
+                    microsoft.Sessions[0],
+                    microsoft.Sessions[0] with { Id = "BRK032", Day = 2, Title = "Synthetic day two" },
+                    microsoft.Sessions[0] with { Id = "BRK100", Day = 3, Title = "Synthetic day three" },
+                    microsoft.Sessions[0] with { Id = "BRK135", Day = 4, Title = "Synthetic day four" }
+                ]
+            }), "\"four-days\""));
+
+        var updated = await repository.RefreshAsync();
+        Assert.Empty(updated.Issues);
+        Assert.Empty(updated.Document.WithdrawnSessions);
+        Assert.Equal(original.Document.Sessions.Count + 3, updated.Document.Sessions.Count);
+        Assert.Equivalent(oldMicrosoft, updated.Document.Sessions.Single(session => session.Id == oldMicrosoft.Id));
+        Assert.Equal(clock.Now, updated.LastCheckedAt);
+        var cache = await ReadCacheAsync();
+        Assert.Equal("\"four-days\"", cache.Microsoft.ETag);
+        Assert.Equal(4, cache.Microsoft.Sessions.Count);
+        Assert.Equal(4, cache.Microsoft.Sessions.Select(session => session.StartsAt.Date).Distinct().Count());
+        var restarted = await Repository().LoadAsync();
+        Assert.Empty(restarted.Issues);
+        Assert.Equivalent(updated.Document, restarted.Document);
+    }
+
+    [Fact]
     public async Task FirstRefreshAcceptsValidRemoteDataWithoutAnInventedBundledCount()
     {
         handler.Respond = (request, _) => Task.FromResult(Ok(request.RequestUri!.Host == "sessionize.com"

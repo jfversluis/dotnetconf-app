@@ -78,7 +78,7 @@ public static class MicrosoftAgendaJson
         {
             if (source is null || source.SpeakerIds is null || source.SpeakerIds.Any(string.IsNullOrWhiteSpace) ||
                 source.Topics is null ||
-                source.Day is < 1 or > 2 || source.Timezone != "PST")
+                source.Day is < 1 or > 4 || source.Timezone != "PST")
                 throw new InvalidDataException("Microsoft sessions require valid days, Pacific timezone, and references.");
             sessions.Add(new Session
             {

@@ -116,6 +116,8 @@ public sealed class RemoteAgendaTests
     [InlineData("KEY002", "20260002")]
     [InlineData("BRK001", "20261001")]
     [InlineData("BRK032", "20261032")]
+    [InlineData("BRK100", "20261100")]
+    [InlineData("BRK135", "20261135")]
     public async Task NativeSessionIdentitiesStayStableOnDisplayEdits(string sourceId, string expected)
     {
         var data = Microsoft;
@@ -139,6 +141,27 @@ public sealed class RemoteAgendaTests
         });
         Assert.Equal("speaker-new", Assert.Single(result.Speakers).Id);
         Assert.Equal(new DateOnly(2026, 11, 11), DateOnly.FromDateTime(Assert.Single(result.Sessions).StartsAt.Date));
+    }
+
+    [Theory]
+    [InlineData(1, "BRK006", "20261006", "2026-11-10T19:30:00Z")]
+    [InlineData(2, "BRK032", "20261032", "2026-11-11T19:30:00Z")]
+    [InlineData(3, "BRK100", "20261100", "2026-11-12T19:30:00Z")]
+    [InlineData(4, "BRK135", "20261135", "2026-11-13T19:30:00Z")]
+    public async Task AllPublishedDaysKeepStableIdsAndPacificTimes(
+        int day, string sourceId, string expectedId, string expectedStart)
+    {
+        var data = Microsoft;
+        var result = await ReadAsync(data with
+        {
+            Sessions = [data.Sessions[0] with { Day = day, Id = sourceId }]
+        });
+        var session = Assert.Single(result.Sessions);
+        Assert.Equal(expectedId, session.Id);
+        Assert.Equal(DateTimeOffset.Parse(expectedStart), session.StartsAt);
+        Assert.Equal(TimeSpan.FromHours(-8), session.StartsAt.Offset);
+        Assert.Equal(TimeSpan.FromMinutes(30), session.EndsAt - session.StartsAt);
+        Assert.Equal([GeraldId], session.SpeakerIds);
     }
 
     [Theory]
@@ -219,7 +242,8 @@ public sealed class RemoteAgendaTests
 
     [Theory]
     [InlineData(0, "PST", "08:00:00", "09:00:00")]
-    [InlineData(3, "PST", "08:00:00", "09:00:00")]
+    [InlineData(5, "PST", "08:00:00", "09:00:00")]
+    [InlineData(-1, "PST", "08:00:00", "09:00:00")]
     [InlineData(1, "UTC", "08:00:00", "09:00:00")]
     [InlineData(1, "PDT", "08:00:00", "09:00:00")]
     [InlineData(1, "PST", "25:00:00", "09:00:00")]
