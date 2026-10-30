@@ -1,8 +1,10 @@
 # Contributing to the .NET Conf companion
 
-An **unofficial**, native .NET MAUI app for iOS and Android. The same project also runs on Linux desktop and in the browser, where [Avalonia.Controls.Maui](https://github.com/AvaloniaUI/Avalonia.Controls.Maui) draws the controls. This first slice includes five Shell tabs, session/speaker details, search and day/topic filters, local-time agenda display, persistent My Schedule bookmarks, overlap warnings, community-event maps, and website links.
+An **unofficial**, native .NET MAUI app for iOS and Android. The same project also has **experimental Linux desktop and browser targets**, where [Avalonia.Controls.Maui](https://github.com/AvaloniaUI/Avalonia.Controls.Maui) draws the controls. This first slice includes five Shell tabs, session/speaker details, search and day/topic filters, local-time agenda display, persistent My Schedule bookmarks, overlap warnings, community-event maps, and website links.
 
 **All bundled speakers and sessions are fictional sample data.** The real lineup and the authoritative event date range still need to be confirmed. This is a development foundation, not a store-ready release.
+
+Report security vulnerabilities privately using [SECURITY.md](SECURITY.md), not a public issue or pull request.
 
 ## Prerequisites
 
@@ -91,7 +93,12 @@ Android NativeAOT is experimental in this workload (`XA1040`) and is not yet
 suitable for production use. Do not suppress compatibility warnings. A Debug
 build is not a substitute for a Release NativeAOT publish and runtime verification.
 
-## Linux desktop and browser
+## Linux desktop and browser (experimental)
+
+These targets are experimental, not production-ready alternatives to the
+primary iOS and Android apps. They have known feature gaps and less validation;
+the historical verification notes below do not establish parity or current
+release readiness.
 
 `net11.0` and `net11.0-browser` use Avalonia.Controls.Maui in full-hosting mode; Android and iOS keep their native handlers and package graph. Both Avalonia targets define `AVALONIA`. Their setup lives in `Platforms/Avalonia` (`UseAvaloniaHost`), which the project registers as a `MauiPlatformSpecificFolder`. The browser entry point is `src/DotNetConf.App.Browser`: the WebAssembly SDK cannot be combined with the MAUI single project, so that small head only starts the app, which `DotNetConf.App` builds as a `net11.0-browser` library.
 
@@ -104,6 +111,16 @@ Differences from the mobile apps:
 - Saved sessions are kept in `~/.config/DotNetConf.App/schedule.json` on Linux and in the browser's local storage on the web, one `dotnetconf.saved.<id>` item per session, so tabs don't overwrite each other. If the browser blocks storage, `wwwroot/main.js` keeps them in memory for that visit.
 - Website links go through Avalonia's launcher: `xdg-open` on Linux, a new tab in the browser.
 - The Linux window icon is `Resources/Splash/splash.png`. The browser's page icon and loading screen use `wwwroot/splash.png`, a copy of that file with the `MauiSplashScreen` colors; update both together.
+
+Avalonia dependency licenses and upstream notices are bundled under `Resources/Raw`
+and linked from About's Third-party dependencies page on these targets. This
+includes the Inter font's SIL Open Font License, the Avalonia.Controls.Maui
+Apache-licensed MIME mappings, and the complete native SkiaSharp/HarfBuzzSharp
+notices; an MIT package declaration does not replace those embedded-component
+licenses. `THIRD-PARTY-NOTICES.txt` records the package versions and pinned legal-text
+sources. When updating Avalonia or its resolved dependencies, refresh the
+corresponding legal texts from those exact packages/source revisions and keep
+the in-app list aligned. Preserve upstream notices verbatim.
 
 `AvaloniaHost` and the app project also carry workarounds for Avalonia.Controls.Maui `11.0.0-rc.1.26252.343`, each commented in place: font icons on buttons and Shell tabs, Shell toolbar items that do not change with the tab or page, `EmptyView` overlapping a `CollectionView` header, an empty `FileSystem.AppDataDirectory` when `~/.config` does not exist, and fonts and raw assets missing from the assembly when the target has no images. Recheck them when updating the package.
 

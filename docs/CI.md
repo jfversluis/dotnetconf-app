@@ -19,8 +19,13 @@ CI sets `MobileTargetFramework` to narrow the app's restore to the platform on
 that runner without overriding the Core project's `net11.0` target. Local builds
 still default to both mobile targets.
 
-In GitHub branch protection/rulesets, require `Core tests`, `android build`,
-and `ios build` for `main`. Workflows alone do not enable branch protection.
+The repository's active `main` ruleset requires pull requests, resolved review
+threads, and an up-to-date branch with passing `Core tests`, `android build`,
+and `ios build` checks from GitHub Actions. Deletion and force pushes are blocked,
+with no bypass actors. Mandatory approval count is zero so the owner can merge
+their own PR after CI passes without needing another reviewer. Workflows alone
+do not configure these settings; preserve the ruleset and update its required
+check names if CI job names change.
 
 ## What the owner needs to provide
 
@@ -29,10 +34,20 @@ Use this ID when creating the store records and iOS provisioning profile.
 Release jobs require explicit environment variables for the store IDs and
 override `ApplicationId` only for that build; they do not change local app IDs.
 
-Create the GitHub environments below under **Settings > Environments**. Restrict
-deployment branches to `main` and add a required reviewer if supported by your
-GitHub plan. Store credentials as **environment secrets**, never in source or
-chat. Variables are non-secret GitHub environment variables.
+The GitHub environments below already restrict deployment branches to `main`.
+Required reviewers could not be enabled on October 30, 2026: GitHub rejected the
+setting for both environments because the current plan does not support it for
+this private repository. There is currently **no deployment approval gate**;
+main-only deployment policies do not prevent write collaborators from dispatching
+a release from `main`.
+
+When supported, use **Settings > Environments** to require `jfversluis` as the
+reviewer for both environments, disable administrator bypass, and leave
+**Prevent self-review** off so the owner can approve their own release. Recheck
+feature availability after any separately authorized plan or visibility change;
+this is not a request to change repository visibility. Store credentials as
+**environment secrets**, never in source or chat. Variables are non-secret GitHub
+environment variables.
 
 ### `google-play-internal`
 

@@ -21,6 +21,8 @@ The bundled agenda is available offline, so you can browse it and manage your sa
 
 The app is **in development and not yet available in the App Store or Google Play**. We're aiming for a first release in November 2026.
 
+**iOS and Android are the primary targets. Linux desktop and browser support is experimental**, with known feature gaps and less validation than the mobile apps. See the [platform limitations](CONTRIBUTING.md#linux-desktop-and-browser-experimental) before trying those builds.
+
 **The current sessions and speakers are fictional examples**, not the announced .NET Conf lineup. The app's agenda will be updated when the official schedule is available. For official announcements and event information, visit [dotnetconf.net](https://www.dotnetconf.net/).
 
 ## Your data
@@ -37,11 +39,13 @@ offline under Settings → About → Third-party dependencies.
 
 ## About the project
 
-Built with [.NET MAUI](https://dotnet.microsoft.com/apps/maui) and .NET 11 RC2 technology, with styling inspired by the .NET Conf website. The same app also runs on Linux desktop and in the browser, drawn by [Avalonia.Controls.Maui](https://github.com/AvaloniaUI/Avalonia.Controls.Maui). This is an unofficial project, not an official Microsoft conference app.
+Built with [.NET MAUI](https://dotnet.microsoft.com/apps/maui) and .NET 11 RC2 technology, with styling inspired by the .NET Conf website. Experimental Linux desktop and browser builds are drawn by [Avalonia.Controls.Maui](https://github.com/AvaloniaUI/Avalonia.Controls.Maui). This is an unofficial project, not an official Microsoft conference app.
 
 The rocket-bot artwork is used with permission. That permission does not grant a general license to reuse the artwork; bundled third-party notices include its provenance and font licenses.
 
 Want to help build the app? See [the contributor guide](CONTRIBUTING.md) for setup, development tools, and verification details.
+
+For security vulnerabilities, use the [private reporting instructions](SECURITY.md) rather than a public issue.
 
 Pull requests validate the Core tests and Android/iOS Release builds. Store uploads
 are manual and target Google Play internal testing and TestFlight only; see
