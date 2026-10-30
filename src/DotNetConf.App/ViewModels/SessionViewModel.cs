@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DotNetConf.Core;
+using IconFont.Maui.FluentIcons;
 
 namespace DotNetConf.App.ViewModels;
 
@@ -11,12 +12,12 @@ public partial class SessionViewModel : ObservableObject
         Model = model;
         Speakers = speakers.Where(speaker => model.SpeakerIds.Contains(speaker.Id)).ToArray();
         IsSaved = isSaved;
-        ToggleSaveCommand = new AsyncRelayCommand(() => owner.ToggleSavedAsync(this));
+        ToggleSaveCommand = new AsyncRelayCommand(() => owner.ToggleSavedAsync(this), () => owner.IsScheduleAvailable);
         OpenCommand = new AsyncRelayCommand(() => owner.OpenSessionAsync(Id));
         RefreshTime(TimeZoneInfo.Local);
     }
 
-    public Session Model { get; }
+    public Session Model { get; private set; }
     public string Id => Model.Id;
     public string AutomationId => $"session-{Id}";
     public string SaveAutomationId => $"save-{Id}";
@@ -25,14 +26,30 @@ public partial class SessionViewModel : ObservableObject
     public string SpeakerNames => Speakers.Count == 0 ? "Speaker to be announced" : string.Join(", ", Speakers.Select(speaker => speaker.Name));
     public string TopicLabel => string.Join(" / ", Model.Topics);
     public string NavigationDescription => $"{Title}. {DateLabel}, {TimeLabel}. {SpeakerNames}. {TopicLabel}"
+        + (IsWithdrawn ? ". No longer in the published agenda." : "")
         + (HasConflict ? ". Overlaps another saved session." : ".");
-    public IReadOnlyList<SpeakerViewModel> Speakers { get; }
+    public IReadOnlyList<SpeakerViewModel> Speakers { get; private set; }
     public IAsyncRelayCommand OpenCommand { get; }
     public IAsyncRelayCommand ToggleSaveCommand { get; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NavigationDescription))]
+    [NotifyPropertyChangedFor(nameof(SaveHint))]
+    public partial bool IsWithdrawn { get; set; }
+
+    public void Update(Session model, IEnumerable<SpeakerViewModel> speakers)
+    {
+        Model = model;
+        Speakers = speakers.Where(speaker => model.SpeakerIds.Contains(speaker.Id)).ToArray();
+        IsWithdrawn = false;
+        RefreshTime(TimeZoneInfo.Local);
+        OnPropertyChanged(string.Empty);
+    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SaveLabel))]
     [NotifyPropertyChangedFor(nameof(SaveHint))]
+    [NotifyPropertyChangedFor(nameof(SaveGlyph))]
+    [NotifyPropertyChangedFor(nameof(SaveFontFamily))]
     public partial bool IsSaved { get; set; }
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NavigationDescription))]
@@ -44,7 +61,10 @@ public partial class SessionViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(NavigationDescription))]
     public partial string DateLabel { get; set; } = "";
     public string SaveLabel => IsSaved ? "Remove from schedule" : "Save to schedule";
-    public string SaveHint => $"{(IsSaved ? "Saved. Remove from My Schedule" : "Not saved. Add to My Schedule")}: {Title}";
+    public string SaveHint => $"{(IsSaved ? "Saved. Remove from My Schedule" : "Not saved. Add to My Schedule")}: {Title}"
+        + (IsWithdrawn ? ". No longer in the published agenda." : "");
+    public string SaveGlyph => IsSaved ? FluentIconsFilled.Heart24 : FluentIconsRegular.Heart24;
+    public string SaveFontFamily => IsSaved ? FluentIconsFilled.FontFamily : FluentIconsRegular.FontFamily;
 
     public void RefreshTime(TimeZoneInfo timeZone)
     {

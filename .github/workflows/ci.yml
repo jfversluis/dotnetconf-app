@@ -29,6 +29,10 @@ jobs:
         with:
           global-json-file: global.json
       - run: dotnet test tests/DotNetConf.Core.Tests/DotNetConf.Core.Tests.csproj -c Release --logger trx --results-directory TestResults
+      - name: Install pinned MAUI SDK for headless App tests
+        run: dotnet workload install maui-android --version "$(jq -r '.workload.version' global.json)"
+      - name: App ViewModel regression tests (headless desktop assembly)
+        run: dotnet test tests/DotNetConf.App.Tests/DotNetConf.App.Tests.csproj -c Release -p:MobileTargetFramework=net11.0 --logger trx --results-directory TestResults
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
@@ -58,7 +62,7 @@ jobs:
           platform: ${{ matrix.platform }}
       - name: Android Release build
         if: matrix.platform == 'android'
-        run: dotnet publish src/DotNetConf.App/DotNetConf.App.csproj -c Release -f net11.0-android -p:MobileTargetFramework=net11.0-android -p:AndroidPackageFormats=aab
+        run: dotnet publish src/DotNetConf.App/DotNetConf.App.csproj -c Release -f net11.0-android -r android-arm64 -p:MobileTargetFramework=net11.0-android -p:AndroidPackageFormats=aab
       - name: iOS Release simulator build (no signing credentials)
         if: matrix.platform == 'ios'
         run: dotnet build src/DotNetConf.App/DotNetConf.App.csproj -c Release -f net11.0-ios -p:MobileTargetFramework=net11.0-ios -p:RuntimeIdentifier=iossimulator-arm64 -p:EnableCodeSigning=false

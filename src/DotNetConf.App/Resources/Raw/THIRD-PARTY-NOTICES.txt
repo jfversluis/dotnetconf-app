@@ -47,6 +47,30 @@ Copyright 2020 The Space Grotesk Project Authors
 https://github.com/floriankarsten/space-grotesk
 SIL Open Font License 1.1: LICENSE-SpaceGrotesk.txt
 
+Google Maps SDK for Android and Google Play services (Android only)
+Native artifacts resolved through Microsoft.Maui.Controls.Maps:
+com.google.android.gms:play-services-maps 20.0.0
+com.google.android.gms:play-services-base 18.10.0
+com.google.android.gms:play-services-basement 18.10.0
+com.google.android.gms:play-services-tasks 18.4.1
+Google Maps SDK/Google Play services are subject to Google's applicable terms,
+not the repository's MIT license:
+https://developers.google.com/maps/terms
+https://developers.google.com/android/guides/overview
+The SDK's map attribution must remain visible when maps are displayed.
+NOTICE-GooglePlayServices.txt preserves the native AARs' identical embedded
+third_party_licenses.txt verbatim. It includes upstream attribution and license
+texts for Animal Sniffer, Checker Framework Annotations, Error Prone, Guava
+JDK5/JDK7, J2ObjC, JSR 305, JSpecify, JsInterop Annotations, Kotlin, Kotlin
+coroutines, SafeParcelable library, apksig, gsfclient, java_annotations,
+kotlinx_atomicfu, and kotlinx_serialization.
+Provenance: extracted from the resolved play-services-maps.aar; the Base,
+Basement and Tasks AARs contain the same notice bytes. Native versions were
+read from each classes.jar's play-services-*.properties on October 30, 2026.
+SHA-256 of the preserved notice:
+9737f0368fab4ef7d0ed4ea19e4a1b014eee309af6f723975a6595bc58adaeb6
+Recheck these native notices when upgrading the Maps dependency.
+
 Avalonia desktop and browser dependencies
 The following packages support the optional Avalonia targets, not the native
 Android/iOS UI. The Desktop and D-Bus components are desktop-only.
@@ -126,8 +150,24 @@ Legal text from source commit b4a7fed0b878f74cb54f7cca84d2889af4e596ba.
 .NET Conf two-robots-on-a-rocket artwork
 Source: https://www.dotnetconf.net/img/conf-hero.b21gztz2hl.svg
 Used in launcher and splash assets with redistribution permission confirmed by
-the project owner (Microsoft employee) on October 7, 2026.
+the project owner on October 7, 2026 and reaffirmed on October 30, 2026.
 Adaptations: transparent crop retaining the website SVG's mirrored/rotated
 orientation, launcher safe-zone sizing, monochrome silhouette.
 This permission is not a general open-source license for the artwork.
-No speaker photographs are bundled.
+
+.NET Conf speaker photographs
+Speaker photographs are downloaded from public HTTPS profile URLs and cached
+on the device for offline use; none are bundled. Source URLs arrive only in
+remote agenda feeds and are retained in the downloaded agenda cache. Provenance is the
+public Microsoft conference JSON and public Sessionize feed. Private organizer
+enrichment and GitHub-hosted portraits are not used. Rights remain with their
+respective owners; verify reuse permission
+before public release.
+
+.NET Bot speaker placeholder
+Source: https://www.dotnetconf.net/img/speakers/dotnet-bot.png
+The official website's missing-speaker portrait is bundled unchanged as
+speaker_placeholder.png, with redistribution permission confirmed by the
+project owner on October 30, 2026. Rights remain with Microsoft; neither this
+permission nor the repository's MIT license grants a general artwork license
+or trademark rights.

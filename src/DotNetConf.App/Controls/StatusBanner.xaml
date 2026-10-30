@@ -1,5 +1,14 @@
 <ContentView x:Class="DotNetConf.App.Controls.StatusBanner"
              xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
-             x:DataType="vm:ConferenceViewModel" IsVisible="{Binding IsBusy}">
-    <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" AutomationId="agenda-loading" />
+             x:DataType="vm:ConferenceViewModel"
+             IsVisible="{Binding HasRefreshError}">
+    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <Label Text="{Binding RefreshMessage}" FontSize="12" Style="{StaticResource Secondary}"
+               VerticalOptions="Center" AutomationId="agenda-refresh-message" />
+        <Button Grid.Column="1" Text="Retry" Command="{Binding RequestRefreshCommand}"
+                IsEnabled="{Binding CanRefresh}" Style="{StaticResource QuietButton}"
+                BorderWidth="0" Padding="8,4" FontSize="13" VerticalOptions="Center"
+                SemanticProperties.Hint="Check for agenda updates. Your saved schedule stays on this device."
+                AutomationId="agenda-refresh" />
+    </Grid>
 </ContentView>

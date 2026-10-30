@@ -8,4 +8,10 @@ public partial class AboutPage : ConferencePage
 
     private async void OnDependenciesClicked(object? sender, EventArgs e) =>
         await Shell.Current.GoToAsync("third-party");
+
+    private async void OnPrivacyClicked(object? sender, EventArgs e) =>
+        await Shell.Current.GoToAsync("license", new ShellNavigationQueryParameters
+        {
+            ["notice"] = new DependencyNotice("Privacy policy", "", "PRIVACY.txt")
+        });
 }

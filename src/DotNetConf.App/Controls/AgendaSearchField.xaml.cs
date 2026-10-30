@@ -18,7 +18,14 @@ public partial class AgendaSearchField : ContentView
     public static readonly BindableProperty ClearAutomationIdProperty = BindableProperty.Create(
         nameof(ClearAutomationId), typeof(string), typeof(AgendaSearchField), "");
 
-    public AgendaSearchField() => InitializeComponent();
+    public AgendaSearchField()
+    {
+        InitializeComponent();
+#if IOS
+        SearchInput.SetBinding(SemanticProperties.DescriptionProperty,
+            Binding.Create(static (AgendaSearchField field) => field.SearchDescription, source: this));
+#endif
+    }
 
     public ICommand? ApplyQueryCommand
     {

@@ -67,6 +67,7 @@ public sealed class ScheduleService(IScheduleStore store)
     private bool loaded;
 
     public bool IsSaved(string sessionId) => savedIds.Contains(sessionId);
+    public int SavedCount => savedIds.Count;
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {

@@ -13,7 +13,7 @@ public sealed class ConferenceTests
     }
 
     [Fact]
-    public async Task BundledMockIsValidAndClearlyMarked()
+    public async Task FictionalTestFixtureIsValidAndClearlyMarked()
     {
         var document = await LoadAsync();
         Assert.True(document.IsMock);

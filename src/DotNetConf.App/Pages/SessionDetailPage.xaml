@@ -2,6 +2,7 @@
              xmlns:controls="clr-namespace:DotNetConf.App.Controls"
              xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
              x:DataType="vm:SessionViewModel" Title="Session">
+    <Grid SafeAreaEdges="Container,None,Container,None">
     <ScrollView SafeAreaEdges="Default" AutomationId="session-detail-scroll">
         <VerticalStackLayout Padding="24" Spacing="24" MaximumWidthRequest="720" HorizontalOptions="Center" SafeAreaEdges="None">
             <controls:StatusBanner x:Name="Status" />
@@ -9,16 +10,19 @@
                    AutomationId="session-not-found" />
             <VerticalStackLayout x:Name="Details" Spacing="24" IsVisible="False">
                 <VerticalStackLayout Spacing="12">
+                    <Label Text="This session is no longer in the published agenda. It stays saved until you remove it."
+                           IsVisible="{Binding IsWithdrawn}"
+                           TextColor="{AppThemeBinding Light={StaticResource LightError}, Dark={StaticResource DarkError}}"
+                           AutomationId="session-withdrawn" />
                     <Grid ColumnDefinitions="*,48" ColumnSpacing="12">
                         <Label Text="{Binding Title}" Style="{StaticResource Heading}" AutomationId="session-detail-title" />
-                        <ImageButton Grid.Column="1" Source="{StaticResource HeartOutlineIcon}" Command="{Binding ToggleSaveCommand}"
+                        <ImageButton Grid.Column="1" Command="{Binding ToggleSaveCommand}"
                                      Style="{StaticResource IconButton}" VerticalOptions="Start"
                                      AutomationId="detail-save" SemanticProperties.Description="{Binding SaveHint}">
-                            <ImageButton.Triggers>
-                                <DataTrigger TargetType="ImageButton" Binding="{Binding IsSaved}" Value="True">
-                                    <Setter Property="Source" Value="{StaticResource HeartFilledIcon}" />
-                                </DataTrigger>
-                            </ImageButton.Triggers>
+                            <ImageButton.Source>
+                                <FontImageSource Glyph="{Binding SaveGlyph}" FontFamily="{Binding SaveFontFamily}" Size="24"
+                                                 Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+                            </ImageButton.Source>
                         </ImageButton>
                     </Grid>
                     <Label Text="{Binding TopicLabel}" Style="{StaticResource Secondary}" />
@@ -45,4 +49,5 @@
             </VerticalStackLayout>
         </VerticalStackLayout>
     </ScrollView>
+    </Grid>
 </ContentPage>

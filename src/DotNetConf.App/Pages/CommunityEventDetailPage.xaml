@@ -12,13 +12,13 @@
                 <Label Text="Where we'll meet" Style="{StaticResource Subheading}" />
                 <Label Text="{Binding Event.LocationLabel}" AutomationId="community-detail-location" />
                 <Label Text="This event and venue are fictional examples, not a confirmed gathering. The website opens example.com."
-                       IsVisible="{Binding Conference.IsMock}" Style="{StaticResource Secondary}"
+                       IsVisible="{Binding Conference.CommunityEventsAreMock}" Style="{StaticResource Secondary}"
                        AutomationId="community-detail-disclosure" />
                 <Button Text="Visit event website" ImageSource="{StaticResource WebsiteIcon}" Style="{StaticResource QuietButton}"
                         Command="{Binding Conference.OpenCommunityWebsiteCommand}" CommandParameter="{Binding Event}"
                         AutomationId="community-event-website">
                     <Button.Triggers>
-                        <DataTrigger TargetType="Button" Binding="{Binding Conference.IsMock}" Value="True">
+                        <DataTrigger TargetType="Button" Binding="{Binding Conference.CommunityEventsAreMock}" Value="True">
                             <Setter Property="Text" Value="Open example website" />
                         </DataTrigger>
                     </Button.Triggers>

@@ -22,6 +22,7 @@ public partial class SessionsPage : ConferencePage
         Conference.Days.CollectionChanged += OnDaysChanged;
         Conference.PropertyChanged += OnConferencePropertyChanged;
         RebuildDayTabs();
+        ClearNativeFilterBadge();
     }
 
     private void OnUnloaded(object? sender, EventArgs e)
@@ -93,6 +94,15 @@ public partial class SessionsPage : ConferencePage
     {
         if (!rebuildingDays && !rebuildQueued && e.PropertyName == nameof(ConferenceViewModel.SelectedDayIndex))
             DayTabs.SelectedIndex = Conference.SelectedDayIndex;
+        if (e.PropertyName == nameof(ConferenceViewModel.FilterBadgeText))
+            Dispatcher.Dispatch(ClearNativeFilterBadge);
+    }
+
+    private void ClearNativeFilterBadge()
+    {
+        // iOS can retain the native badge after BadgeText becomes null; recreate its toolbar entry.
+        if (!Conference.HasTopicFilters && ToolbarItems.Remove(FilterToolbar))
+            ToolbarItems.Insert(0, FilterToolbar);
     }
 
     private void OnDaySelectionChanged(object? sender, TabSelectionChangedEventArgs e)

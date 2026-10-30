@@ -3,8 +3,17 @@
 ## Pull request validation
 
 `.github/workflows/ci.yml` runs on pull requests, pushes to `main`, and manual
-dispatch. It runs the Core tests and independent Android and iOS **Release**
-builds. Android publishes a NativeAOT AAB; iOS builds an unsigned ARM64 simulator app.
+dispatch. The required `Core tests` job runs both Core/helper and headless App
+ViewModel tests, using the pinned MAUI SDK for the ordinary desktop assembly.
+It does not initialize MAUI, install native Android SDK packages, or run an emulator.
+These tests stay separate from NativeAOT publication so restoring both app graphs
+does not exhaust a hosted runner's disk. The mobile jobs perform independent
+Android and iOS **Release** builds. Android publishes an ARM64 NativeAOT AAB;
+iOS builds an unsigned ARM64 simulator app.
+The Android publish explicitly selects `android-arm64`: the pinned preview's
+NativeAOT typemap generation fails without a concrete runtime identifier.
+The manual internal-testing lane uses the same ARM64 architecture and RID-specific
+artifact directory; this lane does not produce an x86/x64 emulator package.
 Neither build needs store credentials. Fork PRs are supported without secrets.
 This is compilation validation, not a device/UI test or proof of store acceptance.
 
@@ -166,7 +175,8 @@ distribution if build 4 has already been uploaded.
 Store acceptance and distribution cannot be verified without the owner's
 accounts and credentials. Passing CI does not resolve the existing physical-device,
 accessibility, minimum-OS, or iPhone Duo geometry release gates in
-`CONTRIBUTING.md`. Keep the fictional-agenda label visible in test releases; do not
-promote fictional content as the official conference lineup. Review Apple's
+`CONTRIBUTING.md`. Keep the agenda snapshot's source/date disclosure and the
+independent fictional-community labels visible; do not promote fictional
+content as confirmed conference information. Review Apple's
 current accepted Xcode/SDK requirements before production submission, especially
 while this app uses a preview .NET toolchain.

@@ -22,6 +22,8 @@ public partial class App : Application
     {
         var window = new Window(services.GetRequiredService<AppShell>());
         window.StatusBarTheme = RequestedTheme == AppTheme.Dark ? StatusBarTheme.Dark : StatusBarTheme.Light;
+        window.Resumed += async (_, _) => await services.GetRequiredService<ViewModels.ConferenceViewModel>().ResumeAsync();
+        window.Stopped += (_, _) => services.GetRequiredService<ViewModels.ConferenceViewModel>().PauseRefresh();
         return window;
     }
 

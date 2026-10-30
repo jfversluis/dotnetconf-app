@@ -4,9 +4,21 @@
     <OutputType>Exe</OutputType>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- Avalonia's Skia/HarfBuzz libraries must be linked even for interpreted Debug builds. -->
+    <WasmBuildNative>true</WasmBuildNative>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../DotNetConf.App/DotNetConf.App.csproj" />
     <PackageReference Include="Avalonia.Browser" Version="12.1.2" />
   </ItemGroup>
+  <!-- MAUI assets live in DotNetConf.App (also the configured entry assembly). Resizetizer collects
+       its fonts again alongside transitive package fonts in this host, producing duplicate asset keys. -->
+  <Target Name="KeepMauiAssetsInAppAssembly"
+          BeforeTargets="ConvertMauiFontsToAvaloniaResources;ConvertMauiAssetsToAvaloniaResources"
+          DependsOnTargets="ResizetizeCollectItems">
+    <ItemGroup>
+      <MauiFont Remove="@(MauiFont)" />
+      <MauiAsset Remove="@(MauiAsset)" />
+    </ItemGroup>
+  </Target>
 </Project>

@@ -4,6 +4,7 @@
                       xmlns:controls="clr-namespace:DotNetConf.App.Controls"
                       xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
                       x:DataType="vm:ConferenceViewModel" Title="Community">
+    <Grid SafeAreaEdges="Container,None,Container,None">
     <ScrollView SafeAreaEdges="Default" AutomationId="community-scroll">
         <VerticalStackLayout Spacing="0" MaximumWidthRequest="720" HorizontalOptions="Center" SafeAreaEdges="None">
             <Grid Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}"
@@ -15,12 +16,16 @@
                     <Label Text="Bring .NET Conf to your community. Watch the stream together, meet local developers, and put new ideas into practice."
                            TextColor="{AppThemeBinding Light={StaticResource Midnight}, Dark={StaticResource LavenderLight}}" />
                     <Label Text="Explore fictional events for now. Real community events haven't been announced here yet."
-                           IsVisible="{Binding IsMock}" FontSize="14"
+                           IsVisible="{Binding CommunityEventsAreMock}" FontSize="14"
                            TextColor="{AppThemeBinding Light={StaticResource Midnight}, Dark={StaticResource LavenderLight}}"
                            AutomationId="community-overview-disclosure" />
                     <Button Text="Explore event map" ImageSource="{StaticResource PrimaryMapIcon}"
                             Command="{Binding ExploreCommunityMapCommand}" AutomationId="community-explore-map">
                         <Button.Triggers>
+                            <DataTrigger TargetType="Button" Value="False" Binding="{Binding HasCommunityEvents}">
+                                <Setter Property="Text" Value="Browse community events" />
+                                <Setter Property="ImageSource" Value="{StaticResource PrimaryEventListIcon}" />
+                            </DataTrigger>
                             <DataTrigger TargetType="Button" Value="False"
                                          Binding="{Binding HasMapConfiguration, Source={x:Reference OverviewPage}, x:DataType=pages:CommunityPage}">
                                 <Setter Property="Text" Value="Browse community events" />
@@ -31,7 +36,6 @@
                 </VerticalStackLayout>
             </Grid>
             <VerticalStackLayout Padding="24,28,24,32" Spacing="28" SafeAreaEdges="None">
-                <controls:StatusBanner />
                 <VerticalStackLayout Spacing="20">
                     <Label Text="Find your kind of gathering" Style="{StaticResource Subheading}" />
                     <Grid ColumnDefinitions="32,*" ColumnSpacing="12">
@@ -75,4 +79,5 @@
             </VerticalStackLayout>
         </VerticalStackLayout>
     </ScrollView>
+    </Grid>
 </pages:ConferencePage>

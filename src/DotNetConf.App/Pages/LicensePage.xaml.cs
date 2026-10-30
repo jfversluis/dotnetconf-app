@@ -42,10 +42,10 @@ public partial class LicensePage : ContentPage, IQueryAttributable
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
         {
-            logger.LogError(exception, "Could not read bundled dependency license.");
-            LicenseText = "This license could not be loaded. Go back and open it again to retry.";
+            logger.LogError(exception, "Could not read bundled document.");
+            LicenseText = "This document could not be loaded. Go back and open it again to retry.";
             OnPropertyChanged(nameof(LicenseText));
-            await DisplayAlertAsync("Couldn't load license", LicenseText, "OK");
+            await DisplayAlertAsync("Couldn't load document", LicenseText, "OK");
         }
         finally
         {

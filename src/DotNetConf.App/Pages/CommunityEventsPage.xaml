@@ -25,7 +25,7 @@
                             <Label Grid.Column="1" Text="In-person talks" FontSize="14" VerticalOptions="Center" />
                         </Grid>
                     </Grid>
-                    <Label Text="Fictional example events" FontSize="12" IsVisible="{Binding Conference.IsMock}"
+                    <Label Text="Fictional example events" FontSize="12" IsVisible="{Binding Conference.CommunityEventsAreMock}"
                            Style="{StaticResource Secondary}" AutomationId="community-mock-disclosure" />
                 </VerticalStackLayout>
             </Border>
@@ -35,7 +35,7 @@
                     <Label Text="{Binding ListHelp}" Style="{StaticResource Secondary}" FontSize="14"
                            AutomationId="community-map-help" />
                     <Label Text="Fictional events and venues. Website links open example.com."
-                           IsVisible="{Binding Conference.IsMock}" Style="{StaticResource Secondary}"
+                           IsVisible="{Binding Conference.CommunityEventsAreMock}" Style="{StaticResource Secondary}"
                            FontSize="14" AutomationId="community-list-disclosure" />
                     <Button Text="View map" ImageSource="{StaticResource MapIcon}" Clicked="OnMapClicked"
                             IsVisible="{Binding HasAvailableMap}" Style="{StaticResource QuietButton}"
@@ -44,8 +44,13 @@
                 <CollectionView Grid.Row="1" ItemsSource="{Binding Conference.CommunityEvents}" SelectionMode="Single"
                                 SelectedItem="{Binding SelectedEvent, Mode=TwoWay}" AutomationId="community-event-list">
                     <CollectionView.EmptyView>
-                        <Label Text="No community events are available yet. Check back for updates." Padding="24"
-                               Style="{StaticResource Secondary}" />
+                        <VerticalStackLayout Padding="24" Spacing="12">
+                            <Label Text="No community events are listed here yet. Visit the official website for current gatherings."
+                                   Style="{StaticResource Secondary}" AutomationId="community-events-empty" />
+                            <Button Text="Visit dotnetconf.net" Command="{Binding Conference.OpenWebsiteCommand}"
+                                    Style="{StaticResource QuietButton}" ImageSource="{StaticResource WebsiteIcon}"
+                                    AutomationId="community-events-website" />
+                        </VerticalStackLayout>
                     </CollectionView.EmptyView>
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="core:CommunityEvent">

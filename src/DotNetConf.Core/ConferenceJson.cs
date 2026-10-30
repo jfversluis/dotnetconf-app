@@ -22,7 +22,9 @@ public static class ConferenceJson
             throw new InvalidDataException("Conference name and description are required.");
         if (!Uri.TryCreate(document.WebsiteUrl, UriKind.Absolute, out var website) || website.Scheme != Uri.UriSchemeHttps)
             throw new InvalidDataException("The conference website must be an absolute HTTPS URL.");
-        if (document.Speakers is null || document.Sessions is null || document.CommunityEvents is null)
+        if (document.Speakers is null || document.WithdrawnSpeakers is null ||
+            document.Sessions is null || document.WithdrawnSessions is null ||
+            document.CommunityEvents is null)
             throw new InvalidDataException("Session, speaker, and community event collections are required.");
 
         var eventIds = new HashSet<string>(StringComparer.Ordinal);
@@ -43,15 +45,20 @@ public static class ConferenceJson
         }
 
         var speakerIds = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var speaker in document.Speakers)
+        foreach (var speaker in document.Speakers.Concat(document.WithdrawnSpeakers))
         {
             if (speaker is null || string.IsNullOrWhiteSpace(speaker.Id) || string.IsNullOrWhiteSpace(speaker.Name) ||
                 !speakerIds.Add(speaker.Id))
                 throw new InvalidDataException("Speakers require unique IDs and non-empty names.");
         }
 
+        var currentSpeakerIds = document.Speakers.Select(speaker => speaker.Id).ToHashSet(StringComparer.Ordinal);
         var sessionIds = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var session in document.Sessions)
+        foreach (var (sessions, allowedSpeakerIds) in new[]
+        {
+            (document.Sessions, currentSpeakerIds), (document.WithdrawnSessions, speakerIds)
+        })
+        foreach (var session in sessions)
         {
             if (session is null || string.IsNullOrWhiteSpace(session.Id) || string.IsNullOrWhiteSpace(session.Title) ||
                 !sessionIds.Add(session.Id))
@@ -59,7 +66,7 @@ public static class ConferenceJson
             if (session.StartsAt == default || session.EndsAt <= session.StartsAt)
                 throw new InvalidDataException($"Session '{session.Id}' has invalid start/end times.");
             if (session.SpeakerIds is null || session.Topics is null ||
-                session.SpeakerIds.Any(id => !speakerIds.Contains(id)) ||
+                session.SpeakerIds.Any(id => !allowedSpeakerIds.Contains(id)) ||
                 session.SpeakerIds.Distinct(StringComparer.Ordinal).Count() != session.SpeakerIds.Count ||
                 session.Topics.Any(string.IsNullOrWhiteSpace))
                 throw new InvalidDataException($"Session '{session.Id}' has invalid speaker references or topics.");

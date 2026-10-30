@@ -27,6 +27,7 @@ public partial class SpeakerDetailPage : ContentPage, IQueryAttributable
     {
         base.OnAppearing();
         conference.PropertyChanged += OnConferenceChanged;
+        conference.AgendaChanged += OnAgendaChanged;
         await conference.InitializeAsync();
         UpdateSpeaker();
     }
@@ -34,6 +35,7 @@ public partial class SpeakerDetailPage : ContentPage, IQueryAttributable
     protected override void OnDisappearing()
     {
         conference.PropertyChanged -= OnConferenceChanged;
+        conference.AgendaChanged -= OnAgendaChanged;
         base.OnDisappearing();
     }
 
@@ -42,6 +44,8 @@ public partial class SpeakerDetailPage : ContentPage, IQueryAttributable
         if (args.PropertyName == nameof(ConferenceViewModel.IsBusy) && !conference.IsBusy)
             UpdateSpeaker();
     }
+
+    private void OnAgendaChanged(object? sender, EventArgs args) => UpdateSpeaker();
 
     private void UpdateSpeaker()
     {

@@ -1,5 +1,26 @@
 import { dotnet } from './_framework/dotnet.js'
 
+// Keep durable caches separate from the visit-only fallback used by preferences.
+let durableStorage;
+try { durableStorage = globalThis.localStorage; durableStorage.getItem(''); } catch { durableStorage = null; }
+const storage = () => {
+    if (!durableStorage) throw new Error('Persistent site storage is blocked. Downloads cannot be saved for offline use.');
+    return durableStorage;
+};
+globalThis.dotnetConfCache = {
+    key: index => storage().key(index),
+    getItem: key => storage().getItem(key),
+    setItem: (key, value) => storage().setItem(key, value),
+    removeItem: key => storage().removeItem(key),
+};
+globalThis.dotnetConfConnectivity = {
+    isOnline: () => navigator.onLine,
+    subscribe: callback => {
+        addEventListener('online', () => callback(navigator.onLine));
+        addEventListener('offline', () => callback(navigator.onLine));
+    },
+};
+
 // When the browser denies site storage, any use of localStorage throws and the app can't start.
 // Keep this visit's settings and saved sessions in memory instead.
 try {

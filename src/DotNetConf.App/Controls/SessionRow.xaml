@@ -13,6 +13,8 @@
                        TextColor="{AppThemeBinding Light={StaticResource Midnight}, Dark={StaticResource White}}" />
                 <Label Text="{Binding SpeakerNames}" Style="{StaticResource Secondary}" FontSize="14" />
                 <Label Text="{Binding TopicLabel}" Style="{StaticResource Secondary}" FontSize="13" />
+                <Label Text="No longer in the published agenda" IsVisible="{Binding IsWithdrawn}" FontSize="13"
+                       TextColor="{AppThemeBinding Light={StaticResource LightError}, Dark={StaticResource DarkError}}" />
                 <Label Text="Overlaps another saved session" IsVisible="{Binding HasConflict}" FontSize="13"
                        TextColor="{AppThemeBinding Light={StaticResource LightError}, Dark={StaticResource DarkError}}" />
             </VerticalStackLayout>
@@ -21,13 +23,12 @@
                         SemanticProperties.Hint="Opens session details" />
             </Grid>
             <ImageButton Grid.Column="1" Command="{Binding ToggleSaveCommand}" Style="{StaticResource IconButton}"
-                         Source="{StaticResource HeartOutlineIcon}" VerticalOptions="Start" Margin="0,22,0,0"
+                         VerticalOptions="Start" Margin="0,22,0,0"
                          AutomationId="{Binding SaveAutomationId}" SemanticProperties.Description="{Binding SaveHint}">
-                <ImageButton.Triggers>
-                    <DataTrigger TargetType="ImageButton" Binding="{Binding IsSaved}" Value="True">
-                        <Setter Property="Source" Value="{StaticResource HeartFilledIcon}" />
-                    </DataTrigger>
-                </ImageButton.Triggers>
+                <ImageButton.Source>
+                    <FontImageSource Glyph="{Binding SaveGlyph}" FontFamily="{Binding SaveFontFamily}" Size="24"
+                                     Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+                </ImageButton.Source>
             </ImageButton>
         </Grid>
         <BoxView HeightRequest="1" />

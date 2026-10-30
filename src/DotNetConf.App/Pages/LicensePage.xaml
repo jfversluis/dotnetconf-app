@@ -1,6 +1,7 @@
 <ContentPage x:Class="DotNetConf.App.Pages.LicensePage"
              xmlns:pages="clr-namespace:DotNetConf.App.Pages"
              x:DataType="pages:LicensePage" Title="{Binding LicenseTitle}">
+    <Grid SafeAreaEdges="Container,None,Container,None">
     <ScrollView SafeAreaEdges="Default" AutomationId="license-scroll">
         <VerticalStackLayout Padding="24" Spacing="16" MaximumWidthRequest="720"
                              HorizontalOptions="Center" SafeAreaEdges="None">
@@ -9,4 +10,5 @@
             <Label Text="{Binding LicenseText}" AutomationId="license-text" />
         </VerticalStackLayout>
     </ScrollView>
+    </Grid>
 </ContentPage>

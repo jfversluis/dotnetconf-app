@@ -14,11 +14,15 @@ public sealed class ScheduleTests : IDisposable
         var service = new ScheduleService(new JsonScheduleStore(FilePath));
         await service.InitializeAsync();
         Assert.False(service.IsSaved("session-one"));
+        Assert.Equal(0, service.SavedCount);
         Assert.True(await service.ToggleAsync("session-one"));
+        Assert.Equal(1, service.SavedCount);
         var restarted = new ScheduleService(new JsonScheduleStore(FilePath));
         await restarted.InitializeAsync();
         Assert.True(restarted.IsSaved("session-one"));
+        Assert.Equal(1, restarted.SavedCount);
         Assert.False(await restarted.ToggleAsync("session-one"));
+        Assert.Equal(0, restarted.SavedCount);
         Assert.Empty(await new JsonScheduleStore(FilePath).ReadAsync());
     }
 
@@ -37,7 +41,10 @@ public sealed class ScheduleTests : IDisposable
         var store = new JsonScheduleStore(FilePath);
         await store.WriteAsync(["removed-from-agenda"]);
         var service = new ScheduleService(store);
+        await service.InitializeAsync();
+        Assert.Equal(1, service.SavedCount);
         await service.ToggleAsync("new-session");
+        Assert.Equal(2, service.SavedCount);
         Assert.Contains("removed-from-agenda", await store.ReadAsync());
     }
 
@@ -48,6 +55,7 @@ public sealed class ScheduleTests : IDisposable
         await service.InitializeAsync();
         await Assert.ThrowsAsync<IOException>(() => service.ToggleAsync("one"));
         Assert.False(service.IsSaved("one"));
+        Assert.Equal(0, service.SavedCount);
     }
 
     [Fact]

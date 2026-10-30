@@ -7,6 +7,11 @@
         <ToolbarItem Text="Settings" IconImageSource="{StaticResource SettingsIcon}"
                      Command="{Binding BrowseSettingsCommand}" AutomationId="home-settings" />
     </ContentPage.ToolbarItems>
+    <Grid SafeAreaEdges="Container,None,Container,None">
+    <RefreshView IsRefreshing="{Binding IsPullRefreshing, Mode=TwoWay}"
+                 Command="{Binding RequestRefreshCommand}"
+                 RefreshColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
+                 AutomationId="home-refresh">
     <ScrollView SafeAreaEdges="Default" AutomationId="home-scroll">
         <VerticalStackLayout Spacing="0" MaximumWidthRequest="720" HorizontalOptions="Center" SafeAreaEdges="None">
             <Grid Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}"
@@ -27,6 +32,11 @@
             </Grid>
             <VerticalStackLayout Padding="24,24,24,32" Spacing="28" SafeAreaEdges="None">
             <controls:StatusBanner />
+            <HorizontalStackLayout Spacing="12" IsVisible="{Binding IsInitialAgendaLoading}">
+                <ActivityIndicator IsRunning="{Binding IsInitialAgendaLoading}" WidthRequest="24"
+                                   AutomationId="home-initial-loading" />
+                <Label Text="Loading the agenda" Style="{StaticResource Secondary}" VerticalOptions="Center" />
+            </HorizontalStackLayout>
             <VerticalStackLayout Spacing="12">
                 <Label Text="Find your next idea" Style="{StaticResource Subheading}" />
                 <Label Text="{Binding ConferenceDescription}" Style="{StaticResource Secondary}" />
@@ -43,7 +53,7 @@
             </VerticalStackLayout>
             <VerticalStackLayout Spacing="8">
                 <Label Text="From the community, for the community" Style="{StaticResource Subheading}" />
-                <Label Text="Find ways to connect through watch parties and in-person community talks. For now, event locations are fictional examples."
+                <Label Text="Find ways to connect through watch parties and in-person community talks. Visit the official website for current gatherings."
                        Style="{StaticResource Secondary}" />
                 <Button Text="Explore community events" Command="{Binding BrowseCommunityEventsCommand}"
                         Style="{StaticResource QuietButton}" ImageSource="{StaticResource CommunityIcon}" AutomationId="home-community" />
@@ -55,4 +65,6 @@
             </VerticalStackLayout>
         </VerticalStackLayout>
     </ScrollView>
+    </RefreshView>
+    </Grid>
 </pages:ConferencePage>

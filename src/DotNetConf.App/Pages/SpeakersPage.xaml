@@ -4,7 +4,7 @@
                       xmlns:controls="clr-namespace:DotNetConf.App.Controls"
                       xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
                       x:DataType="vm:ConferenceViewModel" Title="Speakers">
-    <Grid RowDefinitions="Auto,*" SafeAreaEdges="None">
+    <Grid RowDefinitions="Auto,*" SafeAreaEdges="Container,None,Container,None">
         <VerticalStackLayout Padding="24,16,24,8" Spacing="16">
             <Label Text="Meet the community" Style="{StaticResource Heading}" />
             <controls:AgendaSearchField Text="{Binding SpeakerQuery}" ApplyQueryCommand="{Binding SearchSpeakersCommand}"
@@ -12,12 +12,17 @@
                                         SearchDescription="Search speakers by name or expertise"
                                         SearchAutomationId="speaker-search" ClearAutomationId="speaker-search-clear" />
         </VerticalStackLayout>
-    <CollectionView Grid.Row="1" ItemsSource="{Binding Speakers}" SelectionMode="None" AutomationId="speaker-list">
+    <RefreshView Grid.Row="1" IsRefreshing="{Binding IsPullRefreshing, Mode=TwoWay}"
+                 Command="{Binding RequestRefreshCommand}"
+                 RefreshColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
+                 AutomationId="speakers-refresh">
+    <CollectionView ItemsSource="{Binding Speakers}" SelectionMode="None"
+                    ItemsUpdatingScrollMode="KeepScrollOffset" AutomationId="speaker-list">
         <CollectionView.Footer>
             <controls:SafeAreaFooter Page="{x:Reference Page}" />
         </CollectionView.Footer>
         <CollectionView.Header>
-            <VerticalStackLayout Spacing="16" Padding="24,16,24,8" SafeAreaEdges="None">
+            <VerticalStackLayout IsVisible="{Binding HasRefreshError}" Padding="24,8" SafeAreaEdges="None">
                 <controls:StatusBanner AutomationId="speakers-status" />
             </VerticalStackLayout>
         </CollectionView.Header>
@@ -30,10 +35,13 @@
         </CollectionView.ItemTemplate>
         <CollectionView.EmptyView>
             <VerticalStackLayout Padding="40,32" Spacing="12">
-                <Label Text="No speakers to show" Style="{StaticResource Subheading}" />
-                <Label Text="Try a different name or clear your search." Style="{StaticResource Secondary}" />
+                <ActivityIndicator IsRunning="{Binding IsInitialAgendaLoading}" IsVisible="{Binding IsInitialAgendaLoading}"
+                                   HorizontalOptions="Start" AutomationId="speakers-initial-loading" />
+                <Label Text="{Binding SpeakersEmptyTitle}" Style="{StaticResource Subheading}" AutomationId="speakers-empty-title" />
+                <Label Text="{Binding SpeakersEmptyMessage}" Style="{StaticResource Secondary}" AutomationId="speakers-empty-message" />
             </VerticalStackLayout>
         </CollectionView.EmptyView>
     </CollectionView>
+    </RefreshView>
     </Grid>
 </pages:ConferencePage>
