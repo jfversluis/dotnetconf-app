@@ -47,9 +47,19 @@ Copyright 2020 The Space Grotesk Project Authors
 https://github.com/floriankarsten/space-grotesk
 SIL Open Font License 1.1: LICENSE-SpaceGrotesk.txt
 
-Linux desktop and browser dependencies
+Avalonia desktop and browser dependencies
 The following packages support the optional Avalonia targets, not the native
 Android/iOS UI. The Desktop and D-Bus components are desktop-only.
+Linux is the supported experimental desktop platform. The RID-less desktop
+dependency graph also includes Windows and macOS native libraries; their
+inclusion here does not claim support for those platforms.
+
+Microsoft.Maui.Graphics.Skia 11.0.0-rc.1.26451.6
+Copyright (c) Microsoft Corporation
+https://github.com/dotnet/Microsoft.Maui.Graphics
+MIT license: LICENSE-DotNetFoundation.txt
+This transitive Avalonia renderer dependency is versioned independently from
+the MAUI Controls/Graphics packages listed above.
 
 Avalonia.Controls.Maui, Essentials, Desktop 11.0.0-rc.1.26252.343
 Copyright (c) 2025 AvaloniaUI
@@ -70,6 +80,14 @@ https://github.com/AvaloniaUI/Avalonia
 MIT license: LICENSE-Avalonia.txt
 Additional upstream copyright and license notices: NOTICE-Avalonia.txt
 Legal texts from source commit d3c867a9e2de379249b03dbeb3495bd7f076a81a.
+
+Avalonia.Angle.Windows.Natives 2.1.27548.20260419
+Copyright 2018 The ANGLE Project Authors
+https://github.com/AvaloniaUI/angle
+BSD 3-Clause license: LICENSE-AvaloniaAngle.txt
+Windows native dependency of the RID-less desktop graph, not used by the
+Linux/browser or native mobile targets. License text is reproduced verbatim
+from the matching NuGet package.
 
 Avalonia.Controls.WebView 12.0.0
 Copyright 2019-2026 AvaloniaUI OÜ

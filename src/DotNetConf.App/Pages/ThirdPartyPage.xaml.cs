@@ -23,6 +23,8 @@ public partial class ThirdPartyPage : ContentPage
         new("Avalonia.Controls.Maui", "Controls, Essentials & Desktop packages · 11.0.0-rc.1.26252.343 · MIT", "LICENSE-AvaloniaMaui.txt"),
         new("Avalonia.Controls.Maui third-party components", "ASP.NET Core MIME mappings · Apache 2.0", "NOTICE-AvaloniaMaui.txt"),
         new("Avalonia.Controls.WebView", "12.0.0 · MIT", "LICENSE-Avalonia.txt"),
+        new("Microsoft.Maui.Graphics.Skia", "11.0.0-rc.1.26451.6 · MIT", "LICENSE-DotNetFoundation.txt"),
+        new("Avalonia ANGLE", "Windows native dependency of the desktop graph · 2.1.27548.20260419 · BSD 3-Clause", "LICENSE-AvaloniaAngle.txt"),
         new("Inter", "Avalonia fallback font · SIL Open Font License 1.1", "LICENSE-Inter.txt"),
         new("SkiaSharp & HarfBuzzSharp", "4.151.0 & 14.2.1.102 · MIT", "LICENSE-SkiaSharp.txt"),
         new("SkiaSharp & HarfBuzzSharp native components", "Upstream copyright and license notices", "NOTICE-SkiaSharp.txt"),
