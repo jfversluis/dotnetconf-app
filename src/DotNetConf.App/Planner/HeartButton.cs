@@ -70,7 +70,7 @@ internal sealed class HeartButton : Button
     public void Update()
     {
         var saved = session?.IsSaved == true;
-        var color = saved ? Colors.White : theme.Accent;
+        var color = theme.Accent;
         focusRing.BorderBrush = new ImmutableSolidColorBrush(color);
         heart.Stroke = new ImmutableSolidColorBrush(color);
         heart.Fill = new ImmutableSolidColorBrush(saved ? color : Colors.Transparent);

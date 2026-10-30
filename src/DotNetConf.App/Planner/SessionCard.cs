@@ -19,17 +19,10 @@ using DotNetConf.App.ViewModels;
 /// </summary>
 internal sealed class SessionCard : Button
 {
-    // White, softened by role, for text and fills on the saved gradient.
-    private static readonly IBrush SavedTime = new ImmutableSolidColorBrush(Colors.White, 0.9);
-    private static readonly IBrush SavedSpeakers = new ImmutableSolidColorBrush(Colors.White, 0.85);
-    private static readonly IBrush SavedProgress = new ImmutableSolidColorBrush(Colors.White, 0.16);
-    private static readonly IBrush SavedBadge = new ImmutableSolidColorBrush(Colors.White, 0.22);
-
     private readonly PlannerTheme theme;
     private readonly Border glow;
     private readonly Border focusRing;
     private readonly Border surface;
-    private readonly Border savedFill;
     private readonly Border progress;
     private readonly Ellipse topicDot;
     private readonly StackPanel textPanel;
@@ -73,7 +66,6 @@ internal sealed class SessionCard : Button
             IsHitTestVisible = false,
         };
         glow.Classes.Add("glow");
-        savedFill = new Border { Background = theme.SavedFill, Opacity = 0, Transitions = [Fade(320)] };
         progress = new Border
         {
             RenderTransformOrigin = new RelativePoint(0, 0.5, RelativeUnit.Relative),
@@ -120,9 +112,9 @@ internal sealed class SessionCard : Button
             BorderThickness = new Thickness(1),
             ClipToBounds = true,
             Transitions = [Paint(Border.BorderBrushProperty), new BoxShadowsTransition { Property = Border.BoxShadowProperty, Duration = TimeSpan.FromMilliseconds(200) }],
-            Child = new Panel { Children = { savedFill, progress, textPanel } },
+            Child = new Panel { Children = { progress, textPanel } },
         };
-        // Drawn 2 px clear of the card, so it stands out against the page on saved and unsaved cards alike.
+        // Drawn 2 px clear of the card, so it stands out against the page.
         focusRing = new Border
         {
             Margin = new Thickness(-4),
@@ -135,7 +127,7 @@ internal sealed class SessionCard : Button
         // The Fluent theme clips buttons to their bounds, which would cut off the focus ring and the overlap glow.
         ClipToBounds = false;
         AutomationProperties.SetHelpText(this, "Opens session details");
-        animated = [this, surface, savedFill, progress, topicDot, time, title, speakers, .. Heart.Animated];
+        animated = [this, surface, progress, topicDot, time, title, speakers, .. Heart.Animated];
     }
 
     public SessionViewModel? Session { get; private set; }
@@ -229,23 +221,21 @@ internal sealed class SessionCard : Button
         if (Session is not { } session)
             return;
         title.Text = session.IsWithdrawn ? $"Withdrawn: {session.Title}" : session.Title;
-        var saved = session.IsSaved;
-        savedFill.Opacity = saved ? 1 : 0;
-        time.Foreground = saved ? SavedTime : Brush(topicColor);
-        title.Foreground = saved ? Brushes.White : Brush(theme.Text);
-        speakers.Foreground = saved ? SavedSpeakers : Brush(theme.Secondary);
-        topicDot.Fill = saved ? Brushes.White : Brush(topicColor);
-        progress.Background = saved ? SavedProgress : Brush(PlannerTheme.WithAlpha(topicColor, 0.12));
+        time.Foreground = Brush(topicColor);
+        title.Foreground = Brush(theme.Text);
+        speakers.Foreground = Brush(theme.Secondary);
+        topicDot.Fill = Brush(topicColor);
+        progress.Background = Brush(PlannerTheme.WithAlpha(topicColor, 0.12));
         surface.Background = Brush(PlannerTheme.Blend(theme.Surface, topicColor, theme.IsDark ? 0.10 : 0.06));
-        surface.BorderBrush = Brush(session.HasConflict ? theme.Conflict : saved ? Colors.Transparent : theme.Outline);
+        surface.BorderBrush = Brush(session.HasConflict ? theme.Conflict : theme.Outline);
         focusRing.IsVisible = keyboardFocus;
         // The focused card comes forward, so its ring isn't hidden under the next card.
         ZIndex = keyboardFocus ? 1 : 0;
-        var shadow = PlannerTheme.WithAlpha(saved ? theme.Magenta : Colors.Black, saved ? 0.32 : theme.IsDark ? 0.4 : 0.08);
+        var shadow = PlannerTheme.WithAlpha(Colors.Black, theme.IsDark ? 0.4 : 0.08);
         surface.BoxShadow = new BoxShadows(new BoxShadow
         {
-            OffsetY = IsPointerOver && !dimmed ? 8 : saved ? 6 : 2,
-            Blur = IsPointerOver && !dimmed ? 24 : saved ? 18 : 6,
+            OffsetY = IsPointerOver && !dimmed ? 8 : 2,
+            Blur = IsPointerOver && !dimmed ? 24 : 6,
             Color = shadow,
         });
         glow.Classes.Set("conflict", session.HasConflict);
@@ -257,8 +247,8 @@ internal sealed class SessionCard : Button
             : ("", theme.Secondary, false);
         badge.IsVisible = label.Length > 0;
         badgeText.Text = label;
-        badge.Background = saved ? SavedBadge : Brush(PlannerTheme.WithAlpha(color, 0.14));
-        badgeText.Foreground = saved ? Brushes.White : Brush(color);
+        badge.Background = Brush(PlannerTheme.WithAlpha(color, 0.14));
+        badgeText.Foreground = Brush(color);
         badgeDot.IsVisible = showDot;
         badgeDot.Fill = badgeText.Foreground;
 
@@ -326,7 +316,6 @@ internal sealed class SessionCard : Button
     }
 
     private static ImmutableSolidColorBrush Brush(Color color) => new(color);
-    private static DoubleTransition Fade(int milliseconds) => new() { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(milliseconds) };
     private static BrushTransition Paint(AvaloniaProperty property) => new() { Property = property, Duration = TimeSpan.FromMilliseconds(280) };
 
     private static TransformOperations Scale(double x, double y)

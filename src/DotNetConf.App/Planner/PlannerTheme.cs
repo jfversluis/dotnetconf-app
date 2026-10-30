@@ -52,17 +52,6 @@ public sealed record PlannerTheme(
 
     public Color TopicColor(int index) => (IsDark ? DarkTopics : LightTopics)[index % LightTopics.Length];
 
-    /// <summary>
-    /// Saved sessions take the .NET Conf purple-to-magenta gradient. It stops a quarter of the way back
-    /// from pure magenta, where white text would drop below 4.5:1 contrast.
-    /// </summary>
-    public IBrush SavedFill { get; } = new LinearGradientBrush
-    {
-        StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-        EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
-        GradientStops = { new GradientStop(Purple, 0), new GradientStop(Blend(Magenta, Purple, 0.25), 1) },
-    };
-
     public static Color WithAlpha(Color color, double alpha) => Color.FromArgb((byte)(alpha * 255), color.R, color.G, color.B);
 
     /// <summary>
