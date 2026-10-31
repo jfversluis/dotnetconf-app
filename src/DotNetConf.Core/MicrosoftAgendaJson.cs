@@ -138,7 +138,12 @@ public static class MicrosoftAgendaJson
         if (pacific.IsInvalidTime(local) || pacific.IsAmbiguousTime(local))
             throw new InvalidDataException(
                 $"Microsoft session '{sessionId}' has an invalid or ambiguous Pacific time.");
-        return new DateTimeOffset(local, pacific.GetUtcOffset(local));
+        try { return new DateTimeOffset(local, pacific.GetUtcOffset(local)); }
+        catch (ArgumentOutOfRangeException exception)
+        {
+            throw new InvalidDataException(
+                $"Microsoft session '{sessionId}' resolves outside the representable UTC range.", exception);
+        }
     }
 }
 

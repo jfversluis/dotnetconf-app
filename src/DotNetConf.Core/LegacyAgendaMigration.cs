@@ -47,7 +47,9 @@ internal static class LegacyAgendaMigration
             Community = null,
             LegacyPayloadHash = community.PayloadHash,
             LegacySessionIds = retired.Select(session => session.Id).ToList(),
-            LegacyActiveSessionIds = community.Sessions.Select(session => session.Id).ToList(),
+            LegacyActiveSessionIds = microsoft.Sessions.Count == 0
+                ? []
+                : community.Sessions.Select(session => session.Id).ToList(),
             Microsoft = microsoft with
             {
                 WithdrawnSessions = withdrawn,

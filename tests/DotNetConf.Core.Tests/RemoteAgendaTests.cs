@@ -167,6 +167,21 @@ public sealed class RemoteAgendaTests
         }));
     }
 
+    [Fact]
+    public async Task UTCOverflowFromPacificSessionTimeIsRejectedAsInvalidData()
+    {
+        var data = Microsoft;
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(data with
+        {
+            Sessions = [data.Sessions[0] with
+            {
+                Day = 4,
+                StartTime = "15:30:00",
+                EndTime = "16:00:00"
+            }]
+        }, Bundle with { StartDate = new DateOnly(9999, 12, 28) }));
+    }
+
     [Theory]
     [InlineData(2026, 3, 8, "02:00:00", "02:30:00")]
     [InlineData(2026, 11, 1, "01:00:00", "01:30:00")]

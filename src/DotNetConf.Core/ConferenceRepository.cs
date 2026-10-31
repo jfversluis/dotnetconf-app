@@ -33,6 +33,7 @@ public sealed class ConferenceRepository(
 
     public const string MicrosoftSource = "Microsoft";
     public const string CacheSource = "Cache";
+    public const string MetadataSource = "Conference metadata";
     public const string MicrosoftUrl = "https://dotnet.microsoft.com/blob-assets/json/conf/conference-2026.json";
     private const int CacheSchemaVersion = 6;
     private const int MaximumFeedBytes = 4 * 1024 * 1024;
@@ -112,11 +113,17 @@ public sealed class ConferenceRepository(
                     ValidateCache(updated);
                     cached = updated;
                     if (changed)
-                        await SaveAsync(cached, token).ConfigureAwait(false);
+                    {
+                        try { await SaveAsync(cached, token).ConfigureAwait(false); }
+                        catch (Exception exception) when (IsDataFailure(exception))
+                        {
+                            issues.Add(new(CacheSource, exception));
+                        }
+                    }
                 }
                 catch (Exception exception) when (IsDataFailure(exception))
                 {
-                    issues.Add(new(CacheSource, exception));
+                    issues.Add(new(MetadataSource, exception));
                 }
                 state = cached;
                 Publish(Snapshot(state, true, issues));
@@ -131,6 +138,19 @@ public sealed class ConferenceRepository(
         }
 
         var document = await LoadMetadataAsync(token).ConfigureAwait(false);
+        if (legacy is not null && legacy.Metadata.StartDate is { } oldStartDate &&
+            oldStartDate != document.StartDate)
+        {
+            try { legacy = ApplyMetadata(legacy, document); }
+            catch (Exception exception) when (IsDataFailure(exception))
+            {
+                issues.Add(new(MetadataSource, exception));
+                legacy = legacy with
+                {
+                    Microsoft = legacy.Microsoft with { RequiresProfileRefresh = true }
+                };
+            }
+        }
         var seeded = new ConferenceCache
         {
             SchemaVersion = CacheSchemaVersion,
@@ -200,7 +220,12 @@ public sealed class ConferenceRepository(
             }
             if (pacific.IsInvalidTime(local) || pacific.IsAmbiguousTime(local))
                 throw new InvalidDataException("The corrected conference start date produces an invalid or ambiguous Pacific time.");
-            return new DateTimeOffset(local, pacific.GetUtcOffset(local));
+            try { return new DateTimeOffset(local, pacific.GetUtcOffset(local)); }
+            catch (ArgumentOutOfRangeException exception)
+            {
+                throw new InvalidDataException(
+                    "The corrected conference start date exceeds the supported UTC range.", exception);
+            }
         }
         Session ShiftSession(Session session) => session with { StartsAt = Shift(session.StartsAt), EndsAt = Shift(session.EndsAt) };
         return LegacyAgendaMigration.Resolve(cache with
@@ -228,7 +253,8 @@ public sealed class ConferenceRepository(
             await LoadCoreAsync(token).ConfigureAwait(false);
             var result = await FetchAsync(state!.Microsoft, state.Metadata, token).ConfigureAwait(false);
             token.ThrowIfCancellationRequested();
-            var issues = snapshot!.Issues.Where(issue => issue.Source == CacheSource).ToList();
+            var issues = snapshot!.Issues.Where(issue =>
+                issue.Source is CacheSource or MetadataSource).ToList();
             if (result.Issue is not null)
                 issues.Add(result.Issue);
             if (result.Agenda is null)

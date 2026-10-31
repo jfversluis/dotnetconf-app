@@ -332,6 +332,43 @@ public sealed class ConferenceRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task LegacyCacheWithKnownStartDateIsRebasedBeforeMigration()
+    {
+        var community = LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]);
+        var legacy = await SeedLegacyAsync(SizedMicrosoft(70), community);
+        Assert.Equal(new DateOnly(2026, 11, 10), legacy.Metadata.StartDate);
+        CorrectStartDate(new DateOnly(2026, 11, 11));
+        handler.Respond = (_, _) => throw new HttpRequestException("Offline");
+
+        var result = await Repository().LoadAsync();
+
+        Assert.Empty(result.Issues);
+        Assert.Equal(new DateOnly(2026, 11, 11), FirstDate(result));
+        var migrated = await ReadCacheAsync();
+        Assert.Equal(new DateOnly(2026, 11, 11), migrated.Metadata.StartDate);
+        Assert.True(migrated.Microsoft.RequiresProfileRefresh);
+    }
+
+    [Fact]
+    public async Task LegacyCacheWithoutDateBasisRequiresAnUnconditionalAgendaRevalidation()
+    {
+        var community = LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]);
+        var legacy = await SeedLegacyAsync(SizedMicrosoft(70), community);
+        await WriteCacheAsync(legacy with
+        {
+            Metadata = legacy.Metadata with { StartDate = null }
+        });
+        handler.Respond = (_, _) => throw new HttpRequestException("Offline");
+
+        var result = await Repository().LoadAsync();
+
+        Assert.Equal(71, result.Document.Sessions.Count);
+        var migrated = await ReadCacheAsync();
+        Assert.True(migrated.Microsoft.RequiresProfileRefresh);
+        Assert.Equal(new DateOnly(2026, 11, 10), migrated.Metadata.StartDate);
+    }
+
+    [Fact]
     public async Task CorrectedStartDateKeepsUnresolvedLegacyTimesButRebasesMicrosoftArchives()
     {
         var community = LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]);
@@ -410,7 +447,7 @@ public sealed class ConferenceRepositoryTests : IDisposable
         CorrectStartDate(new DateOnly(2026, 11, 1));
         var result = await Repository().LoadAsync();
         var issue = Assert.Single(result.Issues);
-        Assert.Equal(ConferenceRepository.CacheSource, issue.Source);
+        Assert.Equal(ConferenceRepository.MetadataSource, issue.Source);
         Assert.IsType<InvalidDataException>(issue.Exception);
         Assert.Equal(Ids(first.Document.Sessions), Ids(result.Document.Sessions));
         Assert.Equal(first.Document.Sessions.Select(s => s.StartsAt), result.Document.Sessions.Select(s => s.StartsAt));
@@ -421,19 +458,52 @@ public sealed class ConferenceRepositoryTests : IDisposable
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task UnusableBundledMetadataIsAnExplicitCacheIssueWhileCachedBrowsingContinues(bool missingStartDate)
+    public async Task UnusableBundledMetadataWarningSurvivesASuccessfulCacheWrite(bool missingStartDate)
     {
         await Repository().RefreshAsync();
         var bytes = await File.ReadAllBytesAsync(CachePath);
         metadata.Document = missingStartDate
             ? metadata.Document with { StartDate = null } : metadata.Document with { SchemaVersion = 999 };
         handler.Requests.Clear();
-        var result = await Repository().LoadAsync();
+        var repository = Repository();
+        var result = await repository.LoadAsync();
         var issue = Assert.Single(result.Issues);
-        Assert.Equal(ConferenceRepository.CacheSource, issue.Source);
+        Assert.Equal(ConferenceRepository.MetadataSource, issue.Source);
         Assert.Equal(70, result.Document.Sessions.Count);
         Assert.True(result.IsCached);
         Assert.Empty(handler.Requests);
+        Assert.Equal(bytes, await File.ReadAllBytesAsync(CachePath));
+
+        clock.Advance();
+        handler.Respond = (_, _) => Task.FromResult(NotModified());
+        var refreshed = await repository.RefreshAsync();
+        Assert.Equal(ConferenceRepository.MetadataSource, Assert.Single(refreshed.Issues).Source);
+        var checkedCache = await ReadCacheAsync();
+        Assert.True(checkedCache.Microsoft.LastCheckedAt > JsonSerializer.Deserialize(
+            bytes, RemoteAgendaJsonContext.Default.ConferenceCache)!.Microsoft.LastCheckedAt);
+    }
+
+    [Fact]
+    public async Task UTCOverflowFromCorrectedStartDateRetainsLastGoodCacheAsMetadataIssue()
+    {
+        await Repository().RefreshAsync();
+        var cache = await ReadCacheAsync();
+        var first = cache.Microsoft.Sessions[0];
+        var sessions = cache.Microsoft.Sessions.ToList();
+        sessions[0] = first with
+        {
+            StartsAt = DateTimeOffset.Parse("2026-11-10T16:30:00-08:00"),
+            EndsAt = DateTimeOffset.Parse("2026-11-10T17:00:00-08:00")
+        };
+        await WriteCacheAsync(cache with { Microsoft = cache.Microsoft with { Sessions = sessions } });
+        var bytes = await File.ReadAllBytesAsync(CachePath);
+        CorrectStartDate(new DateOnly(9999, 12, 31));
+
+        var result = await Repository().LoadAsync();
+
+        var issue = Assert.Single(result.Issues);
+        Assert.Equal(ConferenceRepository.MetadataSource, issue.Source);
+        Assert.IsType<InvalidDataException>(issue.Exception);
         Assert.Equal(bytes, await File.ReadAllBytesAsync(CachePath));
     }
 
@@ -1238,7 +1308,7 @@ public sealed class ConferenceRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task SessionizeOnlyLegacyCacheStaysReadableOfflineAndAliasesOnTheFirstLaterMicrosoftFetch()
+    public async Task SessionizeOnlyLegacyCacheStaysArchivedOfflineAndAliasesOnTheFirstLaterMicrosoftFetch()
     {
         await Repository().RefreshAsync();
         var current = await ReadCacheAsync();
@@ -1251,17 +1321,17 @@ public sealed class ConferenceRepositoryTests : IDisposable
         var repository = Repository();
         var loaded = await repository.LoadAsync();
         Assert.Empty(loaded.Issues);
-        Assert.Equal(LegacyId, Assert.Single(loaded.Document.Sessions).Id);
-        Assert.Empty(loaded.Document.WithdrawnSessions);
+        Assert.Empty(loaded.Document.Sessions);
+        Assert.Equal(LegacyId, Assert.Single(loaded.Document.WithdrawnSessions).Id);
         Assert.Null(loaded.LastCheckedAt);
         Assert.Empty(handler.Requests);
         var offline = await repository.RefreshAsync();
         Assert.Equal(ConferenceRepository.MicrosoftSource, Assert.Single(offline.Issues).Source);
-        Assert.Equal(LegacyId, Assert.Single(offline.Document.Sessions).Id);
-        Assert.Empty(offline.Document.WithdrawnSessions);
+        Assert.Empty(offline.Document.Sessions);
+        Assert.Equal(LegacyId, Assert.Single(offline.Document.WithdrawnSessions).Id);
         var offlineCache = await ReadCacheAsync();
         Assert.Equal(community.PayloadHash, offlineCache.LegacyPayloadHash);
-        Assert.Equal([LegacyId], offlineCache.LegacyActiveSessionIds);
+        Assert.Empty(offlineCache.LegacyActiveSessionIds);
 
         Serve(WithTalk(SizedMicrosoft(70)));
         var online = await Repository().RefreshAsync();

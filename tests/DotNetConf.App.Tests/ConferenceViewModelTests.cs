@@ -57,6 +57,7 @@ public sealed class ConferenceViewModelTests
     [InlineData("timeout")]
     [InlineData("mixed")]
     [InlineData("cache")]
+    [InlineData("metadata")]
     public async Task RefreshErrorsDistinguishInvalidSourceDataFromConnectionAndStorageFailures(string failure)
     {
         var issue = failure switch
@@ -65,6 +66,7 @@ public sealed class ConferenceViewModelTests
             "network" => new ConferenceDataIssue(ConferenceRepository.MicrosoftSource, new HttpRequestException("Synthetic network failure")),
             "timeout" => new ConferenceDataIssue(ConferenceRepository.MicrosoftSource, new TimeoutException("Synthetic timeout")),
             "cache" => new ConferenceDataIssue(ConferenceRepository.CacheSource, new InvalidDataException("Synthetic invalid cache")),
+            "metadata" => new ConferenceDataIssue(ConferenceRepository.MetadataSource, new InvalidDataException("Synthetic invalid metadata")),
             _ => new ConferenceDataIssue(ConferenceRepository.MicrosoftSource, new InvalidDataException("Synthetic invalid agenda"))
         };
         var snapshot = Snapshot() with { Issues = failure == "mixed"
@@ -77,10 +79,15 @@ public sealed class ConferenceViewModelTests
 
         Assert.True(viewModel.HasRefreshError);
         Assert.True(viewModel.HasAgenda);
-        Assert.Contains(failure is "cache" or "mixed" ? "Check storage" :
-            failure is "network" or "timeout" ? "Couldn't download Microsoft" : "Microsoft agenda update because its data was invalid",
+        Assert.Contains(failure switch
+        {
+            "cache" or "mixed" => "Check storage",
+            "metadata" => "conference date metadata; the cached agenda is unchanged",
+            "network" or "timeout" => "Couldn't download Microsoft",
+            _ => "Microsoft agenda update because its data was invalid"
+        },
             viewModel.RefreshMessage);
-        if (failure is "validation" or "json" or "cache" or "mixed")
+        if (failure is "validation" or "json" or "cache" or "mixed" or "metadata")
             Assert.DoesNotContain("connection", viewModel.RefreshMessage);
 
         repository.Snapshot = snapshot with { Issues = [] };

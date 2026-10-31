@@ -255,11 +255,16 @@ public partial class ConferenceViewModel(
         foreach (var issue in value.Issues)
             logger.LogWarning(issue.Exception, "Conference data issue: {Source}.", issue.Source);
         var sourceIssues = value.Issues.Where(issue => issue.Source != ConferenceRepository.CacheSource).ToArray();
-        var invalidSources = sourceIssues.Where(issue => issue.Exception is InvalidDataException or JsonException)
+        var metadataIssues = sourceIssues.Where(issue => issue.Source == ConferenceRepository.MetadataSource).ToArray();
+        var invalidSources = sourceIssues.Where(issue => issue.Source != ConferenceRepository.MetadataSource &&
+                issue.Exception is InvalidDataException or JsonException)
             .Select(issue => issue.Source).Distinct().ToArray();
-        var failedSources = sourceIssues.Where(issue => issue.Exception is not (InvalidDataException or JsonException))
+        var failedSources = sourceIssues.Where(issue => issue.Source != ConferenceRepository.MetadataSource &&
+                issue.Exception is not (InvalidDataException or JsonException))
             .Select(issue => issue.Source).Distinct().ToArray();
         var sourceErrors = new List<string>();
+        if (metadataIssues.Length > 0)
+            sourceErrors.Add("Couldn't apply the conference date metadata; the cached agenda is unchanged.");
         if (invalidSources.Length > 0)
             sourceErrors.Add($"Couldn't use the {string.Join(" and ", invalidSources)} agenda update because its data was invalid. Retry later.");
         if (failedSources.Length > 0)
