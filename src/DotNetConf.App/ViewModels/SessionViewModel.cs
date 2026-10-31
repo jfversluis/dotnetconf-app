@@ -70,9 +70,10 @@ public partial class SessionViewModel : ObservableObject
     {
         var start = TimeZoneInfo.ConvertTime(Model.StartsAt, timeZone);
         var end = TimeZoneInfo.ConvertTime(Model.EndsAt, timeZone);
-        DateLabel = start.ToString("ddd, MMM d");
-        TimeLabel = start.Date == end.Date
+        var (startDay, endDay) = (DateOnly.FromDateTime(start.DateTime), DateOnly.FromDateTime(end.DateTime));
+        DateLabel = $"{start:ddd}, {Agenda.MonthDay(startDay)}";
+        TimeLabel = startDay == endDay
             ? $"{start:t} - {end:t}"
-            : $"{start:MMM d, t} - {end:MMM d, t}";
+            : $"{Agenda.MonthDay(startDay)}, {start:t} - {Agenda.MonthDay(endDay)}, {end:t}";
     }
 }

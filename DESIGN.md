@@ -4,7 +4,7 @@ The official website's purple/magenta identity is adapted to an agenda-first, na
 
 ## Theme
 
-`Resources/Styles/Colors.xaml` is the token source. Match the website's purple `#512BD4`, midnight `#190649`, magenta `#D600AA`, and lavender `#B9AAEE`. Light surfaces are neutral (`#FAFAFA` background, `#333333` text); dark surfaces use the website's charcoal (`#1F1F1F` background, `#E5E5E5` text), not a purple wash. Native interaction tint is purple/lavender.
+`Resources/Styles/Colors.xaml` is the token source. The Avalonia-drawn schedule planner reads the same tokens by key in `SchedulePlannerHandler`. Match the website's purple `#512BD4`, midnight `#190649`, magenta `#D600AA`, and lavender `#B9AAEE`. Light surfaces are neutral (`#FAFAFA` background, `#333333` text); dark surfaces use the website's charcoal (`#1F1F1F` background, `#E5E5E5` text), not a purple wash. Native interaction tint is purple/lavender.
 
 Home has an expressive, full-width lavender-to-pink wash (midnight-to-magenta in dark appearance), Space Grotesk display type, and a short purple-to-magenta rule. The website's dark accent gradient is `#9780E5` to `#DE33BB`. Speaker portraits use quiet rounded surfaces; list bodies stay quiet. Text uses contrast-safe solid colors, not gradient lettering. Use `AppThemeBinding` for semantic light/dark pairs.
 
@@ -41,6 +41,8 @@ pre-iOS-26 devices where native toolbar badges are unsupported. Badge colors
 use purple/white in light appearance and lavender/midnight in dark appearance.
 
 On iOS, pages use `SafeAreaEdges=None` and scrolling reading pages retain `ScrollView.SafeAreaEdges=Default` (native automatic content insets). Agenda screens consume horizontal container edges once at their root layout (`Container,None,Container,None`), keeping notices and content clear of the Duo's trailing native tab chrome without hard-coded widths or changing vertical scrolling. Shell's tab background is transparent so the platform-owned material can show scrolling content beneath it. The pinned MAUI iOS CollectionView explicitly disables automatic content insets in `ItemsViewController2.ViewDidLoad`; `SafeAreaFooter` therefore uses the public MAUI page `SafeAreaInsets.Bottom`, observing inset changes, to keep the last item reachable. There is no bottom viewport margin, fixed tab-bar padding, negative margin, or custom renderer. Android pages use `SafeAreaEdges=SoftInput` to retain keyboard avoidance without duplicating container insets supplied by native Shell chrome, and an opaque native tab surface; their collection footer has zero height. System gesture protection is retained where controls meet the screen edge, not as a blank inset around every page.
+
+My Schedule keeps the heading, view switch and timezone in a content-sized header. Topic filters have a 16-unit top inset inside the planner gradient. Native Shell owns safe areas; the embedded Avalonia host does not apply window insets again. The timeline fills its viewport, with 16 units of scroll-content padding plus the iOS page's bottom inset. Android's opaque tab bar needs no extra inset. Native-bar clearance stays in device points when text is scaled.
 
 ## Icons and navigation
 

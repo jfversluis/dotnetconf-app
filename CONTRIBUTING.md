@@ -16,8 +16,8 @@ Versions are deliberately pinned:
 | Mobile workload set | `11.0.100-rc.2.26513.2` |
 | MAUI Controls | `11.0.0-rc.2.26505.5` |
 | DevFlow CLI / agent | `0.1.0-preview.13.26512.5` |
-| Avalonia.Controls.Maui, Desktop, Essentials | `11.0.0-rc.1.26252.343` |
-| Avalonia.Browser | `12.1.2` |
+| Avalonia.Controls.Maui, Desktop, Essentials | `11.0.0-rc.2.26287.618` |
+| Avalonia.Browser | `12.1.4` |
 | IconFont.Maui.FluentIcons | `1.1.1` |
 | Syncfusion.Maui.Toolkit | `1.0.11` |
 
@@ -114,7 +114,7 @@ These targets are experimental, not production-ready alternatives to the
 primary iOS and Android apps. They have known feature gaps and less validation;
 successful builds do not establish UI parity or release readiness.
 
-`net11.0` and `net11.0-browser` use Avalonia.Controls.Maui in full-hosting mode; Android and iOS keep their native handlers and package graph. Both Avalonia targets define `AVALONIA`. Their setup lives in `Platforms/Avalonia` (`UseAvaloniaHost`), which the project registers as a `MauiPlatformSpecificFolder`. The browser entry point is `src/DotNetConf.App.Browser`: the WebAssembly SDK cannot be combined with the MAUI single project, so that small head only starts the app, which `DotNetConf.App` builds as a `net11.0-browser` library.
+`net11.0` and `net11.0-browser` use Avalonia.Controls.Maui in full-hosting mode; Android and iOS keep their native handlers and embed Avalonia only for the schedule planner. Both Avalonia targets define `AVALONIA`. Their setup lives in `Platforms/Avalonia` (`UseAvaloniaHost`), which the project registers as a `MauiPlatformSpecificFolder`. The browser entry point is `src/DotNetConf.App.Browser`: the WebAssembly SDK cannot be combined with the MAUI single project, so that small head only starts the app, which `DotNetConf.App` builds as a `net11.0-browser` library.
 
 Linux requires the usual Avalonia native GUI dependencies, ICU and system timezone data (`tzdata` on Ubuntu). Missing Pacific timezone data produces a visible agenda-validation failure rather than substituting a fixed UTC offset.
 
@@ -138,7 +138,19 @@ sources. When updating Avalonia or its resolved dependencies, refresh the
 corresponding legal texts from those exact packages/source revisions and keep
 the in-app list aligned. Preserve upstream notices verbatim.
 
-`AvaloniaHost` and the app project also carry workarounds for Avalonia.Controls.Maui `11.0.0-rc.1.26252.343`, each commented in place: font icons on buttons and Shell tabs, Shell toolbar items that do not change with the tab or page, `EmptyView` overlapping a `CollectionView` header, an empty `FileSystem.AppDataDirectory` when `~/.config` does not exist, and fonts and raw assets missing from the assembly when the target has no images. Recheck them when updating the package.
+`AvaloniaHost` and the app project also carry workarounds for Avalonia.Controls.Maui `11.0.0-rc.2.26287.618`, each commented in place: font icons on buttons and Shell tabs, Shell toolbar items that do not change with the tab or page, `EmptyView` overlapping a `CollectionView` header, an empty `FileSystem.AppDataDirectory` when `~/.config` does not exist, and fonts and raw assets missing from the assembly when the target has no images. Recheck them when updating the package.
+
+## Schedule planner
+
+My Schedule opens on a timeline of saved sessions only, drawn by Avalonia. Pages use `Planner/SchedulePlanner`, an ordinary MAUI view, and `SchedulePlannerHandler` (an `AvaloniaControlHandler`) passes its properties to the Avalonia control, `Planner/PlannerView`. Android and iOS embed that control in the native app through `UseAvaloniaEmbedding<PlannerApplication>()`, and the Linux desktop and browser draw it like everything else, so Avalonia.Controls.Maui is referenced on every target. The List button shows the same saved sessions in a native list. `SavedTimelineSessions` is the planner's single membership input, an immutable snapshot published by `RefreshSchedule`; the layout, counts, overlap bands, route, and overview all use that snapshot. Days come from the published session timestamps rather than a fixed conference date or day count. With no available saved sessions, both modes show the shared loading/download/empty state and Find a session action. Withdrawn favorites remain available, as in the list.
+
+The layout comes from `DotNetConf.Core.TimelineLayout`: each local day to scale, overlapping sessions side by side, and long gaps shortened to a break. Cards retain their topic-colored dot, time text, and subtle surface tint to match the filter chips; a filled accent-colored heart indicates a saved session, without replacing the topic colors. Only what's on screen gets controls, so it stays smooth even with very large agendas. It zooms with pinch, trackpad, Ctrl + wheel, the keyboard or its zoom buttons, and supports keyboard navigation, screen readers and both themes. On the phones it also follows the system text size and reduce motion.
+
+When changing it:
+
+- The handler reads its colors from `Resources/Styles/Colors.xaml` by key (see `MapTheme`); keep those keys when renaming tokens.
+- The app's fonts are embedded as Avalonia resources on every target by the `ConvertMauiResourcesForAvalonia` target in the project file.
+- The Avalonia controls put their `using` directives inside the namespace, so Avalonia types win over MAUI's implicit usings with the same names, such as `Color` and `Animation`.
 
 ## Inspect with Copilot and MAUI DevFlow
 
@@ -172,7 +184,7 @@ Use an unused host port and the actual agent port reported by the app. Remove on
 
 The preview's Android theme command also ignores device selection when multiple emulators are connected. For theme checks, target the test device explicitly with `adb -s SERIAL shell cmd uimode night yes` (dark) or `no` (light).
 
-Stable AutomationIds include `home-sessions`, `session-search`, `session-filters`, `session-filters-clear`, `filter-topics`, `filter-check-{topic}`, `filter-reset`, `filter-show-sessions`, `save-{sessionId}`, `detail-save`, `speaker-search`, and `saved-count`. Reusable status controls should be scoped to their page. To avoid mutation lease conflicts between short-lived CLI processes, use one batch for a sequence:
+Stable AutomationIds include `home-sessions`, `session-search`, `session-filters`, `session-filters-clear`, `filter-topics`, `filter-check-{topic}`, `filter-reset`, `filter-show-sessions`, `save-{sessionId}`, `detail-save`, `speaker-search`, `schedule-timeline-mode`, `schedule-list-mode`, `schedule-planner`, and `saved-count` (in My Schedule's List view). DevFlow sees the planner as one element; what's inside it is drawn by Avalonia. Reusable status controls should be scoped to their page. To avoid mutation lease conflicts between short-lived CLI processes, use one batch for a sequence:
 
 ```sh
 printf 'MAUI tap Tab_IMPL_sessions\nMAUI fill session-search ".NET"\nMAUI tree --depth 14\n' \

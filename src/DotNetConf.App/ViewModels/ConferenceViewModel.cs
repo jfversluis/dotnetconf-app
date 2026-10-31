@@ -38,6 +38,7 @@ public partial class ConferenceViewModel(
     public ObservableCollection<SessionViewModel> Sessions { get; } = [];
     public ObservableCollection<SessionViewModel> SavedSessions { get; } = [];
     public ObservableCollection<SpeakerViewModel> Speakers { get; } = [];
+    [ObservableProperty] public partial IReadOnlyList<SessionViewModel> SavedTimelineSessions { get; set; } = [];
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CommunityEventSummary))]
     [NotifyPropertyChangedFor(nameof(HasCommunityEvents))]
@@ -594,7 +595,7 @@ public partial class ConferenceViewModel(
             var days = new[] { new DayFilter("All days", null) }.Concat(
                 allSessions.Where(session => !session.IsWithdrawn)
                     .Select(session => Agenda.LocalDay(session.Model.StartsAt, timeZone)).Distinct().Order()
-                    .Select(day => new DayFilter(day.ToString("ddd, MMM d"), day)));
+                    .Select(day => new DayFilter($"{day:ddd}, {Agenda.MonthDay(day)}", day)));
             CollectionUpdates.Apply(Days, days);
             SelectedDay = Days.FirstOrDefault(day => day.Day == selectedDay) ?? Days[0];
         }
@@ -612,6 +613,7 @@ public partial class ConferenceViewModel(
         foreach (var session in allSessions)
             session.HasConflict = session.IsSaved && saved.Any(other => Agenda.Overlaps(session.Model, other.Model));
         CollectionUpdates.Apply(SavedSessions, saved);
+        SavedTimelineSessions = saved;
         SavedCount = schedule.SavedCount;
         ScheduleChanged?.Invoke(this, EventArgs.Empty);
     }

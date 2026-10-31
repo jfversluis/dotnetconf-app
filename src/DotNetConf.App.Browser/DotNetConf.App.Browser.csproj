@@ -9,7 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../DotNetConf.App/DotNetConf.App.csproj" />
-    <PackageReference Include="Avalonia.Browser" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Browser" Version="12.1.4" />
   </ItemGroup>
   <!-- MAUI assets live in DotNetConf.App (also the configured entry assembly). Resizetizer collects
        its fonts again alongside transitive package fonts in this host, producing duplicate asset keys. -->
