@@ -93,7 +93,6 @@ public sealed class PlannerView : UserControl
     private readonly TextBlock message;
     private readonly TimelineBackdrop backdrop = new();
     private readonly RouteLayer route = new();
-    private readonly ParticleLayer particles = new();
     private readonly OverviewRail rail;
     private readonly Style[] motion;
     private readonly RealizedLayer<int, DayHeader> headers;
@@ -108,12 +107,10 @@ public sealed class PlannerView : UserControl
     private readonly List<TopicFilterViewModel> watchedTopics = [];
 
     private IReadOnlyList<SessionViewModel> sessions = [];
-    private IReadOnlyList<SessionViewModel> saved = [];
     private IReadOnlyList<TopicFilterViewModel> topics = [];
     private ICommand? clearTopicsCommand;
     private PlannerTheme? currentTheme;
     private double bottomInset;
-    private INotifyCollectionChanged? watchedSaved;
     private INotifyCollectionChanged? watchedTopicList;
     private bool attached;
 
@@ -123,7 +120,6 @@ public sealed class PlannerView : UserControl
     private TimeZoneInfo? layoutZone;
     private int buildVersion;
     private bool rebuildQueued;
-    private bool scheduleUpdateQueued;
     private (int Day, double Offset, bool Conflict)[] savedMarks = [];
 
     private double[] dayTops = [];
@@ -209,8 +205,7 @@ public sealed class PlannerView : UserControl
         Grid.SetRow(statusBar, 1);
         Grid.SetRow(scroller, 2);
         Grid.SetRow(rail, 2);
-        Grid.SetRowSpan(particles, 3);
-        root.Children.AddRange([brandGlow, chipScroller, statusBar, scroller, rail, particles]);
+        root.Children.AddRange([brandGlow, chipScroller, statusBar, scroller, rail]);
         // Scales the whole planner, text and layout together, for larger system text sizes.
         textScaler = new LayoutTransformControl { Child = root };
         scope = new ThemeVariantScope { Child = textScaler };
@@ -278,17 +273,6 @@ public sealed class PlannerView : UserControl
     {
         sessions = value ?? [];
         QueueRebuild();
-    }
-
-    /// <summary>
-    /// The saved sessions, for the overlaps, the route and the counts.
-    /// </summary>
-    public void SetSavedSessions(IReadOnlyList<SessionViewModel>? value)
-    {
-        Unwatch();
-        saved = value ?? [];
-        Watch();
-        QueueScheduleUpdate();
     }
 
     /// <summary>
@@ -405,9 +389,6 @@ public sealed class PlannerView : UserControl
     {
         if (!attached)
             return;
-        watchedSaved = saved as INotifyCollectionChanged;
-        if (watchedSaved is not null)
-            watchedSaved.CollectionChanged += OnSavedChanged;
         watchedTopicList = topics as INotifyCollectionChanged;
         if (watchedTopicList is not null)
             watchedTopicList.CollectionChanged += OnTopicsChanged;
@@ -422,15 +403,12 @@ public sealed class PlannerView : UserControl
     {
         if (!attached)
             return;
-        if (watchedSaved is not null)
-            watchedSaved.CollectionChanged -= OnSavedChanged;
         if (watchedTopicList is not null)
             watchedTopicList.CollectionChanged -= OnTopicsChanged;
         foreach (var topic in watchedTopics)
             topic.PropertyChanged -= OnTopicChanged;
         foreach (var card in cards.Values)
             card.Session!.PropertyChanged -= OnSessionChanged;
-        watchedSaved = null;
         watchedTopicList = null;
         watchedTopics.Clear();
     }
@@ -490,13 +468,6 @@ public sealed class PlannerView : UserControl
         try
         {
             BuildChips(theme);
-            if (sessions.Count == 0)
-            {
-                ShowMessage("Save sessions from the agenda to see your personal timeline.");
-                UpdateFilter();
-                return;
-            }
-
             // Large agendas take a moment to lay out, so they are laid out off the UI thread; a conference-sized one
             // is ready in the same frame, so the timeline never flashes empty.
             var list = sessions;
@@ -952,7 +923,7 @@ public sealed class PlannerView : UserControl
         selectedTopics.Clear();
         foreach (var topic in topics.Where(topic => topic.IsSelected))
             selectedTopics.Add(topic.Name);
-        matchCount = selectedTopics.Count == 0 ? sessions.Count : sessions.Count(Matches);
+        matchCount = selectedTopics.Count == 0 ? layoutSessions.Count : layoutSessions.Count(Matches);
         foreach (var card in cards.Values)
             card.SetDimmed(!Matches(card.Session!));
         foreach (var chip in chips.Children.OfType<TopicChip>())
@@ -963,20 +934,6 @@ public sealed class PlannerView : UserControl
     private bool Matches(SessionViewModel session) =>
         selectedTopics.Count == 0 || session.Model.Topics.Any(selectedTopics.Contains);
 
-    // Saving changes several sessions' overlap flags at once, so the schedule is drawn again once they have settled.
-    private void QueueScheduleUpdate()
-    {
-        if (scheduleUpdateQueued)
-            return;
-        scheduleUpdateQueued = true;
-        Dispatcher.Post(() =>
-        {
-            scheduleUpdateQueued = false;
-            UpdateSchedule();
-            Realize();
-        });
-    }
-
     // The saved sessions on the timeline: overlap bands behind them, your route beside them and marks on the rail.
     private void UpdateSchedule()
     {
@@ -984,16 +941,16 @@ public sealed class PlannerView : UserControl
         savedMarks = [];
         if (layout is not { } timeline)
             return;
-        foreach (var (start, end) in Agenda.OverlapRanges(saved.Select(session => session.Model)))
+        foreach (var (start, end) in Agenda.OverlapRanges(layoutSessions.Select(session => session.Model)))
         {
             if (timeline.Locate(start) is { } place && timeline.Days[place.Day].OffsetOf(end) is { } until)
                 bands.Add((place.Day, place.Offset, until, end - start));
         }
 
         // A saved session that starts before the one on the route has ended takes a branch beside it.
-        var stops = new List<(string Id, int Day, double From, double To, bool Branch, bool Conflict)>(saved.Count);
+        var stops = new List<(int Day, double From, double To, bool Branch, bool Conflict)>(layoutSessions.Count);
         var (routeDay, routeEnd) = (-1, DateTimeOffset.MinValue);
-        foreach (var session in saved.OrderBy(session => session.Model.StartsAt))
+        foreach (var session in layoutSessions.OrderBy(session => session.Model.StartsAt))
         {
             var model = session.Model;
             if (timeline.Locate(model.StartsAt) is not { } place || timeline.Days[place.Day].OffsetOf(model.EndsAt) is not { } end)
@@ -1003,12 +960,10 @@ public sealed class PlannerView : UserControl
             var branch = model.StartsAt < routeEnd;
             if (!branch)
                 routeEnd = model.EndsAt;
-            stops.Add((model.Id, place.Day, place.Offset, end, branch, session.HasConflict));
+            stops.Add((place.Day, place.Offset, end, branch, session.HasConflict));
         }
-        route.SetStops(stops, animate: !reduceMotion);
+        route.SetStops(stops);
         savedMarks = [.. stops.Select(stop => (stop.Day, stop.From, stop.Conflict))];
-        rail.SetMarks(savedMarks, nowPosition);
-        UpdateStatus();
     }
 
     // Moves what follows the clock: the now marker, live and ended cards, and the status line.
@@ -1063,15 +1018,15 @@ public sealed class PlannerView : UserControl
     {
         if (currentTheme is not { } theme)
             return;
-        var overlapCount = saved.Count(session => session.HasConflict);
+        var overlapCount = layoutSessions.Count(session => session.HasConflict);
         summary.Inlines =
         [
-            new Run($"{saved.Count:N0} saved") { FontWeight = FontWeight.SemiBold, Foreground = new ImmutableSolidColorBrush(theme.Text) },
+            new Run($"{layoutSessions.Count:N0} saved") { FontWeight = FontWeight.SemiBold, Foreground = new ImmutableSolidColorBrush(theme.Text) },
         ];
         if (overlapCount > 0)
             summary.Inlines.Add(new Run($"  ·  {overlapCount:N0} overlapping") { FontWeight = FontWeight.SemiBold, Foreground = new ImmutableSolidColorBrush(theme.Conflict) });
         if (selectedTopics.Count > 0)
-            summary.Inlines.Add(new Run($"  ·  {matchCount:N0} of {sessions.Count:N0} match") { Foreground = new ImmutableSolidColorBrush(theme.Secondary) });
+            summary.Inlines.Add(new Run($"  ·  {matchCount:N0} of {layoutSessions.Count:N0} match") { Foreground = new ImmutableSolidColorBrush(theme.Secondary) });
 
         var instant = Clock.GetUtcNow();
         var live = layout?.AnyLive(instant) ?? false;
@@ -1110,16 +1065,7 @@ public sealed class PlannerView : UserControl
             return;
         if (e.PropertyName is nameof(SessionViewModel.IsSaved) or nameof(SessionViewModel.HasConflict))
             card.Update();
-        if (e.PropertyName != nameof(SessionViewModel.IsSaved) || reduceMotion)
-            return;
-        card.Heart.Pop(session.IsSaved);
-        // Celebrate a save with a burst from the heart, while the timeline is on screen.
-        if (session.IsSaved && currentTheme is { } theme && card.Heart.IsVisible
-            && card.Heart.TranslatePoint(card.Heart.Center, particles) is { } origin)
-            particles.Burst(origin, [theme.Magenta, theme.Purple, theme.Lavender, theme.Accent]);
     }
-
-    private void OnSavedChanged(object? sender, NotifyCollectionChangedEventArgs e) => QueueScheduleUpdate();
 
     private void OnTopicChanged(object? sender, PropertyChangedEventArgs e)
     {

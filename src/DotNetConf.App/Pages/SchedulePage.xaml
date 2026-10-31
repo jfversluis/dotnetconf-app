@@ -27,7 +27,7 @@
             <controls:StatusBanner AutomationId="schedule-status" />
         </VerticalStackLayout>
         <planner:SchedulePlanner x:Name="Planner" Grid.Row="1" Sessions="{Binding SavedTimelineSessions}"
-                                 SavedSessions="{Binding SavedSessions}" Topics="{Binding Topics}"
+                                 Topics="{Binding Topics}"
                                  ClearTopicsCommand="{Binding ClearTopicFiltersCommand}" AutomationId="schedule-planner" />
         <RefreshView x:Name="SavedList" Grid.Row="1" IsVisible="False"
                      IsRefreshing="{Binding IsPullRefreshing, Mode=TwoWay}"

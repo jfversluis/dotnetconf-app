@@ -25,6 +25,7 @@ public sealed class ConferenceViewModelTests
         Assert.Equal(2, viewModel.SavedCount);
         Assert.Equal(2, store.SavedIds.Count);
         Assert.False(session.HasConflict);
+        Assert.Same(session, Assert.Single(viewModel.SavedTimelineSessions));
     }
 
     [Fact]
@@ -39,13 +40,50 @@ public sealed class ConferenceViewModelTests
                 Id = $"day-{day}", StartsAt = session.StartsAt.AddDays(day), EndsAt = session.EndsAt.AddDays(day)
             }).ToList()
         } };
-        var viewModel = Create(new TestRepository(snapshot), new TestScheduleStore(), new TestConnectivity());
+        var store = new TestScheduleStore();
+        store.SavedIds.Clear();
+        store.SavedIds.UnionWith(["day-0", "day-6"]);
+        var viewModel = Create(new TestRepository(snapshot), store, new TestConnectivity());
         await viewModel.InitializeAsync();
         await (viewModel.RefreshCommand.ExecutionTask ?? Task.CompletedTask);
 
         Assert.Equal(8, viewModel.Days.Count);
         Assert.Equal(7, viewModel.Days.Where(day => day.Day is not null).Select(day => day.Day).Distinct().Count());
         Assert.Equal(7, viewModel.Sessions.Count);
+        Assert.Equal(["day-0", "day-6"], viewModel.SavedTimelineSessions.Select(saved => saved.Id));
+        Assert.Equal([DateOnly.FromDateTime(session.StartsAt.DateTime), DateOnly.FromDateTime(session.StartsAt.AddDays(6).DateTime)],
+            Timeline.Build(viewModel.SavedTimelineSessions.Select(saved => saved.Model), TimeZoneInfo.Utc).Select(day => day.Day));
+    }
+
+    [Fact]
+    public async Task SavedTimelineFollowsPublishedDateChangesWithoutChangingFavoriteIds()
+    {
+        var original = Snapshot();
+        var repository = new TestRepository(original);
+        var store = new TestScheduleStore();
+        var viewModel = Create(repository, store, new TestConnectivity());
+        await viewModel.InitializeAsync();
+        await (viewModel.RefreshCommand.ExecutionTask ?? Task.CompletedTask);
+        var previous = viewModel.SavedTimelineSessions;
+        var favorite = Assert.Single(previous);
+        var updated = original.Document.Sessions[0] with
+        {
+            Title = "Synthetic updated title",
+            StartsAt = original.Document.Sessions[0].StartsAt.AddDays(90),
+            EndsAt = original.Document.Sessions[0].EndsAt.AddDays(90)
+        };
+        repository.Snapshot = original with { Document = original.Document with { Sessions = [updated] } };
+
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+
+        Assert.NotSame(previous, viewModel.SavedTimelineSessions);
+        Assert.Same(favorite, Assert.Single(viewModel.SavedTimelineSessions));
+        Assert.Same(favorite, Assert.Single(viewModel.SavedSessions));
+        Assert.Equal(updated, favorite.Model);
+        Assert.Equal("id", Assert.Single(store.SavedIds));
+        var day = Assert.Single(Timeline.Build(viewModel.SavedTimelineSessions.Select(saved => saved.Model), TimeZoneInfo.Utc));
+        Assert.Equal(DateOnly.FromDateTime(updated.StartsAt.DateTime), day.Day);
+        Assert.Equal(updated.StartsAt, Assert.Single(day.Items).Start);
     }
 
     [Theory]

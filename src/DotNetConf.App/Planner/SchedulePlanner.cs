@@ -12,9 +12,6 @@ public sealed class SchedulePlanner : View
     public static readonly BindableProperty SessionsProperty = BindableProperty.Create(
         nameof(Sessions), typeof(IReadOnlyList<SessionViewModel>), typeof(SchedulePlanner), Array.Empty<SessionViewModel>());
 
-    public static readonly BindableProperty SavedSessionsProperty = BindableProperty.Create(
-        nameof(SavedSessions), typeof(IReadOnlyList<SessionViewModel>), typeof(SchedulePlanner), Array.Empty<SessionViewModel>());
-
     public static readonly BindableProperty TopicsProperty = BindableProperty.Create(
         nameof(Topics), typeof(IReadOnlyList<TopicFilterViewModel>), typeof(SchedulePlanner), Array.Empty<TopicFilterViewModel>());
 
@@ -37,16 +34,6 @@ public sealed class SchedulePlanner : View
     {
         get => (IReadOnlyList<SessionViewModel>)GetValue(SessionsProperty);
         set => SetValue(SessionsProperty, value);
-    }
-
-    /// <summary>
-    /// The saved sessions. When the collection notifies changes, the planner updates its overlaps and counts
-    /// from it instead of listening to every session.
-    /// </summary>
-    public IReadOnlyList<SessionViewModel> SavedSessions
-    {
-        get => (IReadOnlyList<SessionViewModel>)GetValue(SavedSessionsProperty);
-        set => SetValue(SavedSessionsProperty, value);
     }
 
     /// <summary>

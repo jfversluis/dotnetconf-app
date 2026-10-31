@@ -18,7 +18,6 @@ public sealed class SchedulePlannerHandler() : AvaloniaControlHandler<SchedulePl
         {
             [nameof(SchedulePlanner.Sessions)] = (handler, view) => handler.AvaloniaControl?.SetSessions(view.Sessions),
             [nameof(SchedulePlanner.Topics)] = (handler, view) => handler.AvaloniaControl?.SetTopics(view.Topics),
-            [nameof(SchedulePlanner.SavedSessions)] = (handler, view) => handler.AvaloniaControl?.SetSavedSessions(view.SavedSessions),
             [nameof(SchedulePlanner.ClearTopicsCommand)] = (handler, view) => handler.AvaloniaControl?.SetClearTopicsCommand(view.ClearTopicsCommand),
             [nameof(SchedulePlanner.BottomInset)] = (handler, view) => handler.AvaloniaControl?.SetBottomInset(view.BottomInset),
             [nameof(SchedulePlanner.Theme)] = MapTheme,
@@ -44,7 +43,6 @@ public sealed class SchedulePlannerHandler() : AvaloniaControlHandler<SchedulePl
             Secondary: Resource(dark ? "DarkSecondary" : "LightSecondary"),
             Outline: Resource(dark ? "DarkOutline" : "LightOutline"),
             Accent: Resource(dark ? "Lavender" : "Purple"),
-            Purple: Resource("Purple"),
             Magenta: Resource("Magenta"),
             Lavender: Resource("Lavender"),
             Midnight: Resource("Midnight"),

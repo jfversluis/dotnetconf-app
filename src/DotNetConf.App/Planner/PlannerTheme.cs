@@ -19,7 +19,6 @@ public sealed record PlannerTheme(
     Color Secondary,
     Color Outline,
     Color Accent,
-    Color Purple,
     Color Magenta,
     Color Lavender,
     Color Midnight,
@@ -30,7 +29,7 @@ public sealed record PlannerTheme(
     public static FontFamily HeadingFont { get; } = new("avares://DotNetConf.App/Assets/Fonts#Space Grotesk");
 
     /// <summary>
-    /// A heart in a 24 × 24 box, for the save buttons and the burst when a session is saved.
+    /// A heart in a 24 × 24 box, for the timeline's save buttons.
     /// </summary>
     public static Geometry HeartIcon { get; } = Geometry.Parse(
         "M12,21 C12,21 3,14.6 3,8.9 C3,5.9 5.3,3.8 8,3.8 C9.7,3.8 11.2,4.8 12,6.3 C12.8,4.8 14.3,3.8 16,3.8 C18.7,3.8 21,5.9 21,8.9 C21,14.6 12,21 12,21 Z");

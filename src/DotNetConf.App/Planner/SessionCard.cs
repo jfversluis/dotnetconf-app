@@ -127,7 +127,7 @@ internal sealed class SessionCard : Button
         // The Fluent theme clips buttons to their bounds, which would cut off the focus ring and the overlap glow.
         ClipToBounds = false;
         AutomationProperties.SetHelpText(this, "Opens session details");
-        animated = [this, surface, progress, topicDot, time, title, speakers, .. Heart.Animated];
+        animated = [this, surface, progress, topicDot, time, title, speakers];
     }
 
     public SessionViewModel? Session { get; private set; }
