@@ -24,7 +24,7 @@ public static class ConferenceJson
             throw new InvalidDataException("The conference website must be an absolute HTTPS URL.");
         if (document.Speakers is null || document.WithdrawnSpeakers is null ||
             document.Sessions is null || document.WithdrawnSessions is null ||
-            document.CommunityEvents is null || document.SessionAliases is null)
+            document.CommunityEvents is null)
             throw new InvalidDataException("Session, speaker, and community event collections are required.");
 
         var eventIds = new HashSet<string>(StringComparer.Ordinal);
@@ -58,27 +58,20 @@ public static class ConferenceJson
         {
             (document.Sessions, currentSpeakerIds), (document.WithdrawnSessions, speakerIds)
         })
-        foreach (var session in sessions)
-        {
-            if (session is null || string.IsNullOrWhiteSpace(session.Id) || string.IsNullOrWhiteSpace(session.Title) ||
-                !sessionIds.Add(session.Id))
-                throw new InvalidDataException("Sessions require unique IDs and non-empty titles.");
-            if (session.StartsAt == default || session.EndsAt <= session.StartsAt)
-                throw new InvalidDataException($"Session '{session.Id}' has invalid start/end times.");
-            if (session.SpeakerIds is null || session.Topics is null ||
-                session.SpeakerIds.Any(id => !allowedSpeakerIds.Contains(id)) ||
-                session.SpeakerIds.Distinct(StringComparer.Ordinal).Count() != session.SpeakerIds.Count ||
-                session.Topics.Any(string.IsNullOrWhiteSpace))
-                throw new InvalidDataException($"Session '{session.Id}' has invalid speaker references or topics.");
-        }
+            foreach (var session in sessions)
+            {
+                if (session is null || string.IsNullOrWhiteSpace(session.Id) || string.IsNullOrWhiteSpace(session.Title) ||
+                    !sessionIds.Add(session.Id))
+                    throw new InvalidDataException("Sessions require unique IDs and non-empty titles.");
+                if (session.StartsAt == default || session.EndsAt <= session.StartsAt)
+                    throw new InvalidDataException($"Session '{session.Id}' has invalid start/end times.");
+                if (session.SpeakerIds is null || session.Topics is null ||
+                    session.SpeakerIds.Any(id => !allowedSpeakerIds.Contains(id)) ||
+                    session.SpeakerIds.Distinct(StringComparer.Ordinal).Count() != session.SpeakerIds.Count ||
+                    session.Topics.Any(string.IsNullOrWhiteSpace))
+                    throw new InvalidDataException($"Session '{session.Id}' has invalid speaker references or topics.");
+            }
 
-        foreach (var (alias, canonical) in document.SessionAliases)
-        {
-            if (string.IsNullOrWhiteSpace(alias) || string.IsNullOrWhiteSpace(canonical) ||
-                sessionIds.Contains(alias) || !sessionIds.Contains(canonical) ||
-                document.SessionAliases.ContainsKey(canonical))
-                throw new InvalidDataException("Session aliases must map retired IDs directly to existing sessions.");
-        }
     }
 }
 

@@ -12,9 +12,7 @@ namespace DotNetConf.Core.Tests;
 // Test-only agenda prose below is synthetic.
 public sealed class ConferenceRepositoryTests : IDisposable
 {
-    private const string LegacyId = "1234";
     private const string TalkId = "BRK050";
-    private const string TalkCanonicalId = "20261050";
     private readonly string directory = Path.Combine(
         Directory.GetCurrentDirectory(), ".agenda-cache-tests", Guid.NewGuid().ToString("N"));
     private readonly FakeClock clock = new();
@@ -51,12 +49,12 @@ public sealed class ConferenceRepositoryTests : IDisposable
         handler.Respond = (_, _) => Task.FromResult(Ok(Json(agenda), etag));
 
     private async Task<ConferenceCache> ReadCacheAsync() =>
-        JsonSerializer.Deserialize(await File.ReadAllTextAsync(CachePath), RemoteAgendaJsonContext.Default.ConferenceCache)!;
+        JsonSerializer.Deserialize(await File.ReadAllTextAsync(CachePath), ConferenceCacheJsonContext.Default.ConferenceCache)!;
 
     private async Task WriteCacheAsync(ConferenceCache cache)
     {
         Directory.CreateDirectory(directory);
-        await File.WriteAllTextAsync(CachePath, JsonSerializer.Serialize(cache, RemoteAgendaJsonContext.Default.ConferenceCache));
+        await File.WriteAllTextAsync(CachePath, JsonSerializer.Serialize(cache, ConferenceCacheJsonContext.Default.ConferenceCache));
     }
 
     private void AssertOnlyMicrosoftRequests()
@@ -80,7 +78,7 @@ public sealed class ConferenceRepositoryTests : IDisposable
         };
     }
 
-    // Replaces or adds one talk with a published speaker so legacy records can be matched by title, time and speaker.
+    // Replaces or adds one synthetic talk with a published speaker.
     private static MicrosoftAgenda WithTalk(MicrosoftAgenda data, string id = TalkId, string title = "Community",
         string speakerName = "Community Speaker", string start = "08:00:00", string end = "08:30:00", int day = 3)
     {
@@ -99,63 +97,25 @@ public sealed class ConferenceRepositoryTests : IDisposable
         };
     }
 
-    private static Session LegacyTalk(string id = LegacyId, string title = "Community",
-        string start = "2026-11-12T08:00:00-08:00", string end = "2026-11-12T08:30:00-08:00",
-        string speaker = "legacy-speaker") => new()
-    {
-        Id = id, Title = title, Description = "Synthetic legacy abstract", StartsAt = DateTimeOffset.Parse(start),
-        EndsAt = DateTimeOffset.Parse(end), SpeakerIds = [speaker]
-    };
-
-    private static Speaker LegacySpeaker(string id = "legacy-speaker", string name = "Community Speaker") =>
-        new() { Id = id, Name = name, Bio = "Synthetic legacy biography" };
-
-    private CachedAgenda LegacySource(IEnumerable<Session> active, IEnumerable<Session>? withdrawn = null,
-        IEnumerable<Speaker>? speakers = null, IEnumerable<Speaker>? withdrawnSpeakers = null) => new()
-    {
-        Sessions = [.. active], WithdrawnSessions = [.. withdrawn ?? []], Speakers = [.. speakers ?? []],
-        WithdrawnSpeakers = [.. withdrawnSpeakers ?? []], PayloadHash = new string('A', 64), ETag = "\"legacy\"",
-        LastCheckedAt = clock.Now.AddHours(10), LastUpdatedAt = clock.Now.AddHours(9)
-    };
-
-    // Writes a schema 2-5 cache holding a downloaded Microsoft agenda and the retired second source.
-    private async Task<ConferenceCache> SeedLegacyAsync(MicrosoftAgenda feed, CachedAgenda community, int schema = 5)
-    {
-        Serve(feed);
-        await Repository().RefreshAsync();
-        var current = await ReadCacheAsync();
-        var legacySpeakers = schema == 5 ? community : community with
-        {
-            Speakers = [.. community.Speakers, .. community.WithdrawnSpeakers], WithdrawnSpeakers = []
-        };
-        var legacy = current with { SchemaVersion = schema, Community = legacySpeakers };
-        await WriteCacheAsync(legacy);
-        handler.Requests.Clear();
-        return legacy;
-    }
-
     private static string[] Ids(IEnumerable<Session> sessions) => [.. sessions.Select(session => session.Id)];
 
     [Fact]
-    public async Task FirstRefreshUsesOnlyMicrosoftAndPersistsAllSeventyTalksInSchemaSix()
+    public async Task FirstRefreshUsesOnlyMicrosoftAndPersistsAllSeventyTalks()
     {
         var result = await Repository().RefreshAsync();
         Assert.Empty(result.Issues);
         Assert.Equal(70, result.Document.Sessions.Count);
         Assert.Empty(result.Document.WithdrawnSessions);
-        Assert.Empty(result.Document.SessionAliases);
         Assert.Equal(clock.Now, result.LastCheckedAt);
         Assert.Equal(clock.Now, result.LastUpdatedAt);
         Assert.Single(handler.Requests);
         AssertOnlyMicrosoftRequests();
         var cache = await ReadCacheAsync();
-        Assert.Equal(6, cache.SchemaVersion);
+        Assert.Equal(8, cache.SchemaVersion);
         Assert.Equal(70, cache.Microsoft.Sessions.Count);
         Assert.Equal(64, cache.Microsoft.PayloadHash.Length);
-        Assert.Null(cache.Community);
-        Assert.Empty(cache.SessionAliases);
-        Assert.Null(cache.LegacyPayloadHash);
-        Assert.Null(JsonNode.Parse(await File.ReadAllTextAsync(CachePath))!["community"]);
+        Assert.Equal(["schemaVersion", "metadata", "microsoft"],
+            JsonNode.Parse(await File.ReadAllTextAsync(CachePath))!.AsObject().Select(property => property.Key));
     }
 
     [Theory]
@@ -192,7 +152,7 @@ public sealed class ConferenceRepositoryTests : IDisposable
         Assert.Empty(updated.Document.WithdrawnSessions);
         Assert.Equal(41, updated.Document.Sessions.Count);
         Assert.Equal(Ids(first.Document.Sessions), Ids(updated.Document.Sessions.Take(40)));
-        Assert.Equal(new DateOnly(2026, 11, 15), DateOnly.FromDateTime(updated.Document.Sessions.Single(s => s.Id == "20261101").StartsAt.Date));
+        Assert.Equal(new DateOnly(2026, 11, 15), DateOnly.FromDateTime(updated.Document.Sessions.Single(s => s.Id == "BRK101").StartsAt.Date));
         Assert.Equal(clock.Now, updated.LastUpdatedAt);
         Assert.Equivalent(updated.Document, (await Repository().LoadAsync()).Document with { Speakers = updated.Document.Speakers });
     }
@@ -204,7 +164,6 @@ public sealed class ConferenceRepositoryTests : IDisposable
         Assert.Empty(result.Document.Sessions);
         Assert.Empty(result.Document.Speakers);
         Assert.Empty(result.Document.WithdrawnSessions);
-        Assert.Empty(result.Document.SessionAliases);
         Assert.Empty(result.Issues);
         Assert.False(result.IsCached);
         Assert.Null(result.LastCheckedAt);
@@ -230,7 +189,7 @@ public sealed class ConferenceRepositoryTests : IDisposable
     [Fact]
     public async Task NoAgendaProfilesOrCommunityEventsCanArriveWithTheAppMetadata()
     {
-        metadata.Document = Bundle;
+        metadata.Document = Previous;
         var error = await Assert.ThrowsAsync<InvalidDataException>(() => Repository().LoadAsync());
         Assert.Contains("must not contain", error.Message);
         Assert.Empty(handler.Requests);
@@ -296,7 +255,7 @@ public sealed class ConferenceRepositoryTests : IDisposable
         });
         var cache = await ReadCacheAsync();
         Assert.Equal(new DateOnly(2026, 11, 11), cache.Metadata.StartDate);
-        Assert.True(cache.Microsoft.RequiresProfileRefresh);
+        Assert.True(cache.Microsoft.RequiresRevalidation);
         Assert.Equal(new DateOnly(2026, 11, 11), FirstDate(await Repository().LoadAsync()));
     }
 
@@ -324,115 +283,11 @@ public sealed class ConferenceRepositoryTests : IDisposable
         var cache = await ReadCacheAsync();
         Assert.Equal(original.PayloadHash, cache.Microsoft.PayloadHash);
         Assert.Equal(original.ETag, cache.Microsoft.ETag);
-        Assert.False(cache.Microsoft.RequiresProfileRefresh);
+        Assert.False(cache.Microsoft.RequiresRevalidation);
 
         clock.Advance();
         await repository.RefreshAsync();
         Assert.Equal([false, true], validators);
-    }
-
-    [Fact]
-    public async Task LegacyCacheWithKnownStartDateIsRebasedBeforeMigration()
-    {
-        var community = LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]);
-        var legacy = await SeedLegacyAsync(SizedMicrosoft(70), community);
-        Assert.Equal(new DateOnly(2026, 11, 10), legacy.Metadata.StartDate);
-        CorrectStartDate(new DateOnly(2026, 11, 11));
-        handler.Respond = (_, _) => throw new HttpRequestException("Offline");
-
-        var result = await Repository().LoadAsync();
-
-        Assert.Empty(result.Issues);
-        Assert.Equal(new DateOnly(2026, 11, 11), FirstDate(result));
-        var migrated = await ReadCacheAsync();
-        Assert.Equal(new DateOnly(2026, 11, 11), migrated.Metadata.StartDate);
-        Assert.True(migrated.Microsoft.RequiresProfileRefresh);
-    }
-
-    [Fact]
-    public async Task LegacyCacheWithoutDateBasisRequiresAnUnconditionalAgendaRevalidation()
-    {
-        var community = LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]);
-        var legacy = await SeedLegacyAsync(SizedMicrosoft(70), community);
-        await WriteCacheAsync(legacy with
-        {
-            Metadata = legacy.Metadata with { StartDate = null }
-        });
-        handler.Respond = (_, _) => throw new HttpRequestException("Offline");
-
-        var result = await Repository().LoadAsync();
-
-        Assert.Equal(71, result.Document.Sessions.Count);
-        var migrated = await ReadCacheAsync();
-        Assert.True(migrated.Microsoft.RequiresProfileRefresh);
-        Assert.Equal(new DateOnly(2026, 11, 10), migrated.Metadata.StartDate);
-    }
-
-    [Fact]
-    public async Task CorrectedStartDateKeepsUnresolvedLegacyTimesButRebasesMicrosoftArchives()
-    {
-        var community = LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]);
-        await SeedLegacyAsync(SizedMicrosoft(70), community);
-        await Repository().LoadAsync();
-        CorrectStartDate(new DateOnly(2026, 11, 12));
-        var result = await Repository().LoadAsync();
-        Assert.Empty(result.Issues);
-        Assert.Equal(new DateOnly(2026, 11, 12), FirstDate(result));
-        Assert.Empty(result.Document.WithdrawnSessions);
-        var legacy = result.Document.Sessions.Single(session => session.Id == LegacyId);
-        Assert.Equal(DateTimeOffset.Parse("2026-11-12T08:00:00-08:00"), legacy.StartsAt);
-        Assert.Equal([LegacyId], (await ReadCacheAsync()).LegacySessionIds);
-    }
-
-    [Fact]
-    public async Task LegacyMatchingUsesCanonicalUnicodeEquivalenceAcrossTitlesAndSpeakerNames()
-    {
-        var feed = WithTalk(SizedMicrosoft(70), title: "Community Caf\u00e9", speakerName: "Synthetic Andr\u00e9");
-        var legacy = LegacyTalk(title: "Community Cafe\u0301");
-        await SeedLegacyAsync(feed, LegacySource([legacy], speakers: [LegacySpeaker(name: "Synthetic Andre\u0301")]));
-
-        var result = await Repository().LoadAsync();
-
-        Assert.Empty(result.Issues);
-        Assert.Equal(feed.Sessions.Count, result.Document.Sessions.Count);
-        Assert.Equal(TalkCanonicalId, result.Document.SessionAliases[LegacyId]);
-    }
-
-    [Fact]
-    public async Task LegacyMatchingDoesNotGuessCompatibilityOnlyUnicodeEquivalence()
-    {
-        var feed = WithTalk(SizedMicrosoft(70));
-        await SeedLegacyAsync(feed, LegacySource([LegacyTalk(title: "\uFF23ommunity")], speakers: [LegacySpeaker()]));
-
-        var result = await Repository().LoadAsync();
-
-        Assert.Empty(result.Issues);
-        Assert.Empty(result.Document.SessionAliases);
-        Assert.Equal(feed.Sessions.Count + 1, result.Document.Sessions.Count);
-    }
-
-    [Fact]
-    public async Task CorrectedStartDateResolvesNewlyMatchingLegacyFallbackWithoutNetwork()
-    {
-        var feed = WithTalk(SizedMicrosoft(70));
-        var legacy = LegacyTalk(start: "2026-11-13T08:00:00-08:00", end: "2026-11-13T08:30:00-08:00");
-        await SeedLegacyAsync(feed, LegacySource([legacy], speakers: [LegacySpeaker()]));
-        var before = await Repository().LoadAsync();
-        Assert.Equal(feed.Sessions.Count + 1, before.Document.Sessions.Count);
-        Assert.Empty(before.Document.SessionAliases);
-
-        CorrectStartDate(new DateOnly(2026, 11, 11));
-        handler.Requests.Clear();
-        handler.Respond = (_, _) => throw new HttpRequestException("Offline");
-        var corrected = await Repository().LoadAsync();
-
-        Assert.Empty(corrected.Issues);
-        Assert.Empty(handler.Requests);
-        Assert.Equal(feed.Sessions.Count, corrected.Document.Sessions.Count);
-        Assert.Equal(TalkCanonicalId, corrected.Document.SessionAliases[LegacyId]);
-        Assert.DoesNotContain(corrected.Document.Sessions, session => session.Id == LegacyId);
-        Assert.Empty((await ReadCacheAsync()).LegacyActiveSessionIds);
-        Assert.Equal(corrected.Document.SessionAliases, (await Repository().LoadAsync()).Document.SessionAliases);
     }
 
     [Fact]
@@ -453,6 +308,43 @@ public sealed class ConferenceRepositoryTests : IDisposable
         Assert.Equal(first.Document.Sessions.Select(s => s.StartsAt), result.Document.Sessions.Select(s => s.StartsAt));
         Assert.Equal(bytes, await File.ReadAllBytesAsync(CachePath));
         Assert.True(result.IsCached);
+        var restarted = await Repository().LoadAsync();
+        Assert.Equal(ConferenceRepository.MetadataSource, Assert.Single(restarted.Issues).Source);
+        Assert.Equal(first.Document.StartDate, restarted.Document.StartDate);
+        Assert.Equal(bytes, await File.ReadAllBytesAsync(CachePath));
+
+        CorrectStartDate(new DateOnly(2026, 11, 11));
+        var corrected = await Repository().LoadAsync();
+        Assert.Empty(corrected.Issues);
+        Assert.Equal(new DateOnly(2026, 11, 11), FirstDate(corrected));
+    }
+
+    [Fact]
+    public async Task CorrectedStartDateRebasesMicrosoftWithdrawalsWithoutChangingSavedIds()
+    {
+        var repository = Repository();
+        Serve(WithTalk(SizedMicrosoft(70), "BRK071"));
+        await repository.RefreshAsync();
+        Serve(SizedMicrosoft(70), "\"withdrawn\"");
+        var before = await repository.RefreshAsync();
+        var withdrawn = Assert.Single(before.Document.WithdrawnSessions);
+        var schedule = new ScheduleService(new JsonScheduleStore(Path.Combine(directory, "schedule.json")));
+        await schedule.SetSavedAsync(withdrawn.Id, true);
+        var scheduleBytes = await File.ReadAllBytesAsync(Path.Combine(directory, "schedule.json"));
+        handler.Requests.Clear();
+        CorrectStartDate(new DateOnly(2026, 11, 11));
+
+        var corrected = await Repository().LoadAsync();
+
+        Assert.Empty(corrected.Issues);
+        Assert.Empty(handler.Requests);
+        var shifted = Assert.Single(corrected.Document.WithdrawnSessions);
+        Assert.Equal(withdrawn.Id, shifted.Id);
+        Assert.Equal(withdrawn.StartsAt.AddDays(1), shifted.StartsAt);
+        Assert.Equal(withdrawn.EndsAt.AddDays(1), shifted.EndsAt);
+        Assert.Equal(Ids(before.Document.Sessions), Ids(corrected.Document.Sessions));
+        Assert.True(schedule.IsSaved(shifted.Id));
+        Assert.Equal(scheduleBytes, await File.ReadAllBytesAsync(Path.Combine(directory, "schedule.json")));
     }
 
     [Theory]
@@ -480,7 +372,7 @@ public sealed class ConferenceRepositoryTests : IDisposable
         Assert.Equal(ConferenceRepository.MetadataSource, Assert.Single(refreshed.Issues).Source);
         var checkedCache = await ReadCacheAsync();
         Assert.True(checkedCache.Microsoft.LastCheckedAt > JsonSerializer.Deserialize(
-            bytes, RemoteAgendaJsonContext.Default.ConferenceCache)!.Microsoft.LastCheckedAt);
+            bytes, ConferenceCacheJsonContext.Default.ConferenceCache)!.Microsoft.LastCheckedAt);
     }
 
     [Fact]
@@ -622,7 +514,7 @@ public sealed class ConferenceRepositoryTests : IDisposable
         var result = await repository.RefreshAsync();
         Assert.Empty(result.Issues);
         Assert.Equal(clock.Now, result.LastUpdatedAt);
-        Assert.Equal("Renamed synthetic talk", result.Document.Sessions.Single(session => session.Id == "20261001").Title);
+        Assert.Equal("Renamed synthetic talk", result.Document.Sessions.Single(session => session.Id == "BRK001").Title);
         Assert.Empty(result.Document.WithdrawnSessions);
         Assert.Equal("\"v2\"", (await ReadCacheAsync()).Microsoft.ETag);
     }
@@ -948,13 +840,13 @@ public sealed class ConferenceRepositoryTests : IDisposable
         Serve(without, "\"v2\"");
         var withdrawn = await repository.RefreshAsync();
         Assert.Empty(withdrawn.Issues);
-        Assert.Equal("20261071", Assert.Single(withdrawn.Document.WithdrawnSessions).Id);
+        Assert.Equal("BRK071", Assert.Single(withdrawn.Document.WithdrawnSessions).Id);
         Assert.DoesNotContain(withdrawn.Document.Speakers, speaker => speaker.Name == "Archived Presenter");
         Assert.Contains(withdrawn.Document.WithdrawnSpeakers, speaker => speaker.Name == "Archived Presenter");
-        Assert.DoesNotContain(withdrawn.Document.Sessions, session => session.Id == "20261071");
+        Assert.DoesNotContain(withdrawn.Document.Sessions, session => session.Id == "BRK071");
 
         var restart = await Repository().LoadAsync();
-        Assert.Equal("20261071", Assert.Single(restart.Document.WithdrawnSessions).Id);
+        Assert.Equal("BRK071", Assert.Single(restart.Document.WithdrawnSessions).Id);
         Assert.DoesNotContain(restart.Document.Speakers, speaker => speaker.Name == "Archived Presenter");
         clock.Advance();
         var unchanged = await Repository().RefreshAsync();
@@ -965,7 +857,7 @@ public sealed class ConferenceRepositoryTests : IDisposable
         var returned = await Repository().RefreshAsync();
         Assert.Empty(returned.Document.WithdrawnSessions);
         Assert.Empty(returned.Document.WithdrawnSpeakers);
-        Assert.Contains(returned.Document.Sessions, session => session.Id == "20261071");
+        Assert.Contains(returned.Document.Sessions, session => session.Id == "BRK071");
         Assert.Contains(returned.Document.Speakers, speaker => speaker.Name == "Archived Presenter");
     }
 
@@ -1009,7 +901,7 @@ public sealed class ConferenceRepositoryTests : IDisposable
         Assert.Equal("{ not json", await File.ReadAllTextAsync(CachePath));
         var refreshed = await Repository().RefreshAsync();
         Assert.Empty(refreshed.Issues);
-        Assert.Equal(6, (await ReadCacheAsync()).SchemaVersion);
+        Assert.Equal(8, (await ReadCacheAsync()).SchemaVersion);
     }
 
     [Fact]
@@ -1064,457 +956,123 @@ public sealed class ConferenceRepositoryTests : IDisposable
     }
 
     [Theory]
+    [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
     [InlineData(4)]
     [InlineData(5)]
-    public async Task LegacyDownloadedCachesAreRetainedWithoutNetworkAndSecondSourceIsRetired(int schema)
+    [InlineData(6)]
+    [InlineData(7)]
+    [InlineData(9)]
+    public async Task UnsupportedCacheIsRejectedUntilMicrosoftRefreshSucceedsWithoutChangingBookmarks(int schema)
     {
-        var community = LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]);
-        await SeedLegacyAsync(SizedMicrosoft(70), community, schema);
-        var result = await Repository().LoadAsync();
-        Assert.Empty(result.Issues);
-        Assert.True(result.IsCached);
-        Assert.Empty(handler.Requests);
-        Assert.Equal(71, result.Document.Sessions.Count);
-        Assert.Equal("Synthetic legacy abstract", result.Document.Sessions.Single(session => session.Id == LegacyId).Description);
-        Assert.Empty(result.Document.WithdrawnSessions);
-        Assert.Contains(result.Document.Speakers, speaker => speaker.Id == "legacy-speaker");
-        Assert.Empty(result.Document.WithdrawnSpeakers);
-
-        var migrated = await ReadCacheAsync();
-        Assert.Equal(6, migrated.SchemaVersion);
-        Assert.Null(migrated.Community);
-        Assert.Equal([LegacyId], migrated.LegacySessionIds);
-        Assert.Equal([LegacyId], migrated.LegacyActiveSessionIds);
-        Assert.Equal(community.PayloadHash, migrated.LegacyPayloadHash);
-        Assert.True(migrated.Microsoft.RequiresProfileRefresh);
-        Assert.Contains(migrated.Microsoft.WithdrawnSessions, session => session.Id == LegacyId);
-        Assert.Null(JsonNode.Parse(await File.ReadAllTextAsync(CachePath))!["community"]);
-        var again = await Repository().LoadAsync();
-        Assert.Equal(Ids(result.Document.Sessions), Ids(again.Document.Sessions));
-        Assert.Empty(again.Document.WithdrawnSessions);
-        Assert.Empty(handler.Requests);
-    }
-
-    [Fact]
-    public async Task SchemaOneIsStillDiscardedAndUndownloadedSecondSourceSeedsAreNotRetained()
-    {
-        await Repository().RefreshAsync();
-        var old = await ReadCacheAsync();
-        await WriteCacheAsync(old with { SchemaVersion = 1 });
-        var discarded = await Repository().LoadAsync();
-        Assert.Empty(discarded.Document.Sessions);
-        Assert.Empty(discarded.Document.WithdrawnSessions);
-
-        var seed = LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]) with
-        {
-            PayloadHash = "", ETag = null, LastCheckedAt = null, LastUpdatedAt = null
-        };
-        await WriteCacheAsync(old with { SchemaVersion = 2, Community = seed });
-        var result = await Repository().LoadAsync();
-        Assert.Equal(70, result.Document.Sessions.Count);
-        Assert.Empty(result.Document.WithdrawnSessions);
-        Assert.Null((await ReadCacheAsync()).Community);
-    }
-
-    [Fact]
-    public async Task LegacyActiveAndWithdrawnRecordsBecomeArchivedAndStayVisibleToSavedDetails()
-    {
-        var community = LegacySource(
-            [LegacyTalk()], [LegacyTalk("5678", "Gone talk", speaker: "gone-speaker")],
-            [LegacySpeaker()], [LegacySpeaker("gone-speaker", "Gone Speaker")]);
-        await SeedLegacyAsync(SizedMicrosoft(70), community);
-        var result = await Repository().LoadAsync();
-        Assert.Equal(71, result.Document.Sessions.Count);
-        Assert.Contains(result.Document.Sessions, session => session.Id == LegacyId);
-        Assert.Equal("5678", Assert.Single(result.Document.WithdrawnSessions).Id);
-        Assert.Contains(result.Document.Speakers, speaker => speaker.Id == "legacy-speaker");
-        Assert.Equal("gone-speaker", Assert.Single(result.Document.WithdrawnSpeakers).Id);
-        Assert.Equal([LegacyId], (await ReadCacheAsync()).LegacyActiveSessionIds);
-        Assert.Equivalent(new[] { LegacyId, "5678" }, (await ReadCacheAsync()).LegacySessionIds);
-        Assert.Empty(result.Document.SessionAliases);
-        Assert.Equal((await ReadCacheAsync()).Microsoft.LastCheckedAt, result.LastCheckedAt);
-        Assert.Equal((await ReadCacheAsync()).Microsoft.LastUpdatedAt, result.LastUpdatedAt);
-    }
-
-    [Fact]
-    public async Task SnapshotTimestampsComeOnlyFromMicrosoftEvenWhenRetiredSourceIsNewer()
-    {
-        var community = LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]);
-        var legacy = await SeedLegacyAsync(SizedMicrosoft(70), community);
-        var result = await Repository().LoadAsync();
-        Assert.True(community.LastCheckedAt > legacy.Microsoft.LastCheckedAt);
-        Assert.Equal(legacy.Microsoft.LastCheckedAt, result.LastCheckedAt);
-        Assert.Equal(legacy.Microsoft.LastUpdatedAt, result.LastUpdatedAt);
-    }
-
-    [Fact]
-    public async Task CachedMicrosoftMatchCreatesDurableAliasAtLoadAndRemovesTheDuplicateArchive()
-    {
-        var community = LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]);
-        await SeedLegacyAsync(WithTalk(SizedMicrosoft(70)), community);
-        var result = await Repository().LoadAsync();
-        Assert.Empty(handler.Requests);
-        Assert.Equal(TalkCanonicalId, result.Document.SessionAliases[LegacyId]);
-        Assert.Empty(result.Document.WithdrawnSessions);
-        Assert.Empty(result.Document.WithdrawnSpeakers);
-        Assert.Contains(result.Document.Sessions, session => session.Id == TalkCanonicalId);
+        var original = await Repository().RefreshAsync();
         var cache = await ReadCacheAsync();
-        Assert.Equal(TalkCanonicalId, cache.SessionAliases[LegacyId]);
-        Assert.Empty(cache.LegacySessionIds);
-        Assert.Equal(TalkCanonicalId, (await Repository().LoadAsync()).Document.SessionAliases[LegacyId]);
-    }
-
-    [Fact]
-    public async Task UnpairedLegacyTalkIsPairedByLaterMicrosoftRefreshAndPersistsAcrossRestartsAndUnchangedRefreshes()
-    {
-        var community = LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]);
-        await SeedLegacyAsync(SizedMicrosoft(70), community);
+        await WriteCacheAsync(cache with { SchemaVersion = schema });
+        var bytes = await File.ReadAllBytesAsync(CachePath);
+        var schedulePath = Path.Combine(directory, "schedule.json");
+        var schedule = new JsonScheduleStore(schedulePath);
+        await schedule.WriteAsync([original.Document.Sessions[0].Id, "unavailable-id"]);
+        var scheduleBytes = await File.ReadAllBytesAsync(schedulePath);
+        handler.Requests.Clear();
+        handler.Respond = (_, _) => throw new HttpRequestException("Offline");
         var repository = Repository();
-        var before = await repository.LoadAsync();
-        Assert.Contains(before.Document.Sessions, session => session.Id == LegacyId);
-        Assert.Empty(before.Document.WithdrawnSessions);
-        clock.Advance();
-        var matching = WithTalk(SizedMicrosoft(70));
-        Serve(matching, "\"v2\"");
-        var paired = await repository.RefreshAsync();
-        Assert.Empty(paired.Issues);
-        Assert.Equal(TalkCanonicalId, paired.Document.SessionAliases[LegacyId]);
-        Assert.Empty(paired.Document.WithdrawnSessions);
+
+        var loaded = await repository.LoadAsync();
+
+        Assert.Equal(ConferenceRepository.CacheSource, Assert.Single(loaded.Issues).Source);
+        Assert.False(loaded.IsCached);
+        Assert.Empty(loaded.Document.Sessions);
+        Assert.Empty(loaded.Document.Speakers);
+        Assert.Empty(loaded.Document.WithdrawnSessions);
+        Assert.Empty(loaded.Document.WithdrawnSpeakers);
+        Assert.Empty(handler.Requests);
+        var offline = await repository.RefreshAsync();
+        Assert.Equal(2, offline.Issues.Count);
+        Assert.Empty(offline.Document.Sessions);
+        Assert.Equal(bytes, await File.ReadAllBytesAsync(CachePath));
+        Assert.Equal(scheduleBytes, await File.ReadAllBytesAsync(schedulePath));
+
+        handler.Respond = (request, _) =>
+        {
+            Assert.Empty(request.Headers.IfNoneMatch);
+            Assert.Null(request.Headers.IfModifiedSince);
+            return Task.FromResult(Ok(Json(SizedMicrosoft(70))));
+        };
+        var refreshed = await repository.RefreshAsync();
+        Assert.Empty(refreshed.Issues);
+        Assert.Equal(70, refreshed.Document.Sessions.Count);
+        Assert.Empty(refreshed.Document.WithdrawnSessions);
+        Assert.Equal(8, (await ReadCacheAsync()).SchemaVersion);
+        Assert.Equal(scheduleBytes, await File.ReadAllBytesAsync(schedulePath));
         AssertOnlyMicrosoftRequests();
-        Assert.Equal(TalkCanonicalId, (await ReadCacheAsync()).SessionAliases[LegacyId]);
-
-        clock.Advance();
-        handler.Respond = (_, _) => Task.FromResult(NotModified());
-        var unchanged = await Repository().RefreshAsync();
-        Assert.Equal(TalkCanonicalId, unchanged.Document.SessionAliases[LegacyId]);
-        Assert.Empty(unchanged.Document.WithdrawnSessions);
-        Assert.Equal(TalkCanonicalId, (await Repository().LoadAsync()).Document.SessionAliases[LegacyId]);
-    }
-
-    [Fact]
-    public async Task AliasesSurviveSourceRenamesTimeDriftAndSpeakerRenames()
-    {
-        var community = LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]);
-        await SeedLegacyAsync(WithTalk(SizedMicrosoft(70)), community);
-        var repository = Repository();
-        await repository.LoadAsync();
-        foreach (var (title, start, end, speaker) in new[]
-        {
-            ("Renamed community talk", "08:00:00", "08:30:00", "Community Speaker"),
-            ("Renamed community talk", "09:00:00", "09:45:00", "Community Speaker"),
-            ("Renamed community talk", "09:00:00", "09:45:00", "Renamed Speaker")
-        })
-        {
-            clock.Advance();
-            Serve(WithTalk(SizedMicrosoft(70), title: title, start: start, end: end, speakerName: speaker), $"\"{title}{start}{speaker}\"");
-            var result = await repository.RefreshAsync();
-            Assert.Empty(result.Issues);
-            Assert.Equal(TalkCanonicalId, result.Document.SessionAliases[LegacyId]);
-            Assert.Empty(result.Document.WithdrawnSessions);
-            Assert.Single(result.Document.SessionAliases);
-            Assert.Equal(title, result.Document.Sessions.Single(session => session.Id == TalkCanonicalId).Title);
-            var restart = await Repository().LoadAsync();
-            Assert.Equal(TalkCanonicalId, restart.Document.SessionAliases[LegacyId]);
-            Assert.Empty(restart.Document.WithdrawnSessions);
-        }
-    }
-
-    [Fact]
-    public async Task MatchingNormalizesCaseAndWhitespaceButRequiresExactTitleTimeAndSpeakerSets()
-    {
-        var community = LegacySource([LegacyTalk(title: "  Community   TALK ")], speakers: [LegacySpeaker(name: "community  speaker")]);
-        await SeedLegacyAsync(WithTalk(SizedMicrosoft(70), title: "community talk", speakerName: "COMMUNITY SPEAKER"), community);
-        Assert.Equal(TalkCanonicalId, (await Repository().LoadAsync()).Document.SessionAliases[LegacyId]);
+        var restarted = await Repository().LoadAsync();
+        Assert.Empty(restarted.Issues);
+        Assert.Equal(Ids(refreshed.Document.Sessions), Ids(restarted.Document.Sessions));
     }
 
     [Theory]
-    [InlineData("Different title", "08:00:00", "08:30:00", "Community Speaker")]
-    [InlineData("Community", "08:01:00", "08:30:00", "Community Speaker")]
-    [InlineData("Community", "08:00:00", "08:31:00", "Community Speaker")]
-    [InlineData("Community", "08:00:00", "08:30:00", "Another Speaker")]
-    public async Task NearMatchesAreNeverFalselyMergedAndKeepTheLegacyRecordArchived(
-        string title, string start, string end, string speaker)
-    {
-        var community = LegacySource([LegacyTalk(title: "Community")], speakers: [LegacySpeaker()]);
-        await SeedLegacyAsync(WithTalk(SizedMicrosoft(70), title: title, start: start, end: end, speakerName: speaker), community);
-        var result = await Repository().LoadAsync();
-        Assert.Empty(result.Document.SessionAliases);
-        Assert.Empty(result.Document.WithdrawnSessions);
-        Assert.Contains(result.Document.Sessions, session => session.Id == LegacyId);
-        Assert.Contains(result.Document.Sessions, session => session.Id == TalkCanonicalId);
-        Assert.Equal([LegacyId], (await ReadCacheAsync()).LegacyActiveSessionIds);
-    }
-
-    [Fact]
-    public async Task AmbiguousMicrosoftCandidatesAreNotMerged()
-    {
-        var feed = WithTalk(SizedMicrosoft(70));
-        feed = feed with { Sessions = [.. feed.Sessions, feed.Sessions.Single(session => session.Id == TalkId) with { Id = "BRK071" }] };
-        var community = LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]);
-        await SeedLegacyAsync(feed, community);
-        var result = await Repository().LoadAsync();
-        Assert.Empty(result.Document.SessionAliases);
-        Assert.Empty(result.Document.WithdrawnSessions);
-        Assert.Contains(result.Document.Sessions, session => session.Id == LegacyId);
-    }
-
-    [Fact]
-    public async Task AmbiguousLegacyRecordsAreNotMergedIntoOneMicrosoftTalk()
-    {
-        var community = LegacySource([LegacyTalk(), LegacyTalk("1235")], speakers: [LegacySpeaker()]);
-        await SeedLegacyAsync(WithTalk(SizedMicrosoft(70)), community);
-        var result = await Repository().LoadAsync();
-        Assert.Empty(result.Document.SessionAliases);
-        Assert.Empty(result.Document.WithdrawnSessions);
-        Assert.Contains(result.Document.Sessions, session => session.Id == LegacyId);
-        Assert.Contains(result.Document.Sessions, session => session.Id == "1235");
-    }
-
-    [Fact]
-    public async Task LegacyRecordsWithoutSpeakersAreNeverMatched()
-    {
-        var legacy = LegacyTalk() with { SpeakerIds = [] };
-        var feed = WithTalk(SizedMicrosoft(70));
-        feed = feed with { Sessions = [.. feed.Sessions.Where(session => session.Id != TalkId), feed.Sessions.Single(s => s.Id == TalkId) with { SpeakerIds = [] }] };
-        await SeedLegacyAsync(feed, LegacySource([legacy]));
-        var result = await Repository().LoadAsync();
-        Assert.Empty(result.Document.SessionAliases);
-        Assert.Empty(result.Document.WithdrawnSessions);
-        Assert.Contains(result.Document.Sessions, session => session.Id == LegacyId);
-    }
-
-    [Fact]
-    public async Task LegacyRecordMatchesAnArchivedMicrosoftTalkAndDuplicateArchiveCollapses()
-    {
-        var repository = Repository();
-        Serve(WithTalk(SizedMicrosoft(70), "BRK071"));
-        await repository.RefreshAsync();
-        clock.Advance();
-        Serve(SizedMicrosoft(70), "\"v2\"");
-        var withdrawn = await repository.RefreshAsync();
-        Assert.Equal("20261071", Assert.Single(withdrawn.Document.WithdrawnSessions).Id);
-        var cache = await ReadCacheAsync();
-        await WriteCacheAsync(cache with
-        {
-            SchemaVersion = 5,
-            Community = LegacySource([LegacyTalk()], speakers: [LegacySpeaker()])
-        });
-        var result = await Repository().LoadAsync();
-        Assert.Equal("20261071", result.Document.SessionAliases[LegacyId]);
-        Assert.Equal("20261071", Assert.Single(result.Document.WithdrawnSessions).Id);
-        Assert.DoesNotContain(result.Document.WithdrawnSessions, session => session.Id == LegacyId);
-    }
-
-    [Fact]
-    public async Task SessionizeOnlyLegacyCacheStaysArchivedOfflineAndAliasesOnTheFirstLaterMicrosoftFetch()
+    [InlineData("community")]
+    [InlineData("sessionAliases")]
+    [InlineData("legacySessionIds")]
+    [InlineData("legacyActiveSessionIds")]
+    [InlineData("legacyPayloadHash")]
+    public async Task UnrecognizedCacheFieldsCannotIntroduceAnotherAgendaSource(string field)
     {
         await Repository().RefreshAsync();
-        var current = await ReadCacheAsync();
-        var empty = new CachedAgenda { Sessions = [], Speakers = [], PayloadHash = "" };
-        var community = LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]);
-        await WriteCacheAsync(current with { SchemaVersion = 5, Microsoft = empty, Community = community });
+        var json = JsonNode.Parse(await File.ReadAllTextAsync(CachePath))!.AsObject();
+        json[field] = json["microsoft"]!.DeepClone();
+        await File.WriteAllTextAsync(CachePath, json.ToJsonString());
+        var bytes = await File.ReadAllBytesAsync(CachePath);
         handler.Requests.Clear();
-        handler.Respond = (_, _) => throw new HttpRequestException("Offline");
 
-        var repository = Repository();
-        var loaded = await repository.LoadAsync();
-        Assert.Empty(loaded.Issues);
-        Assert.Empty(loaded.Document.Sessions);
-        Assert.Equal(LegacyId, Assert.Single(loaded.Document.WithdrawnSessions).Id);
-        Assert.Null(loaded.LastCheckedAt);
-        Assert.Empty(handler.Requests);
-        var offline = await repository.RefreshAsync();
-        Assert.Equal(ConferenceRepository.MicrosoftSource, Assert.Single(offline.Issues).Source);
-        Assert.Empty(offline.Document.Sessions);
-        Assert.Equal(LegacyId, Assert.Single(offline.Document.WithdrawnSessions).Id);
-        var offlineCache = await ReadCacheAsync();
-        Assert.Equal(community.PayloadHash, offlineCache.LegacyPayloadHash);
-        Assert.Empty(offlineCache.LegacyActiveSessionIds);
-
-        Serve(WithTalk(SizedMicrosoft(70)));
-        var online = await Repository().RefreshAsync();
-        Assert.Empty(online.Issues);
-        Assert.Equal(TalkCanonicalId, online.Document.SessionAliases[LegacyId]);
-        Assert.Empty(online.Document.WithdrawnSessions);
-        Assert.Equal(TalkCanonicalId, (await Repository().LoadAsync()).Document.SessionAliases[LegacyId]);
-        AssertOnlyMicrosoftRequests();
-    }
-
-    [Fact]
-    public async Task ValidationFailureAfterMigrationKeepsExactLastGoodBytes()
-    {
-        await SeedLegacyAsync(SizedMicrosoft(70), LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]));
-        var repository = Repository();
-        await repository.LoadAsync();
-        var bytes = await File.ReadAllBytesAsync(CachePath);
-        handler.Respond = (_, _) => Task.FromResult(Ok("{}"));
-        var result = await repository.RefreshAsync();
-        Assert.Single(result.Issues);
-        Assert.Contains(result.Document.Sessions, session => session.Id == LegacyId);
-        Assert.Empty(result.Document.WithdrawnSessions);
-        Assert.Equal(bytes, await File.ReadAllBytesAsync(CachePath));
-    }
-
-    [Fact]
-    public async Task RetiredSourceIdentityCollidingWithMicrosoftIsRejectedWithoutLosingTheCache()
-    {
-        var community = LegacySource([LegacyTalk("20261001")], speakers: [LegacySpeaker()]);
-        var legacy = await SeedLegacyAsync(SizedMicrosoft(70), community);
-        var bytes = await File.ReadAllBytesAsync(CachePath);
         var result = await Repository().LoadAsync();
-        Assert.Equal(ConferenceRepository.CacheSource, Assert.Single(result.Issues).Source);
-        Assert.Equal(bytes, await File.ReadAllBytesAsync(CachePath));
-        Assert.Equal(5, legacy.SchemaVersion);
-    }
 
-    [Fact]
-    public async Task FailedLegacyMigrationPersistenceStillShowsTheMigratedAgendaAndReportsTheCacheFailure()
-    {
-        var community = LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]);
-        await SeedLegacyAsync(SizedMicrosoft(70), community);
-        var store = new MemoryCacheStore { Content = await File.ReadAllBytesAsync(CachePath), WriteException = new IOException("read only") };
-        var result = await new ConferenceRepository(metadata, client, store, clock).LoadAsync();
         Assert.Equal(ConferenceRepository.CacheSource, Assert.Single(result.Issues).Source);
-        Assert.Equal(71, result.Document.Sessions.Count);
-        Assert.Contains(result.Document.Sessions, session => session.Id == LegacyId);
+        Assert.Empty(result.Document.Sessions);
+        Assert.Empty(result.Document.Speakers);
         Assert.Empty(result.Document.WithdrawnSessions);
+        Assert.Empty(result.Document.WithdrawnSpeakers);
+        Assert.Empty(handler.Requests);
+        Assert.Equal(bytes, await File.ReadAllBytesAsync(CachePath));
     }
 
-    [Fact]
-    public async Task RetiredSourceIsNeverRequestedAcrossMigrationRefreshAndRestart()
+    [Theory]
+    [InlineData("metadata")]
+    [InlineData("microsoft")]
+    [InlineData("session")]
+    [InlineData("speaker")]
+    public async Task UnrecognizedNestedCacheFieldsAreRejected(string target)
     {
-        var community = LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]);
-        await SeedLegacyAsync(WithTalk(SizedMicrosoft(70)), community);
-        await Repository().LoadAsync();
-        clock.Advance();
-        Serve(WithTalk(SizedMicrosoft(70)), "\"v2\"");
-        var repository = Repository();
-        await repository.RefreshAsync();
-        await Repository().LoadAsync();
-        AssertOnlyMicrosoftRequests();
-        Assert.Single(handler.Requests);
-        Assert.Null((await ReadCacheAsync()).Community);
-    }
-
-    [Fact]
-    public async Task CachedProfilesAreCurrentOnlyWhileTheirActiveFallbackTalkIsRetained()
-    {
-        var community = LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]);
-        await SeedLegacyAsync(SizedMicrosoft(70), community);
-        var repository = Repository();
-        var cached = await repository.LoadAsync();
-        Assert.Single(cached.Document.Speakers, speaker => speaker.Name == "Community Speaker");
-        Assert.All(cached.Document.Sessions.SelectMany(session => session.SpeakerIds),
-            id => Assert.Contains(cached.Document.Speakers, speaker => speaker.Id == id));
-
-        clock.Advance();
-        Serve(SizedMicrosoft(70), "\"v2\"");
-        var refreshed = await repository.RefreshAsync();
-        Assert.Empty(refreshed.Issues);
-        Assert.DoesNotContain(refreshed.Document.Speakers, speaker => speaker.Name == "Community Speaker");
-        Assert.Contains(refreshed.Document.WithdrawnSpeakers, speaker => speaker.Id == "legacy-speaker");
-        Assert.NotEmpty(refreshed.Document.Speakers);
-        Assert.All(refreshed.Document.Sessions.SelectMany(session => session.SpeakerIds),
-            id => Assert.Contains(refreshed.Document.Speakers, speaker => speaker.Id == id));
-    }
-
-    [Fact]
-    public async Task SuccessfulMicrosoftRefreshRetiresUnmatchedFallbackIntoGenuineWithdrawalsAndPersists()
-    {
-        await SeedLegacyAsync(SizedMicrosoft(70), LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]));
-        var repository = Repository();
-        await repository.LoadAsync();
-        clock.Advance();
-        Serve(SizedMicrosoft(70), "\"v2\"");
-        var result = await repository.RefreshAsync();
-        Assert.Empty(result.Issues);
-        Assert.Equal(70, result.Document.Sessions.Count);
-        Assert.Equal(LegacyId, Assert.Single(result.Document.WithdrawnSessions).Id);
-        Assert.Equal("Synthetic legacy abstract", result.Document.WithdrawnSessions[0].Description);
-        var cache = await ReadCacheAsync();
-        Assert.Empty(cache.LegacyActiveSessionIds);
-        Assert.Equal([LegacyId], cache.LegacySessionIds);
-        Assert.Contains(cache.Microsoft.WithdrawnSessions, session => session.Id == LegacyId);
-        var restart = await Repository().LoadAsync();
-        Assert.Equal(70, restart.Document.Sessions.Count);
-        Assert.Equal(LegacyId, Assert.Single(restart.Document.WithdrawnSessions).Id);
-        AssertOnlyMicrosoftRequests();
-    }
-
-    [Fact]
-    public async Task MigrationForcesAFullDownloadSoAnOldNotModifiedCannotBypassIt()
-    {
-        await SeedLegacyAsync(SizedMicrosoft(70), LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]));
-        var validators = new List<bool>();
-        handler.Respond = (request, _) =>
+        await Repository().RefreshAsync();
+        var json = JsonNode.Parse(await File.ReadAllTextAsync(CachePath))!;
+        var node = target switch
         {
-            validators.Add(request.Headers.IfNoneMatch.Count != 0 || request.Headers.IfModifiedSince is not null);
-            return Task.FromResult(validators.Count == 1 ? Ok(Json(SizedMicrosoft(70)), "\"v1\"") : NotModified());
+            "metadata" => json["metadata"],
+            "microsoft" => json["microsoft"],
+            "session" => json["microsoft"]!["sessions"]![0],
+            "speaker" => json["microsoft"]!["speakers"]![0],
+            _ => throw new ArgumentOutOfRangeException(nameof(target))
         };
-        var repository = Repository();
-        await repository.LoadAsync();
-        Assert.Empty((await repository.RefreshAsync()).Issues);
-        Assert.Equal([false], validators);
-        Assert.Empty((await ReadCacheAsync()).LegacyActiveSessionIds);
-    }
-
-    [Fact]
-    public async Task FailedRefreshesKeepTheActiveFallbackAndExactCacheBytes()
-    {
-        await SeedLegacyAsync(SizedMicrosoft(70), LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]));
-        var repository = Repository();
-        await repository.LoadAsync();
+        node!.AsObject()["unexpected"] = true;
+        await File.WriteAllTextAsync(CachePath, json.ToJsonString());
         var bytes = await File.ReadAllBytesAsync(CachePath);
-        foreach (var failure in new Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>>[]
-        {
-            (request, _) => throw new HttpRequestException("Offline"),
-            (request, _) => Task.FromResult(Ok("{}")),
-            (request, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound))
-        })
-        {
-            handler.Respond = failure;
-            var result = await repository.RefreshAsync();
-            Assert.Single(result.Issues);
-            Assert.Contains(result.Document.Sessions, session => session.Id == LegacyId);
-            Assert.Empty(result.Document.WithdrawnSessions);
-            Assert.Equal(bytes, await File.ReadAllBytesAsync(CachePath));
-        }
-        var restart = await Repository().LoadAsync();
-        Assert.Contains(restart.Document.Sessions, session => session.Id == LegacyId);
+        handler.Requests.Clear();
+
+        var result = await Repository().LoadAsync();
+
+        Assert.Equal(ConferenceRepository.CacheSource, Assert.Single(result.Issues).Source);
+        Assert.Empty(result.Document.Sessions);
+        Assert.Empty(result.Document.Speakers);
+        Assert.Empty(handler.Requests);
+        Assert.Equal(bytes, await File.ReadAllBytesAsync(CachePath));
     }
 
     [Fact]
-    public async Task PendingContractionDoesNotRetireTheFallbackUntilConfirmedThenItDoes()
+    public async Task CancellationWhenTheClockIsReadKeepsLastGoodCacheAndAllowsRetry()
     {
-        await SeedLegacyAsync(SizedMicrosoft(70), LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]));
         var repository = Repository();
-        await repository.LoadAsync();
-        clock.Advance();
-        Serve(SizedMicrosoft(40), "\"small\"");
-        var pending = await repository.RefreshAsync();
-        Assert.Contains(pending.Document.Sessions, session => session.Id == LegacyId);
-        Assert.Empty(pending.Document.WithdrawnSessions);
-        var cache = await ReadCacheAsync();
-        Assert.Equal([LegacyId], cache.LegacyActiveSessionIds);
-        Assert.NotNull(cache.Microsoft.PendingReductionHash);
-        Assert.Contains(LegacyId, Ids((await Repository().LoadAsync()).Document.Sessions));
-
-        clock.Advance();
-        var confirmed = await repository.RefreshAsync();
-        Assert.Empty(confirmed.Issues);
-        Assert.Equal(40, confirmed.Document.Sessions.Count);
-        Assert.Contains(LegacyId, Ids(confirmed.Document.WithdrawnSessions));
-        Assert.Empty((await ReadCacheAsync()).LegacyActiveSessionIds);
-    }
-
-    [Fact]
-    public async Task CancellationWhenTheClockIsReadCancelsTheCallerWithoutSilentSuccessOrRetirement()
-    {
-        await SeedLegacyAsync(SizedMicrosoft(70), LegacySource([LegacyTalk()], speakers: [LegacySpeaker()]));
-        var repository = Repository();
-        await repository.LoadAsync();
+        var original = await repository.RefreshAsync();
         var bytes = await File.ReadAllBytesAsync(CachePath);
         Serve(SizedMicrosoft(70), "\"v2\"");
         using var cancellation = new CancellationTokenSource();
@@ -1523,29 +1081,13 @@ public sealed class ConferenceRepositoryTests : IDisposable
         clock.OnRead = null;
         Assert.Equal(bytes, await File.ReadAllBytesAsync(CachePath));
         var snapshot = await repository.LoadAsync();
-        Assert.Contains(snapshot.Document.Sessions, session => session.Id == LegacyId);
+        Assert.Equal(Ids(original.Document.Sessions), Ids(snapshot.Document.Sessions));
         Assert.Empty(snapshot.Document.WithdrawnSessions);
 
         var later = await repository.RefreshAsync();
         Assert.Empty(later.Issues);
-        Assert.Equal(LegacyId, Assert.Single(later.Document.WithdrawnSessions).Id);
-    }
-
-    [Fact]
-    public async Task MatchedFallbackTalksAreRemovedFromTheFallbackWhileUnmatchedOnesStayUntilSuccess()
-    {
-        var community = LegacySource(
-            [LegacyTalk(), LegacyTalk("5678", "Unmatched talk", speaker: "other-speaker")],
-            speakers: [LegacySpeaker(), LegacySpeaker("other-speaker", "Other Speaker")]);
-        await SeedLegacyAsync(WithTalk(SizedMicrosoft(70)), community);
-        var result = await Repository().LoadAsync();
-        Assert.Equal(TalkCanonicalId, result.Document.SessionAliases[LegacyId]);
-        Assert.DoesNotContain(LegacyId, Ids(result.Document.Sessions));
-        Assert.Contains("5678", Ids(result.Document.Sessions));
-        Assert.Empty(result.Document.WithdrawnSessions);
-        var cache = await ReadCacheAsync();
-        Assert.Equal(["5678"], cache.LegacyActiveSessionIds);
-        Assert.Equal(["5678"], cache.LegacySessionIds);
+        Assert.Equal(Ids(original.Document.Sessions), Ids(later.Document.Sessions));
+        Assert.Empty(later.Document.WithdrawnSessions);
     }
 
     private sealed class FakeClock : TimeProvider
@@ -1563,7 +1105,7 @@ public sealed class ConferenceRepositoryTests : IDisposable
 
     private sealed class MetadataSource : IConferenceDataSource
     {
-        public ConferenceDocument Document { get; set; } = Bundle with { Sessions = [], Speakers = [] };
+        public ConferenceDocument Document { get; set; } = Previous with { Sessions = [], Speakers = [] };
         public int Calls { get; private set; }
         public Task<ConferenceDocument> LoadAsync(CancellationToken cancellationToken = default)
         {

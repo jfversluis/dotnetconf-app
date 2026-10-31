@@ -273,7 +273,6 @@ public partial class ConferenceViewModel(
             ? "Couldn't read or save the offline agenda. Check storage and retry."
             : sourceErrors.Count > 0 ? string.Join(" ", sourceErrors) : null;
         var loaded = value.Document;
-        schedule.SetAliases(loaded.SessionAliases);
         document = loaded;
         NotifyAgendaState();
         ConferenceName = loaded.Name;
@@ -539,8 +538,7 @@ public partial class ConferenceViewModel(
         }
     }
 
-    public SessionViewModel? FindSession(string? id) => allSessions.Find(session =>
-        session.Id == (id is not null && document?.SessionAliases.TryGetValue(id, out var canonical) == true ? canonical : id));
+    public SessionViewModel? FindSession(string? id) => allSessions.Find(session => session.Id == id);
     public SpeakerViewModel? FindSpeaker(string? id) => allSpeakers.Find(speaker => speaker.Id == id);
     public Task OpenSessionAsync(string id) => navigation.OpenSessionAsync(id);
     public Task OpenSpeakerAsync(string id) => navigation.OpenSpeakerAsync(id);

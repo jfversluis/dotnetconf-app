@@ -9,22 +9,20 @@ namespace DotNetConf.App.Tests;
 public sealed class ConferenceViewModelTests
 {
     [Fact]
-    public async Task LegacyAndCurrentBookmarksProduceOneSavedTalkAndResolveOldNavigation()
+    public async Task UnknownSavedIdsStayLocalWithoutInventingAgendaDetails()
     {
-        var snapshot = Snapshot() with { Document = Snapshot().Document with
-        {
-            SessionAliases = new() { ["legacy-id"] = "id" }
-        } };
+        var snapshot = Snapshot();
         var store = new TestScheduleStore();
-        store.SavedIds.Add("legacy-id");
+        store.SavedIds.Add("unavailable-id");
         var viewModel = Create(new TestRepository(snapshot), store, new TestConnectivity());
         await viewModel.InitializeAsync();
         await (viewModel.RefreshCommand.ExecutionTask ?? Task.CompletedTask);
 
         var session = Assert.Single(viewModel.SavedSessions);
         Assert.Equal("id", session.Id);
-        Assert.Same(session, viewModel.FindSession("legacy-id"));
-        Assert.Equal(1, viewModel.SavedCount);
+        Assert.Same(session, viewModel.FindSession("id"));
+        Assert.Null(viewModel.FindSession("unavailable-id"));
+        Assert.Equal(2, viewModel.SavedCount);
         Assert.Equal(2, store.SavedIds.Count);
         Assert.False(session.HasConflict);
     }
