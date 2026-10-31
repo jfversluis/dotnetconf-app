@@ -256,9 +256,9 @@ public partial class ConferenceViewModel(
             logger.LogWarning(issue.Exception, "Conference data issue: {Source}.", issue.Source);
         var sourceIssues = value.Issues.Where(issue => issue.Source != ConferenceRepository.CacheSource).ToArray();
         var invalidSources = sourceIssues.Where(issue => issue.Exception is InvalidDataException or JsonException)
-            .Select(issue => issue.Source == ConferenceRepository.CommunitySource ? "community" : issue.Source).Distinct().ToArray();
+            .Select(issue => issue.Source).Distinct().ToArray();
         var failedSources = sourceIssues.Where(issue => issue.Exception is not (InvalidDataException or JsonException))
-            .Select(issue => issue.Source == ConferenceRepository.CommunitySource ? "community" : issue.Source).Distinct().ToArray();
+            .Select(issue => issue.Source).Distinct().ToArray();
         var sourceErrors = new List<string>();
         if (invalidSources.Length > 0)
             sourceErrors.Add($"Couldn't use the {string.Join(" and ", invalidSources)} agenda update because its data was invalid. Retry later.");

@@ -68,7 +68,7 @@ public sealed class ConferenceViewModelTests
             _ => new ConferenceDataIssue(ConferenceRepository.MicrosoftSource, new InvalidDataException("Synthetic invalid agenda"))
         };
         var snapshot = Snapshot() with { Issues = failure == "mixed"
-            ? [issue, new(ConferenceRepository.CommunitySource, new HttpRequestException("Synthetic network failure"))]
+            ? [issue, new(ConferenceRepository.CacheSource, new IOException("Synthetic cache failure"))]
             : [issue] };
         var repository = new TestRepository(snapshot);
         var viewModel = Create(repository, new TestScheduleStore(), new TestConnectivity());
@@ -77,13 +77,11 @@ public sealed class ConferenceViewModelTests
 
         Assert.True(viewModel.HasRefreshError);
         Assert.True(viewModel.HasAgenda);
-        Assert.Contains(failure == "cache" ? "Check storage" :
+        Assert.Contains(failure is "cache" or "mixed" ? "Check storage" :
             failure is "network" or "timeout" ? "Couldn't download Microsoft" : "Microsoft agenda update because its data was invalid",
             viewModel.RefreshMessage);
-        if (failure is "validation" or "json" or "cache")
+        if (failure is "validation" or "json" or "cache" or "mixed")
             Assert.DoesNotContain("connection", viewModel.RefreshMessage);
-        if (failure == "mixed")
-            Assert.Contains("Couldn't download community", viewModel.RefreshMessage);
 
         repository.Snapshot = snapshot with { Issues = [] };
         await viewModel.RefreshCommand.ExecuteAsync(null);

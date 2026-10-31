@@ -32,7 +32,6 @@ public sealed class ConferenceRepository(
         : this(metadataSource, httpClient, new FileConferenceCacheStore(cachePath), timeProvider) { }
 
     public const string MicrosoftSource = "Microsoft";
-    public const string CommunitySource = "Sessionize";
     public const string CacheSource = "Cache";
     public const string MicrosoftUrl = "https://dotnet.microsoft.com/blob-assets/json/conf/conference-2026.json";
     private const int CacheSchemaVersion = 6;
@@ -98,11 +97,7 @@ public sealed class ConferenceRepository(
                 if (cached.SchemaVersion is 2 or 3 or 4 or 5)
                 {
                     ValidateCache(cached, legacy: true);
-                    legacy = cached with
-                    {
-                        Microsoft = SeparateLegacyProfiles(cached.Microsoft) with { RequiresProfileRefresh = true },
-                        Community = SeparateLegacyProfiles(cached.Community!)
-                    };
+                    legacy = LegacyAgendaMigration.Prepare(cached);
                 }
                 migrate = true;
             }
@@ -275,7 +270,6 @@ public sealed class ConferenceRepository(
     private async Task<FetchResult> FetchAsync(
         CachedAgenda previous, ConferenceDocument metadata, CancellationToken token)
     {
-        const string source = MicrosoftSource;
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
         timeout.CancelAfter(TimeSpan.FromSeconds(15));
         var requestToken = timeout.Token;
@@ -304,7 +298,7 @@ public sealed class ConferenceRepository(
                     {
                         if (previous.PayloadHash.Length == 0 || previous.RequiresProfileRefresh)
                             throw new InvalidDataException("Received 304 without a previously validated remote payload.");
-                        return new(source, previous with
+                        return new(previous with
                         {
                             LastCheckedAt = RetainedCheckTime(clock.GetUtcNow(), previous.LastUpdatedAt),
                             ETag = response.Headers.ETag?.ToString() ?? previous.ETag,
@@ -339,8 +333,8 @@ public sealed class ConferenceRepository(
                     ConferenceJson.Validate(document);
                     if ((long)document.Sessions.Count * 4 < (long)previous.Sessions.Count * 3 &&
                         hash != previous.PendingReductionHash)
-                        return new(source, previous with { PendingReductionHash = hash }, new(source, new InvalidDataException(
-                            $"The {source} agenda shrank from {previous.Sessions.Count} to {document.Sessions.Count} sessions. " +
+                        return new(previous with { PendingReductionHash = hash }, new(MicrosoftSource, new InvalidDataException(
+                            $"The Microsoft agenda shrank from {previous.Sessions.Count} to {document.Sessions.Count} sessions. " +
                             "A reduction greater than 25% requires a second identical complete response before replacing last-known-good data.")));
                     var updated = previous with
                     {
@@ -353,7 +347,7 @@ public sealed class ConferenceRepository(
                     };
                     var changed = Fingerprint(previous) != Fingerprint(updated);
                     var checkedAt = RetainedCheckTime(clock.GetUtcNow(), changed ? null : previous.LastUpdatedAt);
-                    return new(source, updated with
+                    return new(updated with
                     {
                         PayloadHash = hash, ETag = response.Headers.ETag?.ToString(),
                         LastModified = response.Content.Headers.LastModified,
@@ -375,12 +369,12 @@ public sealed class ConferenceRepository(
         }
         catch (OperationCanceledException) when (!token.IsCancellationRequested)
         {
-            return new(source, null, new(source, new TimeoutException("The agenda request timed out.")));
+            return new(null, new(MicrosoftSource, new TimeoutException("The agenda request timed out.")));
         }
         catch (Exception exception) when (IsDataFailure(exception) || exception is HttpRequestException)
         {
-            return new(source, IsDataFailure(exception) && previous.PendingReductionHash is not null
-                ? previous with { PendingReductionHash = null } : null, new(source, exception));
+            return new(IsDataFailure(exception) && previous.PendingReductionHash is not null
+                ? previous with { PendingReductionHash = null } : null, new(MicrosoftSource, exception));
         }
     }
 
@@ -419,21 +413,6 @@ public sealed class ConferenceRepository(
 
     private static List<Speaker> AllSpeakers(CachedAgenda agenda) => [.. agenda.Speakers, .. agenda.WithdrawnSpeakers];
 
-    private static CachedAgenda SeparateLegacyProfiles(CachedAgenda agenda)
-    {
-        var activeIds = agenda.Sessions.SelectMany(session => session.SpeakerIds).ToHashSet(StringComparer.Ordinal);
-        var withdrawnIds = agenda.WithdrawnSessions.SelectMany(session => session.SpeakerIds).ToHashSet(StringComparer.Ordinal);
-        var speakers = AllSpeakers(agenda);
-        var archived = speakers.Where(speaker => !activeIds.Contains(speaker.Id) && withdrawnIds.Contains(speaker.Id)).ToList();
-        return agenda with
-        {
-            Speakers = speakers.Where(speaker => activeIds.Contains(speaker.Id) || !withdrawnIds.Contains(speaker.Id)).ToList(),
-            WithdrawnSpeakers = archived,
-            // Older caches mixed upstream and archived profiles; a full parse resolves ambiguous membership.
-            RequiresProfileRefresh = archived.Count != 0
-        };
-    }
-
     private static ConferenceDocument Combine(ConferenceCache cache)
     {
         var fallbackIds = cache.LegacyActiveSessionIds.ToHashSet(StringComparer.Ordinal);
@@ -469,10 +448,7 @@ public sealed class ConferenceRepository(
             throw new InvalidDataException("Legacy provenance requires a valid remote payload hash.");
         if (!legacy && cache.LegacySessionIds.Count > 0 && cache.LegacyPayloadHash is null)
             throw new InvalidDataException("Legacy archived sessions require validated remote provenance.");
-        var sources = new List<(string Source, CachedAgenda Agenda)> { (MicrosoftSource, cache.Microsoft) };
-        if (legacy)
-            sources.Add((CommunitySource, cache.Community!));
-        foreach (var (source, agenda) in sources)
+        void ValidateAgenda(string source, CachedAgenda agenda)
         {
             if (agenda.Sessions is null || agenda.WithdrawnSessions is null || agenda.Speakers is null ||
                 agenda.WithdrawnSpeakers is null || agenda.PayloadHash is null)
@@ -515,6 +491,10 @@ public sealed class ConferenceRepository(
                     $"{source} cache LastUpdatedAt ({agenda.LastUpdatedAt:O}) exceeds LastCheckedAt ({agenda.LastCheckedAt:O}).");
             ValidatePhotos(AllSpeakers(agenda));
         }
+
+        ValidateAgenda(MicrosoftSource, cache.Microsoft);
+        if (legacy)
+            ValidateAgenda("Sessionize", cache.Community!);
 
         var document = Combine(cache);
         if (legacy)
@@ -575,7 +555,7 @@ public sealed class ConferenceRepository(
         catch { content.Dispose(); throw; }
     }
 
-    private sealed record FetchResult(string Source, CachedAgenda? Agenda, ConferenceDataIssue? Issue);
+    private sealed record FetchResult(CachedAgenda? Agenda, ConferenceDataIssue? Issue);
 }
 
 public sealed record ConferenceCache

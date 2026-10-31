@@ -5,6 +5,27 @@ namespace DotNetConf.Core;
 /// <summary>Retires the former Sessionize source without deleting saved session identities or details.</summary>
 internal static class LegacyAgendaMigration
 {
+    internal static ConferenceCache Prepare(ConferenceCache cache) => cache with
+    {
+        Microsoft = SeparateProfiles(cache.Microsoft) with { RequiresProfileRefresh = true },
+        Community = SeparateProfiles(cache.Community!)
+    };
+
+    private static CachedAgenda SeparateProfiles(CachedAgenda agenda)
+    {
+        var activeIds = agenda.Sessions.SelectMany(session => session.SpeakerIds).ToHashSet(StringComparer.Ordinal);
+        var withdrawnIds = agenda.WithdrawnSessions.SelectMany(session => session.SpeakerIds).ToHashSet(StringComparer.Ordinal);
+        var speakers = agenda.Speakers.Concat(agenda.WithdrawnSpeakers).ToList();
+        var archived = speakers.Where(speaker => !activeIds.Contains(speaker.Id) && withdrawnIds.Contains(speaker.Id)).ToList();
+        return agenda with
+        {
+            Speakers = speakers.Where(speaker => activeIds.Contains(speaker.Id) || !withdrawnIds.Contains(speaker.Id)).ToList(),
+            WithdrawnSpeakers = archived,
+            // Older caches mixed upstream and archived profiles; a full parse resolves ambiguous membership.
+            RequiresProfileRefresh = archived.Count != 0
+        };
+    }
+
     internal static ConferenceCache Upgrade(ConferenceCache cache)
     {
         if (cache.Community is not { PayloadHash.Length: > 0, LastCheckedAt: not null } community)

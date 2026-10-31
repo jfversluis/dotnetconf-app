@@ -39,22 +39,8 @@ public sealed class RemoteAgendaTests
         Speakers = [new() { Id = "speaker-gerald-versluis", Name = "Gerald Versluis", PrimaryBio = "TODO" }]
     };
 
-    internal static SessionizeDocument Community => new()
-    {
-        Sessions =
-        [
-            new() { Id = "1234", Title = "Community", Description = "Community abstract", StartsAt = "2026-11-12T08:00:00", EndsAt = "2026-11-12T08:30:00",
-                Speakers = ["community-speaker"], CategoryItems = [] }
-        ],
-        Speakers = [new() { Id = "community-speaker", FullName = "Community Speaker",
-            Bio = "Community bundled bio", ProfilePicture = "https://example.com/community.jpg" }],
-        Categories = [], Rooms = []
-    };
-
     internal static string Json(MicrosoftAgenda data) =>
         JsonSerializer.Serialize(data, RemoteAgendaJsonContext.Default.MicrosoftAgenda);
-    internal static string Json(SessionizeDocument data) =>
-        JsonSerializer.Serialize(data, SessionizeJsonContext.Default.SessionizeDocument);
 
     private static async Task<ConferenceDocument> ReadAsync(MicrosoftAgenda data, ConferenceDocument? previous = null) =>
         await ReadJsonAsync(Json(data), previous);
