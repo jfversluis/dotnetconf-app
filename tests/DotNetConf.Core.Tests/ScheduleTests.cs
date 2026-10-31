@@ -161,6 +161,66 @@ public sealed class ScheduleTests : IDisposable
         Assert.Equal([id, "one"], storage.Order());
     }
 
+    [Fact]
+    public async Task SetSavedIsIdempotentAcrossStaleTabs()
+    {
+        var storage = new HashSet<string>(StringComparer.Ordinal);
+        var first = new ScheduleService(SharedStore(storage));
+        var second = new ScheduleService(SharedStore(storage));
+        await first.InitializeAsync();
+        await second.InitializeAsync();
+        Assert.True(await first.SetSavedAsync("20261100", true));
+        Assert.True(await second.SetSavedAsync("20261100", true));
+        Assert.Equal(["20261100"], storage);
+        Assert.True(second.IsSaved("20261100"));
+        Assert.False(await second.SetSavedAsync("20261100", false));
+        Assert.False(await first.SetSavedAsync("20261100", false));
+        Assert.Empty(storage);
+        Assert.False(second.IsSaved("20261100"));
+    }
+
+    [Fact]
+    public async Task SetSavedFailureLeavesMemoryUnchanged()
+    {
+        var store = new ToggleFailingStore(["unknown"]);
+        var service = new ScheduleService(store);
+        await service.InitializeAsync();
+        await Assert.ThrowsAsync<IOException>(() => service.SetSavedAsync("20261100", true));
+        Assert.False(service.IsSaved("20261100"));
+        Assert.Equal(["unknown"], store.Ids);
+    }
+
+    [Fact]
+    public async Task FailedRemovalChangesNothingAndCanBeRetried()
+    {
+        var store = new ToggleFailingStore(["20261100", "unknown"]);
+        var service = new ScheduleService(store);
+        await service.InitializeAsync();
+        await Assert.ThrowsAsync<IOException>(() => service.ToggleAsync("20261100"));
+        Assert.True(service.IsSaved("20261100"));
+        Assert.Equal(2, service.SavedCount);
+        Assert.Equal(["20261100", "unknown"], store.Ids.Order());
+        store.Fail = false;
+        Assert.False(await service.ToggleAsync("20261100"));
+        Assert.Equal(["unknown"], store.Ids);
+    }
+
+    private sealed class ToggleFailingStore(IEnumerable<string> ids) : IScheduleStore
+    {
+        public HashSet<string> Ids { get; } = new(ids, StringComparer.Ordinal);
+        public bool Fail { get; set; } = true;
+        public Task<IReadOnlyCollection<string>> ReadAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyCollection<string>>(Ids.ToArray());
+        public Task WriteAsync(IReadOnlyCollection<string> sessionIds, CancellationToken cancellationToken = default)
+        {
+            if (Fail)
+                throw new IOException("Simulated storage failure.");
+            Ids.Clear();
+            Ids.UnionWith(sessionIds);
+            return Task.CompletedTask;
+        }
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(directory))

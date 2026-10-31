@@ -58,19 +58,20 @@ public static class ConferenceJson
         {
             (document.Sessions, currentSpeakerIds), (document.WithdrawnSessions, speakerIds)
         })
-        foreach (var session in sessions)
-        {
-            if (session is null || string.IsNullOrWhiteSpace(session.Id) || string.IsNullOrWhiteSpace(session.Title) ||
-                !sessionIds.Add(session.Id))
-                throw new InvalidDataException("Sessions require unique IDs and non-empty titles.");
-            if (session.StartsAt == default || session.EndsAt <= session.StartsAt)
-                throw new InvalidDataException($"Session '{session.Id}' has invalid start/end times.");
-            if (session.SpeakerIds is null || session.Topics is null ||
-                session.SpeakerIds.Any(id => !allowedSpeakerIds.Contains(id)) ||
-                session.SpeakerIds.Distinct(StringComparer.Ordinal).Count() != session.SpeakerIds.Count ||
-                session.Topics.Any(string.IsNullOrWhiteSpace))
-                throw new InvalidDataException($"Session '{session.Id}' has invalid speaker references or topics.");
-        }
+            foreach (var session in sessions)
+            {
+                if (session is null || string.IsNullOrWhiteSpace(session.Id) || string.IsNullOrWhiteSpace(session.Title) ||
+                    !sessionIds.Add(session.Id))
+                    throw new InvalidDataException("Sessions require unique IDs and non-empty titles.");
+                if (session.StartsAt == default || session.EndsAt <= session.StartsAt)
+                    throw new InvalidDataException($"Session '{session.Id}' has invalid start/end times.");
+                if (session.SpeakerIds is null || session.Topics is null ||
+                    session.SpeakerIds.Any(id => !allowedSpeakerIds.Contains(id)) ||
+                    session.SpeakerIds.Distinct(StringComparer.Ordinal).Count() != session.SpeakerIds.Count ||
+                    session.Topics.Any(string.IsNullOrWhiteSpace))
+                    throw new InvalidDataException($"Session '{session.Id}' has invalid speaker references or topics.");
+            }
+
     }
 }
 

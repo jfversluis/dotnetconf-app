@@ -2,9 +2,10 @@
   "schemaVersion": 1,
   "isMock": false,
   "name": ".NET Conf 2026",
+  "startDate": "2026-11-10",
   "description": "A free, virtual celebration of .NET 11, bringing developers and the .NET community together to learn and build what is next.",
   "websiteUrl": "https://www.dotnetconf.net/",
   "communityEvents": [],
   "communityEventsAreMock": false,
-  "agendaNotice": "Sessions and speaker profiles are downloaded only from Microsoft's public conference feed and the public Sessionize feed; no agenda is bundled and private organizer enrichment is not used. An internet connection is needed for the first download. Downloaded data is cached for offline use and refreshed in the background. Speaker photos are downloaded and cached, never bundled or fetched from GitHub. Missing information is never inferred, and unavailable photos use the local .NET Bot placeholder. No community events are bundled; an official event source is not connected yet. Times and details may change. Source: https://www.dotnetconf.net/agenda"
+  "agendaNotice": "Sessions and speaker profiles are downloaded only from Microsoft's public conference feed; no agenda is bundled and private organizer enrichment is not used. An internet connection is needed for the first download. Downloaded data is cached for offline use and refreshed in the background. The conference start date is event metadata; agenda days and times come from the feed. Speaker photos are downloaded and cached, never bundled or fetched from GitHub. Unavailable photos use the local .NET Bot placeholder. No community events are bundled; an official event source is not connected yet. Times and details may change. Source: https://www.dotnetconf.net/agenda"
 }
