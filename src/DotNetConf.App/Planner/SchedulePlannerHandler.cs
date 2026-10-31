@@ -23,6 +23,16 @@ public sealed class SchedulePlannerHandler() : AvaloniaControlHandler<SchedulePl
             [nameof(SchedulePlanner.Theme)] = MapTheme,
         };
 
+#if ANDROID || IOS
+    protected override void OnAvaloniaControlCreated(PlannerView control)
+    {
+        base.OnAvaloniaControlCreated(control);
+        // Avalonia 12.1.4 pads the host border with window insets already handled by native Shell.
+        if (Avalonia.Controls.TopLevel.GetTopLevel(control)?.Content is Avalonia.Controls.Control host)
+            Avalonia.Controls.TopLevel.SetAutoSafeAreaPadding(host, false);
+    }
+#endif
+
     private static void MapTheme(SchedulePlannerHandler handler, SchedulePlanner view)
     {
         if (handler.AvaloniaControl is not { } control || Application.Current is not { } app)

@@ -17,6 +17,7 @@ public partial class SchedulePage : ConferencePage
     {
         Conference.ScheduleChanged += OnScheduleChanged;
         base.OnAppearing();
+        UpdateBottomInset();
         UpdatePresentation();
     }
 
@@ -33,8 +34,11 @@ public partial class SchedulePage : ConferencePage
     {
         base.OnPropertyChanged(propertyName);
         if (propertyName == IosPage.SafeAreaInsetsProperty.PropertyName && Planner is not null)
-            Planner.BottomInset = IosPage.GetSafeAreaInsets(this).Bottom;
+            UpdateBottomInset();
     }
+
+    private void UpdateBottomInset() =>
+        Planner.BottomInset = OperatingSystem.IsIOS() ? IosPage.GetSafeAreaInsets(this).Bottom : 0;
 
     private void OnTimelineClicked(object? sender, EventArgs e) => ShowTimeline(true);
 

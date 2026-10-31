@@ -48,8 +48,7 @@ public sealed class PlannerView : UserControl
     // The overview rail and a gap before it, kept clear on the right of the timeline.
     private const double RailSpace = OverviewRail.RailWidth + 6;
     private const double TopPadding = 4;
-    // Leaves room to scroll the last session above a translucent tab bar.
-    private const double BottomPadding = 120;
+    private const double BottomPadding = 16;
     private const double DayHeaderHeight = 44;
     private const double DayGap = 28;
     private const double LaneGap = 8;
@@ -154,7 +153,7 @@ public sealed class PlannerView : UserControl
             Pulse(x => x.OfType<Ellipse>().Class("live-dot"), 0.3, 700),
         ];
 
-        chips = new WrapPanel { Margin = new Thickness(SideMargin, 4, SideMargin, 0) };
+        chips = new WrapPanel { Margin = new Thickness(SideMargin, 16, SideMargin, 8) };
         summary = new TextBlock { FontFamily = PlannerTheme.BodyFont, FontSize = 13, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
         statusDot = new Ellipse { Width = 8, Height = 8, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
         statusDot.Classes.Add("live-dot");
@@ -165,7 +164,7 @@ public sealed class PlannerView : UserControl
         var statusBar = new Grid
         {
             ColumnDefinitions = [new ColumnDefinition(1, GridUnitType.Star), new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Auto)],
-            Margin = new Thickness(SideMargin + 4, 0, SideMargin, 6),
+            Margin = new Thickness(SideMargin + 4, 0, SideMargin, 12),
         };
         var state = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Children = { statusDot, status } };
         Grid.SetColumn(state, 1);
@@ -173,7 +172,7 @@ public sealed class PlannerView : UserControl
         statusBar.Children.AddRange([summary, state, zoomButtons]);
 
         message = new TextBlock { FontFamily = PlannerTheme.BodyFont, Margin = new Thickness(SideMargin + 8, 24), IsVisible = false };
-        canvas = new TimelineCanvas();
+        canvas = new TimelineCanvas { Background = Brushes.Transparent };
         // Cards take their tab order from their place on the timeline, not from the pool they were recycled from.
         KeyboardNavigation.SetTabNavigation(canvas, KeyboardNavigationMode.Local);
         canvas.Children.AddRange([backdrop, route, message]);
@@ -263,7 +262,8 @@ public sealed class PlannerView : UserControl
     public void SetBottomInset(double value)
     {
         bottomInset = value;
-        rail.Margin = new Thickness(0, 4, 0, 4 + value);
+        rail.Margin = new Thickness(0, 4, 0, 4 + value / textScale);
+        Relayout();
     }
 
     /// <summary>
@@ -422,6 +422,7 @@ public sealed class PlannerView : UserControl
         {
             textScale = scale;
             textScaler.LayoutTransform = scale > 1 ? new ScaleTransform(scale, scale) : null;
+            SetBottomInset(bottomInset);
         }
         reduceMotion = ReadReduceMotion();
         nowIndicator?.SetRipple(!reduceMotion);
@@ -576,10 +577,12 @@ public sealed class PlannerView : UserControl
         {
             dayTops[day] = y;
             dayStarts[day] = y + DayHeaderHeight;
-            y += DayHeaderHeight + timeline.Days[day].Length * minuteHeight + DayGap;
+            y += DayHeaderHeight + timeline.Days[day].Length * minuteHeight;
+            if (day + 1 < timeline.Days.Count)
+                y += DayGap;
         }
         canvas.Width = width;
-        canvas.Height = y + BottomPadding;
+        canvas.Height = y + BottomPadding + bottomInset / textScale;
         Place(backdrop, 0, 0, width, canvas.Height);
         backdrop.Column = (contentLeft, contentWidth, RulerWidth);
         Place(route, cardsLeft - RouteLayer.GutterWidth, 0, RouteLayer.GutterWidth, canvas.Height);
