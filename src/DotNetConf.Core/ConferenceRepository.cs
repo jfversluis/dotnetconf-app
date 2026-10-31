@@ -155,7 +155,7 @@ public sealed class ConferenceRepository(
         }
         if (migrate)
         {
-            // Discard untraceable legacy content and shipped seeds, never the separate bookmarks.
+            // Reject untraceable cached content without changing the separate bookmarks.
             try { await SaveAsync(seeded, token).ConfigureAwait(false); }
             catch (Exception exception) when (IsDataFailure(exception))
             {

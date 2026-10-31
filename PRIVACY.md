@@ -1,11 +1,11 @@
 # .NET Conf companion privacy policy
 
-Effective date: October 30, 2026. Policy version: 2.
+Last updated: October 31, 2026.
 
 This policy describes the .NET Conf companion app maintained by Gerald
-Versluis. This repository's versioned policy and its bundled offline copy are
-the policy for this version of the app. A separately hosted policy may describe
-an older version; publishing this file does not update that website.
+Versluis. The app is in development and has not been released. This policy is
+included in the app and is available offline under Settings → About → Privacy
+policy.
 
 ## No accounts, analytics, or tracking
 
@@ -21,15 +21,11 @@ The app downloads the published conference agenda and speaker profiles from:
 - Microsoft: https://dotnet.microsoft.com/blob-assets/json/conf/conference-2026.json
 
 Speaker photographs are downloaded from approved public HTTPS image URLs
-supplied by that feed or retained from earlier validated downloads. The image hosts (and approved redirect destinations)
-can therefore differ by speaker. Photographs and agenda content are cached
+supplied by the Microsoft feed. The image hosts and approved redirect destinations
+can differ by speaker, including Sessionize's public image CDN and Gravatar.
+Photographs and agenda content are cached
 locally for offline use, not bundled with the app. Private organizer data and
 GitHub-hosted portraits are not used.
-
-The app no longer requests the Sessionize agenda. Previously downloaded public
-Sessionize details can remain locally for offline browsing during migration and
-to preserve saved talks after migration.
-Speaker image URLs can still use Sessionize's public image CDN.
 
 To deliver these requests, Microsoft, image hosts, and their
 hosting/CDN providers receive ordinary network metadata, including your public
@@ -53,8 +49,6 @@ hosts the app, which can retain server logs under its own policy.
 ## Data kept on your device
 
 - Your saved session IDs are stored locally so your schedule survives restarts.
-- A local identity map preserves saved IDs from the former agenda source without
-  uploading them or rewriting the saved file during migration.
 - Your appearance preference is stored in the platform's preferences store.
 - The last successfully downloaded agenda, public profiles, source URLs, and
   refresh/cache metadata are stored locally. The agenda cache is limited to
@@ -112,5 +106,6 @@ app versions. Review this policy after updating.
 
 - Microsoft privacy statement: https://privacy.microsoft.com/privacystatement
 - Sessionize privacy policy (public speaker image hosting): https://sessionize.com/privacy-policy/
+- Automattic privacy policy (Gravatar speaker image hosting): https://automattic.com/privacy/
 - Google privacy policy: https://policies.google.com/privacy
 - Apple privacy policy: https://www.apple.com/legal/privacy/

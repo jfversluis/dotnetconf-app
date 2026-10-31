@@ -1,5 +1,9 @@
 # CI and test-track releases
 
+The app is in development and has not been released. These workflows validate
+pull requests and support manual uploads to test tracks, not automatic
+production distribution.
+
 ## Pull request validation
 
 `.github/workflows/ci.yml` runs on pull requests, pushes to `main`, and manual
@@ -43,12 +47,9 @@ Use this ID when creating the store records and iOS provisioning profile.
 Release jobs require explicit environment variables for the store IDs and
 override `ApplicationId` only for that build; they do not change local app IDs.
 
-The GitHub environments below already restrict deployment branches to `main`.
-Required reviewers could not be enabled on October 30, 2026: GitHub rejected the
-setting for both environments because the current plan does not support it for
-this private repository. There is currently **no deployment approval gate**;
-main-only deployment policies do not prevent write collaborators from dispatching
-a release from `main`.
+The GitHub environments below restrict deployment branches to `main` and have
+**no deployment approval gate**. Main-only deployment policies do not prevent
+write collaborators from dispatching a release from `main`.
 
 When supported, use **Settings > Environments** to require `jfversluis` as the
 reviewer for both environments, disable administrator bypass, and leave
@@ -131,7 +132,7 @@ credentials into issues, workflow inputs, or this repository.
 
 ## Running a test release
 
-After merging the workflows and configuring the environments, open **Actions >
+After configuring the environments, open **Actions >
 Release to test tracks > Run workflow**, select **main**, and choose `android`,
 `ios`, or `both`. Enter a numeric display version such as `0.1.0` and a fresh
 positive build number of at most nine digits, greater than all previous uploads.
@@ -158,25 +159,26 @@ do not receive release credentials.
 
 ## Release readiness
 
-Use `https://jfversluis.dev/dotnetconf-privacy-policy.html` as the privacy-policy URL
-in both stores. Its source is `docs/dotnetconf-privacy-policy.html`; the published
-copy lives at `static/dotnetconf-privacy-policy.html` in the website repository
-`jfversluis/jfversluis.github.io`. Keep both copies synchronized when privacy
-practices change. The About tab links to the public policy. Privacy contact:
-`dotnetconfapp@geraldversluis.nl` (the owner must keep this mailbox operational).
+`PRIVACY.md` is the app's privacy policy, with an identical bundled copy at
+`src/DotNetConf.App/Resources/Raw/PRIVACY.txt`. Settings > About > Privacy policy
+opens that offline copy. Keep both files synchronized when privacy practices
+change.
+
+Before submitting to either store, publish the current policy at a stable public
+HTTPS URL and configure that URL in both store listings. The hosted policy must
+match the app's bundled policy. Use the maintainer's contact options documented
+in the policy for privacy questions.
 
 The policy describes the current Release build, not planned features. Review
 the final binary and all SDKs before submitting Google Play Data safety and
 Apple App Privacy answers; a policy is not a substitute for those declarations
-or a guarantee of legal compliance/store approval. The initial Android build 4
-predates the in-app privacy link; rebuild with a fresh build number before
-distribution if build 4 has already been uploaded.
+or a guarantee of legal compliance/store approval.
 
 Store acceptance and distribution cannot be verified without the owner's
 accounts and credentials. Passing CI does not resolve the existing physical-device,
 accessibility, minimum-OS, or iPhone Duo geometry release gates in
-`CONTRIBUTING.md`. Keep the agenda snapshot's source/date disclosure and the
-independent fictional-community labels visible; do not promote fictional
-content as confirmed conference information. Review Apple's
+`CONTRIBUTING.md`. Keep the Microsoft source and first-download disclosures
+visible. Do not bundle an agenda, speaker profiles or photographs, or fictional
+community events. Review Apple's
 current accepted Xcode/SDK requirements before production submission, especially
 while this app uses a preview .NET toolchain.

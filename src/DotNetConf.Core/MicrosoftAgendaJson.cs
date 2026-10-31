@@ -6,7 +6,7 @@ namespace DotNetConf.Core;
 
 public static class MicrosoftAgendaJson
 {
-    // These are the identities shipped in the original snapshot, not hashes of mutable display names.
+    // Keep source-slug mappings stable across display-name changes.
     private static readonly Dictionary<string, string> SpeakerAliases = new(StringComparer.Ordinal)
     {
         ["speaker-alexandre-zollinger-chohfi"] = "d8517691-45a3-541c-8561-19cd33516b2a",

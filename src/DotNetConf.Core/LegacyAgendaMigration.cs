@@ -2,7 +2,7 @@ using System.Text;
 
 namespace DotNetConf.Core;
 
-/// <summary>Retires the former Sessionize source without deleting saved session identities or details.</summary>
+/// <summary>Projects compatible cached agenda records into the current single-source format.</summary>
 internal static class LegacyAgendaMigration
 {
     internal static ConferenceCache Prepare(ConferenceCache cache) => cache with
