@@ -21,7 +21,8 @@
     <ApplicationDisplayVersion>0.1.0</ApplicationDisplayVersion>
     <ApplicationVersion>3</ApplicationVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
-    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
+    <!-- Essentials.AI preview 8's native Gemini Nano library requires API 26. -->
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">26.0</SupportedOSPlatformVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(TargetFramework)' == 'net11.0' or '$(TargetFramework)' == 'net11.0-browser'">
     <UseAvalonia>true</UseAvalonia>
@@ -71,7 +72,7 @@
     <PackageReference Include="Syncfusion.Maui.Toolkit" Version="1.0.11" />
     <!-- Draws the schedule planner on every target; Android and iOS embed it in their native UI. -->
     <PackageReference Include="Avalonia.Controls.Maui" Version="11.0.0-rc.2.26287.618" />
-    <PackageReference Include="Microsoft.Maui.Essentials.AI" Version="11.0.0-preview.7.26512.5" />
+    <PackageReference Include="Microsoft.Maui.Essentials.AI" Version="11.0.0-preview.8.26531.2" />
     <PackageReference Include="Microsoft.Extensions.AI" Version="10.4.1" />
     <PackageReference Include="Plugin.LocalNotification" Version="14.0.0" />
   </ItemGroup>

@@ -6,7 +6,6 @@ namespace DotNetConf.App.Services;
 
 public static class PlannerCatalog
 {
-    public const int MaximumSessions = 120;
     public const int MaximumCharacters = 9000;
 
     public static string[] SemanticInterests(ConferenceDocument conference, string request)
@@ -48,8 +47,6 @@ public static class PlannerCatalog
 
     public static string DescribeTopics(ConferenceDocument conference)
     {
-        if (conference.Sessions.Count > MaximumSessions)
-            throw new InvalidDataException($"On-device planning supports at most {MaximumSessions} sessions in this preview.");
         var text = new StringBuilder("<topic-catalog>\n");
         foreach (var topic in conference.Sessions.SelectMany(s => s.Topics).Distinct(StringComparer.OrdinalIgnoreCase))
         {

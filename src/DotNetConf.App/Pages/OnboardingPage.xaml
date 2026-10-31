@@ -39,7 +39,7 @@
                         <Label Text="Discover talks that interest you and keep your favorites together in My Schedule." />
                         <Label Text="No account. No cloud AI. Just you and the agenda."
                                FontFamily="OpenSansSemibold" FontSize="14" />
-                        <Label Text="Fictional demo agenda. Talks and participation are not announced or endorsed."
+                        <Label Text="Sessions come from the public Microsoft conference agenda. Download once, then browse offline."
                                Style="{StaticResource Secondary}" FontSize="13" />
                     </VerticalStackLayout>
                 </VerticalStackLayout>

@@ -10,7 +10,7 @@ using Plugin.LocalNotification;
 using Syncfusion.Maui.Toolkit.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.AI;
-#if IOS
+#if IOS || ANDROID
 using Microsoft.Maui.Essentials.AI;
 #endif
 #if ANDROID
@@ -49,7 +49,7 @@ public static class MauiProgram
             .UseMauiMaps()
             .ConfigureMauiHandlers(handlers => handlers.AddHandler<AgendaPicker, AgendaPickerHandler>())
 #endif
-            .ConfigureMauiHandlers(handlers => handlers.AddHandler<SchedulePlanner, SchedulePlannerHandler>())
+            .ConfigureMauiHandlers(handlers => handlers.AddHandler<DotNetConf.App.Planner.SchedulePlanner, SchedulePlannerHandler>())
             .UseFluentIconsRegular()
             .UseFluentIconsFilled()
             .ConfigureFonts(fonts =>
@@ -81,6 +81,7 @@ public static class MauiProgram
                 Description = "Reminders when sessions in My Schedule begin"
             })));
         builder.Services.AddSingleton<SessionReminderService>();
+        builder.Services.AddSingleton<ISessionReminderUpdates>(services => services.GetRequiredService<SessionReminderService>());
         builder.Services.AddTransient<OnboardingPage>();
         builder.Services.AddSingleton<IConferenceDataSource, ConferenceMetadataDataSource>();
         builder.Services.AddSingleton(_ => new HttpClient { Timeout = TimeSpan.FromSeconds(20) });
@@ -92,6 +93,7 @@ public static class MauiProgram
             services.GetRequiredService<IConferenceDataSource>(), services.GetRequiredService<HttpClient>(),
             services.GetService<IConferenceCacheStore>() ??
                 new FileConferenceCacheStore(Path.Combine(FileSystem.AppDataDirectory, "agenda-cache.json"))));
+        builder.Services.AddKeyedSingleton<IConferenceDataSource, ConferenceAgendaDataSource>("agenda");
 #if !AVALONIA
         builder.Services.AddSingleton<IConnectivity>(_ => Connectivity.Current);
 #endif
@@ -117,6 +119,15 @@ public static class MauiProgram
 #pragma warning restore MAUIAI0001
         }
 #endif
+#if ANDROID
+        if (OperatingSystem.IsAndroidVersionAtLeast(26))
+        {
+#pragma warning disable MAUIAI0001
+            builder.Services.AddTransient<IChatClient>(_ => new GeminiNanoChatClient());
+#pragma warning restore MAUIAI0001
+        }
+#endif
+        builder.Services.AddSingleton<IPlannerModelStatus, OnDeviceModelStatus>();
         builder.Services.AddSingleton<OnDevicePlanner>();
         builder.Services.AddSingleton<IOnDevicePlanner>(services => services.GetRequiredService<OnDevicePlanner>());
         builder.Services.AddSingleton<IPlannerScheduleUpdates>(services => services.GetRequiredService<ConferenceViewModel>());

@@ -28,7 +28,7 @@ public sealed class PlannerScaleTests
         Assert.Contains("AI:", text);
         Assert.True(text.Length < 1000);
         Assert.Equal(PlannerCatalog.DescribeTopics(Catalog(2)), text);
-        Assert.Throws<InvalidDataException>(() => PlannerCatalog.DescribeTopics(Catalog(121)));
+        Assert.Equal(text, PlannerCatalog.DescribeTopics(Catalog(250)));
         conference.Sessions[0] = conference.Sessions[0] with { Title = new string('x', PlannerCatalog.MaximumCharacters) };
         Assert.Throws<InvalidDataException>(() => PlannerCatalog.DescribeTopics(conference));
     }
@@ -37,7 +37,9 @@ public sealed class PlannerScaleTests
     public async Task OversizedCatalogFunctionFailsInsteadOfReturningAnErrorAsModelContext()
     {
         var tools = new PlannerTools();
-        tools.Initialize(Catalog(121), TimeZoneInfo.Utc, []);
+        var conference = Catalog(250);
+        conference.Sessions[0] = conference.Sessions[0] with { Title = new string('x', PlannerCatalog.MaximumCharacters) };
+        tools.Initialize(conference, TimeZoneInfo.Utc, []);
         var catalog = tools.CreateFunctions().OfType<AIFunction>().Single(f => f.Name == "catalog_topics");
         await Assert.ThrowsAsync<InvalidDataException>(async () =>
             await catalog.InvokeAsync(new AIFunctionArguments()));

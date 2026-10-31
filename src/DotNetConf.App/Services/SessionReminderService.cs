@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using DotNetConf.Core;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.Storage;
 using Plugin.LocalNotification;
 using Plugin.LocalNotification.Core.Models;
@@ -8,9 +9,14 @@ using Plugin.LocalNotification.Core.Models.AppleOption;
 
 namespace DotNetConf.App.Services;
 
+public interface ISessionReminderUpdates
+{
+    Task<bool> RefreshAsync();
+}
+
 public partial class SessionReminderService(
-    IConferenceDataSource dataSource, ScheduleService schedule, IPreferences preferences,
-    INotificationService notifications, ILogger<SessionReminderService> logger) : ObservableObject
+    [FromKeyedServices("agenda")] IConferenceDataSource dataSource, ScheduleService schedule, IPreferences preferences,
+    INotificationService notifications, ILogger<SessionReminderService> logger) : ObservableObject, ISessionReminderUpdates
 {
     public const string ChannelId = "session-reminders";
     private const string PreferenceKey = "session-reminders-enabled-v1";

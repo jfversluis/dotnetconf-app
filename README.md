@@ -69,17 +69,19 @@ Installing an updated build over an existing installation preserves dismissal;
 it is not a fresh first launch. Reset the preference and restart the app to
 exercise onboarding again without deleting saved sessions.
 
-The spike uses `Microsoft.Maui.Essentials.AI`'s `AppleIntelligenceChatClient`
-on supported Apple Intelligence iPhones with **iOS 26+**, Apple Intelligence
-enabled, a supported language, and the local model downloaded. It checks
-readiness with a short real local inference because this preview package has no
-public model-availability API. Onboarding uses the hearts explanation when no
-client is registered or inference is unavailable. The in-app builder retains
-its explicit unavailable/retry state. The capability gate depends on the
-registered `IChatClient` and its real readiness, not an onboarding platform check;
-when Essentials AI supplies Android chat, register that local client in
-`MauiProgram` and the same gate applies without onboarding changes.
-A package update alone cannot register an API that does not yet exist.
+The spike uses `Microsoft.Maui.Essentials.AI` **11.0.0-preview.8.26531.2**:
+`AppleIntelligenceChatClient` on supported **iOS 26+** devices and
+`GeminiNanoChatClient` on supported **Android API 26+** AICore devices.
+Both providers' `GetModelStatusAsync` APIs check availability without starting
+a model download. Onboarding shows the hearts explanation when the model is
+unavailable; the in-app planner offers an explicit retry. Apple Intelligence
+must be enabled with a supported language and downloaded model. Gemini Nano
+requires compatible hardware and prepared model assets; an emulator is not
+proof of Nano support. Android's new native library requires API 26, raising
+this app's Android minimum from API 24; no manifest override bypasses that requirement.
+Provider capabilities determine the response format: Apple supports structured
+output; Nano uses explicitly prompted JSON text followed by the same strict
+typed parsing and deterministic validation. No cloud or fake-model fallback is used.
 Normal browsing and likes still work. A simulator build alone does **not** establish
 that the model is ready or that inference works.
 
@@ -143,9 +145,9 @@ compatible subset of model-chosen alternatives, preserving required speakers;
 it never drops a talk from an "all sessions by" request to hide a conflict.
 Saving is an atomic, additive update: it does not remove previous likes.
 
-For a demo with the **fictional** agenda, first browse its speaker names, then
-try: "I like mobile development and AI. I must see Alex Rivera. I can watch
-November 10 from 16:00 to 18:00 UTC." Proposal session times use your device's
+For a demo with the downloaded **live Microsoft agenda**, try
+"Show me all sessions by Gerald Versluis" or "I'm interested in Blazor and C#."
+Proposal session times use your device's
 time zone. Requests, proposals and chat history are not persisted; only
 confirmed likes and whether the introduction was shown are stored locally.
 Cancellation, a 90-second planning timeout, or a model error leaves likes
@@ -155,6 +157,29 @@ model-ready physical iPhone before using this as a reliable live demo.
 See the [runtime prompt matrix](docs/AI-PLANNER-SPIKE.md) for vague, precise,
 ambiguous and impossible requests, expected results, and the actual simulator
 inference checks.
+
+### Fill gaps in My Schedule
+
+The Fluent sparkle action becomes **Fill schedule gaps** once sessions are saved.
+It opens a focused planner with an editable "What sessions fit in here?" request.
+Try "Fill my gaps with C# or Blazor", "What talks by Maddy Montaquila fit my gaps?"
+or "Find something about building phone apps that fits my schedule gaps."
+Gaps include free time before, between and after saved talks **on the local
+conference days containing saved sessions**, bounded by the actual agenda on
+those days. Other days are not added implicitly. Overlapping/adjacent commitments
+are merged, and proposed talks must fit entirely inside a gap. Optional topics,
+speakers and availability further restrict that free time. Saved sessions stay
+fixed; only reviewed, confirmed proposals are added.
+
+Missing saved IDs without retained details, no fitting sessions and unsatisfied speaker requests
+are visible errors, not invented alternatives. Saving rechecks the current
+stored schedule under the same update gate; changed gap anchors require a new
+proposal. An agenda refresh also requires a new preview so the times you confirmed
+cannot silently change. Exact dated clock ranges are grounded from the user's
+literal text; generic "gaps" or "free slots" cannot authorize invented availability.
+Retained withdrawn bookmarks keep their last-known time slots reserved until
+you remove their hearts; they are never suggested as active talks. Ambiguous
+clock cutoffs such as "before 9" require clarification rather than being dropped.
 
 ## Availability
 

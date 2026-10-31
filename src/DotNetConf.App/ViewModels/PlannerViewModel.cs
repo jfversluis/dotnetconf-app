@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using DotNetConf.App.Services;
 using DotNetConf.Core;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DotNetConf.App.ViewModels;
 
@@ -32,7 +33,7 @@ public partial class ProposedSessionViewModel(Session session, string speakerNam
 }
 
 public partial class PlannerViewModel(
-    IConferenceDataSource dataSource, ScheduleService schedule, IOnDevicePlanner planner,
+    [FromKeyedServices("agenda")] IConferenceDataSource dataSource, ScheduleService schedule, IOnDevicePlanner planner,
     IPlannerScheduleUpdates scheduleUpdates, ILogger<PlannerViewModel> logger) : ObservableObject
 {
     private CancellationTokenSource? operation;
@@ -41,6 +42,24 @@ public partial class PlannerViewModel(
     private TimeZoneInfo timeZone = TimeZoneInfo.Local;
     private bool initialized;
     private CancellationTokenSource? startingPointsOperation;
+    public bool IsGapMode { get; private set; }
+    public string Heading => IsGapMode ? "Make room\nfor discovery." : "Your conference,\nyour way.";
+    public string Introduction => IsGapMode
+        ? "Find talks in the free time on your saved conference days. Your existing schedule stays exactly as it is."
+        : "Tell us what you want to learn. Get a personal shortlist, then choose what to save.";
+    public string RequestLabel => IsGapMode ? "What would fit your day?" : "What interests you?";
+    public string GenerateLabel => IsGapMode ? "Find sessions for my gaps" : "Find sessions for me";
+    public string AgendaDisclosure => document?.IsMock == true
+        ? "Fictional demo agenda. Talks and participation are not announced or endorsed."
+        : "Suggestions use the downloaded Microsoft agenda. Review session times before saving.";
+
+    public void EnableGapMode()
+    {
+        IsGapMode = true;
+        Request = "I see gaps in my schedule. What sessions fit in here?";
+        foreach (var property in new[] { nameof(Heading), nameof(Introduction), nameof(RequestLabel), nameof(GenerateLabel) })
+            OnPropertyChanged(property);
+    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanGenerate))]
@@ -136,7 +155,7 @@ public partial class PlannerViewModel(
             return;
         }
         IsBusy = true;
-        Status = "Checking Apple Intelligence with a short local inference...";
+        Status = "Checking the on-device model...";
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         operation = cancellation;
         try
@@ -158,7 +177,8 @@ public partial class PlannerViewModel(
             else
             {
                 logger.LogWarning(exception, "On-device planner readiness check failed.");
-                Status = "The local model isn't available. Use a supported iPhone with Apple Intelligence enabled, a supported language, and the model downloaded. Retry or skip.";
+                Status = "On-device planning isn't ready on this device. Check that a supported local model is enabled and downloaded, then retry. " +
+                    "You can still use hearts to build My Schedule. No model download starts automatically.";
             }
         }
         finally
@@ -180,6 +200,10 @@ public partial class PlannerViewModel(
         try
         {
             var agenda = await dataSource.LoadAsync(cancellation.Token);
+            document = agenda;
+            OnPropertyChanged(nameof(AgendaDisclosure));
+            if (agenda.Sessions.Count == 0)
+                throw new InvalidDataException("Download the agenda before requesting suggestions.");
             var suggestions = await planner.SuggestStartingPointsAsync(agenda, cancellation.Token);
             cancellation.Token.ThrowIfCancellationRequested();
             StartingPoints = suggestions;
@@ -218,11 +242,12 @@ public partial class PlannerViewModel(
         try
         {
             document = await dataSource.LoadAsync(cancellation.Token);
-            await schedule.InitializeAsync(cancellation.Token);
+            await schedule.ReloadAsync(cancellation.Token);
             if (document.Sessions.Count == 0)
                 throw new InvalidDataException("The agenda has no sessions.");
             timeZone = TimeZoneInfo.Local;
-            var result = await planner.ProposeAsync(document, Request, timeZone, SavedIds(), cancellation.Token);
+            OnPropertyChanged(nameof(AgendaDisclosure));
+            var result = await planner.ProposeAsync(document, Request, timeZone, SavedIds(), cancellation.Token, IsGapMode);
             cancellation.Token.ThrowIfCancellationRequested();
             proposal = result.Proposal;
             if (proposal is null)
@@ -232,7 +257,8 @@ public partial class PlannerViewModel(
                     : result.Message[..Math.Min(result.Message.Length, 1600)];
                 return;
             }
-            Constraints = $"Required speakers: {(proposal.RequiredSpeakers.Length == 0 ? "None" : string.Join(", ", proposal.RequiredSpeakers))}\n" +
+            Constraints = (IsGapMode ? "Only free time on days with saved sessions, including before and after them. Saved sessions stay fixed.\n" : "") +
+                $"Required speakers: {(proposal.RequiredSpeakers.Length == 0 ? "None" : string.Join(", ", proposal.RequiredSpeakers))}\n" +
                 (proposal.AllSessionsByRequiredSpeakers ? "Include all sessions by these speakers.\n" : "") +
                 (proposal.TopicFilter is { } filter
                     ? $"Topics: {string.Join(filter.MatchAll ? " AND " : " OR ", filter.Topics)}" +
@@ -243,7 +269,8 @@ public partial class PlannerViewModel(
             var matchedIds = proposal.MatchedSessionIds.Concat(proposal.SessionIds).ToHashSet(StringComparer.Ordinal);
             foreach (var session in document.Sessions.Where(s => matchedIds.Contains(s.Id)).OrderBy(s => s.StartsAt))
             {
-                var warnings = SchedulePlanner.Review(document, new([session.Id], [], proposal.Availability),
+                var warnings = SchedulePlanner.Review(document, new([session.Id], [], proposal.Availability)
+                    { GapAnchorIds = proposal.GapAnchorIds },
                     timeZone, SavedIds()).Errors;
                 Sessions.Add(new(session, string.Join(", ", document.Speakers
                     .Where(s => session.SpeakerIds.Contains(s.Id)).Select(s => s.Name)), timeZone,
@@ -278,7 +305,7 @@ public partial class PlannerViewModel(
         }
     }
 
-    private string[] SavedIds() => document?.Sessions.Where(s => schedule.IsSaved(s.Id)).Select(s => s.Id).ToArray() ?? [];
+    private string[] SavedIds() => schedule.SavedIds;
 
     private ScheduleProposal SelectedProposal() => (proposal ?? throw new InvalidOperationException("No proposal.")) with
     {
@@ -323,7 +350,25 @@ public partial class PlannerViewModel(
         IsBusy = true;
         try
         {
-            await schedule.AddAsync(selected.SessionIds);
+            var latest = await dataSource.LoadAsync();
+            if (!ReferenceEquals(latest, document))
+            {
+                ClearProposal();
+                Status = "The agenda was refreshed. Generate a new proposal to review the latest session times.";
+                IsBusy = false;
+                AnnounceOutcome();
+                return;
+            }
+            var reviewed = await schedule.AddProposalAsync(latest, selected, timeZone);
+            if (reviewed is { CanApply: false })
+            {
+                HasValidProposal = false;
+                Validation = string.Join("\n", reviewed.Errors);
+                Status = "Your schedule changed. Nothing was added; generate a new proposal.";
+                IsBusy = false;
+                AnnounceOutcome();
+                return;
+            }
         }
         catch (Exception exception) when (IsExpectedFailure(exception))
         {

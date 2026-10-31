@@ -71,8 +71,28 @@ public sealed class ScheduleService(IScheduleStore store)
 
     /// <summary>Number of distinct saved IDs, including IDs the current agenda does not know.</summary>
     public int SavedCount => Volatile.Read(ref savedIds).Count;
+    public string[] SavedIds => Volatile.Read(ref savedIds).Order(StringComparer.Ordinal).ToArray();
+
+    public async Task ReloadAsync(CancellationToken cancellationToken = default)
+    {
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            Volatile.Write(ref savedIds, new(await store.ReadAsync(cancellationToken), StringComparer.Ordinal));
+            loaded = true;
+        }
+        finally { gate.Release(); }
+    }
 
     public async Task AddAsync(IReadOnlyCollection<string> sessionIds, CancellationToken cancellationToken = default)
+        => await AddCoreAsync(sessionIds, null, cancellationToken);
+
+    public Task<ProposalReview?> AddProposalAsync(ConferenceDocument conference, ScheduleProposal proposal,
+        TimeZoneInfo zone, CancellationToken cancellationToken = default) =>
+        AddCoreAsync(proposal.SessionIds, ids => SchedulePlanner.Review(conference, proposal, zone, ids), cancellationToken);
+
+    private async Task<ProposalReview?> AddCoreAsync(IReadOnlyCollection<string> sessionIds,
+        Func<string[], ProposalReview>? validate, CancellationToken cancellationToken)
     {
         foreach (var id in sessionIds)
             ArgumentException.ThrowIfNullOrWhiteSpace(id);
@@ -80,10 +100,14 @@ public sealed class ScheduleService(IScheduleStore store)
         await gate.WaitAsync(cancellationToken);
         try
         {
-            var next = new HashSet<string>(savedIds, StringComparer.Ordinal);
+            var next = new HashSet<string>(await store.ReadAsync(cancellationToken), StringComparer.Ordinal);
+            var review = validate?.Invoke(next.ToArray());
+            if (review is { CanApply: false })
+                return review;
             next.UnionWith(sessionIds);
             await store.WriteAsync(next, cancellationToken);
-            savedIds = next;
+            Volatile.Write(ref savedIds, next);
+            return review;
         }
         finally
         {

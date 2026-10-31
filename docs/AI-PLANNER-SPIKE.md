@@ -1,8 +1,8 @@
 # On-device planner spike: runtime prompts
 
 On first launch, use the skippable welcome, or reopen
-**My Schedule > Plan with on-device AI (spike)** on an Apple
-Intelligence-capable target. Wait for the actual local readiness inference,
+**My Schedule > Build a personal schedule** (empty schedule) or
+**Fill schedule gaps** (saved talks) on a model-capable target. Wait for the local model availability check,
 then choose a starting point above the input or enter a request and generate a
 preview. Review the sessions and times before confirming and adding them.
 **Show matching details** optionally reveals interpreted interests, speakers and
@@ -13,12 +13,72 @@ step contains the builder only when that succeeds; missing clients, unavailable
 models and timeouts leave a simple hearts/My Schedule explanation instead.
 There are no session examples and no saves on that explanatory step. The
 in-app builder remains available for readiness retries.
-Essentials AI currently exposes no public availability property and no Android
-chat implementation. The gate uses registered `IChatClient` support plus actual
-inference, so adding a future Android client registration reuses the same logic.
+Essentials.AI preview 8 exposes `GetModelStatusAsync` and capability snapshots on
+both `AppleIntelligenceChatClient` and `GeminiNanoChatClient`. The same onboarding
+gate uses their actual availability, not a device-name guess. No model is
+downloaded automatically. Nano has no structured-output capability; its JSON
+text goes through the same strict parsing and schedule validation.
 
-All talks and participation in this agenda are fictional. Real names do not
-imply announced participation or endorsement.
+Production planning and reminders now read the validated live/cache Microsoft
+agenda, not the bundled metadata source. The older fictional agenda remains a
+test fixture only. Historical examples below refer to that explicitly fictional
+fixture, not announced participation or endorsement.
+
+## Live-agenda gap acceptance matrix (October 31, 2026)
+
+Actual Apple inference used the 70-session downloaded Microsoft feed on the
+isolated iPhone 17 Pro simulator (iOS 26.5), with Gerald's `BRK006` and `BRK026`
+saved as fixed commitments. All 17 cases passed after runtime-found and review fixes.
+Every selected ID was checked against actual intervals, local saved days and
+applicable topics/speakers; ordinary suggestions selected at most twelve talks.
+No request changed likes without confirmation.
+
+| Request | Expected result |
+| --- | --- |
+| I see gaps in my schedule. What sessions fit in here? | Fits around saved talks, unrestricted clock availability |
+| Help me fill my free slots | Same gap boundary; no invented nine-to-five limits |
+| Fill gaps in my schedule with AI sessions | Real AI/.NET AI tags only |
+| Fill gaps with .NET MAUI talks | `BRK016`, not already-saved `BRK006`/`BRK026` |
+| What Blazor sessions fit in my gaps? | Only fitting Blazor-tagged talks |
+| Fill my gaps with C# or Blazor | Topic union; no overlap with saved commitments |
+| Find something about building phone apps that fits my schedule gaps | Actual .NET MAUI category |
+| What talks by Maddy Montaquila fit my gaps? | `BRK009` and `BRK013` |
+| Fill gaps with Daniel Roth's Blazor sessions | `BRK002` and `BRK023`, speaker/topic intersection |
+| What sessions by Gerald Versluis fit my gaps? | Explicit unsatisfied request: his talks are already saved |
+| Fill my gaps with Ada Lovelace | Speaker-not-found; save disabled |
+| Fill my gaps with everything about COBOL | Missing subject; no adjacent-topic substitution |
+| Fill my gaps with Scott's talks | `KEY001`; Scott Hanselman is unique in this live feed |
+| Fill gaps with C# talks. I can only attend November 10, 2026 from 20:00 to 23:00 UTC. | `BRK009`, `BRK010`, `BRK012`, `BRK042`, exact source clock range |
+| Fill my gaps with C# talks, only before 9 | Explicit am/pm or HH:mm clarification; no unrestricted proposal |
+| Fill my gaps with C# talks, only after 17 | Literal 17:00 local cutoff preserved on each conference day |
+| Fill my gaps with C# talks, only between 9 and 11 | Ambiguous-range clarification; no saved changes |
+
+The first run revealed that generic gaps could induce fabricated availability,
+the live agenda lacked the fixture's separate Mobile tag, and generated dated
+arrays could contain padded invalid windows. Source-evidenced time extraction,
+catalog-aware mobile aliases and direct grounding of literal dated clock ranges
+fix those causes; they do not discard invalid model constraints after the fact.
+Review also caught numeric cutoffs being missed by the extraction gate and
+retained withdrawn bookmarks blocking all gap planning. Numeric restrictions
+now reach extraction even if the initial model misses them; ambiguous bare
+hours require clarification. Retained withdrawn bookmarks reserve their
+last-known slots without becoming candidates or extending updated agenda bounds.
+
+Code coverage includes structured/text-only provider flows, empty/withdrawn
+schedules, no gaps, overlapping/adjacent commitments, DST/local-day boundaries,
+required speakers, availability, and stale validated saves. Android emulator
+coverage checks capability-aware manual onboarding and normal app usage;
+real Nano inference still needs supported physical hardware. Physical-device
+Release inference, VoiceOver/TalkBack listening and background notification
+delivery remain release checks, not claims made from simulator builds.
+
+Five additional actual Apple normal-planner cases passed after restoring the
+original empty schedule: all Gerald (`BRK006`, `BRK026`), all Alex Keh (`BRK134`),
+vague phone apps (all three real .NET MAUI talks), the exact dated UTC/C# window,
+and partial "Alex." The latter correctly asks the user to choose Alex Keh or
+Alexandre Zollinger Chohfi in this live feed; it is not a silent empty result.
+The live "Scott" case is unique Hanselman, not a claim of live ambiguous-Scott
+coverage; ambiguity has both fixture coverage and this actual Alex check.
 
 ## On-device starting points
 
@@ -190,15 +250,47 @@ and small semantic classifications for goals. No experimental embedding,
 response-repair or fake-model fallback ships.
 
 Context size scales with the topic vocabulary, not session count. The preview
-explicitly rejects catalogs over 120 sessions or 9,000 context characters,
-rather than silently dropping categories. All matching sessions remain visible;
+explicitly rejects topic context over 9,000 characters rather than silently
+dropping categories; a compact 250-session catalog has regression coverage.
+There is no arbitrary 120-session count rejection. All matching sessions remain visible;
 ordinary recommendations use a bounded interval-scheduling dynamic program
 instead of searching all subsets of a 100-session catalog. Required speakers,
 availability, existing likes and the 12-selection limit still apply.
 
 ## Verification and limitations
 
+### Current live-feed and preview-8 integration
+
+The rebased app passes **561 Core tests and 18 App tests**, Android and iOS Debug
+builds, the preserved desktop/browser compilation, and unsigned iOS NativeAOT
+publishing. The latest iOS workload pins were not changed. Installed Xcode 27.1
+was used with the build-only `ValidateXcodeVersion=false` override because the
+pinned iOS workload expects Xcode 27.0. This is not an officially matched
+toolchain claim. Existing Essentials.AI native-callback trim/AOT warnings,
+Syncfusion trim warnings and the plugin privacy-manifest duplication need
+release review; an unsigned publish does not prove physical Release inference.
+
+Actual simulator checks include the 17-gap/5-normal live matrices above,
+confirmation-gated additive saving, rejecting a confirmed preview after an
+external bookmark change, cancellation during real inference, and relaunch
+persistence. Native screenshots and geometry cover the sparkle action, gap
+preview/confirmation, Android manual onboarding and Timeline/List, light/dark
+appearance and maximum iOS Dynamic Type/Android 2.0 font scaling. Search
+filtering/clearing and a heart round-trip preserved Android's original bookmarks.
+The isolated iOS schedule was restored to its original empty snapshot, and both
+devices' appearance/font settings were restored.
+
+This is targeted integration coverage, not an exhaustive whole-app UI audit.
+Actual Gemini Nano inference requires supported physical hardware with AICore
+and prepared assets; the tested emulator correctly uses the unavailable/manual
+path. VoiceOver/TalkBack listening, physical-device Release inference and
+background notification delivery remain unverified.
+
 ### MAUI-first hardening follow-up
+
+The following sections preserve **historical fictional-fixture** verification
+from before the live-feed rebase; their counts and prompts are not the current
+production acceptance matrix.
 
 The review fixes keep orchestration cross-platform. Onboarding uses a root MAUI
 `SafeAreaEdges` content layout and a separate gradient background, replacing
@@ -233,7 +325,7 @@ explicit events gated by loaded/active view state. Onboarding persists completio
 after dismissal, prevents duplicate modals and detaches reminder subscriptions
 on disappearance.
 
-The current suite has **223 passing tests**, including delayed/failed saves,
+That pre-rebase suite had **223 passing tests**, including delayed/failed saves,
 late cancellation results, unsupported clients, dismissal/persistence failures,
 notification permission denial/revocation, owned-request reconciliation and
 retry after notification failures. Both platform Debug builds and unsigned iOS

@@ -2,7 +2,7 @@ using DotNetConf.App.ViewModels;
 
 namespace DotNetConf.App.Pages;
 
-public partial class PlannerPage : ContentPage
+public partial class PlannerPage : ContentPage, IQueryAttributable
 {
     private readonly PlannerViewModel viewModel;
     private bool leaving;
@@ -12,6 +12,15 @@ public partial class PlannerPage : ContentPage
         InitializeComponent();
         this.viewModel = viewModel;
         BindingContext = viewModel;
+    }
+
+    public void ApplyQueryAttributes(IDictionary<string, object> query)
+    {
+        if (query.TryGetValue("gaps", out var value) && value is string text && Uri.UnescapeDataString(text) == "true")
+        {
+            viewModel.EnableGapMode();
+            Title = "Fill schedule gaps";
+        }
     }
 
     protected override async void OnAppearing()

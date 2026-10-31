@@ -8,6 +8,7 @@ public sealed record ScheduleProposal(
     public bool AllSessionsByRequiredSpeakers { get; init; }
     public PlannerTopicFilter? TopicFilter { get; init; }
     public string[] MatchedSessionIds { get; init; } = [];
+    public string[]? GapAnchorIds { get; init; }
 }
 
 public sealed record PlannerTopicFilter(string[] Topics, bool MatchAll, bool RestrictToRequiredSpeakers, bool IncludeAll);
@@ -18,7 +19,8 @@ public enum ProposalIssueCode
 {
     SessionCount, ConstraintCount, UnknownSession, DuplicateSession, InvalidAvailability, InvalidTopics,
     MissingSpeakerScope, OutsideAvailability, OverlappingProposals, SavedConflict,
-    UnknownSpeaker, AmbiguousSpeaker, MissingSpeakerSession, IncompleteSpeakerSessions, EmptyTopicMatch, IncompleteTopicSessions
+    UnknownSpeaker, AmbiguousSpeaker, MissingSpeakerSession, IncompleteSpeakerSessions, EmptyTopicMatch, IncompleteTopicSessions,
+    InvalidGapSchedule, OutsideScheduleGap
 }
 
 public sealed record ProposalIssue(ProposalIssueCode Code, string Message);
@@ -38,7 +40,8 @@ public static class SchedulePlanner
     {
         var ids = candidateIds.ToHashSet(StringComparer.Ordinal);
         var eligible = conference.Sessions.Where(s => ids.Contains(s.Id)
-            && Review(conference, new([s.Id], [], preferences.Availability), zone, savedIds).CanApply)
+            && Review(conference, new([s.Id], [], preferences.Availability)
+                { GapAnchorIds = preferences.GapAnchorIds }, zone, savedIds).CanApply)
             .OrderBy(s => s.EndsAt).ThenBy(s => s.Id, StringComparer.Ordinal).ToArray();
         var speakers = preferences.RequiredSpeakers.Select(n => Agenda.FindSpeakers(conference, n))
             .Select(matches => matches.Count == 1 ? matches[0].Id : "").ToArray();
@@ -102,6 +105,21 @@ public static class SchedulePlanner
     {
         List<ProposalIssue> errors = [];
         List<Session> sessions = [];
+        IReadOnlyList<ScheduleGap>? gaps = null;
+        if (proposal.GapAnchorIds is { } anchors)
+        {
+            try
+            {
+                if (!anchors.ToHashSet(StringComparer.Ordinal).SetEquals(savedIds))
+                    throw new InvalidDataException("Your saved schedule changed. Generate a new gap proposal before saving.");
+                gaps = ScheduleGaps.Find(conference, savedIds, timeZone);
+            }
+            catch (InvalidDataException exception)
+            {
+                errors.Add(new(ProposalIssueCode.InvalidGapSchedule, exception.Message));
+                gaps = [];
+            }
+        }
         if (proposal.SessionIds.Length is 0 or > MaximumSessions)
             errors.Add(new(ProposalIssueCode.SessionCount, $"Propose between 1 and {MaximumSessions} sessions."));
         if (proposal.RequiredSpeakers.Length > 8 || proposal.Availability.Length > 12)
@@ -127,8 +145,8 @@ public static class SchedulePlanner
             else
                 windows.Add((start, end));
         }
-        bool FitsAvailability(Session session) => proposal.Availability.Length == 0
-            || windows.Any(w => session.StartsAt >= w.Start && session.EndsAt <= w.End);
+        bool FitsAvailability(Session session) => (gaps is null || ScheduleGaps.Fits(session, gaps))
+            && (proposal.Availability.Length == 0 || windows.Any(w => session.StartsAt >= w.Start && session.EndsAt <= w.End));
         if (proposal.TopicFilter is { } topicFilter)
         {
             var known = conference.Sessions.SelectMany(s => s.Topics).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -140,13 +158,15 @@ public static class SchedulePlanner
 
         foreach (var session in sessions)
         {
+            if (gaps is not null && (savedIds.Contains(session.Id) || !ScheduleGaps.Fits(session, gaps)))
+                errors.Add(new(ProposalIssueCode.OutsideScheduleGap, $"Not in a free slot in your saved schedule: {session.Title}."));
             if (!FitsAvailability(session))
                 errors.Add(new(ProposalIssueCode.OutsideAvailability, $"Outside your availability: {session.Title}."));
             foreach (var other in sessions.Where(s => string.CompareOrdinal(s.Id, session.Id) > 0))
                 if (Agenda.Overlaps(session, other))
                     errors.Add(new(ProposalIssueCode.OverlappingProposals, $"Overlapping proposals: {session.Title} / {other.Title}."));
             if (!savedIds.Contains(session.Id))
-                foreach (var saved in conference.Sessions.Where(s => savedIds.Contains(s.Id)))
+                foreach (var saved in conference.Sessions.Concat(conference.WithdrawnSessions).Where(s => savedIds.Contains(s.Id)))
                     if (Agenda.Overlaps(session, saved))
                         errors.Add(new(ProposalIssueCode.SavedConflict, $"Conflicts with a liked session: {session.Title} / {saved.Title}."));
         }
@@ -155,7 +175,7 @@ public static class SchedulePlanner
         {
             var matches = Agenda.FindSpeakers(conference, name);
             if (matches.Count == 0)
-                errors.Add(new(ProposalIssueCode.UnknownSpeaker, $"Speaker not found in this demo agenda: {name}."));
+                errors.Add(new(ProposalIssueCode.UnknownSpeaker, $"Speaker not found in this agenda: {name}."));
             else if (matches.Count > 1)
                 errors.Add(new(ProposalIssueCode.AmbiguousSpeaker, $"Ambiguous speaker '{name}'. Choose {string.Join(" or ", matches.Select(s => s.Name))}."));
             else if (!sessions.Any(s => s.SpeakerIds.Contains(matches[0].Id)))
@@ -165,6 +185,7 @@ public static class SchedulePlanner
                 var missing = conference.Sessions.Where(s => s.SpeakerIds.Contains(matches[0].Id)
                     && (proposal.TopicFilter is not { RestrictToRequiredSpeakers: true } scoped
                         || Agenda.MatchesTopics(s, scoped))
+                    && (gaps is null || FitsAvailability(s))
                     && !proposal.SessionIds.Contains(s.Id)).ToArray();
                 if (missing.Length > 0)
                     errors.Add(new(ProposalIssueCode.IncompleteSpeakerSessions, $"You requested all sessions by {matches[0].Name}. Missing: {string.Join(", ", missing.Select(s => s.Title))}. Change your request if you only want a subset."));

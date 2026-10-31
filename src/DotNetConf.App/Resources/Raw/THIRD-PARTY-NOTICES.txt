@@ -15,7 +15,7 @@ Copyright (c) .NET Foundation Contributors
 https://github.com/dotnet/macios
 MIT license: LICENSE-MaciOS.txt
 
-Microsoft.Maui.Essentials.AI 11.0.0-preview.7.26512.5
+Microsoft.Maui.Essentials.AI 11.0.0-preview.8.26531.2
 Copyright (c) Microsoft Corporation
 https://github.com/dotnet/maui-labs
 MIT license: LICENSE-DotNetFoundation.txt

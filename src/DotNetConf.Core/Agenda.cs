@@ -12,9 +12,10 @@ public static class Agenda
 
     public static string[] MentionedTopics(ConferenceDocument conference, string request)
     {
-        var matches = conference.Sessions.SelectMany(s => s.Topics).Distinct(StringComparer.OrdinalIgnoreCase)
+        var topics = conference.Sessions.SelectMany(s => s.Topics).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var matches = topics
             .Where(t => Regex.IsMatch(request,
-                $$"""(?<![\p{L}\p{N}])(?:{{TopicPattern(t)}})(?![\p{L}\p{N}])""",
+                $$"""(?<![\p{L}\p{N}])(?:{{TopicPattern(t, topics)}})(?![\p{L}\p{N}])""",
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100))
                 || FuzzyTopic(request, t)).ToArray();
         return matches.Where(t => t != ".NET" || !matches.Any(other => other.StartsWith(".NET ", StringComparison.Ordinal))).ToArray();
@@ -49,9 +50,11 @@ public static class Agenda
         });
     }
 
-    private static string TopicPattern(string topic) => topic switch
+    private static string TopicPattern(string topic, string[] topics) => topic switch
     {
         "Mobile" => @"mobile(?:\s+(?:development|apps?))?|phone\s+apps?",
+        ".NET MAUI" when !topics.Contains("Mobile", StringComparer.OrdinalIgnoreCase) =>
+            @"MAUI|mobile(?:\s+(?:development|apps?))?|phone\s+apps?",
         "Performance" => @"performance|(?:code|apps?)\s+(?:run\s+)?faster",
         "Web" => @"web(?:\s+(?:development|apps?|stuff))?|browser\s+apps?",
         _ => Regex.Escape(topic.StartsWith(".NET ", StringComparison.Ordinal) ? topic[5..] : topic)

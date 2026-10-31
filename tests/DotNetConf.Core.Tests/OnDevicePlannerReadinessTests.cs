@@ -16,39 +16,39 @@ public sealed class OnDevicePlannerReadinessTests
     }
 
     [Fact]
-    public async Task AnyRegisteredLocalClientCanPassReadinessRegardlessOfPlatform()
+    public async Task AvailableNativeStatusPassesWithoutInferenceOrClientAllocation()
     {
         var client = new TestClient(_ => Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "READY"))));
         var planner = Create(client);
         Assert.Null(planner.UnsupportedReason);
         await planner.CheckReadinessAsync(default);
-        Assert.Equal("Reply with READY.", client.Prompt);
-        Assert.True(client.Disposed);
+        Assert.Null(client.Prompt);
+        Assert.False(client.Disposed);
     }
 
     [Fact]
     public async Task RegistrationAloneDoesNotProveModelReadiness()
     {
         var client = new TestClient(_ => throw new NotSupportedException("Model is not downloaded."));
-        await Assert.ThrowsAsync<NotSupportedException>(() => Create(client).CheckReadinessAsync(default));
-        Assert.True(client.Disposed);
+        await Assert.ThrowsAsync<NotSupportedException>(() => Create(client, false).CheckReadinessAsync(default));
+        Assert.Null(client.Prompt);
     }
 
     [Fact]
-    public async Task ReadinessForwardsCancellationAndDisposesTheClient()
+    public async Task CancelledStatusCheckDoesNotInvokeTheClient()
     {
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
         var client = new TestClient(token => Task.FromCanceled<ChatResponse>(token));
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             Create(client).CheckReadinessAsync(cancellation.Token));
-        Assert.True(client.Disposed);
+        Assert.Null(client.Prompt);
     }
 
-    private static OnDevicePlanner Create(IChatClient? client)
+    private static OnDevicePlanner Create(IChatClient? client, bool ready = true)
     {
         var services = new TestServices(client);
-        return new(services, NullLoggerFactory.Instance, services);
+        return new(services, NullLoggerFactory.Instance, services, new TestPlannerModelStatus(ready));
     }
 
     private sealed class TestServices(IChatClient? client) : IServiceProvider, IServiceProviderIsService, IServiceScopeFactory, IServiceScope

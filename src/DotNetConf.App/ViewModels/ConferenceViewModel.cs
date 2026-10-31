@@ -18,7 +18,7 @@ public sealed record DayFilter(string Label, DateOnly? Day)
 public partial class ConferenceViewModel(
     IConferenceRepository repository, ScheduleService schedule, DetailNavigationService navigation,
     IBrowser browser, IConnectivity connectivity, SpeakerImageCache images,
-    ILogger<ConferenceViewModel> logger, SessionReminderService reminders) : ObservableObject, IPlannerScheduleUpdates
+    ILogger<ConferenceViewModel> logger, ISessionReminderUpdates reminders) : ObservableObject, IPlannerScheduleUpdates
 {
     private readonly SemaphoreSlim loadGate = new(1, 1);
     private ConferenceDocument? document;
@@ -99,6 +99,8 @@ public partial class ConferenceViewModel(
     [ObservableProperty] public partial string TimeZoneLabel { get; set; } = $"Times shown in {TimeZoneInfo.Local.DisplayName}";
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ScheduleSummary))]
+    [NotifyPropertyChangedFor(nameof(SchedulePlannerAction))]
+    [NotifyPropertyChangedFor(nameof(SchedulePlannerHint))]
     [NotifyPropertyChangedFor(nameof(ScheduleEmptyTitle))]
     [NotifyPropertyChangedFor(nameof(ScheduleEmptyMessage))]
     public partial int SavedCount { get; set; }
@@ -108,6 +110,10 @@ public partial class ConferenceViewModel(
 
     public string ScheduleSummary => !IsScheduleAvailable ? "Saved schedule unavailable"
         : SavedCount == 1 ? "1 saved session" : $"{SavedCount} saved sessions";
+    public string SchedulePlannerAction => SavedCount > 0 ? "Fill schedule gaps" : "Build a personal schedule";
+    public string SchedulePlannerHint => SavedCount > 0
+        ? "Suggest sessions around your saved talks, with optional topics or speakers. Opens the on-device planner."
+        : "Describe your interests to the on-device planner. Review suggestions before saving.";
     public int SelectedDayIndex
     {
         get => SelectedDay is null ? 0 : Math.Max(0, Days.IndexOf(SelectedDay));
@@ -487,6 +493,9 @@ public partial class ConferenceViewModel(
 
     [RelayCommand]
     private Task BrowsePlannerAsync() => Shell.Current.GoToAsync("planner");
+
+    [RelayCommand]
+    private Task FillScheduleGapsAsync() => Shell.Current.GoToAsync(SavedCount > 0 ? "planner?gaps=true" : "planner");
 
     [RelayCommand]
     private Task BrowseCommunityEventsAsync() => Shell.Current.GoToAsync("//community");

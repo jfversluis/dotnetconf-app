@@ -18,7 +18,7 @@ public sealed class OnDevicePlannerGroundingTests
         var conference = await ConferenceJson.ReadAsync(stream);
         var client = new ExtractionClient("none");
         var services = new TestServices(client);
-        var planner = new OnDevicePlanner(services, NullLoggerFactory.Instance, services);
+        var planner = new OnDevicePlanner(services, NullLoggerFactory.Instance, services, new TestPlannerModelStatus());
         var result = await planner.ProposeAsync(conference, request, TimeZoneInfo.Utc, [], default);
         Assert.Null(result.Proposal);
         Assert.Contains("Excluding speakers or topics isn't supported", result.Message);
@@ -38,7 +38,7 @@ public sealed class OnDevicePlannerGroundingTests
         var conference = await ConferenceJson.ReadAsync(stream);
         var client = new ExtractionClient(name);
         var services = new TestServices(client);
-        var planner = new OnDevicePlanner(services, NullLoggerFactory.Instance, services);
+        var planner = new OnDevicePlanner(services, NullLoggerFactory.Instance, services, new TestPlannerModelStatus());
 
         var result = await planner.ProposeAsync(conference, request, TimeZoneInfo.Utc, [], default);
 

@@ -12,6 +12,7 @@ public sealed class PlannerTools
     private TimeZoneInfo timeZone = TimeZoneInfo.Utc;
     private string[] savedIds = [];
     private int calls;
+    private bool fillGaps;
     private readonly HashSet<string> candidateIds = new(StringComparer.Ordinal);
 
     public ScheduleProposal? Proposal { get; private set; }
@@ -21,11 +22,12 @@ public sealed class PlannerTools
     public string[] EligibleCandidateIds => GetDocument().Sessions
         .Where(s => candidateIds.Contains(s.Id) && IsEligible(s)).Select(s => s.Id).ToArray();
 
-    public void Initialize(ConferenceDocument conference, TimeZoneInfo zone, string[] likedIds)
+    public void Initialize(ConferenceDocument conference, TimeZoneInfo zone, string[] likedIds, bool fillScheduleGaps = false)
     {
         document = conference;
         timeZone = zone;
         savedIds = likedIds;
+        fillGaps = fillScheduleGaps;
         calls = 0;
         Proposal = null;
         Preferences = null;
@@ -50,7 +52,7 @@ public sealed class PlannerTools
             return new("Supply a speaker name.", null);
         var speakers = Agenda.FindSpeakers(conference, name);
         if (speakers.Count == 0)
-            return new($"Speaker not found in this demo agenda: {name}. Do not invent participation.", null);
+            return new($"Speaker not found in this agenda: {name}. Do not invent participation.", null);
         if (speakers.Count > 1)
             return new($"Ambiguous speaker '{name}'. Ask the user to choose: {string.Join(", ", speakers.Select(s => s.Name))}.", null);
         var page = ReadPage(
@@ -99,7 +101,8 @@ public sealed class PlannerTools
         Preferences = new([], names, availability)
         {
             AllSessionsByRequiredSpeakers = allSessionsByRequiredSpeakers,
-            TopicFilter = topicFilter
+            TopicFilter = topicFilter,
+            GapAnchorIds = fillGaps ? savedIds.ToArray() : null
         };
         return "Preferences captured for user review. They cannot be changed during agenda selection.";
     }
@@ -115,7 +118,9 @@ public sealed class PlannerTools
         Proposal = preferences with
         {
             SessionIds = sessionIds,
-            MatchedSessionIds = candidateIds.Concat(sessionIds).Distinct(StringComparer.Ordinal).ToArray()
+            MatchedSessionIds = (fillGaps
+                ? candidateIds.Where(id => !savedIds.Contains(id) && IsEligible(conference.Sessions.Single(s => s.Id == id)))
+                : candidateIds).Concat(sessionIds).Distinct(StringComparer.Ordinal).ToArray()
         };
         var review = SchedulePlanner.Review(conference, Proposal, timeZone, savedIds);
         return review.CanApply ? "Preview ready. Ask the user to review interpreted constraints and confirm in the app."

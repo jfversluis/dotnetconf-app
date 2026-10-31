@@ -22,9 +22,9 @@
                         <ContentView x:Name="HeroAction" Grid.Column="1" VerticalOptions="Center" />
                     </Grid>
                     <VerticalStackLayout Spacing="16">
-                        <Label Text="Your conference,&#10;your way." Style="{StaticResource Heading}" FontSize="34"
+                        <Label Text="{Binding Heading}" Style="{StaticResource Heading}" FontSize="34"
                                AutomationId="planner-welcome" />
-                        <Label Text="Tell us what you want to learn. Get a personal shortlist, then choose what to save."
+                        <Label Text="{Binding Introduction}"
                                FontSize="18" MaximumWidthRequest="520" HorizontalOptions="Start" />
                     </VerticalStackLayout>
                 </VerticalStackLayout>
@@ -53,7 +53,7 @@
                            Style="{StaticResource Secondary}" FontSize="12" AutomationId="planner-starting-points-status" />
                 </VerticalStackLayout>
                 <VerticalStackLayout Spacing="8">
-                    <Label Text="What interests you?" Style="{StaticResource Subheading}" />
+                    <Label Text="{Binding RequestLabel}" Style="{StaticResource Subheading}" />
                     <Border Padding="12,8" StrokeShape="RoundRectangle 8"
                             BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}">
                         <!-- Android uses the shared hint/placeholder to preserve TalkBack editing actions. -->
@@ -70,14 +70,14 @@
                     </Border>
                     <Label Text="{Binding TimeZoneLabel}" Style="{StaticResource Secondary}" FontSize="13" />
                 </VerticalStackLayout>
-                <Button Text="Find sessions for me" LineBreakMode="WordWrap" Command="{Binding GenerateCommand}" IsEnabled="{Binding CanGenerate}"
+                <Button Text="{Binding GenerateLabel}" LineBreakMode="WordWrap" Command="{Binding GenerateCommand}" IsEnabled="{Binding CanGenerate}"
                         Clicked="GenerateClicked" AutomationId="planner-generate" />
-                <Label Text="On-device with Apple Intelligence on supported iPhones. No account or cloud."
+                <Label Text="On-device with Essentials.AI on supported devices. No account or cloud."
                        Style="{StaticResource Secondary}" FontSize="13" />
                 <VerticalStackLayout Spacing="8" AutomationId="planner-model-state">
                     <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" HorizontalOptions="Start" />
                     <Label Text="{Binding Status}" IsVisible="{Binding HasStatus}" AutomationId="planner-status" />
-                    <Button Text="Check Apple Intelligence again" LineBreakMode="WordWrap" Command="{Binding CheckModelCommand}"
+                    <Button Text="Check the local model again" LineBreakMode="WordWrap" Command="{Binding CheckModelCommand}"
                             IsVisible="{Binding CanRetryModel}" Style="{StaticResource QuietButton}"
                             AutomationId="planner-check-model" />
                     <Button Text="Cancel" LineBreakMode="WordWrap" Command="{Binding CancelCommand}" IsVisible="{Binding IsBusy}"
@@ -128,7 +128,7 @@
                     <Button Text="Add selected to My Schedule" LineBreakMode="WordWrap" Command="{Binding ApplyCommand}"
                             IsEnabled="{Binding CanApply}" AutomationId="planner-apply" />
                 </VerticalStackLayout>
-                <Label Text="Fictional demo agenda. Talks and participation are not announced or endorsed."
+                <Label Text="{Binding AgendaDisclosure}"
                        Style="{StaticResource Secondary}" FontSize="13" />
             </VerticalStackLayout>
         </VerticalStackLayout>
