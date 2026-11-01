@@ -61,7 +61,9 @@ panes without a gap. Horizontal divisions never stack schedule/detail panes.
 The timeline needs at least 340 and the detail pane at least 300
 device-independent units per measured text-scale unit; narrower panes fall back
 to native detail navigation. The shared detail policy also retains its minimum
-window height. Selection survives these transitions, and the selected timeline
+window height. While native details are foregrounded, the schedule policy uses
+the current window width, not the hidden host's last measured width.
+Selection survives these transitions, and the selected timeline
 card and saved-list row are highlighted only while details are inline.
 The same planner instance retains filters, zoom and scroll position; resizing
 between stacked and inline day labels adjusts the scroll anchor for their

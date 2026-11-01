@@ -173,8 +173,10 @@ public class AdaptiveConferencePage : ConferencePage
         if (panes is null || detailPane is null || viewport is null)
             return;
 
+        // A hidden host retains its old measurement while native details resize in the foreground.
+        var width = foregroundLayout.HasValue ? windowWidth : panes.Width > 0 ? panes.Width : windowWidth;
         var layout = AdaptDetailLayout(foregroundLayout ?? viewport.GetLayout(windowWidth, windowHeight, textScale),
-            panes.Width > 0 ? panes.Width : windowWidth, textScale);
+            width, textScale);
         CanShowInline = layout.IsSplit;
         detailPane.IsVisible = CanShowInline;
         Grid.SetRow(detailPane, layout.IsStacked ? 2 : 0);
