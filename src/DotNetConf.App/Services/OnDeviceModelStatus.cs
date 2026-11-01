@@ -25,7 +25,10 @@ public sealed class OnDeviceModelStatus : IPlannerModelStatus
             status.Capabilities?.Contains(ChatModelCapability.StructuredOutput) == true,
             status.Availability == ChatModelAvailability.Available ? ""
                 : $"The local model is {status.Availability}: {status.UnavailableReason ?? "check your device's AI settings"}. " +
-                  "Use hearts to build My Schedule, or retry when the model is ready. No model download starts automatically.");
+                  "Use hearts to build My Schedule, or retry when the model is ready. No model download starts automatically.")
+        {
+            ToolCalling = status.Capabilities?.Contains(ChatModelCapability.ToolCalling) == true
+        };
 #endif
     }
 }

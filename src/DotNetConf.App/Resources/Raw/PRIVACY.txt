@@ -55,6 +55,9 @@ requests or responses to an app-operated AI service or use a cloud-model
 fallback. It does not save planner requests, proposals, or chat history;
 confirmed session choices are stored locally. The app checks whether a local
 model is ready but does not start a model download.
+On tool-capable models, the model can request read-only agenda searches in the
+app. Their results stay within this on-device planning flow; the model cannot
+save sessions without your confirmation.
 
 Session reminders are optional. If you enable them, the app requests
 notification permission and gives your device's notification service the

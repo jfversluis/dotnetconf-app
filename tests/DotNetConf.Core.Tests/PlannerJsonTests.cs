@@ -6,6 +6,31 @@ namespace DotNetConf.Core.Tests;
 
 public sealed class PlannerJsonTests
 {
+    [Fact]
+    public void SpeakerAndTopicQuantitiesFollowTheirOwnLiteralClauses()
+    {
+        var conference = new ConferenceDocument
+        {
+            Speakers = [new() { Id = "speaker", Name = "Real Speaker" }],
+            Sessions = [new() { Id = "talk", Topics = [".NET MAUI"] }]
+        };
+        const string request = "All sessions by Real Speaker and some .NET MAUI sessions.";
+        var interpretation = new PlannerInterpretation("Real Speaker", "none", "none", "some");
+        Assert.True(interpretation.RequestsAllSpeakers(request, ["Real Speaker"]));
+        var topics = new PlannerTopicRequest(request, [".NET MAUI"], "all", "any", "independent");
+        Assert.False(topics.ToFilter(conference, request, true)!.IncludeAll);
+    }
+
+    [Theory]
+    [InlineData("Don't miss Daniel Roth.", true)]
+    [InlineData("Don't want to miss a single session from Daniel Roth.", true)]
+    [InlineData("All Blazor sessions and some talks by Daniel Roth.", false)]
+    public void SpeakerClauseGroundingPreservesDontMissAndSeparatesTopicQuantifiers(string request, bool all)
+    {
+        var interpretation = new PlannerInterpretation("Daniel Roth", "none", "none", "all");
+        Assert.Equal(all, interpretation.RequestsAllSpeakers(request, ["Daniel Roth"]));
+    }
+
     [Theory]
     [InlineData("Everything from Gerald, no matter the time", false)]
     [InlineData("All of Alex's talks, regardless of time", false)]
@@ -280,8 +305,11 @@ public sealed class PlannerJsonTests
     [InlineData("Ortinau", false)]
     [InlineData("Show every talk by Ortinau", false)]
     [InlineData("all sessions by Mads", false)]
+    [InlineData("Do not miss a single session from Ortinau", false)]
+    [InlineData("Don't miss Ortinau", false)]
     [InlineData("C# and everything from Ortinau", true)]
     [InlineData("phone apps", true)]
+    [InlineData("single page apps", true)]
     public async Task CopiedSpeakerRequestsAreNotEvidenceOfTopicalInterests(string evidence, bool expected)
     {
         await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));

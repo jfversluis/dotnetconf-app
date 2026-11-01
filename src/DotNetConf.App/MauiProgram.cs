@@ -128,6 +128,10 @@ public static class MauiProgram
         }
 #endif
         builder.Services.AddSingleton<IPlannerModelStatus, OnDeviceModelStatus>();
+        // Inactive cloud-provider example; setup and privacy requirements: docs/AI-PLANNER-DEMO.md.
+        // builder.Services.AddTransient<IChatClient>(_ =>
+        //     new OpenAI.OpenAIClient(apiKey).GetChatClient(modelId).AsIChatClient());
+        // builder.Services.AddTransient<IPlannerModelStatus, CloudPlannerModelStatus>();
         builder.Services.AddSingleton<OnDevicePlanner>();
         builder.Services.AddSingleton<IOnDevicePlanner>(services => services.GetRequiredService<OnDevicePlanner>());
         builder.Services.AddSingleton<IPlannerScheduleUpdates>(services => services.GetRequiredService<ConferenceViewModel>());

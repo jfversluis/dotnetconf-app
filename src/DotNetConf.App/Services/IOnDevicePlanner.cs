@@ -18,7 +18,10 @@ public interface IPlannerScheduleUpdates
     Task<bool> RefreshRemindersAsync();
 }
 
-public sealed record PlannerModelState(bool Available, bool StructuredOutput, string Reason);
+public sealed record PlannerModelState(bool Available, bool StructuredOutput, string Reason)
+{
+    public bool ToolCalling { get; init; }
+}
 
 public interface IPlannerModelStatus
 {

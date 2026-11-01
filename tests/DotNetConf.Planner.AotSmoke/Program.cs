@@ -4,6 +4,7 @@ using DotNetConf.App.Services;
 using DotNetConf.Core;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 
 Require(!RuntimeFeature.IsDynamicCodeSupported, "Run the published NativeAOT executable, not dotnet run.");
 Require(JsonSerializer.IsReflectionEnabledByDefault, "AI Attributes preview 14 requires JSON reflection explicitly enabled.");
@@ -101,7 +102,17 @@ catch (InvalidOperationException exception) when (exception.Message.StartsWith("
     Require(tools.CallCount == 33, "The invocation budget was not counted correctly.");
 }
 
-Console.WriteLine("PASS: NativeAOT generated planner bindings, schemas, JSON and typed arguments, defaults, validation, scope isolation, cancellation and call budget. JSON reflection is explicitly enabled; dynamic code is unavailable.");
+tools.Initialize(conference, TimeZoneInfo.Utc, []);
+tools.CapturePreferences([], [], topicFilter: new(["Mobile"], false, false, false));
+using var chat = new ToolCallingClient();
+await PlannerDiscovery.RunAsync(chat, tools, scope.ServiceProvider, "Mobile",
+    NullLogger.Instance, CancellationToken.None);
+Require(chat.Calls == 2, "The model's tool request and result roundtrip did not execute.");
+Require(tools.DiscoveryComplete && tools.CandidateIds.Contains("building-with-maui"),
+    "Model-selected discovery lost real candidates.");
+Require(tools.Proposal is null, "The model's read-only tools submitted a proposal.");
+
+Console.WriteLine("PASS: NativeAOT generated planner bindings, schemas, JSON and typed arguments, defaults, validation, scope isolation, cancellation, call budget and model-selected tool invocation through Microsoft.Extensions.AI. JSON reflection is explicitly enabled; dynamic code is unavailable.");
 
 static AIFunctionArguments Arguments(string json) =>
     JsonSerializer.Deserialize<AIFunctionArguments>(json, AIJsonUtilities.DefaultOptions)
@@ -114,4 +125,31 @@ static void Require(bool condition, string message)
 {
     if (!condition)
         throw new InvalidOperationException(message);
+}
+
+sealed class ToolCallingClient : IChatClient
+{
+    public int Calls { get; private set; }
+
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (++Calls == 1)
+        {
+            if (options?.Tools?.Any(t => t.Name == "submit_proposal") != false)
+                throw new InvalidOperationException("A mutation tool was exposed to the model.");
+            return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant,
+                [new FunctionCallContent("lookup", "topic_sessions", new Dictionary<string, object?>())])));
+        }
+        var result = messages.SelectMany(m => m.Contents).OfType<FunctionResultContent>().Single();
+        if (result.Result is not string text || !text.Contains("building-with-maui"))
+            throw new InvalidOperationException("Generated tool results did not reach the model.");
+        return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "Done.")));
+    }
+
+    public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages,
+        ChatOptions? options = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+    public void Dispose() { }
 }

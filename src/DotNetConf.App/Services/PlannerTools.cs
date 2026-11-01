@@ -17,11 +17,14 @@ public sealed class PlannerTools
     private int calls;
     private bool fillGaps;
     private readonly HashSet<string> candidateIds = new(StringComparer.Ordinal);
+    private HashSet<string>? discoveryRemainingIds;
+    private int discoveryQueries;
 
     public ScheduleProposal? Proposal { get; private set; }
     public ScheduleProposal? Preferences { get; private set; }
     public int CallCount => calls;
     public IReadOnlySet<string> CandidateIds => candidateIds;
+    public bool DiscoveryComplete => discoveryRemainingIds is { Count: 0 } && discoveryQueries > 0;
     public string[] EligibleCandidateIds => GetDocument().Sessions
         .Where(s => candidateIds.Contains(s.Id) && IsEligible(s)).Select(s => s.Id).ToArray();
 
@@ -35,13 +38,15 @@ public sealed class PlannerTools
         Proposal = null;
         Preferences = null;
         candidateIds.Clear();
+        discoveryRemainingIds = null;
+        discoveryQueries = 0;
     }
 
     private ConferenceDocument GetDocument() =>
         document ?? throw new InvalidOperationException("Planner tools have not been initialized.");
 
     [ExportAIFunction("search_sessions")]
-    [Description("Search agenda titles, topics, descriptions and speakers. Use a short topic keyword (Mobile, AI, Blazor), NOT a sentence. Words are ANDed. Empty query browses all. At most 4 rows per page; follow next-page skip.")]
+    [Description("Search real agenda titles, topics and speakers using a short keyword, or empty to browse. Returns a small preview; the app retains all matching candidates.")]
     public string SearchSessions(
         [Description("Short search term, or empty to browse")] string query,
         [Description("Results to skip, starting at zero")] int skip)
@@ -53,7 +58,7 @@ public sealed class PlannerTools
     }
 
     [ExportAIFunction("speaker_sessions")]
-    [Description("Find sessions by full name or a UNIQUE first/last name. Ask for clarification if ambiguous. At most 4 rows per page; follow next-page skip to include ALL sessions.")]
+    [Description("Find real sessions by a speaker's full name or unique partial name. Returns a small preview; the app retains all matching candidates.")]
     public string SpeakerSessions(
         [Description("Full or partial speaker name")] string name,
         [Description("Results to skip, starting at zero")] int skip = 0)
@@ -74,14 +79,12 @@ public sealed class PlannerTools
         if (speakers.Count > 1)
             return new($"Ambiguous speaker '{name}'. Ask the user to choose: {string.Join(", ", speakers.Select(s => s.Name))}.", null);
         var page = ReadPage(
-            conference.Sessions.Where(s => s.SpeakerIds.Contains(speakers[0].Id)
-                && (Preferences?.TopicFilter is not { RestrictToRequiredSpeakers: true } filter
-                    || Agenda.MatchesTopics(s, filter))).OrderBy(s => s.StartsAt).ToArray(), skip);
+            MatchingSpeakerSessions(name).OrderBy(s => s.StartsAt).ToArray(), skip);
         return page with { Text = $"Speaker: {speakers[0].Name}\n" + page.Text };
     }
 
     [ExportAIFunction("topic_sessions")]
-    [Description("Query the captured real agenda topics, respecting OR/AND and any speaker scope. Late/conflicting matches remain visible with warnings and must not be selected. Follow next-page skip for all results.")]
+    [Description("Find sessions for the attendee's already confirmed topics and speaker scope. Returns a small preview; the app retains all matching candidates.")]
     public string TopicSessions([Description("Results to skip, starting at zero")] int skip = 0) => FormatPage(
         SchedulePlanner.TopicMatches(GetDocument(), Preferences
             ?? throw new InvalidOperationException("Capture preferences before searching.")).ToArray(), skip);
@@ -98,6 +101,29 @@ public sealed class PlannerTools
                 throw new InvalidDataException($"Unknown catalog session ID: {id}.");
             candidateIds.Add(id);
         }
+    }
+
+    public void BeginDiscovery()
+    {
+        var conference = GetDocument();
+        var preferences = Preferences ?? throw new InvalidOperationException("Capture preferences before searching.");
+        var matches = preferences.RequiredSpeakers.SelectMany(MatchingSpeakerSessions);
+        if (preferences.TopicFilter is not null)
+            matches = matches.Concat(SchedulePlanner.TopicMatches(conference, preferences));
+        else if (preferences.RequiredSpeakers.Length == 0)
+            matches = conference.Sessions;
+        discoveryRemainingIds = matches.Where(IsEligible).Select(s => s.Id).ToHashSet(StringComparer.Ordinal);
+        discoveryQueries = 0;
+        candidateIds.Clear();
+    }
+
+    private IEnumerable<Session> MatchingSpeakerSessions(string name)
+    {
+        var conference = GetDocument();
+        var speakers = Agenda.FindSpeakers(conference, name);
+        return conference.Sessions.Where(s => speakers.Any(p => s.SpeakerIds.Contains(p.Id))
+            && (Preferences?.TopicFilter is not { RestrictToRequiredSpeakers: true } filter
+                || Agenda.MatchesTopics(s, filter)));
     }
 
     public string CapturePreferences(string[] requiredSpeakers, AvailabilityWindow[] availability,
@@ -180,14 +206,25 @@ public sealed class PlannerTools
 
     private PlannerPageResult ReadPage(Session[] matching, int skip)
     {
+        if (discoveryRemainingIds is not null)
+        {
+            discoveryQueries++;
+            foreach (var session in matching)
+                if (discoveryRemainingIds.Remove(session.Id))
+                    candidateIds.Add(session.Id);
+        }
         var eligible = matching.Where(IsEligible).ToArray();
         var offset = Math.Clamp(skip, 0, matching.Length);
         var page = matching.Skip(offset).Take(4).ToArray();
-        foreach (var session in page)
-            candidateIds.Add(session.Id);
+        if (discoveryRemainingIds is null)
+            foreach (var session in page)
+                candidateIds.Add(session.Id);
         var excluded = matching.Length - eligible.Length;
         int? nextSkip = offset + page.Length < matching.Length ? offset + page.Length : null;
-        return new($"Matches: {matching.Length}; eligible: {eligible.Length}; shown with warnings for availability or liked-session conflicts: {excluded}. " +
+        return new((discoveryRemainingIds is null ? "" : DiscoveryComplete
+            ? "Agenda lookup complete. Do not call any more tools. "
+            : "Agenda lookup incomplete. Search remaining speakers/topics or use search_sessions with an empty query. ") +
+            $"Matches: {matching.Length}; eligible: {eligible.Length}; shown with warnings for availability or liked-session conflicts: {excluded}. " +
             (offset + page.Length < matching.Length ? $"Next page: skip={offset + page.Length}.\n" : "End of results.\n") +
             Format(page), nextSkip);
     }

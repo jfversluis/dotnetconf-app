@@ -104,6 +104,14 @@ public sealed record PlannerInterpretation(string SpeakerNames, string Availabil
             || Regex.IsMatch(request, @"\b(don['’]?t|do not)\s+miss\b",
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)));
 
+    public bool RequestsAllSpeakers(string request, string[] speakers) =>
+        Clauses(request).Any(clause => (HasAllQuantifier(clause) || RequestsAllSpeakers(clause))
+            && speakers.Any(name => Regex.IsMatch(clause, $@"\b{Regex.Escape(name)}\b",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100))));
+
+    public static string[] Clauses(string request) => Regex.Split(request, @"\b(?:and|plus)\b|[,;]",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+
     public static bool HasAllQuantifier(string request) => Regex.IsMatch(request,
         @"\b(all|every|everything)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
         TimeSpan.FromMilliseconds(100));
@@ -159,8 +167,12 @@ public sealed record PlannerTopicRequest(string Text, string[] Topics, string Qu
         var explicitAnd = Regex.IsMatch(request,
             @"\bboth\b|\b(?:all|each|every)\s+(?:(?:of\s+)?(?:these|the|requested)\s+)?topics\b|\b(?:same\s+(?:session|talk)|together|combin(?:e|es|ing|ation))\b",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        var topicClauses = PlannerInterpretation.Clauses(request)
+            .Where(clause => Agenda.MentionedTopics(conference, clause).Intersect(topics, StringComparer.OrdinalIgnoreCase).Any()).ToArray();
+        var includeAll = hasSpeakers && topicClauses.Length > 0
+            ? topicClauses.Any(PlannerInterpretation.HasAllQuantifier) : RequestsAll(request);
         return new(topics, explicitAnd && !explicitOr,
-            hasSpeakers && (scopedSpeakers > 0 || (SpeakerScope == "within-topics" && !independentClause)), RequestsAll(request));
+            hasSpeakers && (scopedSpeakers > 0 || (SpeakerScope == "within-topics" && !independentClause)), includeAll);
     }
 
     public bool HasInterest(ConferenceDocument conference, string request)
@@ -173,7 +185,9 @@ public sealed record PlannerTopicRequest(string Text, string[] Topics, string Qu
             .Select(Regex.Escape);
         string Remaining(string value)
         {
-            var remaining = Regex.Replace(value, @"\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b", "",
+            var remaining = Regex.Replace(value, @"\b(?:a\s+)?single\s+(?:session|talk)\b", "",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+            remaining = Regex.Replace(remaining, @"\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b", "",
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
             remaining = Regex.Replace(remaining, $@"\b(?:{string.Join('|', names)})\b", "",
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));

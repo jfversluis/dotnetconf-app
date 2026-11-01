@@ -69,3 +69,10 @@ for on-device models and
 [Microsoft.Maui.AI.Attributes](https://github.com/dotnet/maui-labs/blob/main/src/AIExtensions/Microsoft.Maui.AI.Attributes/README.md)
 to connect the planner with the agenda. Learn more about how your information
 is handled in our [privacy policy](../PRIVACY.md).
+
+On a model that supports tools, the AI requests read-only agenda searches and
+receives their results. The app checks your constraints, arranges the sessions,
+and asks you to confirm before saving. Models without tool support use structured
+request interpretation instead; your existing schedule remains protected.
+
+For short code examples, see [the planner's presentation examples](AI-PLANNER-DEMO.md).

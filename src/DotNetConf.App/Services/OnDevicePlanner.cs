@@ -125,7 +125,8 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
                 }
             }
             var (speakerNames, _) = interpretation.Ground(conference, request);
-            tools.CapturePreferences(speakerNames, windows, interpretation.RequestsAllSpeakers(request) && speakerNames.Length > 0);
+            var allSpeakerSessions = interpretation.RequestsAllSpeakers(request, speakerNames) && speakerNames.Length > 0;
+            tools.CapturePreferences(speakerNames, windows, allSpeakerSessions);
             var nameErrors = SchedulePlanner.Review(conference, tools.Preferences
                 ?? throw new InvalidDataException("Invalid speaker preferences."), zone, savedIds).Issues
                 .Where(issue => issue.Code is ProposalIssueCode.UnknownSpeaker or ProposalIssueCode.AmbiguousSpeaker)
@@ -180,26 +181,30 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
                 topic = topic with { Text = "none" };
             var topicFilter = topic.ToFilter(conference, request, speakerNames.Length > 0);
             var captured = tools.CapturePreferences(speakerNames, windows,
-                interpretation.RequestsAllSpeakers(request) && speakerNames.Length > 0,
+                allSpeakerSessions,
                 topicFilter);
             if (tools.Preferences is not { } preferences)
                 return new(null, captured);
             cancellationToken.ThrowIfCancellationRequested();
-            // Dispatch model-selected queries explicitly. Native automatic tool calling
-            // in this preview can repeat callbacks indefinitely inside a single request.
-            foreach (var speaker in preferences.RequiredSpeakers)
+            if (state.ToolCalling)
+                await PlannerDiscovery.RunAsync(client, tools, scope.ServiceProvider, request,
+                    loggerFactory.CreateLogger<OnDevicePlanner>(), cancellationToken);
+            else
             {
-                int? skip = 0;
-                while (skip is { } offset)
+                foreach (var speaker in preferences.RequiredSpeakers)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    skip = tools.SpeakerSessionsPage(speaker, offset).NextSkip;
+                    int? skip = 0;
+                    while (skip is { } offset)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        skip = tools.SpeakerSessionsPage(speaker, offset).NextSkip;
+                    }
                 }
+                if (topicFilter is not null)
+                    tools.IncludeCandidates(SchedulePlanner.TopicMatches(conference, preferences).Select(s => s.Id));
+                else if (preferences.RequiredSpeakers.Length == 0)
+                    tools.IncludeCandidates(conference.Sessions.Select(s => s.Id));
             }
-            if (topicFilter is not null)
-                tools.IncludeCandidates(SchedulePlanner.TopicMatches(conference, preferences).Select(s => s.Id));
-            else if (preferences.RequiredSpeakers.Length == 0)
-                tools.IncludeCandidates(conference.Sessions.Select(s => s.Id));
             string[] selectedIds;
             var eligibleIds = tools.EligibleCandidateIds;
             if (preferences.AllSessionsByRequiredSpeakers || topicFilter?.IncludeAll == true || eligibleIds.Length == 0)
