@@ -56,6 +56,90 @@ Five Shell destinations: Home, Sessions, Speakers, My Schedule, Community. Andro
 
 ## Content and states
 
+First-run onboarding is a separate full-screen modal carousel without a
+navigation bar: welcome, personal schedule introduction, and optional session
+reminders. Space Grotesk headings, typed Fluent icons and short explanatory
+copy focus each step on one task. Swipe and persistent Next/Back controls move
+between steps; Skip setup sits alongside each hero icon.
+The middle step becomes the AI builder only after a registered local model
+passes readiness. Otherwise a heart-led introduction explains Sessions and
+My Schedule, without disabled AI inputs or session examples. A small loading
+state explains the check without blocking Next or Skip.
+All three steps share a 34-unit heading, 48-unit Fluent icon, and the
+incumbent hero wash, with 24-unit gutters aligned to the builder.
+The builder uses a sparkle glyph to distinguish AI-assisted planning from the
+welcome's agenda and reminder's bell; the shared in-app builder retains it.
+On iOS and Android the onboarding hero background extends behind the status bar.
+A root MAUI `SafeAreaEdges` layout protects the carousel content; a separate
+background layer paints behind the protected region. No native inset measurement
+or platform-specific hero padding is needed. Bottom protection remains page-owned,
+and the regular in-app builder retains native scroll insets.
+Supporting copy returns to the neutral reading surface. Skip setup sits beside
+each onboarding hero icon, directly on the gradient without a separate bar.
+The hero content follows the actual top safe-area inset. The footer is a
+single compact row: quiet Back, progress dots/count, and a content-width Next
+button (Done on the final step). There is no full-width Continue action.
+Action columns size to their text so large fonts do not split short labels.
+Both action slots reserve matching widths, keeping progress centered even when
+Back is hidden on the first slide.
+Idle reminder status is hidden; permission
+results and recovery remain visible. Labels wrap and content scrolls at larger
+text sizes without disabling font scaling.
+Completion and skipping persist locally only after successful modal dismissal;
+failed dismissal leaves setup retryable, while an interrupted launch remains
+eligible. Reminder subscriptions attach/detach with page visibility.
+Android back moves to the previous step or dismisses from welcome.
+My Schedule opens the regular native planner, which shares the builder view
+but has no onboarding Skip or explore actions.
+Horizontally scrolling example chips above the input fill the editor without
+generating or saving. A small spinner replaces the strip during loading, and an
+atomic list replacement reveals the whole batch together. The local model
+asynchronously selects three to five distinct, real agenda topics per planner
+instance from a shuffled subset of agenda topics. This encourages variety, not
+guaranteed uniqueness. Playful topic labels retain literal topic requests;
+a randomly chosen, unambiguously named scheduled speaker gets a "Team [name]"
+chip that requests all their sessions.
+Invalid output, cancellation or timeout keeps the curated options with explicit
+status rather than blocking input. Provider-specific local
+model availability, privacy boundaries, and the agenda's data source are stated
+explicitly. Suggestions appear progressively as a reviewable shortlist with
+native checkboxes. Matching details are collapsed behind a text action, not an
+AI-debug section ahead of the sessions. Warnings and blocking validation stay
+visible; successful validation and idle-ready boilerplate do not compete with
+the task. Users review the selected sessions and times before confirming.
+After saving, View My Schedule provides the next step. The same semantic theme
+tokens, scalable text, 48-unit actions, and typed Fluent icons apply throughout.
+The planner editor has an explicit iOS accessibility label; Android uses matching
+placeholder/hint text rather than a description, preserving TalkBack editing actions.
+Shortlist checkboxes expose the session title, speakers, time and any blocking
+warning. User-initiated planning and save outcomes are announced once, including
+blocking validation; readiness and individual selection changes are not repeatedly
+announced. Announcements are subscribed only while the view is loaded and gated
+on its active page/slide, so leaving during inference cannot announce over the
+reminder step. Saving freezes the shortlist and confirmation, persists a snapshot
+of the confirmed selection, and reports a reminder-refresh failure separately
+from a failed save.
+
+My Schedule's quiet, full-width Fluent sparkle action sits after the timezone
+and beside the existing Timeline/List workflow. Empty schedules open the personal
+builder; saved schedules open gap planning with "Make room for discovery."
+The existing scrollable builder, shortlist and confirmation controls are reused.
+Free time is bounded by the real agenda on saved-session days, not assumed office
+hours. Optional topics, speakers and clock limits narrow those slots. Retained
+withdrawn bookmarks reserve their last-known times until removed; they are never
+proposals. Changed bookmarks or agenda times invalidate confirmation. Model
+readiness uses Essentials.AI's native status APIs; unsupported devices keep the
+heart-led path, and no model download or cloud request is initiated.
+
+The reminder step explains the benefit before asking for OS notification
+permission, only on an explicit Enable tap. Reminders are device-local and tied
+to saved session starts; no push backend or registration is involved. Denial
+has a visible recovery state and never blocks completion. Settings offers
+enable/retry, disable and system-settings controls. Saved-session edits and app
+activation reconcile owned pending notifications without touching unrelated
+requests. A nearest-60 budget stays below Apple's pending-notification limit;
+OS policy still controls delivery. Fictional content remains labeled in alerts.
+
 Sessions keeps search clearing in the Entry and topic clearing beside the summary
 and in Filters. Clearing topics leaves day selection and search unchanged.
 Neither changes saved sessions. A zero-match result keeps search reachable; day

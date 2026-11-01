@@ -5,10 +5,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.Extensions.AI" Version="10.4.1" />
+    <PackageReference Include="Microsoft.Maui.AI.Attributes" Version="0.1.0-preview.14.26531.2" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.Maui.Essentials" Version="11.0.0-rc.2.26505.5" />
+    <PackageReference Include="Plugin.LocalNotification" Version="14.0.0" />
+    <PackageReference Include="NSubstitute" Version="5.3.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
@@ -16,6 +23,17 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Compile Include="../../src/DotNetConf.App/FirstRunPlannerState.cs" Link="FirstRunPlannerState.cs" />
+    <Compile Include="../../src/DotNetConf.App/Services/PlannerTools.cs" Link="PlannerTools.cs" />
+    <Compile Include="../../src/DotNetConf.App/Services/PlannerToolContext.cs" Link="PlannerToolContext.cs" />
+    <Compile Include="../../src/DotNetConf.App/Services/OnDevicePlanner.cs" Link="OnDevicePlanner.cs" />
+    <Compile Include="../../src/DotNetConf.App/Services/PlannerDiscovery.cs" Link="PlannerDiscovery.cs" />
+    <Compile Include="../../src/DotNetConf.App/Services/IOnDevicePlanner.cs" Link="IOnDevicePlanner.cs" />
+    <Compile Include="../../src/DotNetConf.App/Services/SessionReminderService.cs" Link="SessionReminderService.cs" />
+    <Compile Include="../../src/DotNetConf.App/ViewModels/PlannerViewModel.cs" Link="PlannerViewModel.cs" />
+    <Compile Include="../../src/DotNetConf.App/Services/PlannerJson.cs" Link="PlannerJson.cs" />
+    <Compile Include="../../src/DotNetConf.App/Services/PlannerCatalog.cs" Link="PlannerCatalog.cs" />
+    <Compile Include="../../src/DotNetConf.App/Services/PlannerStartingPoints.cs" Link="PlannerStartingPoints.cs" />
     <ProjectReference Include="../../src/DotNetConf.Core/DotNetConf.Core.csproj" />
     <Compile Include="../../src/DotNetConf.App/Services/SpeakerImageCache.cs" Link="AppHelpers/SpeakerImageCache.cs" />
     <Compile Include="../../src/DotNetConf.App/Platforms/Avalonia/BrowserCache.cs" Link="AppHelpers/BrowserCache.cs" />

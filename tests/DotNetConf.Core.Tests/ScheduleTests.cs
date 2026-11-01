@@ -49,6 +49,51 @@ public sealed class ScheduleTests : IDisposable
     }
 
     [Fact]
+    public async Task AddingProposalPreservesLikesAndIsIdempotentAcrossRestarts()
+    {
+        var service = new ScheduleService(new JsonScheduleStore(FilePath));
+        await service.ToggleAsync("existing");
+        await service.AddAsync(["new", "existing", "new"]);
+        await service.AddAsync(["new"]);
+        var restarted = new ScheduleService(new JsonScheduleStore(FilePath));
+        await restarted.InitializeAsync();
+        Assert.True(restarted.IsSaved("existing"));
+        Assert.True(restarted.IsSaved("new"));
+        Assert.Equal(["existing", "new"], (await new JsonScheduleStore(FilePath).ReadAsync()).Order());
+    }
+
+    [Fact]
+    public async Task ConcurrentProposalAndHeartKeepBothUpdates()
+    {
+        var service = new ScheduleService(new JsonScheduleStore(FilePath));
+        await Task.WhenAll(service.AddAsync(["proposal"]), service.ToggleAsync("heart"));
+        Assert.True(service.IsSaved("proposal"));
+        Assert.True(service.IsSaved("heart"));
+    }
+
+    [Fact]
+    public async Task FailedProposalWriteKeepsExistingMemoryAndDisk()
+    {
+        var service = new ScheduleService(new FailingStore());
+        await service.InitializeAsync();
+        await Assert.ThrowsAsync<IOException>(() => service.AddAsync(["proposal"]));
+        Assert.False(service.IsSaved("proposal"));
+    }
+
+    [Fact]
+    public async Task CancelledProposalDoesNotWrite()
+    {
+        var service = new ScheduleService(new JsonScheduleStore(FilePath));
+        await service.ToggleAsync("existing");
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.AddAsync(["proposal"], cancellation.Token));
+        Assert.True(service.IsSaved("existing"));
+        Assert.False(service.IsSaved("proposal"));
+        Assert.Equal(["existing"], await new JsonScheduleStore(FilePath).ReadAsync());
+    }
+
+    [Fact]
     public async Task WriteFailureDoesNotChangeMemoryState()
     {
         var service = new ScheduleService(new FailingStore());

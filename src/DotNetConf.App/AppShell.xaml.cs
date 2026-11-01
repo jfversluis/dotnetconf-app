@@ -28,6 +28,7 @@ public partial class AppShell : Shell
         Routing.RegisterRoute("speaker-detail", typeof(SpeakerDetailPage));
         Routing.RegisterRoute("about", typeof(AboutPage));
         Routing.RegisterRoute("settings", typeof(SettingsPage));
+        Routing.RegisterRoute("planner", typeof(PlannerPage));
         Routing.RegisterRoute("third-party", typeof(ThirdPartyPage));
         Routing.RegisterRoute("license", typeof(LicensePage));
         Routing.RegisterRoute("community-map", typeof(CommunityEventsPage));

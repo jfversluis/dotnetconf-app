@@ -6,6 +6,7 @@ namespace IconFont.Maui.FluentIcons;
 public static class FluentIconsRegular
 {
     public const string FontFamily = "FluentIcons";
+    public const string Alert24 = "\uf115";
     public const string ArrowExpand24 = "\uf154";
     public const string CalendarAgenda24 = "\uf214";
     public const string ChevronRight24 = "\uf2b1";
@@ -21,6 +22,7 @@ public static class FluentIconsRegular
     public const string Presenter24 = "\uf622";
     public const string Search24 = "\uf690";
     public const string Settings24 = "\uf6aa";
+    public const string Sparkle24 = "\ueb34";
     public const string VideoClip24 = "\uf850";
 }
 

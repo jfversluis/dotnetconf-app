@@ -1,9 +1,139 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace DotNetConf.Core;
 
 public static class Agenda
 {
+    private const string UnsupportedExclusion = "Excluding speakers or topics isn't supported yet. Request only the speakers and topics you want; nothing has been saved.";
+    public static bool MatchesTopics(Session session, PlannerTopicFilter filter) => filter.MatchAll
+        ? filter.Topics.All(t => session.Topics.Contains(t, StringComparer.OrdinalIgnoreCase))
+        : filter.Topics.Any(t => session.Topics.Contains(t, StringComparer.OrdinalIgnoreCase));
+
+    public static string[] MentionedTopics(ConferenceDocument conference, string request)
+    {
+        var topics = conference.Sessions.SelectMany(s => s.Topics).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var matches = topics
+            .Where(t => Regex.IsMatch(request,
+                $$"""(?<![\p{L}\p{N}])(?:{{TopicPattern(t, topics)}})(?![\p{L}\p{N}])""",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100))
+                || FuzzyTopic(request, t)).ToArray();
+        return matches.Where(t => t != ".NET" || !matches.Any(other => other.StartsWith(".NET ", StringComparison.Ordinal))).ToArray();
+    }
+
+    private static bool FuzzyTopic(string request, string topic)
+    {
+        var label = topic.StartsWith(".NET ", StringComparison.Ordinal) ? topic[5..] : topic;
+        var name = label.ToLowerInvariant();
+        if (name.Length < 4 || (name.Length == 4 && !label.All(char.IsUpper)) || name.Any(c => !char.IsLetter(c)))
+            return false;
+        return Regex.Matches(request.ToLowerInvariant(), @"\b\p{L}{4,}\b",
+            RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)).Any(match =>
+        {
+            var word = match.Value;
+            if (name.StartsWith(word, StringComparison.Ordinal))
+                return true;
+            var tolerance = Math.Max(word.Length, name.Length) >= 8 ? 2 : 1;
+            if (Math.Abs(word.Length - name.Length) > tolerance)
+                return false;
+            var previous = Enumerable.Range(0, name.Length + 1).ToArray();
+            for (var i = 1; i <= word.Length; i++)
+            {
+                var current = new int[name.Length + 1];
+                current[0] = i;
+                for (var j = 1; j <= name.Length; j++)
+                    current[j] = Math.Min(Math.Min(current[j - 1] + 1, previous[j] + 1),
+                        previous[j - 1] + (word[i - 1] == name[j - 1] ? 0 : 1));
+                previous = current;
+            }
+            return previous[^1] <= tolerance;
+        });
+    }
+
+    private static string TopicPattern(string topic, string[] topics) => topic switch
+    {
+        "Mobile" => @"mobile(?:\s+(?:development|apps?))?|phone\s+apps?",
+        ".NET MAUI" when !topics.Contains("Mobile", StringComparer.OrdinalIgnoreCase) =>
+            @"MAUI|mobile(?:\s+(?:development|apps?))?|phone\s+apps?",
+        "Performance" => @"performance|(?:code|apps?)\s+(?:run\s+)?faster",
+        "Web" => @"web(?:\s+(?:development|apps?|stuff))?|browser\s+apps?",
+        _ => Regex.Escape(topic.StartsWith(".NET ", StringComparison.Ordinal) ? topic[5..] : topic)
+    };
+
+    public static (string[] Speakers, string Query) GroundPlannerQuery(
+        ConferenceDocument conference, string request, string[] names, string inferred)
+    {
+        ValidatePlannerRequest(request);
+        var entities = names.Concat(conference.Speakers.SelectMany(s => s.Name.Split(' ').Append(s.Name)))
+            .Concat(conference.Sessions.SelectMany(s => s.Topics)).Where(n => !string.IsNullOrWhiteSpace(n))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+        foreach (var entity in entities)
+            if (Regex.IsMatch(request, $@"\b(?:not|no|without)\s+{Regex.Escape(entity)}(?![\p{{L}}\p{{N}}])",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
+                throw new InvalidDataException(UnsupportedExclusion);
+        var topics = conference.Sessions.SelectMany(s => s.Topics).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var topicNames = names.Where(n => topics.Contains(n, StringComparer.OrdinalIgnoreCase)
+            && FindSpeakers(conference, n).Count == 0).ToArray();
+        var fullNames = conference.Speakers.Where(s => Regex.IsMatch(request, $@"\b{Regex.Escape(s.Name)}\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
+            .Select(s => s.Name).ToArray();
+        var remainder = request;
+        foreach (var name in fullNames)
+            remainder = Regex.Replace(remainder, $@"\b{Regex.Escape(name)}\b", "",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        var aliases = conference.Speakers.SelectMany(s => s.Name.Split(' '))
+            .Distinct(StringComparer.OrdinalIgnoreCase).Where(name => Regex.IsMatch(remainder, $@"\b{Regex.Escape(name)}\b",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)));
+        var prefixes = names.Where(name => FindSpeakers(conference, name).Count > 0
+            && Regex.IsMatch(remainder, $@"\b{Regex.Escape(name)}\b",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)));
+        // An extracted, literally mentioned unknown name must reach validation, regardless of phrasing.
+        var unknown = names.Except(topicNames, StringComparer.OrdinalIgnoreCase)
+            .Where(name => !string.IsNullOrWhiteSpace(name) && FindSpeakers(conference, name).Count == 0
+                && Regex.IsMatch(request,
+                    $@"(?<![\p{{L}}\p{{N}}]){string.Join(@"\s+", name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(Regex.Escape))}(?![\p{{L}}\p{{N}}])",
+                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)));
+        var speakers = fullNames.Concat(aliases).Concat(prefixes).Concat(unknown).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var explicitTopics = topics.Where(t => Regex.IsMatch(request,
+                $$"""(?<![\p{L}\p{N}]){{Regex.Escape(t)}}(?![\p{L}\p{N}])""",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
+            .OrderByDescending(t => t.Length).ToArray();
+        // Actual catalog entity kinds and literal topics outrank inferred labels.
+        var query = explicitTopics.FirstOrDefault(t => t.Equals(inferred, StringComparison.OrdinalIgnoreCase))
+            ?? explicitTopics.FirstOrDefault() ?? topicNames.FirstOrDefault() ?? inferred;
+        return (speakers, query);
+    }
+
+    public static void ValidatePlannerRequest(string request)
+    {
+        var exclusions = Regex.Matches(request,
+            @"\b(?:except|exclud(?:e|es|ing)|avoid(?:ing)?)\b|\b(?:don['’]?t|do not|not)\s+(?!want\s+(?:to\s+)?miss\b)(?:want|include|show|suggest|recommend|see|watch|attend|like|interested)\b|\b(?:no|not|without)\s+(?:any\s+)?(?:sessions?|talks?)\b|\b(?:but|and)\s+not\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        foreach (Match exclusion in exclusions)
+        {
+            // A clock cutoff is already supported by availability validation, not a negative entity filter.
+            var temporal = Regex.IsMatch(request[(exclusion.Index + exclusion.Length)..],
+                @"^\s+(?:(?:any\s+)?(?:sessions?|talks?)\s+)?(?:(?:if|that|which)\s+(?:(?:they\s+)?(?:are|start|end|finish)\s+)?|(?:starting|ending|finishing)\s+)?(?:after|before|outside|later\s+than|earlier\s+than)\s+(?:\d|noon\b|midnight\b)",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+            if (!temporal)
+                throw new InvalidDataException(UnsupportedExclusion);
+        }
+    }
+    public static IReadOnlyList<Speaker> FindSpeakers(ConferenceDocument conference, string? name)
+    {
+        var terms = (name ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (terms.Length == 0)
+            return [];
+        var normalized = string.Join(' ', terms);
+        var exact = conference.Speakers.Where(s =>
+            s.Name.Equals(normalized, StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (exact.Length > 0)
+            return exact;
+        return conference.Speakers.Where(s => terms.All(term =>
+            s.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Any(part => part.StartsWith(term, StringComparison.OrdinalIgnoreCase)))).ToArray();
+    }
+
     public static IEnumerable<Session> Search(
         ConferenceDocument conference, string? query, DateOnly? localDay,
         IReadOnlyCollection<string>? topics, TimeZoneInfo timeZone)

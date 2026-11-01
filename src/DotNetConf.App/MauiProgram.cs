@@ -6,8 +6,13 @@ using DotNetConf.Core;
 using IconFont.Maui.FluentIcons;
 using DotNetConf.App.Controls;
 using CommunityToolkit.Maui;
+using Plugin.LocalNotification;
 using Syncfusion.Maui.Toolkit.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.AI;
+#if IOS || ANDROID
+using Microsoft.Maui.Essentials.AI;
+#endif
 #if ANDROID
 using Microsoft.Maui.Platform;
 using Microsoft.Maui.LifecycleEvents;
@@ -44,7 +49,7 @@ public static class MauiProgram
             .UseMauiMaps()
             .ConfigureMauiHandlers(handlers => handlers.AddHandler<AgendaPicker, AgendaPickerHandler>())
 #endif
-            .ConfigureMauiHandlers(handlers => handlers.AddHandler<SchedulePlanner, SchedulePlannerHandler>())
+            .ConfigureMauiHandlers(handlers => handlers.AddHandler<DotNetConf.App.Planner.SchedulePlanner, SchedulePlannerHandler>())
             .UseFluentIconsRegular()
             .UseFluentIconsFilled()
             .ConfigureFonts(fonts =>
@@ -67,42 +72,17 @@ public static class MauiProgram
             handlers.AddHandler<ShellItem, InstantTabsHandler>();
             handlers.AddHandler<SearchResultLayer, SearchResultLayerHandler>();
         });
-        Microsoft.Maui.Handlers.EntryHandler2.Mapper.AppendToMapping(nameof(IEntry.Placeholder), (handler, view) =>
-        {
-            if (view is not SearchEntry)
-                return;
-
-            var layout = handler.PlatformView;
-            layout.BoxBackgroundMode = Google.Android.Material.TextField.TextInputLayout.BoxBackgroundNone;
-            layout.HintEnabled = false;
-            layout.SetPadding(0, 0, 0, 0);
-            layout.Background = null;
-            layout.SetGravity((layout.Gravity & ~Android.Views.GravityFlags.VerticalGravityMask)
-                | Android.Views.GravityFlags.CenterVertical);
-            if (layout.EditText is { } input)
-            {
-                input.SetPadding(0, 0, 0, 0);
-                input.Background = null;
-                input.Hint = view.Placeholder;
-                input.Gravity = (input.Gravity & ~Android.Views.GravityFlags.VerticalGravityMask)
-                    | Android.Views.GravityFlags.CenterVertical;
-            }
-        });
-        Microsoft.Maui.Handlers.EntryHandler2.Mapper.AppendToMapping(nameof(IEntry.PlaceholderColor), (handler, view) =>
-        {
-            if (view is SearchEntry && handler.PlatformView.EditText is { } input && view.PlaceholderColor is { } color)
-                input.SetHintTextColor(color.ToPlatform());
-        });
-#elif IOS
-        Microsoft.Maui.Handlers.EntryHandler.Mapper.AppendToMapping("AgendaSearch", (handler, view) =>
-        {
-            if (view is not SearchEntry)
-                return;
-
-            handler.PlatformView.BorderStyle = UIKit.UITextBorderStyle.None;
-        });
 #endif
-
+        builder.UseLocalNotification(options => options.AddAndroid(android => android.AddChannel(
+            new Plugin.LocalNotification.Core.Models.AndroidOption.AndroidNotificationChannelRequest
+            {
+                Id = SessionReminderService.ChannelId,
+                Name = "Session reminders",
+                Description = "Reminders when sessions in My Schedule begin"
+            })));
+        builder.Services.AddSingleton<SessionReminderService>();
+        builder.Services.AddSingleton<ISessionReminderUpdates>(services => services.GetRequiredService<SessionReminderService>());
+        builder.Services.AddTransient<OnboardingPage>();
         builder.Services.AddSingleton<IConferenceDataSource, ConferenceMetadataDataSource>();
         builder.Services.AddSingleton(_ => new HttpClient { Timeout = TimeSpan.FromSeconds(20) });
         builder.Services.AddKeyedSingleton<HttpClient>("speaker-portraits", (_, _) =>
@@ -113,6 +93,7 @@ public static class MauiProgram
             services.GetRequiredService<IConferenceDataSource>(), services.GetRequiredService<HttpClient>(),
             services.GetService<IConferenceCacheStore>() ??
                 new FileConferenceCacheStore(Path.Combine(FileSystem.AppDataDirectory, "agenda-cache.json"))));
+        builder.Services.AddKeyedSingleton<IConferenceDataSource, ConferenceAgendaDataSource>("agenda");
 #if !AVALONIA
         builder.Services.AddSingleton<IConnectivity>(_ => Connectivity.Current);
 #endif
@@ -125,6 +106,38 @@ public static class MauiProgram
         builder.Services.AddSingleton<DetailNavigationService>();
         builder.Services.TryAddSingleton(Browser.Default);
         builder.Services.AddSingleton<ConferenceViewModel>();
+#if IOS
+        if (OperatingSystem.IsIOSVersionAtLeast(26))
+        {
+#pragma warning disable MAUIAI0001
+            builder.Services.AddTransient<IChatClient>(services =>
+            {
+                if (!OperatingSystem.IsIOSVersionAtLeast(26))
+                    throw new PlatformNotSupportedException("Apple Intelligence requires iOS 26 or later.");
+                return new AppleIntelligenceChatClient(services.GetRequiredService<ILoggerFactory>(), services);
+            });
+#pragma warning restore MAUIAI0001
+        }
+#endif
+#if ANDROID
+        if (OperatingSystem.IsAndroidVersionAtLeast(26))
+        {
+#pragma warning disable MAUIAI0001
+            builder.Services.AddTransient<IChatClient>(_ => new GeminiNanoChatClient());
+#pragma warning restore MAUIAI0001
+        }
+#endif
+        builder.Services.AddSingleton<IPlannerModelStatus, OnDeviceModelStatus>();
+        // Inactive cloud-provider example; setup and privacy requirements: docs/AI-PLANNER-DEMO.md.
+        // builder.Services.AddTransient<IChatClient>(_ =>
+        //     new OpenAI.OpenAIClient(apiKey).GetChatClient(modelId).AsIChatClient());
+        // builder.Services.AddTransient<IPlannerModelStatus, CloudPlannerModelStatus>();
+        builder.Services.AddSingleton<OnDevicePlanner>();
+        builder.Services.AddSingleton<IOnDevicePlanner>(services => services.GetRequiredService<OnDevicePlanner>());
+        builder.Services.AddSingleton<IPlannerScheduleUpdates>(services => services.GetRequiredService<ConferenceViewModel>());
+        builder.Services.AddScoped<PlannerTools>();
+        builder.Services.AddTransient<PlannerViewModel>();
+        builder.Services.AddTransient<PlannerPage>();
         builder.Services.AddSingleton<AppShell>();
         builder.Services.AddTransient<HomePage>();
         builder.Services.AddTransient<SessionsPage>();

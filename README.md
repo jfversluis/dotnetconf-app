@@ -13,10 +13,45 @@ Your .NET Conf, in your pocket. An **unofficial companion app for iOS and Androi
 - **Make room for details.** On wide windows, Sessions and Speakers keep the list on the left and details on the right. On supported foldables, an active division separates the panes; a horizontal division stacks them. Narrow windows or very large text retain native navigation, and resizing carries your selected details with you.
 - **Find your community.** Discover ways to watch together, meet local presenters, or organize a gathering. No community events ship with the app, and an official event feed is not connected yet. The empty event list links to the official website; the map stays hidden without events.
 - **Build your schedule.** Tap a heart to save a session. My Schedule shows only your saved sessions, as a timeline or a plain list. Only days with saved sessions appear on the timeline; overlaps are marked with how long they clash, topic filters fade what you don't need, and during the conference a live marker shows where you are. Swipe the topic row on narrow or height-constrained screens; taller wide windows show wrapped filters. The decorative headline gives way when space is tight or text is large. Wide windows can show session details beside your schedule; supported vertical folds keep the panes clear of the hinge. Compact windows, horizontal folds, and very large text retain native navigation. Pinch or use the zoom buttons to see more or less of the day. Your choices stay on your device.
+- **Plan with on-device AI.** Describe your interests, must-see speakers, and available time to get a personal shortlist from the real agenda. Already have a schedule? Find talks that fit in the gaps.
 - **See times that make sense to you.** Session times use your device's local time zone.
 - **Feel at home.** Follow your device's appearance or choose Light or Dark in Settings. The app supports larger text.
 
 The agenda opens immediately from the last downloaded update. No sessions or speaker profiles ship with the app: the first launch needs an internet connection to download them. The Microsoft agenda refreshes in the background without interrupting browsing. To check for updates yourself, pull down on Home, Sessions, Speakers, or the Schedule screen. A keyboard- and screen-reader-accessible alternative is available under Settings → About → Check for agenda updates. If an update fails, choose Retry. Downloaded data and your saved choices remain available offline.
+
+## Plan with on-device AI
+
+Tell the app what you want to learn, who you don't want to miss, or when you're
+free, and discover a shortlist from the downloaded .NET Conf agenda. Need
+inspiration? Playful starting points can highlight topics and speakers from the agenda.
+Once you've saved some talks, **Fill schedule gaps** helps you find more on
+those same conference days without moving your existing choices.
+
+Open **My Schedule** and choose **Build a personal schedule**, or **Fill
+schedule gaps** once you've saved sessions. You can also try the planner during
+the welcome experience when a local model is available. Review the suggestions
+and their times, check the matching details, and choose what to add. AI can
+misunderstand, so you can edit your request and try again; nothing is saved
+until you confirm.
+
+Planning runs on your device with no account or cloud AI fallback. It requires a
+downloaded agenda and a ready local model: Apple Intelligence on supported
+iOS 26+ devices, or Gemini Nano on compatible Android 8+ devices. Availability
+depends on the device and its model settings. You can always browse and save
+sessions with hearts if the planner is unavailable.
+
+The planner uses MAUI Labs'
+[Essentials.AI](https://github.com/dotnet/maui-labs/blob/main/src/AI/README.md)
+and [AI Attributes](https://github.com/dotnet/maui-labs/blob/main/src/AIExtensions/Microsoft.Maui.AI.Attributes/README.md).
+Explore [what you can ask and how to get started](docs/AI-PLANNER.md).
+
+### Session reminders
+
+Don't miss a saved talk: opt in to local reminders during setup or in Settings.
+The app asks for notification permission only when you choose to enable them
+and schedules reminders for up to your next 60 saved sessions. Your device's
+notification settings and background restrictions can affect delivery. You can
+turn reminders off in Settings; no account or push service is required.
 
 ## Availability
 

@@ -294,7 +294,7 @@ public sealed class ConferenceViewModelTests
         new(repository, schedule ?? new ScheduleService(store), new DetailNavigationService(), null!, connectivity,
             new SpeakerImageCache(new HttpClient(), Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()),
                 NullLogger<SpeakerImageCache>.Instance),
-            NullLogger<ConferenceViewModel>.Instance);
+            NullLogger<ConferenceViewModel>.Instance, new TestReminders());
 
     private static ConferenceSnapshot Snapshot() => new(new ConferenceDocument
     {
