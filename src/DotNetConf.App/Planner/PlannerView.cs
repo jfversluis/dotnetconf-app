@@ -21,6 +21,7 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using DotNetConf.App.ViewModels;
+using DotNetConf.App.Services;
 using DotNetConf.Core;
 
 /// <summary>
@@ -43,13 +44,12 @@ public sealed class PlannerView : UserControl
     private const double RulerWidth = 80;
     private const double MaxContentWidth = 860;
     private const double SideMargin = 16;
-    // From this width the topics wrap; narrower screens swipe through them in one row.
-    private const double WideLayout = 720;
     // The overview rail and a gap before it, kept clear on the right of the timeline.
     private const double RailSpace = OverviewRail.RailWidth + 6;
     private const double TopPadding = 4;
     private const double BottomPadding = 16;
     private const double DayHeaderHeight = 44;
+    private const double StackedDayHeaderHeight = 68;
     private const double DayGap = 28;
     private const double LaneGap = 8;
     private const double MinLaneWidth = 100;
@@ -85,6 +85,8 @@ public sealed class PlannerView : UserControl
     private readonly TextBlock status;
     private readonly Ellipse statusDot;
     private readonly StackPanel zoomButtons;
+    private readonly Grid statusBar;
+    private readonly StackPanel state;
     private readonly RelayCommand zoomOutCommand;
     private readonly RelayCommand zoomInCommand;
     private readonly ScrollViewer scroller;
@@ -127,6 +129,8 @@ public sealed class PlannerView : UserControl
     private double contentWidth;
     private double cardsLeft;
     private double cardsWidth;
+    private double dayHeaderHeight = DayHeaderHeight;
+    private string? selectedId;
     private int matchCount;
 
     private NowIndicator? nowIndicator;
@@ -161,18 +165,19 @@ public sealed class PlannerView : UserControl
         // A live region, so screen readers hear the status when it changes; see UpdateStatus.
         AutomationProperties.SetLiveSetting(status, AutomationLiveSetting.Polite);
         zoomButtons = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(10, 0, 0, 0) };
-        var statusBar = new Grid
+        statusBar = new Grid
         {
+            RowDefinitions = [new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Auto)],
             ColumnDefinitions = [new ColumnDefinition(1, GridUnitType.Star), new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Auto)],
             Margin = new Thickness(SideMargin + 4, 0, SideMargin, 12),
         };
-        var state = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Children = { statusDot, status } };
+        state = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Children = { statusDot, status } };
         Grid.SetColumn(state, 1);
         Grid.SetColumn(zoomButtons, 2);
         statusBar.Children.AddRange([summary, state, zoomButtons]);
 
         message = new TextBlock { FontFamily = PlannerTheme.BodyFont, Margin = new Thickness(SideMargin + 8, 24), IsVisible = false };
-        canvas = new TimelineCanvas { Background = Brushes.Transparent };
+        canvas = new TimelineCanvas { Background = Brushes.Transparent, VerticalAlignment = VerticalAlignment.Top };
         // Cards take their tab order from their place on the timeline, not from the pool they were recycled from.
         KeyboardNavigation.SetTabNavigation(canvas, KeyboardNavigationMode.Local);
         canvas.Children.AddRange([backdrop, route, message]);
@@ -267,6 +272,29 @@ public sealed class PlannerView : UserControl
     }
 
     /// <summary>
+    /// Shares the native app's measured text scale, capped so the full timeline layout stays usable.
+    /// </summary>
+    public void SetTextScale(double value)
+    {
+        if (!double.IsFinite(value) || value <= 0)
+            throw new ArgumentOutOfRangeException(nameof(value));
+        var scale = Math.Clamp(value, 1, MaxTextScale);
+        if (scale == textScale)
+            return;
+        textScale = scale;
+        textScaler.LayoutTransform = scale > 1 ? new ScaleTransform(scale, scale) : null;
+        UpdateChromeLayout();
+        SetBottomInset(bottomInset);
+    }
+
+    public void SetSelectedId(string? value)
+    {
+        selectedId = value;
+        foreach (var card in cards.Values)
+            card.SetSelected(card.Session?.Id == value && value is not null);
+    }
+
+    /// <summary>
     /// The saved sessions the timeline is built from, as a snapshot rebuilt whenever the schedule changes.
     /// </summary>
     public void SetSessions(IReadOnlyList<SessionViewModel>? value)
@@ -336,8 +364,21 @@ public sealed class PlannerView : UserControl
     protected override void OnSizeChanged(SizeChangedEventArgs e)
     {
         base.OnSizeChanged(e);
-        chipScroller.HorizontalScrollBarVisibility = scroller.Bounds.Width >= WideLayout ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Hidden;
+        UpdateChromeLayout();
         Relayout();
+    }
+
+    private void UpdateChromeLayout()
+    {
+        chipScroller.HorizontalScrollBarVisibility = ScheduleLayout.ShouldWrapTopics(Bounds.Width, Bounds.Height, textScale)
+            ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Hidden;
+        var stacked = ScheduleLayout.ShouldStackTimelineLabels(Bounds.Width / textScale - 2 * SideMargin);
+        Grid.SetColumnSpan(summary, stacked ? 3 : 1);
+        Grid.SetRow(state, stacked ? 1 : 0);
+        Grid.SetColumn(state, stacked ? 0 : 1);
+        Grid.SetColumnSpan(state, stacked ? 2 : 1);
+        Grid.SetRow(zoomButtons, stacked ? 1 : 0);
+        statusBar.RowSpacing = stacked ? 4 : 0;
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
@@ -413,17 +454,9 @@ public sealed class PlannerView : UserControl
         watchedTopics.Clear();
     }
 
-    // Read when the planner comes on screen and with each clock tick, so changes in the system settings apply
-    // while it is showing.
+    // Motion preferences are read on appearance and with each clock tick.
     private void ApplyAccessibility()
     {
-        var scale = ReadTextScale();
-        if (scale != textScale)
-        {
-            textScale = scale;
-            textScaler.LayoutTransform = scale > 1 ? new ScaleTransform(scale, scale) : null;
-            SetBottomInset(bottomInset);
-        }
         reduceMotion = ReadReduceMotion();
         nowIndicator?.SetRipple(!reduceMotion);
         foreach (var style in motion)
@@ -565,24 +598,37 @@ public sealed class PlannerView : UserControl
         var width = scroller.Bounds.Width;
         if (width <= 0 || layout is not { } timeline)
             return;
+        var previousHeaderHeight = dayHeaderHeight;
+        var previousOffset = scroller.Offset.Y;
+        var anchorDay = dayTops.Length == timeline.Days.Count && dayTops.Length > 0
+            ? Math.Min(FirstDayEndingAfter(previousOffset), dayTops.Length - 1) : -1;
+        var previousDayTop = anchorDay >= 0 ? dayTops[anchorDay] : 0;
         contentWidth = Math.Min(MaxContentWidth, width - SideMargin - RailSpace);
         // Centered, unless that would put the timeline under the overview rail.
         contentLeft = Math.Min((width - contentWidth) / 2, width - RailSpace - contentWidth);
         cardsLeft = contentLeft + RulerWidth;
         cardsWidth = contentWidth - RulerWidth;
+        dayHeaderHeight = ScheduleLayout.ShouldStackTimelineLabels(contentWidth) ? StackedDayHeaderHeight : DayHeaderHeight;
         dayTops = new double[timeline.Days.Count];
         var dayStarts = new double[timeline.Days.Count];
         var y = TopPadding;
         for (var day = 0; day < timeline.Days.Count; day++)
         {
             dayTops[day] = y;
-            dayStarts[day] = y + DayHeaderHeight;
-            y += DayHeaderHeight + timeline.Days[day].Length * minuteHeight;
+            dayStarts[day] = y + dayHeaderHeight;
+            y += dayHeaderHeight + timeline.Days[day].Length * minuteHeight;
             if (day + 1 < timeline.Days.Count)
                 y += DayGap;
         }
         canvas.Width = width;
         canvas.Height = y + BottomPadding + bottomInset / textScale;
+        if (anchorDay >= 0 && previousHeaderHeight != dayHeaderHeight && previousOffset > previousDayTop)
+        {
+            var headerShift = previousOffset >= previousDayTop + previousHeaderHeight
+                ? dayHeaderHeight - previousHeaderHeight : 0;
+            scroller.Offset = new Vector(0, Math.Max(0,
+                previousOffset + dayTops[anchorDay] - previousDayTop + headerShift));
+        }
         Place(backdrop, 0, 0, width, canvas.Height);
         backdrop.Column = (contentLeft, contentWidth, RulerWidth);
         Place(route, cardsLeft - RouteLayer.GutterWidth, 0, RouteLayer.GutterWidth, canvas.Height);
@@ -629,9 +675,10 @@ public sealed class PlannerView : UserControl
         var scrollTop = scroller.Offset.Y;
         // The day at the top of the screen keeps its header there until its last sessions push it up.
         var pinned = scrollTop > dayTops[day] && (day + 1 == dayTops.Length || scrollTop < dayTops[day + 1]);
-        var pushedAt = top + timelineDay.Length * minuteHeight - DayHeaderHeight;
+        var pushedAt = top + timelineDay.Length * minuteHeight - dayHeaderHeight;
         var header = headers.Show(day, () => new DayHeader(timelineDay, theme), contentLeft,
-            pinned ? Math.Min(scrollTop, pushedAt) : dayTops[day], contentWidth, DayHeaderHeight + DayHeader.FadeHeight);
+            pinned ? Math.Min(scrollTop, pushedAt) : dayTops[day], contentWidth, dayHeaderHeight + DayHeader.FadeHeight);
+        header.Fit(dayHeaderHeight == StackedDayHeaderHeight);
         header.SetPinned(pinned, Math.Min(scrollTop - dayTops[day], pushedAt - scrollTop) / DayHeader.FadeHeight);
         header.NaturalTop = dayTops[day];
 
@@ -746,6 +793,7 @@ public sealed class PlannerView : UserControl
         }
         var topic = session.Model.Topics.Count == 0 ? 0 : topicIndex.GetValueOrDefault(session.Model.Topics[0]);
         card.Bind(session, theme.TopicColor(topic), !Matches(session), TimeState(session.Model, Clock.GetUtcNow()));
+        card.SetSelected(session.Id == selectedId);
         // Items are numbered by day and start time; the heart shares its card's number, so it follows the card.
         KeyboardNavigation.SetTabIndex(card, item);
         KeyboardNavigation.SetTabIndex(card.Heart, item);
@@ -835,7 +883,7 @@ public sealed class PlannerView : UserControl
     {
         if (!focusFromKeyboard || e.TargetObject is not InputElement { IsFocused: true })
             return;
-        var above = DayHeaderHeight + DayHeader.FadeHeight;
+        var above = dayHeaderHeight + DayHeader.FadeHeight;
         var rect = e.TargetRect;
         e.TargetRect = new Rect(rect.X, rect.Y - above, rect.Width, rect.Height + above + bottomInset);
     }
@@ -1084,7 +1132,7 @@ public sealed class PlannerView : UserControl
         QueueRebuild();
     }
 
-    private double DayTop(int day) => dayTops[day] + DayHeaderHeight;
+    private double DayTop(int day) => dayTops[day] + dayHeaderHeight;
 
     private int FirstDayEndingAfter(double y)
     {
@@ -1134,20 +1182,6 @@ public sealed class PlannerView : UserControl
                 },
             },
         };
-
-    // How much larger than standard the user wants text, which Avalonia doesn't report, capped so the timeline keeps its
-    // shape. Linux and the browser use the default.
-    private static double ReadTextScale()
-    {
-#if ANDROID
-        var scale = Android.App.Application.Context.Resources?.Configuration?.FontScale ?? 1;
-#elif IOS
-        var scale = (double)UIKit.UIFontMetrics.DefaultMetrics.GetScaledValue(1);
-#else
-        var scale = 1.0;
-#endif
-        return Math.Clamp(scale, 1, MaxTextScale);
-    }
 
     private static bool ReadReduceMotion()
     {

@@ -2,6 +2,7 @@ using DotNetConf.App.Pages;
 using DotNetConf.App.Services;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
+using System.Reflection;
 
 namespace DotNetConf.App.Tests;
 
@@ -59,5 +60,60 @@ public sealed class AdaptiveConferencePageTests
 
         public static void MoveHeader(ContentView pinned, ContentView scrolling, bool scrollHeader) =>
             MoveListHeader(pinned, scrolling, scrollHeader);
+    }
+
+    [Theory]
+    [InlineData(false, 413.5, 40, 867, true)]
+    [InlineData(true, 400, 40, 1000, false)]
+    [InlineData(false, 300, 40, 867, false)]
+    public void SchedulePolicyIsAppliedBeforePaneVisibilityAndSizing(
+        bool stacked, double first, double gap, double width, bool expectedSplit)
+    {
+        var page = new ScheduleHost();
+        var candidate = new DetailLayout(true, stacked, new(first), new(gap), GridLength.Star);
+        typeof(AdaptiveConferencePage).GetMethod("UpdateLayoutPolicy", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(page, [width, 1000d, 1d, candidate]);
+        Assert.Equal(expectedSplit, page.CanShowInline);
+        var panes = Assert.IsType<Grid>(page.Content);
+        var detail = Assert.Single(panes.Children.OfType<Grid>(), child => child.AutomationId == "detail-pane");
+        Assert.Equal(expectedSplit, detail.IsVisible);
+        Assert.Equal(0, Grid.GetRow(detail));
+        Assert.Equal(expectedSplit ? gap : 0, panes.ColumnDefinitions[1].Width.Value);
+    }
+
+    private sealed class ScheduleHost : AdaptiveConferencePage
+    {
+        public ScheduleHost() : base(null!)
+        {
+            Content = new Grid();
+            ConfigureDetails(DetailKind.Session, new DetailNavigationService());
+        }
+
+        protected override DetailLayout AdaptDetailLayout(DetailLayout layout, double width, double textScale) =>
+            ScheduleLayout.ForDetails(layout, width, textScale);
+    }
+
+    [Theory]
+    [InlineData(1000, false, 0, true)]
+    [InlineData(867, false, 40, true)]
+    [InlineData(426.67, false, 0, false)]
+    [InlineData(1000, true, 40, false)]
+    public void ForegroundDetailsUseCurrentWindowWidthRatherThanCompactBackgroundMeasurement(
+        double windowWidth, bool stacked, double gap, bool expectedSplit)
+    {
+        var page = new ScheduleHost();
+        var panes = Assert.IsType<Grid>(page.Content);
+        panes.Arrange(new Rect(0, 0, 426.67, 724));
+        Assert.Equal(426.67, panes.Width);
+        var candidate = new DetailLayout(true, stacked,
+            gap > 0 ? new GridLength(413.5) : GridLength.Star, new(gap), GridLength.Star);
+
+        typeof(AdaptiveConferencePage).GetMethod("UpdateLayoutPolicy", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(page, [windowWidth, 1000d, 1d, candidate]);
+
+        Assert.Equal(expectedSplit, page.CanShowInline);
+        var detail = Assert.Single(panes.Children.OfType<Grid>(), child => child.AutomationId == "detail-pane");
+        Assert.Equal(expectedSplit, detail.IsVisible);
+        Assert.Equal(expectedSplit ? gap : 0, panes.ColumnDefinitions[1].Width.Value);
     }
 }

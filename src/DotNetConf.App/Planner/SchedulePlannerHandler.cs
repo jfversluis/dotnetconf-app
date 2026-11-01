@@ -20,6 +20,8 @@ public sealed class SchedulePlannerHandler() : AvaloniaControlHandler<SchedulePl
             [nameof(SchedulePlanner.Topics)] = (handler, view) => handler.AvaloniaControl?.SetTopics(view.Topics),
             [nameof(SchedulePlanner.ClearTopicsCommand)] = (handler, view) => handler.AvaloniaControl?.SetClearTopicsCommand(view.ClearTopicsCommand),
             [nameof(SchedulePlanner.BottomInset)] = (handler, view) => handler.AvaloniaControl?.SetBottomInset(view.BottomInset),
+            [nameof(SchedulePlanner.TextScale)] = (handler, view) => handler.AvaloniaControl?.SetTextScale(view.TextScale),
+            [nameof(SchedulePlanner.SelectedId)] = (handler, view) => handler.AvaloniaControl?.SetSelectedId(view.SelectedId),
             [nameof(SchedulePlanner.Theme)] = MapTheme,
         };
 

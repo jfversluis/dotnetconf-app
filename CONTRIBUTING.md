@@ -40,6 +40,35 @@ The current RC2/Xcode 27.0 build pairing does not claim Xcode 27.1 build support
 
 The current RC2 build was inspected on iPhone and iPhone Duo simulators. Settings and detail/document pages respect system chrome through shared safe-area controls, not fixed offsets. Local validation used installed Xcode 27.1 with `-p:ValidateXcodeVersion=false`, bypassing the workload-version check; this is not the workload's supported pairing or release certification. Physical-device execution and folding transitions remain release gates.
 
+### Adaptive schedule timeline
+
+My Schedule retains its single Avalonia timeline and native List alternative.
+Topic filters wrap only when the planner has at least 720 by 600 unscaled layout
+units after its text transform; otherwise they use the existing horizontal
+swipe row. The native decorative headline is hidden below 600 page units per
+measured text-scale unit, without hiding mode controls, time-zone information,
+or update errors. Below 340 units of available timeline-label width, the saved
+count/status and day/date labels stack instead of clipping. These policies
+re-evaluate on resize and text-size changes. The same text-scale monitor drives the embedded planner
+immediately, capped at its existing 1.6 layout scale rather than polling
+platform font settings. Short saved agendas align to the top of the timeline
+viewport rather than leaving a centered blank strip above the first day.
+
+My Schedule reuses adaptive native detail navigation. A usable vertical
+division places the timeline or saved list on the left and session/speaker
+details on the right, preserving the reported gap. Flat wide windows use equal
+panes without a gap. Horizontal divisions never stack schedule/detail panes.
+The timeline needs at least 340 and the detail pane at least 300
+device-independent units per measured text-scale unit; narrower panes fall back
+to native detail navigation. The shared detail policy also retains its minimum
+window height. While native details are foregrounded, the schedule policy uses
+the current window width, not the hidden host's last measured width.
+Selection survives these transitions, and the selected timeline
+card and saved-list row are highlighted only while details are inline.
+The same planner instance retains filters, zoom and scroll position; resizing
+between stacked and inline day labels adjusts the scroll anchor for their
+different header heights.
+
 ### Adaptive session and speaker details
 
 Sessions and Speakers use the shared `AdaptiveConferencePage` Grid and platform

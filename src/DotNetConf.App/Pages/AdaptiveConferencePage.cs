@@ -123,7 +123,7 @@ public class AdaptiveConferencePage : ConferencePage
                 Children =
                 {
                     new Label { Text = title, Style = (Style)Application.Current!.Resources["Subheading"] },
-                    new Label { Text = "Select from the list to explore the details here.",
+                    new Label { Text = DetailSelectionHint,
                         Style = (Style)Application.Current.Resources["Secondary"] }
                 }
             };
@@ -173,7 +173,10 @@ public class AdaptiveConferencePage : ConferencePage
         if (panes is null || detailPane is null || viewport is null)
             return;
 
-        var layout = foregroundLayout ?? viewport.GetLayout(windowWidth, windowHeight, textScale);
+        // A hidden host retains its old measurement while native details resize in the foreground.
+        var width = foregroundLayout.HasValue ? windowWidth : panes.Width > 0 ? panes.Width : windowWidth;
+        var layout = AdaptDetailLayout(foregroundLayout ?? viewport.GetLayout(windowWidth, windowHeight, textScale),
+            width, textScale);
         CanShowInline = layout.IsSplit;
         detailPane.IsVisible = CanShowInline;
         Grid.SetRow(detailPane, layout.IsStacked ? 2 : 0);
@@ -193,6 +196,10 @@ public class AdaptiveConferencePage : ConferencePage
         UpdateListHeader();
         UpdateSearchViewport();
     }
+
+    protected virtual DetailLayout AdaptDetailLayout(DetailLayout layout, double width, double textScale) => layout;
+
+    protected virtual string DetailSelectionHint => "Select from the list to explore the details here.";
 
     protected void ConfigureSearchViewport(AgendaSearchField field, Grid layout, CollectionView results)
     {

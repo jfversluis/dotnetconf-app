@@ -9,6 +9,15 @@ namespace DotNetConf.App.Planner;
 /// </summary>
 public sealed class SchedulePlanner : View
 {
+    public static readonly BindableProperty SelectedIdProperty = BindableProperty.Create(
+        nameof(SelectedId), typeof(string), typeof(SchedulePlanner), null);
+
+    public string? SelectedId
+    {
+        get => (string?)GetValue(SelectedIdProperty);
+        set => SetValue(SelectedIdProperty, value);
+    }
+
     public static readonly BindableProperty SessionsProperty = BindableProperty.Create(
         nameof(Sessions), typeof(IReadOnlyList<SessionViewModel>), typeof(SchedulePlanner), Array.Empty<SessionViewModel>());
 
@@ -20,6 +29,10 @@ public sealed class SchedulePlanner : View
 
     public static readonly BindableProperty BottomInsetProperty = BindableProperty.Create(
         nameof(BottomInset), typeof(double), typeof(SchedulePlanner), 0d);
+
+    public static readonly BindableProperty TextScaleProperty = BindableProperty.Create(
+        nameof(TextScale), typeof(double), typeof(SchedulePlanner), 1d,
+        validateValue: (_, value) => value is double scale && double.IsFinite(scale) && scale > 0);
 
     public static readonly BindableProperty ThemeProperty = BindableProperty.Create(
         nameof(Theme), typeof(AppTheme), typeof(SchedulePlanner), AppTheme.Unspecified);
@@ -61,6 +74,15 @@ public sealed class SchedulePlanner : View
     {
         get => (double)GetValue(BottomInsetProperty);
         set => SetValue(BottomInsetProperty, value);
+    }
+
+    /// <summary>
+    /// The app's measured system text scale. The timeline caps its full-layout transform at 1.6.
+    /// </summary>
+    public double TextScale
+    {
+        get => (double)GetValue(TextScaleProperty);
+        set => SetValue(TextScaleProperty, value);
     }
 
     /// <summary>
