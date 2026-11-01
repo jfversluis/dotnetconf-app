@@ -20,8 +20,8 @@
     <MauiEnableXamlCBindingWithSourceCompilation>true</MauiEnableXamlCBindingWithSourceCompilation>
     <ApplicationTitle>.NET Conf</ApplicationTitle>
     <ApplicationId>dev.jfversluis.dotnetconf</ApplicationId>
-    <ApplicationDisplayVersion>0.1.0</ApplicationDisplayVersion>
-    <ApplicationVersion>3</ApplicationVersion>
+    <ApplicationDisplayVersion>0.2.0</ApplicationDisplayVersion>
+    <ApplicationVersion>4</ApplicationVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
     <!-- Essentials.AI preview 8's native Gemini Nano library requires API 26. -->
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">26.0</SupportedOSPlatformVersion>
