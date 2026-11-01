@@ -87,8 +87,33 @@ public sealed class ReminderLifecycleTests
         await notifications.DidNotReceive().Show(Arg.Any<NotificationRequest>());
     }
 
+    [Fact]
+    public async Task ACancelledSharedAgendaRefreshPreservesRemindersAndCanBeRetried()
+    {
+        var repository = Substitute.For<IConferenceRepository>();
+        var empty = new ConferenceSnapshot(new(), null, null, false, []);
+        repository.LoadAsync(Arg.Any<CancellationToken>()).Returns(empty);
+        using var cancelledRefresh = new CancellationTokenSource();
+        cancelledRefresh.Cancel();
+        repository.RefreshAsync(Arg.Any<CancellationToken>()).Returns(
+            Task.FromCanceled<ConferenceSnapshot>(cancelledRefresh.Token), Task.FromResult(empty));
+        var (service, notifications, preferences, store) = Create(new ConferenceAgendaDataSource(repository));
+        preferences.Set(Key, true);
+        notifications.GetPendingNotificationList().Returns([
+            new() { NotificationId = 42, ReturningData = "session-reminder:old" },
+            new() { NotificationId = 99, ReturningData = "another-feature" }
+        ]);
+
+        Assert.False(await service.RefreshAsync());
+        Assert.Contains("Couldn't update", service.Status);
+        notifications.DidNotReceive().Cancel(Arg.Any<int[]>());
+        Assert.Equal(["future"], await store.ReadAsync());
+        Assert.True(await service.RefreshAsync().WaitAsync(TimeSpan.FromSeconds(2)));
+        notifications.DidNotReceive().Cancel(Arg.Is<int[]>(ids => ids.Contains(99)));
+    }
+
     private static (SessionReminderService Service, INotificationService Notifications,
-        IPreferences Preferences, IScheduleStore Store) Create()
+        IPreferences Preferences, IScheduleStore Store) Create(IConferenceDataSource? source = null)
     {
         var preferences = Substitute.For<IPreferences>();
         var enabled = false;
@@ -108,7 +133,7 @@ public sealed class ReminderLifecycleTests
         });
         var store = Substitute.For<IScheduleStore>();
         store.ReadAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult<IReadOnlyCollection<string>>(["future"]));
-        return (new(data, new ScheduleService(store), preferences, notifications,
+        return (new(source ?? data, new ScheduleService(store), preferences, notifications,
             NullLogger<SessionReminderService>.Instance), notifications, preferences, store);
     }
 }

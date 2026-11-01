@@ -36,7 +36,7 @@
                                        HeightRequest="24" WidthRequest="24" HorizontalOptions="Start"
                                        SemanticProperties.Description="Preparing starting points"
                                        AutomationId="planner-starting-points-loading" />
-                    <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Default" IsVisible="{Binding ShowStartingPoints}"
+                    <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Default"
                                 AutomationId="planner-starting-points">
                         <HorizontalStackLayout BindableLayout.ItemsSource="{Binding StartingPoints}">
                             <BindableLayout.ItemTemplate>
@@ -49,8 +49,6 @@
                             </BindableLayout.ItemTemplate>
                         </HorizontalStackLayout>
                     </ScrollView>
-                    <Label Text="{Binding StartingPointsStatus}" IsVisible="{Binding HasStartingPointsStatus}"
-                           Style="{StaticResource Secondary}" FontSize="12" AutomationId="planner-starting-points-status" />
                 </VerticalStackLayout>
                 <VerticalStackLayout Spacing="8">
                     <Label Text="{Binding RequestLabel}" Style="{StaticResource Subheading}" />

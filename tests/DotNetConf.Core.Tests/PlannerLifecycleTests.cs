@@ -8,7 +8,7 @@ namespace DotNetConf.Core.Tests;
 public sealed class PlannerLifecycleTests
 {
     private static async Task<(PlannerViewModel ViewModel, IOnDevicePlanner Planner,
-        IPlannerScheduleUpdates Updates, DelayedStore Store)> CreateAsync()
+        IPlannerScheduleUpdates Updates, DelayedStore Store, IConferenceDataSource Data)> CreateAsync()
     {
         await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
         var document = await ConferenceJson.ReadAsync(stream);
@@ -30,13 +30,13 @@ public sealed class PlannerLifecycleTests
         await vm.InitializeAsync();
         vm.Request = "Mobile";
         await vm.GenerateCommand.ExecuteAsync(null);
-        return (vm, planner, updates, store);
+        return (vm, planner, updates, store, data);
     }
 
     [Fact]
     public async Task SaveFreezesSelectionAndPersistsOnlyTheConfirmedSnapshot()
     {
-        var (vm, _, updates, store) = await CreateAsync();
+        var (vm, _, updates, store, _) = await CreateAsync();
         var session = Assert.Single(vm.Sessions);
         vm.ConstraintsConfirmed = true;
         var outcomes = new List<string>();
@@ -63,7 +63,7 @@ public sealed class PlannerLifecycleTests
     [Fact]
     public async Task FailedWriteKeepsThePreviewAndOriginalLikesAndAnnouncesFailureOnce()
     {
-        var (vm, _, _, store) = await CreateAsync();
+        var (vm, _, _, store, _) = await CreateAsync();
         store.Fail = true;
         vm.ConstraintsConfirmed = true;
         var outcomes = new List<string>();
@@ -80,7 +80,7 @@ public sealed class PlannerLifecycleTests
     [Fact]
     public async Task ReminderFailureCannotClaimTheSuccessfulSaveDidNotHappen()
     {
-        var (vm, _, updates, store) = await CreateAsync();
+        var (vm, _, updates, store, _) = await CreateAsync();
         updates.RefreshRemindersAsync().Returns(Task.FromException<bool>(new IOException("Reminder storage")));
         vm.ConstraintsConfirmed = true;
         await vm.ApplyCommand.ExecuteAsync(null);
@@ -93,7 +93,7 @@ public sealed class PlannerLifecycleTests
     [Fact]
     public async Task CancellingGenerationRejectsLateResultsAndEmitsOneOutcome()
     {
-        var (vm, planner, _, _) = await CreateAsync();
+        var (vm, planner, _, _, _) = await CreateAsync();
         var pending = new TaskCompletionSource<PlannerResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         CancellationToken token = default;
         planner.ProposeAsync(Arg.Any<ConferenceDocument>(), Arg.Any<string>(), Arg.Any<TimeZoneInfo>(),
@@ -118,7 +118,7 @@ public sealed class PlannerLifecycleTests
     [Fact]
     public async Task UnsupportedModelDoesNotGenerateOrSave()
     {
-        var (vm, planner, _, store) = await CreateAsync();
+        var (vm, planner, _, store, _) = await CreateAsync();
         planner.UnsupportedReason.Returns("No model");
         await vm.CheckModelCommand.ExecuteAsync(null);
         Assert.False(vm.IsReady);
@@ -126,6 +126,60 @@ public sealed class PlannerLifecycleTests
         Assert.True(vm.CanEdit);
         Assert.Equal("No model", vm.Status);
         Assert.Equal(["already-liked"], store.Saved);
+    }
+
+    [Fact]
+    public async Task AnUnchangedAgendaRefreshDoesNotDiscardAReviewedProposal()
+    {
+        var (vm, _, _, store, data) = await CreateAsync();
+        var original = await data.LoadAsync();
+        data.LoadAsync(Arg.Any<CancellationToken>()).Returns(original with
+        {
+            Sessions = original.Sessions.Select(session => session with
+            {
+                Topics = [.. session.Topics], SpeakerIds = [.. session.SpeakerIds]
+            }).ToList(),
+            Speakers = original.Speakers.Select(speaker => speaker with { }).ToList()
+        });
+        vm.ConstraintsConfirmed = true;
+        await vm.ApplyCommand.ExecuteAsync(null);
+        Assert.True(vm.HasAddedSessions);
+        Assert.Equal(["already-liked", "building-with-maui"], store.Saved.Order().ToArray());
+    }
+
+    [Fact]
+    public async Task ChangedSessionTimesRequireAUserToReviewANewProposal()
+    {
+        var (vm, _, _, store, data) = await CreateAsync();
+        var original = await data.LoadAsync();
+        data.LoadAsync(Arg.Any<CancellationToken>()).Returns(original with
+        {
+            Sessions = original.Sessions.Select(session => session.Id == "building-with-maui"
+                ? session with { StartsAt = session.StartsAt.AddHours(1), EndsAt = session.EndsAt.AddHours(1) }
+                : session).ToList()
+        });
+        vm.ConstraintsConfirmed = true;
+        await vm.ApplyCommand.ExecuteAsync(null);
+        Assert.False(vm.HasAddedSessions);
+        Assert.Equal(["already-liked"], store.Saved);
+        Assert.Contains("latest session times", vm.Status);
+    }
+
+    [Fact]
+    public async Task AnEmptyAgendaExplainsTheDownloadRequirementInsteadOfBlamingTheModel()
+    {
+        var (vm, planner, _, store, data) = await CreateAsync();
+        data.LoadAsync(Arg.Any<CancellationToken>()).Returns(new ConferenceDocument());
+        planner.ClearReceivedCalls();
+        var outcomes = new List<string>();
+        vm.OutcomeAvailable += (_, message) => outcomes.Add(message);
+        await vm.GenerateCommand.ExecuteAsync(null);
+        Assert.Contains("Download", Assert.Single(outcomes));
+        Assert.Contains("internet", vm.Status);
+        Assert.DoesNotContain("model may be unavailable", vm.Status);
+        Assert.Equal(["already-liked"], store.Saved);
+        await planner.DidNotReceive().ProposeAsync(Arg.Any<ConferenceDocument>(), Arg.Any<string>(),
+            Arg.Any<TimeZoneInfo>(), Arg.Any<string[]>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
     }
 
     private sealed class DelayedStore : IScheduleStore

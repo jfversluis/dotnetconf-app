@@ -99,18 +99,12 @@ public partial class PlannerViewModel(
     [ObservableProperty]
     public partial IReadOnlyList<PlannerStartingPoint> StartingPoints { get; set; } =
     [
-        new("AI + mobile", "I'm interested in AI and mobile development."),
-        new("Web", "I'd like to learn about web development and Blazor."),
-        new("Explore .NET", "I'm new to .NET. Suggest a varied introduction to the conference.")
+        new("Feed my AI + mobile curiosity", "I'm interested in AI and mobile development."),
+        new("Web, hold the boring bits", "I'd like to learn about web development and Blazor."),
+        new("Down the .NET rabbit hole", "I'm new to .NET. Suggest a varied introduction to the conference.")
     ];
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowStartingPoints))]
     public partial bool IsLoadingStartingPoints { get; set; } = true;
-    public bool ShowStartingPoints => !IsLoadingStartingPoints;
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasStartingPointsStatus))]
-    public partial string StartingPointsStatus { get; set; } = "";
-    public bool HasStartingPointsStatus => !string.IsNullOrWhiteSpace(StartingPointsStatus);
     public bool CanGenerate => IsReady && !IsBusy && !string.IsNullOrWhiteSpace(Request);
     public bool CanEdit => !IsBusy;
     public bool CanRetryModel => !IsReady && !IsBusy && planner.UnsupportedReason is null;
@@ -196,27 +190,29 @@ public partial class PlannerViewModel(
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(20));
         startingPointsOperation = cancellation;
         IsLoadingStartingPoints = true;
-        StartingPointsStatus = "";
         try
         {
             var agenda = await dataSource.LoadAsync(cancellation.Token);
+            cancellation.Token.ThrowIfCancellationRequested();
             document = agenda;
             OnPropertyChanged(nameof(AgendaDisclosure));
             if (agenda.Sessions.Count == 0)
                 throw new InvalidDataException("Download the agenda before requesting suggestions.");
+            cancellation.CancelAfter(TimeSpan.FromSeconds(20));
             var suggestions = await planner.SuggestStartingPointsAsync(agenda, cancellation.Token);
             cancellation.Token.ThrowIfCancellationRequested();
-            StartingPoints = suggestions;
-            StartingPointsStatus = "";
+            if (suggestions.Count == 0)
+                throw new InvalidDataException("The local model returned no starting points.");
+            if (ReferenceEquals(startingPointsOperation, cancellation))
+                StartingPoints = suggestions;
         }
         catch (OperationCanceledException)
         {
-            StartingPointsStatus = "Showing curated starting points.";
+            logger.LogInformation("Local planner starting point refresh cancelled or timed out.");
         }
         catch (Exception exception) when (IsExpectedFailure(exception))
         {
             logger.LogWarning(exception, "Could not refresh local planner starting points.");
-            StartingPointsStatus = "Couldn't refresh suggestions. Curated starting points are available.";
         }
         finally
         {
@@ -242,9 +238,12 @@ public partial class PlannerViewModel(
         try
         {
             document = await dataSource.LoadAsync(cancellation.Token);
-            await schedule.ReloadAsync(cancellation.Token);
             if (document.Sessions.Count == 0)
-                throw new InvalidDataException("The agenda has no sessions.");
+            {
+                Status = "Download the agenda before planning. Connect to the internet and refresh Sessions, then try again. Your saved sessions are kept.";
+                return;
+            }
+            await schedule.ReloadAsync(cancellation.Token);
             timeZone = TimeZoneInfo.Local;
             OnPropertyChanged(nameof(AgendaDisclosure));
             var result = await planner.ProposeAsync(document, Request, timeZone, SavedIds(), cancellation.Token, IsGapMode);
@@ -351,7 +350,7 @@ public partial class PlannerViewModel(
         try
         {
             var latest = await dataSource.LoadAsync();
-            if (!ReferenceEquals(latest, document))
+            if (!SchedulePlanner.HasSameAgenda(document, latest))
             {
                 ClearProposal();
                 Status = "The agenda was refreshed. Generate a new proposal to review the latest session times.";
@@ -410,7 +409,7 @@ public partial class PlannerViewModel(
 
     partial void OnRequestChanged(string value)
     {
-        Cancel();
+        operation?.Cancel();
         ClearProposal();
     }
 

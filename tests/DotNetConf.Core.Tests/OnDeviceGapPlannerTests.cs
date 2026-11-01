@@ -100,6 +100,24 @@ public sealed class OnDeviceGapPlannerTests
     public void InvalidOrImplicitOvernightDatesDoNotBecomeSuccess(string request) =>
         Assert.Throws<InvalidDataException>(() => PlannerInterpretation.TryDatedWindow(request, 2026, "UTC", out _));
 
+    [Theory]
+    [InlineData("November 10 from 9 to 11pm")]
+    [InlineData("November 10 from 9am to 11")]
+    [InlineData("November 10 from 9 to 11")]
+    public void AmbiguousDatedClockRangesRequireExplicitPeriodsOrClockMinutes(string request) =>
+        Assert.Throws<InvalidDataException>(() => PlannerInterpretation.TryDatedWindow(request, 2026, "UTC", out _));
+
+    [Theory]
+    [InlineData("November 10 from 9pm to 11pm", "21:00", "23:00")]
+    [InlineData("November 10 from 09:00 to 11:00", "09:00", "11:00")]
+    [InlineData("November 10 from 20 to 23", "20:00", "23:00")]
+    public void UnambiguousDatedClockRangesKeepTheirRequestedTimes(string request, string start, string end)
+    {
+        Assert.True(PlannerInterpretation.TryDatedWindow(request, 2026, "UTC", out var window));
+        Assert.Equal($"2026-11-10T{start}", window.Start);
+        Assert.Equal($"2026-11-10T{end}", window.End);
+    }
+
     [Fact]
     public void PhoneAppsMapToTheRealMobileTopicWhenThereIsNoSeparateMobileCategory()
     {
@@ -118,6 +136,59 @@ public sealed class OnDeviceGapPlannerTests
         var agenda = Agenda();
         repository.LoadAsync(Arg.Any<CancellationToken>()).Returns(new ConferenceSnapshot(agenda, null, null, true, []));
         Assert.Same(agenda, await new ConferenceAgendaDataSource(repository).LoadAsync());
+        await repository.DidNotReceive().RefreshAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task LiveAgendaAdapterWaitsForTheFirstDownloadInsteadOfReturningEmptyMetadata()
+    {
+        var repository = Substitute.For<IConferenceRepository>();
+        repository.LoadAsync(Arg.Any<CancellationToken>())
+            .Returns(new ConferenceSnapshot(new(), null, null, false, []));
+        var downloaded = new TaskCompletionSource<ConferenceSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
+        repository.RefreshAsync(Arg.Any<CancellationToken>()).Returns(downloaded.Task);
+
+        var load = new ConferenceAgendaDataSource(repository).LoadAsync();
+        Assert.False(load.IsCompleted);
+        var agenda = Agenda();
+        downloaded.SetResult(new(agenda, null, null, false, []));
+        Assert.Same(agenda, await load);
+    }
+
+    [Fact]
+    public async Task CancellingAPlannerWaitDoesNotCancelTheSharedAgendaDownload()
+    {
+        var repository = Substitute.For<IConferenceRepository>();
+        repository.LoadAsync(Arg.Any<CancellationToken>())
+            .Returns(new ConferenceSnapshot(new(), null, null, false, []));
+        var downloaded = new TaskCompletionSource<ConferenceSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
+        repository.RefreshAsync(Arg.Any<CancellationToken>()).Returns(downloaded.Task);
+        using var cancellation = new CancellationTokenSource();
+        var source = new ConferenceAgendaDataSource(repository);
+        var cancelledLoad = source.LoadAsync(cancellation.Token);
+        var continuingLoad = source.LoadAsync();
+
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cancelledLoad);
+        Assert.False(continuingLoad.IsCompleted);
+        var agenda = Agenda();
+        downloaded.SetResult(new(agenda, null, null, false, []));
+        Assert.Same(agenda, await continuingLoad);
+        await repository.DidNotReceive().RefreshAsync(Arg.Is<CancellationToken>(token => token.CanBeCanceled));
+    }
+
+    [Fact]
+    public async Task AnOfflineFirstDownloadKeepsAnHonestEmptyAgenda()
+    {
+        var repository = Substitute.For<IConferenceRepository>();
+        var empty = new ConferenceSnapshot(new(), null, null, false,
+            [new(ConferenceRepository.MicrosoftSource, new HttpRequestException("Synthetic offline failure"))]);
+        repository.LoadAsync(Arg.Any<CancellationToken>()).Returns(empty);
+        repository.RefreshAsync(Arg.Any<CancellationToken>()).Returns(empty);
+        var agenda = await new ConferenceAgendaDataSource(repository).LoadAsync();
+        Assert.Same(empty.Document, agenda);
+        Assert.Empty(agenda.Sessions);
+        Assert.Empty(agenda.Speakers);
     }
 
     private static ConferenceDocument Agenda() => new()

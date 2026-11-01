@@ -59,6 +59,8 @@ public sealed record PlannerInterpretation(string SpeakerNames, string Availabil
             var hour = int.Parse(clockText.Groups["hour"].Value, CultureInfo.InvariantCulture);
             var minute = clockText.Groups["minute"].Success ? int.Parse(clockText.Groups["minute"].Value, CultureInfo.InvariantCulture) : 0;
             var period = clockText.Groups["period"].Value.ToLowerInvariant();
+            if (period.Length == 0 && !clockText.Groups["minute"].Success && hour is >= 1 and <= 12)
+                throw new InvalidDataException("Clarify the clock cutoff with am/pm or HH:mm, such as 9am, 9pm or 09:00.");
             if (period.Length > 0)
             {
                 if (hour is < 1 or > 12)

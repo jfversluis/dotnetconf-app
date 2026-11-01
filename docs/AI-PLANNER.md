@@ -10,6 +10,9 @@ shortlist is made up of real conference sessions.
 Write a request in your own words, or tap a suggested starting point and make
 it your own. Starting points can highlight agenda topics and speakers, with
 invitations like "Make me dangerous with [topic]" and "More [topic], less FOMO."
+Starting points are available straight away, even while the agenda downloads.
+Once the agenda and local model are ready, they can offer more topic and speaker
+inspiration without changing anything you've typed.
 Try requests such as:
 
 - "I'm interested in Blazor and C#."
@@ -19,7 +22,8 @@ Try requests such as:
 Replace `[speaker name]` with a speaker in the agenda. You can mention topics,
 speakers, dates, and times together; simpler requests are easier to interpret.
 Times use your device's time zone, or you can name UTC or a time-zone ID such as
-`America/New_York`.
+`America/New_York`. For time ranges, use explicit times such as "9am to 11am"
+or "09:00 to 11:00".
 
 ## Make room for discovery
 

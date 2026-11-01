@@ -35,6 +35,19 @@ public static class SchedulePlanner
 {
     public const int MaximumSessions = 12;
 
+    public static bool HasSameAgenda(ConferenceDocument reviewed, ConferenceDocument current) =>
+        reviewed.IsMock == current.IsMock && reviewed.StartDate == current.StartDate
+        && reviewed.Speakers.OrderBy(s => s.Id, StringComparer.Ordinal)
+            .SequenceEqual(current.Speakers.OrderBy(s => s.Id, StringComparer.Ordinal))
+        && reviewed.Sessions.Count == current.Sessions.Count
+        && reviewed.Sessions.OrderBy(s => s.Id, StringComparer.Ordinal)
+            .Zip(current.Sessions.OrderBy(s => s.Id, StringComparer.Ordinal)).All(pair =>
+                pair.First.Id == pair.Second.Id && pair.First.Title == pair.Second.Title
+                && pair.First.Description == pair.Second.Description
+                && pair.First.StartsAt == pair.Second.StartsAt && pair.First.EndsAt == pair.Second.EndsAt
+                && pair.First.SpeakerIds.SequenceEqual(pair.Second.SpeakerIds)
+                && pair.First.Topics.SequenceEqual(pair.Second.Topics));
+
     public static string[] Recommend(ConferenceDocument conference, ScheduleProposal preferences,
         IEnumerable<string> candidateIds, TimeZoneInfo zone, IReadOnlyCollection<string> savedIds)
     {
