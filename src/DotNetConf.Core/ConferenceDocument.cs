@@ -9,6 +9,7 @@ public sealed record ConferenceDocument
     public string Name { get; init; } = "";
     public string Description { get; init; } = "";
     public string WebsiteUrl { get; init; } = "";
+    public DateOnly? StartDate { get; init; }
     public List<Speaker> Speakers { get; init; } = [];
     /// <summary>Profiles retained only to resolve withdrawn saved talks, not current directory entries.</summary>
     public List<Speaker> WithdrawnSpeakers { get; init; } = [];

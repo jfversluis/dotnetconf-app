@@ -38,6 +38,7 @@ public partial class ConferenceViewModel(
     public ObservableCollection<SessionViewModel> Sessions { get; } = [];
     public ObservableCollection<SessionViewModel> SavedSessions { get; } = [];
     public ObservableCollection<SpeakerViewModel> Speakers { get; } = [];
+    [ObservableProperty] public partial IReadOnlyList<SessionViewModel> SavedTimelineSessions { get; set; } = [];
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CommunityEventSummary))]
     [NotifyPropertyChangedFor(nameof(HasCommunityEvents))]
@@ -254,13 +255,24 @@ public partial class ConferenceViewModel(
         snapshot = value;
         foreach (var issue in value.Issues)
             logger.LogWarning(issue.Exception, "Conference data issue: {Source}.", issue.Source);
-        var failedSources = value.Issues.Where(issue => issue.Source != "Cache")
-            .Select(issue => issue.Source == "Sessionize" ? "community" : issue.Source).Distinct().ToArray();
-        refreshError = value.Issues.Any(issue => issue.Source == "Cache")
+        var sourceIssues = value.Issues.Where(issue => issue.Source != ConferenceRepository.CacheSource).ToArray();
+        var metadataIssues = sourceIssues.Where(issue => issue.Source == ConferenceRepository.MetadataSource).ToArray();
+        var invalidSources = sourceIssues.Where(issue => issue.Source != ConferenceRepository.MetadataSource &&
+                issue.Exception is InvalidDataException or JsonException)
+            .Select(issue => issue.Source).Distinct().ToArray();
+        var failedSources = sourceIssues.Where(issue => issue.Source != ConferenceRepository.MetadataSource &&
+                issue.Exception is not (InvalidDataException or JsonException))
+            .Select(issue => issue.Source).Distinct().ToArray();
+        var sourceErrors = new List<string>();
+        if (metadataIssues.Length > 0)
+            sourceErrors.Add("Couldn't apply the conference date metadata; the cached agenda is unchanged.");
+        if (invalidSources.Length > 0)
+            sourceErrors.Add($"Couldn't use the {string.Join(" and ", invalidSources)} agenda update because its data was invalid. Retry later.");
+        if (failedSources.Length > 0)
+            sourceErrors.Add($"Couldn't download {string.Join(" and ", failedSources)} sessions. Retry when your connection is ready.");
+        refreshError = value.Issues.Any(issue => issue.Source == ConferenceRepository.CacheSource)
             ? "Couldn't read or save the offline agenda. Check storage and retry."
-            : failedSources.Length > 0
-                ? $"Couldn't download {string.Join(" and ", failedSources)} sessions. Retry when your connection is ready."
-                : null;
+            : sourceErrors.Count > 0 ? string.Join(" ", sourceErrors) : null;
         var loaded = value.Document;
         document = loaded;
         NotifyAgendaState();
@@ -538,7 +550,7 @@ public partial class ConferenceViewModel(
     {
         try
         {
-            session.IsSaved = await schedule.ToggleAsync(session.Id);
+            session.IsSaved = await schedule.SetSavedAsync(session.Id, !session.IsSaved);
             // Also shows sessions saved in another browser tab.
             foreach (var other in allSessions)
                 other.IsSaved = schedule.IsSaved(other.Id);
@@ -583,7 +595,7 @@ public partial class ConferenceViewModel(
             var days = new[] { new DayFilter("All days", null) }.Concat(
                 allSessions.Where(session => !session.IsWithdrawn)
                     .Select(session => Agenda.LocalDay(session.Model.StartsAt, timeZone)).Distinct().Order()
-                    .Select(day => new DayFilter(day.ToString("ddd, MMM d"), day)));
+                    .Select(day => new DayFilter($"{day:ddd}, {Agenda.MonthDay(day)}", day)));
             CollectionUpdates.Apply(Days, days);
             SelectedDay = Days.FirstOrDefault(day => day.Day == selectedDay) ?? Days[0];
         }
@@ -601,6 +613,7 @@ public partial class ConferenceViewModel(
         foreach (var session in allSessions)
             session.HasConflict = session.IsSaved && saved.Any(other => Agenda.Overlaps(session.Model, other.Model));
         CollectionUpdates.Apply(SavedSessions, saved);
+        SavedTimelineSessions = saved;
         SavedCount = schedule.SavedCount;
         ScheduleChanged?.Invoke(this, EventArgs.Empty);
     }

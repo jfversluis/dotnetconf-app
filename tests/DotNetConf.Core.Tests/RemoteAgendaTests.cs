@@ -6,25 +6,21 @@ namespace DotNetConf.Core.Tests;
 
 public sealed class RemoteAgendaTests
 {
-    internal const string GeraldId = "7871d1fd-13e8-5c11-be64-fc52a0091913";
-    internal static readonly ConferenceDocument Bundle = new()
+    internal const string GeraldId = "speaker-gerald-versluis";
+    internal static readonly ConferenceDocument Previous = new()
     {
         SchemaVersion = 1, Name = ".NET Conf", Description = "Conference", WebsiteUrl = "https://dotnetconf.net",
+        StartDate = new DateOnly(2026, 11, 10),
         Speakers =
         [
-            new() { Id = GeraldId, Name = "Gerald Versluis", Bio = "Rich bundled bio", Tagline = "Bundled tagline",
-                ProfilePicture = "https://example.com/gerald.jpg" },
-            new() { Id = "community-speaker", Name = "Community Speaker", Bio = "Community bundled bio",
-                ProfilePicture = "https://example.com/community.jpg" }
+            new() { Id = GeraldId, Name = "Gerald Versluis", Bio = "Cached synthetic biography",
+                ProfilePicture = "https://example.com/gerald.jpg" }
         ],
         Sessions =
         [
-            new() { Id = "20261006", Title = "MAUI", Description = "Bundled abstract",
+            new() { Id = "BRK006", Title = "MAUI", Description = "Cached synthetic abstract",
                 StartsAt = DateTimeOffset.Parse("2026-11-10T11:30:00-08:00"),
-                EndsAt = DateTimeOffset.Parse("2026-11-10T12:00:00-08:00"), SpeakerIds = [GeraldId], Topics = [".NET MAUI"] },
-            new() { Id = "1234", Title = "Community", Description = "Community abstract",
-                StartsAt = DateTimeOffset.Parse("2026-11-12T08:00:00-08:00"),
-                EndsAt = DateTimeOffset.Parse("2026-11-12T08:30:00-08:00"), SpeakerIds = ["community-speaker"] }
+                EndsAt = DateTimeOffset.Parse("2026-11-10T12:00:00-08:00"), SpeakerIds = [GeraldId], Topics = [".NET MAUI"] }
         ]
     };
 
@@ -33,27 +29,13 @@ public sealed class RemoteAgendaTests
         Sessions =
         [
             new() { Id = "BRK006", Title = "MAUI", Day = 1, StartTime = "11:30:00", EndTime = "12:00:00",
-                Timezone = "PST", SpeakerIds = ["speaker-gerald-versluis"], Topics = [".NET MAUI"], Abstract = "Bundled abstract" }
+                Timezone = "PST", SpeakerIds = ["speaker-gerald-versluis"], Topics = [".NET MAUI"], Abstract = "Cached synthetic abstract" }
         ],
         Speakers = [new() { Id = "speaker-gerald-versluis", Name = "Gerald Versluis", PrimaryBio = "TODO" }]
     };
 
-    internal static SessionizeDocument Community => new()
-    {
-        Sessions =
-        [
-            new() { Id = "1234", Title = "Community", Description = "Community abstract", StartsAt = "2026-11-12T08:00:00", EndsAt = "2026-11-12T08:30:00",
-                Speakers = ["community-speaker"], CategoryItems = [] }
-        ],
-        Speakers = [new() { Id = "community-speaker", FullName = "Community Speaker",
-            Bio = "Community bundled bio", ProfilePicture = "https://example.com/community.jpg" }],
-        Categories = [], Rooms = []
-    };
-
     internal static string Json(MicrosoftAgenda data) =>
         JsonSerializer.Serialize(data, RemoteAgendaJsonContext.Default.MicrosoftAgenda);
-    internal static string Json(SessionizeDocument data) =>
-        JsonSerializer.Serialize(data, SessionizeJsonContext.Default.SessionizeDocument);
 
     private static async Task<ConferenceDocument> ReadAsync(MicrosoftAgenda data, ConferenceDocument? previous = null) =>
         await ReadJsonAsync(Json(data), previous);
@@ -61,7 +43,21 @@ public sealed class RemoteAgendaTests
     private static async Task<ConferenceDocument> ReadJsonAsync(string json, ConferenceDocument? previous = null)
     {
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-        return await MicrosoftAgendaJson.ReadAsync(stream, previous ?? Bundle);
+        return await MicrosoftAgendaJson.ReadAsync(stream, previous ?? Previous);
+    }
+
+    [Fact]
+    public async Task AdditionalPublishedFieldsDoNotInvalidateTheFeed()
+    {
+        var json = System.Text.Json.Nodes.JsonNode.Parse(Json(Microsoft))!;
+        json["additionalPublishedField"] = true;
+        json["sessions"]![0]!["additionalPublishedField"] = true;
+        json["speakers"]![0]!["additionalPublishedField"] = true;
+
+        var result = await ReadJsonAsync(json.ToJsonString());
+
+        Assert.Equal("BRK006", Assert.Single(result.Sessions).Id);
+        Assert.Equal(GeraldId, Assert.Single(result.Speakers).Id);
     }
 
     [Fact]
@@ -79,8 +75,8 @@ public sealed class RemoteAgendaTests
             "primaryBio":"ASP.NET Core Engineer","additionalBio":""}]}
             """);
         var session = Assert.Single(result.Sessions);
-        Assert.Equal("20261021", session.Id);
-        Assert.Equal(["afb89ca3-235b-5f5e-ba59-fb09fe16459d"], session.SpeakerIds);
+        Assert.Equal("BRK021", session.Id);
+        Assert.Equal(["speaker-stephen-halter"], session.SpeakerIds);
         Assert.Equal("Stephen Halter", Assert.Single(result.Speakers).Name);
         Assert.Equal(new DateOnly(2026, 11, 11), DateOnly.FromDateTime(session.StartsAt.Date));
     }
@@ -101,7 +97,7 @@ public sealed class RemoteAgendaTests
             """);
         var session = Assert.Single(result.Sessions);
         var speaker = Assert.Single(result.Speakers);
-        Assert.Equal("20261006", session.Id);
+        Assert.Equal("BRK006", session.Id);
         Assert.Equal(GeraldId, speaker.Id);
         Assert.Equal([GeraldId], session.SpeakerIds);
         Assert.Equal(DateTimeOffset.Parse("2026-11-10T19:30:00Z"), session.StartsAt);
@@ -112,11 +108,14 @@ public sealed class RemoteAgendaTests
     }
 
     [Theory]
-    [InlineData("KEY001", "20260001")]
-    [InlineData("KEY002", "20260002")]
-    [InlineData("BRK001", "20261001")]
-    [InlineData("BRK032", "20261032")]
-    public async Task NativeSessionIdentitiesStayStableOnDisplayEdits(string sourceId, string expected)
+    [InlineData("KEY001")]
+    [InlineData("KEY002")]
+    [InlineData("BRK001")]
+    [InlineData("BRK032")]
+    [InlineData("BRK100")]
+    [InlineData("BRK135")]
+    [InlineData("NEW-FORMAT-001")]
+    public async Task PublishedIdentitiesStayUnchangedOnDisplayEdits(string sourceId)
     {
         var data = Microsoft;
         var result = await ReadAsync(data with
@@ -124,7 +123,7 @@ public sealed class RemoteAgendaTests
             Sessions = [data.Sessions[0] with { Id = sourceId, Title = "Renamed title" }],
             Speakers = [data.Speakers[0] with { Name = "Renamed presenter" }]
         });
-        Assert.Equal(expected, Assert.Single(result.Sessions).Id);
+        Assert.Equal(sourceId, Assert.Single(result.Sessions).Id);
         Assert.Equal(GeraldId, Assert.Single(result.Speakers).Id);
     }
 
@@ -139,6 +138,71 @@ public sealed class RemoteAgendaTests
         });
         Assert.Equal("speaker-new", Assert.Single(result.Speakers).Id);
         Assert.Equal(new DateOnly(2026, 11, 11), DateOnly.FromDateTime(Assert.Single(result.Sessions).StartsAt.Date));
+    }
+
+    [Theory]
+    [InlineData(1, "BRK006", "2040-02-03")]
+    [InlineData(5, "BRK100", "2040-02-07")]
+    [InlineData(10, "BRK135", "2040-02-12")]
+    public async Task ArbitraryPositiveDaysUseTheExplicitConferenceStartDate(
+        int day, string sourceId, string expectedDate)
+    {
+        var data = Microsoft;
+        var result = await ReadAsync(data with
+        {
+            Sessions = [data.Sessions[0] with { Day = day, Id = sourceId }]
+        }, Previous with { StartDate = new DateOnly(2040, 2, 3) });
+        var session = Assert.Single(result.Sessions);
+        Assert.Equal(sourceId, session.Id);
+        Assert.Equal(DateOnly.Parse(expectedDate), DateOnly.FromDateTime(session.StartsAt.Date));
+        Assert.Equal(new TimeOnly(11, 30), TimeOnly.FromDateTime(session.StartsAt.DateTime));
+        Assert.Equal(TimeSpan.FromMinutes(30), session.EndsAt - session.StartsAt);
+        Assert.Equal([GeraldId], session.SpeakerIds);
+    }
+
+    [Fact]
+    public async Task MissingConferenceStartDateIsRejected()
+    {
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            ReadAsync(Microsoft, Previous with { StartDate = null }));
+    }
+
+    [Fact]
+    public async Task DayOutsideDateOnlyRangeIsRejectedDuringDateArithmetic()
+    {
+        var data = Microsoft;
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(data with
+        {
+            Sessions = [data.Sessions[0] with { Day = int.MaxValue }]
+        }));
+    }
+
+    [Fact]
+    public async Task UTCOverflowFromPacificSessionTimeIsRejectedAsInvalidData()
+    {
+        var data = Microsoft;
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(data with
+        {
+            Sessions = [data.Sessions[0] with
+            {
+                Day = 4,
+                StartTime = "15:30:00",
+                EndTime = "16:00:00"
+            }]
+        }, Previous with { StartDate = new DateOnly(9999, 12, 28) }));
+    }
+
+    [Theory]
+    [InlineData(2026, 3, 8, "02:00:00", "02:30:00")]
+    [InlineData(2026, 11, 1, "01:00:00", "01:30:00")]
+    public async Task InvalidOrAmbiguousPacificTimesAreRejected(
+        int year, int month, int day, string start, string end)
+    {
+        var data = Microsoft;
+        await Assert.ThrowsAsync<InvalidDataException>(() => ReadAsync(data with
+        {
+            Sessions = [data.Sessions[0] with { StartTime = start, EndTime = end }]
+        }, Previous with { StartDate = new DateOnly(year, month, day) }));
     }
 
     [Theory]
@@ -157,8 +221,8 @@ public sealed class RemoteAgendaTests
             Sessions = [data.Sessions[0] with { Abstract = value }],
             Speakers = [data.Speakers[0] with { PrimaryBio = value, AdditionalBio = "\"Get copilot to write me one\" -Damian, October 2 2026" }]
         });
-        Assert.Equal("Rich bundled bio", Assert.Single(result.Speakers).Bio);
-        Assert.Equal("Bundled abstract", Assert.Single(result.Sessions).Description);
+        Assert.Equal("Cached synthetic biography", Assert.Single(result.Speakers).Bio);
+        Assert.Equal("Cached synthetic abstract", Assert.Single(result.Sessions).Description);
     }
 
     [Fact]
@@ -175,7 +239,7 @@ public sealed class RemoteAgendaTests
         var speaker = Assert.Single(result.Speakers);
         Assert.Equal("New primary\n\nNew additional", speaker.Bio);
         Assert.Equal("https://example.com/new.jpg", speaker.ProfilePicture);
-        Assert.Equal("Bundled tagline", speaker.Tagline);
+        Assert.Empty(speaker.Tagline);
     }
 
     [Fact]
@@ -185,9 +249,9 @@ public sealed class RemoteAgendaTests
         var result = await ReadAsync(data with
         {
             Speakers = [data.Speakers[0] with { Avatar = "http://github.com/elbruno.png" }]
-        }, Bundle with
+        }, Previous with
         {
-            Speakers = [Bundle.Speakers[0] with { ProfilePicture = "https://avatars.githubusercontent.com/u/123" }]
+            Speakers = [Previous.Speakers[0] with { ProfilePicture = "https://avatars.githubusercontent.com/u/123" }]
         });
         Assert.Empty(Assert.Single(result.Speakers).ProfilePicture);
     }
@@ -204,11 +268,8 @@ public sealed class RemoteAgendaTests
     }
 
     [Theory]
-    [InlineData("20261006")]
-    [InlineData("KEY000")]
-    [InlineData("KEYabc")]
-    [InlineData("ABC001")]
-    [InlineData("BRK1")]
+    [InlineData("")]
+    [InlineData(" ")]
     [InlineData(null)]
     public async Task InvalidMicrosoftIdentitiesAreRejected(string? id)
     {
@@ -219,7 +280,7 @@ public sealed class RemoteAgendaTests
 
     [Theory]
     [InlineData(0, "PST", "08:00:00", "09:00:00")]
-    [InlineData(3, "PST", "08:00:00", "09:00:00")]
+    [InlineData(-1, "PST", "08:00:00", "09:00:00")]
     [InlineData(1, "UTC", "08:00:00", "09:00:00")]
     [InlineData(1, "PDT", "08:00:00", "09:00:00")]
     [InlineData(1, "PST", "25:00:00", "09:00:00")]
@@ -282,6 +343,6 @@ public sealed class RemoteAgendaTests
         cancellation.Cancel();
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(Json(Microsoft)));
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            MicrosoftAgendaJson.ReadAsync(stream, Bundle, cancellation.Token));
+            MicrosoftAgendaJson.ReadAsync(stream, Previous, cancellation.Token));
     }
 }

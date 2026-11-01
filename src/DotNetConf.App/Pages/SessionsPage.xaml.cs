@@ -1,5 +1,6 @@
 using DotNetConf.App.ViewModels;
 using DotNetConf.App.Services;
+using DotNetConf.Core;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using Syncfusion.Maui.Toolkit.TabView;
@@ -85,7 +86,7 @@ public partial class SessionsPage : AdaptiveConferencePage
                     AutomationId = $"day-{day.Label}"
                 };
                 var lines = day.Day is { } date
-                    ? new[] { date.ToString("ddd"), date.ToString("MMM d") }
+                    ? new[] { date.ToString("ddd"), Agenda.MonthDay(date) }
                     : new[] { "All", "days" };
                 foreach (var line in lines)
                 {

@@ -1,4 +1,5 @@
 using DotNetConf.App.Pages;
+using DotNetConf.App.Planner;
 using DotNetConf.App.Services;
 using DotNetConf.App.ViewModels;
 using DotNetConf.Core;
@@ -32,14 +33,18 @@ public static class MauiProgram
 #if !ANDROID
             .UseFoldable()
 #endif
+            // Configured first so the Avalonia host can replace the toolkit's handlers.
+            .ConfigureSyncfusionToolkit()
 #if AVALONIA
             .UseAvaloniaHost()
 #else
+            // The schedule planner is an Avalonia control inside the native app.
+            .UseAvaloniaEmbedding<PlannerApplication>()
             .UseMauiCommunityToolkit()
             .UseMauiMaps()
-            .ConfigureSyncfusionToolkit()
             .ConfigureMauiHandlers(handlers => handlers.AddHandler<AgendaPicker, AgendaPickerHandler>())
 #endif
+            .ConfigureMauiHandlers(handlers => handlers.AddHandler<SchedulePlanner, SchedulePlannerHandler>())
             .UseFluentIconsRegular()
             .UseFluentIconsFilled()
             .ConfigureFonts(fonts =>
@@ -57,6 +62,7 @@ public static class MauiProgram
             .OnStart(activity => GetFoldableRegionSource().Start(activity))
             .OnStop(activity => GetFoldableRegionSource().Stop(activity))));
         DotNetConf.App.Platforms.Android.ShellToolbarAppearance.Register();
+        builder.ConfigureMauiHandlers(handlers => handlers.AddHandler<ShellItem, InstantTabsHandler>());
         Microsoft.Maui.Handlers.EntryHandler2.Mapper.AppendToMapping(nameof(IEntry.Placeholder), (handler, view) =>
         {
             if (view is not SearchEntry)

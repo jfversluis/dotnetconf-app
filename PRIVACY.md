@@ -1,11 +1,11 @@
 # .NET Conf companion privacy policy
 
-Effective date: October 30, 2026. Policy version: 1.
+Last updated: October 31, 2026.
 
 This policy describes the .NET Conf companion app maintained by Gerald
-Versluis. This repository's versioned policy and its bundled offline copy are
-the policy for this version of the app. A separately hosted policy may describe
-an older version; publishing this file does not update that website.
+Versluis. The app is in development and has not been released. This policy is
+included in the app and is available offline under Settings → About → Privacy
+policy.
 
 ## No accounts, analytics, or tracking
 
@@ -19,15 +19,15 @@ camera, microphone, or photo-library access. It does not sell personal data.
 The app downloads the published conference agenda and speaker profiles from:
 
 - Microsoft: https://dotnet.microsoft.com/blob-assets/json/conf/conference-2026.json
-- Sessionize: https://sessionize.com/api/v2/di6h1fo3/view/All
 
 Speaker photographs are downloaded from approved public HTTPS image URLs
-supplied by those feeds. The image hosts (and approved redirect destinations)
-can therefore differ by speaker. Photographs and agenda content are cached
+supplied by the Microsoft feed. The image hosts and approved redirect destinations
+can differ by speaker, including Sessionize's public image CDN and Gravatar.
+Photographs and agenda content are cached
 locally for offline use, not bundled with the app. Private organizer data and
 GitHub-hosted portraits are not used.
 
-To deliver these requests, Microsoft, Sessionize, image hosts, and their
+To deliver these requests, Microsoft, image hosts, and their
 hosting/CDN providers receive ordinary network metadata, including your public
 IP address, request time, requested URL, and HTTP/client information. Requests
 can include cache validators such as an ETag or last-modified date. They do not
@@ -105,6 +105,7 @@ Policy changes are versioned in this repository and bundled with subsequent
 app versions. Review this policy after updating.
 
 - Microsoft privacy statement: https://privacy.microsoft.com/privacystatement
-- Sessionize privacy policy: https://sessionize.com/privacy-policy/
+- Sessionize privacy policy (public speaker image hosting): https://sessionize.com/privacy-policy/
+- Automattic privacy policy (Gravatar speaker image hosting): https://automattic.com/privacy/
 - Google privacy policy: https://policies.google.com/privacy
 - Apple privacy policy: https://www.apple.com/legal/privacy/

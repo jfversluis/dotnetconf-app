@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using DotNetConf.Core;
@@ -207,5 +208,53 @@ public sealed class ConferenceTests
     {
         await using var stream = new MemoryStream("not-json"u8.ToArray());
         await Assert.ThrowsAsync<JsonException>(() => ConferenceJson.ReadAsync(stream));
+    }
+
+    [Theory]
+    [InlineData("en-US", false)]
+    [InlineData("es-ES", true)]
+    [InlineData("de-DE", true)]
+    [InlineData("fr-FR", true)]
+    public void MonthAndDayFollowTheReadersCulture(string name, bool dayFirst)
+    {
+        var culture = CultureInfo.GetCultureInfo(name);
+
+        var label = Agenda.MonthDay(new DateOnly(2026, 11, 10), culture);
+
+        Assert.Contains(culture.DateTimeFormat.GetAbbreviatedMonthName(11), label);
+        Assert.Equal(dayFirst, label.StartsWith("10", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(27 * 24 * 60, "27 days")]
+    [InlineData(26 * 60, "1 day 2 h")]
+    [InlineData(24 * 60, "1 day")]
+    [InlineData(135, "2 h 15 min")]
+    [InlineData(120, "2 h")]
+    [InlineData(59.5, "1 h")]
+    [InlineData(40, "40 min")]
+    [InlineData(0.2, "1 min")]
+    public void DurationsAreShortAndRoundUp(double minutes, string expected) =>
+        Assert.Equal(expected, Agenda.Duration(TimeSpan.FromMinutes(minutes)));
+
+    [Fact]
+    public void OverlapsMergeIntoTheStretchesTheySpan()
+    {
+        Session At(string id, string start, string end) => new()
+        {
+            Id = id,
+            Title = id,
+            StartsAt = DateTimeOffset.Parse(start),
+            EndsAt = DateTimeOffset.Parse(end),
+        };
+
+        var overlaps = Agenda.OverlapRanges([
+            At("late", "2026-11-10T17:30Z", "2026-11-10T18:15Z"),
+            At("first", "2026-11-10T17:00Z", "2026-11-10T17:45Z"),
+            At("second", "2026-11-10T17:15Z", "2026-11-10T18:00Z"),
+            At("alone", "2026-11-10T19:00Z", "2026-11-10T19:30Z"),
+        ]);
+
+        Assert.Equal([(DateTimeOffset.Parse("2026-11-10T17:15Z"), DateTimeOffset.Parse("2026-11-10T18:00Z"))], overlaps);
     }
 }
