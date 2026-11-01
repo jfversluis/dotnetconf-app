@@ -22,6 +22,8 @@ internal sealed class DayHeader : Grid
 
     private readonly Border backdrop;
     private readonly Border fade;
+    private readonly StackPanel text;
+    private readonly TextBlock details;
 
     public DayHeader(TimelineDay day, PlannerTheme theme)
     {
@@ -56,7 +58,7 @@ internal sealed class DayHeader : Grid
             VerticalAlignment = VerticalAlignment.Bottom,
         };
         AutomationProperties.SetHeadingLevel(heading, 2);
-        var details = new TextBlock
+        details = new TextBlock
         {
             Text = $"{Agenda.MonthDay(day.Day)}  ·  {count:N0} {(count == 1 ? "session" : "sessions")}",
             FontFamily = PlannerTheme.BodyFont,
@@ -64,8 +66,9 @@ internal sealed class DayHeader : Grid
             Margin = new Thickness(10, 0, 0, 4),
             Foreground = new ImmutableSolidColorBrush(theme.Secondary),
             VerticalAlignment = VerticalAlignment.Bottom,
+            TextTrimming = TextTrimming.CharacterEllipsis,
         };
-        var text = new StackPanel
+        text = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             VerticalAlignment = VerticalAlignment.Bottom,
@@ -73,6 +76,12 @@ internal sealed class DayHeader : Grid
             Children = { heading, details },
         };
         Children.AddRange([backdrop, fade, text]);
+    }
+
+    public void Fit(bool stacked)
+    {
+        text.Orientation = stacked ? Orientation.Vertical : Orientation.Horizontal;
+        details.Margin = new Thickness(stacked ? 0 : 10, 0, 0, 4);
     }
 
     /// <summary>

@@ -1,4 +1,6 @@
 using DotNetConf.App.ViewModels;
+using DotNetConf.App.Controls;
+using DotNetConf.App.Services;
 using IosPage = Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.Page;
 
 namespace DotNetConf.App.Pages;
@@ -6,10 +8,13 @@ namespace DotNetConf.App.Pages;
 public partial class SchedulePage : ConferencePage
 {
     private bool timelineSelected = true;
+    private readonly TextScaleMonitor textScale = new();
 
     public SchedulePage(ConferenceViewModel conference) : base(conference)
     {
         InitializeComponent();
+        ScheduleRoot.Add(textScale);
+        textScale.TextScaleChanged += (_, _) => UpdateHeader();
         ShowTimeline(true);
     }
 
@@ -18,6 +23,7 @@ public partial class SchedulePage : ConferencePage
         Conference.ScheduleChanged += OnScheduleChanged;
         base.OnAppearing();
         UpdateBottomInset();
+        UpdateHeader();
         UpdatePresentation();
     }
 
@@ -28,6 +34,21 @@ public partial class SchedulePage : ConferencePage
     }
 
     private void OnScheduleChanged(object? sender, EventArgs e) => UpdatePresentation();
+
+    protected override void OnSizeAllocated(double width, double height)
+    {
+        base.OnSizeAllocated(width, height);
+        UpdateHeader();
+    }
+
+    private void UpdateHeader()
+    {
+        if (Height > 0 && textScale.TextScale is { } scale)
+        {
+            ScheduleHeading.IsVisible = ScheduleLayout.ShouldShowHeading(Height, scale);
+            Planner.TextScale = scale;
+        }
+    }
 
     // On iOS the timeline runs under the translucent tab bar; the page's safe area says how far.
     protected override void OnPropertyChanged(string? propertyName = null)

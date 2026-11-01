@@ -40,6 +40,21 @@ The current RC2/Xcode 27.0 build pairing does not claim Xcode 27.1 build support
 
 The current RC2 build was inspected on iPhone and iPhone Duo simulators. Settings and detail/document pages respect system chrome through shared safe-area controls, not fixed offsets. Local validation used installed Xcode 27.1 with `-p:ValidateXcodeVersion=false`, bypassing the workload-version check; this is not the workload's supported pairing or release certification. Physical-device execution and folding transitions remain release gates.
 
+### Adaptive schedule timeline
+
+My Schedule retains its single Avalonia timeline and native List alternative.
+Topic filters wrap only when the planner has at least 720 by 600 unscaled layout
+units after its text transform; otherwise they use the existing horizontal
+swipe row. The native decorative headline is hidden below 600 page units per
+measured text-scale unit, without hiding mode controls, time-zone information,
+or update errors. Below 340 units of available timeline-label width, the saved
+count/status and day/date labels stack instead of clipping. These policies
+re-evaluate on resize and text-size changes and do not partition the timeline
+around a fold. The same text-scale monitor drives the embedded planner
+immediately, capped at its existing 1.6 layout scale rather than polling
+platform font settings. Short saved agendas align to the top of the timeline
+viewport rather than leaving a centered blank strip above the first day.
+
 ### Adaptive session and speaker details
 
 Sessions and Speakers use the shared `AdaptiveConferencePage` Grid and platform
