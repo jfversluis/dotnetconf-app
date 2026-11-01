@@ -1,20 +1,17 @@
 using DotNetConf.App.ViewModels;
-using DotNetConf.App.Controls;
 using DotNetConf.App.Services;
 using IosPage = Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.Page;
 
 namespace DotNetConf.App.Pages;
 
-public partial class SchedulePage : ConferencePage
+public partial class SchedulePage : AdaptiveConferencePage
 {
     private bool timelineSelected = true;
-    private readonly TextScaleMonitor textScale = new();
 
-    public SchedulePage(ConferenceViewModel conference) : base(conference)
+    public SchedulePage(ConferenceViewModel conference, DetailNavigationService navigation) : base(conference)
     {
         InitializeComponent();
-        ScheduleRoot.Add(textScale);
-        textScale.TextScaleChanged += (_, _) => UpdateHeader();
+        ConfigureDetails(DetailKind.Session, navigation);
         ShowTimeline(true);
     }
 
@@ -35,6 +32,17 @@ public partial class SchedulePage : ConferencePage
 
     private void OnScheduleChanged(object? sender, EventArgs e) => UpdatePresentation();
 
+    protected override DetailLayout AdaptDetailLayout(DetailLayout layout, double width, double textScale)
+    {
+        if (OperatingSystem.IsIOS())
+            width -= IosPage.GetSafeAreaInsets(this).HorizontalThickness;
+        return ScheduleLayout.ForDetails(layout, width, textScale);
+    }
+
+    protected override string DetailSelectionHint => "Select a session from your schedule to explore the details here.";
+
+    protected override void OnListLayoutChanged(bool scrollHeader, bool stacked) => UpdateHeader();
+
     protected override void OnSizeAllocated(double width, double height)
     {
         base.OnSizeAllocated(width, height);
@@ -43,7 +51,7 @@ public partial class SchedulePage : ConferencePage
 
     private void UpdateHeader()
     {
-        if (Height > 0 && textScale.TextScale is { } scale)
+        if (Height > 0 && TextScale is { } scale)
         {
             ScheduleHeading.IsVisible = ScheduleLayout.ShouldShowHeading(Height, scale);
             Planner.TextScale = scale;

@@ -1,9 +1,52 @@
 using DotNetConf.App.Services;
+using Microsoft.Maui;
+using Microsoft.Maui.Controls;
 
 namespace DotNetConf.App.Tests;
 
 public sealed class ScheduleLayoutTests
 {
+    [Theory]
+    [InlineData(680, 1, true)]
+    [InlineData(679, 1, false)]
+    [InlineData(1000, 1.6, false)]
+    [InlineData(1088, 1.6, true)]
+    public void FlatWideScheduleUsesEqualUsablePanes(double width, double scale, bool expected)
+    {
+        var candidate = new DetailLayout(true, false, new(0.42, GridUnitType.Star), new(0),
+            new(0.58, GridUnitType.Star));
+        var layout = ScheduleLayout.ForDetails(candidate, width, scale);
+        Assert.Equal(expected, layout.IsSplit);
+        Assert.False(layout.IsStacked);
+        if (expected)
+            Assert.Equal(layout.ListLength, layout.DetailLength);
+    }
+
+    [Theory]
+    [InlineData(413.5, 40, 867, 1, true)]
+    [InlineData(433.5, 0, 867, 1, true)]
+    [InlineData(339, 40, 867, 1, false)]
+    [InlineData(528, 40, 867, 1, false)]
+    [InlineData(413.5, 40, 867, 1.6, false)]
+    public void VerticalDivisionIsPreservedOnlyWhenBothPanesFit(
+        double left, double gap, double width, double scale, bool expected)
+    {
+        var candidate = new DetailLayout(true, false, new(left), new(gap), GridLength.Star);
+        var layout = ScheduleLayout.ForDetails(candidate, width, scale);
+        Assert.Equal(expected, layout.IsSplit);
+        if (expected)
+            Assert.Equal(candidate, layout);
+    }
+
+    [Fact]
+    public void HorizontalDivisionsAndCompactLayoutsNeverStackScheduleDetails()
+    {
+        var horizontal = new DetailLayout(true, true, new(400), new(40), GridLength.Star);
+        var compact = new DetailLayout(false, false, GridLength.Star, new(0), new(0));
+        Assert.Equal(compact, ScheduleLayout.ForDetails(horizontal, 1000));
+        Assert.Equal(compact, ScheduleLayout.ForDetails(compact, 1000));
+    }
+
     [Theory]
     [InlineData(339, true)]
     [InlineData(340, false)]
@@ -42,5 +85,6 @@ public sealed class ScheduleLayoutTests
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => ScheduleLayout.ShouldWrapTopics(720, 600, scale));
         Assert.Throws<ArgumentOutOfRangeException>(() => ScheduleLayout.ShouldShowHeading(600, scale));
+        Assert.Throws<ArgumentOutOfRangeException>(() => ScheduleLayout.ForDetails(default, 1000, scale));
     }
 }

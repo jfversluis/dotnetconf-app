@@ -49,11 +49,23 @@ swipe row. The native decorative headline is hidden below 600 page units per
 measured text-scale unit, without hiding mode controls, time-zone information,
 or update errors. Below 340 units of available timeline-label width, the saved
 count/status and day/date labels stack instead of clipping. These policies
-re-evaluate on resize and text-size changes and do not partition the timeline
-around a fold. The same text-scale monitor drives the embedded planner
+re-evaluate on resize and text-size changes. The same text-scale monitor drives the embedded planner
 immediately, capped at its existing 1.6 layout scale rather than polling
 platform font settings. Short saved agendas align to the top of the timeline
 viewport rather than leaving a centered blank strip above the first day.
+
+My Schedule reuses adaptive native detail navigation. A usable vertical
+division places the timeline or saved list on the left and session/speaker
+details on the right, preserving the reported gap. Flat wide windows use equal
+panes without a gap. Horizontal divisions never stack schedule/detail panes.
+The timeline needs at least 340 and the detail pane at least 300
+device-independent units per measured text-scale unit; narrower panes fall back
+to native detail navigation. The shared detail policy also retains its minimum
+window height. Selection survives these transitions, and the selected timeline
+card and saved-list row are highlighted only while details are inline.
+The same planner instance retains filters, zoom and scroll position; resizing
+between stacked and inline day labels adjusts the scroll anchor for their
+different header heights.
 
 ### Adaptive session and speaker details
 

@@ -38,6 +38,7 @@ internal sealed class SessionCard : Button
     private string startLabel = "";
     private bool dimmed;
     private bool keyboardFocus;
+    private bool selected;
     private bool ended;
     private bool live;
 
@@ -133,12 +134,22 @@ internal sealed class SessionCard : Button
     public SessionViewModel? Session { get; private set; }
     public HeartButton Heart { get; }
 
+    public void SetSelected(bool value)
+    {
+        if (selected == value)
+            return;
+        selected = value;
+        Update();
+    }
+
     /// <summary>
     /// Shows another session on this card as it stands now: filtered out or not, and live, ended or still to come.
     /// A recycled card takes all of it on at once instead of animating from the session it showed before.
     /// </summary>
     public void Bind(SessionViewModel session, Color topic, bool isDimmed, (bool Live, bool Ended, double Elapsed) state)
     {
+        if (Session?.Id != session.Id)
+            selected = false;
         Session = session;
         topicColor = topic;
         startLabel = TimeZoneInfo.ConvertTime(session.Model.StartsAt, TimeZoneInfo.Local).ToString("t");
@@ -226,8 +237,10 @@ internal sealed class SessionCard : Button
         speakers.Foreground = Brush(theme.Secondary);
         topicDot.Fill = Brush(topicColor);
         progress.Background = Brush(PlannerTheme.WithAlpha(topicColor, 0.12));
-        surface.Background = Brush(PlannerTheme.Blend(theme.Surface, topicColor, theme.IsDark ? 0.10 : 0.06));
-        surface.BorderBrush = Brush(session.HasConflict ? theme.Conflict : theme.Outline);
+        surface.Background = Brush(PlannerTheme.Blend(theme.Surface, selected ? theme.Accent : topicColor,
+            selected ? 0.18 : theme.IsDark ? 0.10 : 0.06));
+        surface.BorderBrush = Brush(session.HasConflict ? theme.Conflict : selected ? theme.Accent : theme.Outline);
+        surface.BorderThickness = new Thickness(selected ? 2 : 1);
         focusRing.IsVisible = keyboardFocus;
         // The focused card comes forward, so its ring isn't hidden under the next card.
         ZIndex = keyboardFocus ? 1 : 0;
@@ -256,6 +269,7 @@ internal sealed class SessionCard : Button
         RenderTransform = Lift();
         Heart.Update();
         AutomationProperties.SetName(this, session.NavigationDescription);
+        AutomationProperties.SetHelpText(this, selected ? "Selected, showing session details" : "Opens session details");
     }
 
     protected override void OnGotFocus(FocusChangedEventArgs e)

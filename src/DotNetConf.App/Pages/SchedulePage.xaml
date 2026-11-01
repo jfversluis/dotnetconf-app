@@ -1,4 +1,4 @@
-<pages:ConferencePage x:Class="DotNetConf.App.Pages.SchedulePage"
+<pages:AdaptiveConferencePage x:Class="DotNetConf.App.Pages.SchedulePage"
                       x:Name="Page"
                       xmlns:pages="clr-namespace:DotNetConf.App.Pages"
                       xmlns:controls="clr-namespace:DotNetConf.App.Controls"
@@ -30,6 +30,7 @@
         </VerticalStackLayout>
         <planner:SchedulePlanner x:Name="Planner" Grid.Row="1" Sessions="{Binding SavedTimelineSessions}"
                                  Topics="{Binding Topics}"
+                                 SelectedId="{Binding Source={x:Reference Page}, Path=SelectedId, x:DataType=pages:SchedulePage}"
                                  ClearTopicsCommand="{Binding ClearTopicFiltersCommand}" AutomationId="schedule-planner" />
         <RefreshView x:Name="SavedList" Grid.Row="1" IsVisible="False"
                      IsRefreshing="{Binding IsPullRefreshing, Mode=TwoWay}"
@@ -49,7 +50,7 @@
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:SessionViewModel">
                     <Grid Padding="24,0">
-                        <controls:SessionRow />
+                        <controls:SessionRow SelectedId="{Binding Source={RelativeSource AncestorType={x:Type pages:AdaptiveConferencePage}}, Path=SelectedId}" />
                     </Grid>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
@@ -67,4 +68,4 @@
         </CollectionView>
         </RefreshView>
     </Grid>
-</pages:ConferencePage>
+</pages:AdaptiveConferencePage>

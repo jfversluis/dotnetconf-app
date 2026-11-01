@@ -9,6 +9,15 @@ namespace DotNetConf.App.Planner;
 /// </summary>
 public sealed class SchedulePlanner : View
 {
+    public static readonly BindableProperty SelectedIdProperty = BindableProperty.Create(
+        nameof(SelectedId), typeof(string), typeof(SchedulePlanner), null);
+
+    public string? SelectedId
+    {
+        get => (string?)GetValue(SelectedIdProperty);
+        set => SetValue(SelectedIdProperty, value);
+    }
+
     public static readonly BindableProperty SessionsProperty = BindableProperty.Create(
         nameof(Sessions), typeof(IReadOnlyList<SessionViewModel>), typeof(SchedulePlanner), Array.Empty<SessionViewModel>());
 

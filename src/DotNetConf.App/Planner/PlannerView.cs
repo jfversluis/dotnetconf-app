@@ -130,6 +130,7 @@ public sealed class PlannerView : UserControl
     private double cardsLeft;
     private double cardsWidth;
     private double dayHeaderHeight = DayHeaderHeight;
+    private string? selectedId;
     private int matchCount;
 
     private NowIndicator? nowIndicator;
@@ -284,6 +285,13 @@ public sealed class PlannerView : UserControl
         textScaler.LayoutTransform = scale > 1 ? new ScaleTransform(scale, scale) : null;
         UpdateChromeLayout();
         SetBottomInset(bottomInset);
+    }
+
+    public void SetSelectedId(string? value)
+    {
+        selectedId = value;
+        foreach (var card in cards.Values)
+            card.SetSelected(card.Session?.Id == value && value is not null);
     }
 
     /// <summary>
@@ -590,6 +598,11 @@ public sealed class PlannerView : UserControl
         var width = scroller.Bounds.Width;
         if (width <= 0 || layout is not { } timeline)
             return;
+        var previousHeaderHeight = dayHeaderHeight;
+        var previousOffset = scroller.Offset.Y;
+        var anchorDay = dayTops.Length == timeline.Days.Count && dayTops.Length > 0
+            ? Math.Min(FirstDayEndingAfter(previousOffset), dayTops.Length - 1) : -1;
+        var previousDayTop = anchorDay >= 0 ? dayTops[anchorDay] : 0;
         contentWidth = Math.Min(MaxContentWidth, width - SideMargin - RailSpace);
         // Centered, unless that would put the timeline under the overview rail.
         contentLeft = Math.Min((width - contentWidth) / 2, width - RailSpace - contentWidth);
@@ -609,6 +622,13 @@ public sealed class PlannerView : UserControl
         }
         canvas.Width = width;
         canvas.Height = y + BottomPadding + bottomInset / textScale;
+        if (anchorDay >= 0 && previousHeaderHeight != dayHeaderHeight && previousOffset > previousDayTop)
+        {
+            var headerShift = previousOffset >= previousDayTop + previousHeaderHeight
+                ? dayHeaderHeight - previousHeaderHeight : 0;
+            scroller.Offset = new Vector(0, Math.Max(0,
+                previousOffset + dayTops[anchorDay] - previousDayTop + headerShift));
+        }
         Place(backdrop, 0, 0, width, canvas.Height);
         backdrop.Column = (contentLeft, contentWidth, RulerWidth);
         Place(route, cardsLeft - RouteLayer.GutterWidth, 0, RouteLayer.GutterWidth, canvas.Height);
@@ -773,6 +793,7 @@ public sealed class PlannerView : UserControl
         }
         var topic = session.Model.Topics.Count == 0 ? 0 : topicIndex.GetValueOrDefault(session.Model.Topics[0]);
         card.Bind(session, theme.TopicColor(topic), !Matches(session), TimeState(session.Model, Clock.GetUtcNow()));
+        card.SetSelected(session.Id == selectedId);
         // Items are numbered by day and start time; the heart shares its card's number, so it follows the card.
         KeyboardNavigation.SetTabIndex(card, item);
         KeyboardNavigation.SetTabIndex(card.Heart, item);
