@@ -10,6 +10,10 @@ using Syncfusion.Maui.Toolkit.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 #if ANDROID
 using Microsoft.Maui.Platform;
+using Microsoft.Maui.LifecycleEvents;
+using DotNetConf.App.Platforms.Android;
+#else
+using Microsoft.Maui.Foldable;
 #endif
 using Microsoft.Extensions.Logging;
 #if DEBUG
@@ -26,6 +30,9 @@ public static class MauiProgram
     {
         var builder = MauiApp.CreateBuilder();
         builder.UseMauiApp<App>()
+#if !ANDROID
+            .UseFoldable()
+#endif
             // Configured first so the Avalonia host can replace the toolkit's handlers.
             .ConfigureSyncfusionToolkit()
 #if AVALONIA
@@ -48,8 +55,18 @@ public static class MauiProgram
             });
 
 #if ANDROID
+        builder.Services.AddSingleton<AndroidFoldableRegionSource>();
+        builder.Services.AddSingleton<IFoldableRegionSource>(services =>
+            services.GetRequiredService<AndroidFoldableRegionSource>());
+        builder.ConfigureLifecycleEvents(events => events.AddAndroid(android => android
+            .OnStart(activity => GetFoldableRegionSource().Start(activity))
+            .OnStop(activity => GetFoldableRegionSource().Stop(activity))));
         DotNetConf.App.Platforms.Android.ShellToolbarAppearance.Register();
-        builder.ConfigureMauiHandlers(handlers => handlers.AddHandler<ShellItem, InstantTabsHandler>());
+        builder.ConfigureMauiHandlers(handlers =>
+        {
+            handlers.AddHandler<ShellItem, InstantTabsHandler>();
+            handlers.AddHandler<SearchResultLayer, SearchResultLayerHandler>();
+        });
         Microsoft.Maui.Handlers.EntryHandler2.Mapper.AppendToMapping(nameof(IEntry.Placeholder), (handler, view) =>
         {
             if (view is not SearchEntry)
@@ -132,4 +149,10 @@ public static class MauiProgram
 #endif
         return builder.Build();
     }
+
+#if ANDROID
+    private static AndroidFoldableRegionSource GetFoldableRegionSource() =>
+        IPlatformApplication.Current?.Services.GetRequiredService<AndroidFoldableRegionSource>()
+        ?? throw new InvalidOperationException("The Android application is unavailable for fold monitoring.");
+#endif
 }

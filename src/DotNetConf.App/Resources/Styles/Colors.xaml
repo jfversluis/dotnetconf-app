@@ -6,11 +6,13 @@
     <Color x:Key="LavenderLight">#EEEAFB</Color>
     <Color x:Key="LightBackground">#FAFAFA</Color>
     <Color x:Key="LightSurface">#FFFFFF</Color>
+    <Color x:Key="LightSelectedSurface">#EEEAFB</Color>
     <Color x:Key="LightText">#333333</Color>
     <Color x:Key="LightSecondary">#616161</Color>
     <Color x:Key="LightOutline">#E0E0E0</Color>
     <Color x:Key="DarkBackground">#1F1F1F</Color>
     <Color x:Key="DarkSurface">#292929</Color>
+    <Color x:Key="DarkSelectedSurface">#190649</Color>
     <Color x:Key="DarkText">#E5E5E5</Color>
     <Color x:Key="DarkSecondary">#BDBDBD</Color>
     <Color x:Key="DarkOutline">#474747</Color>

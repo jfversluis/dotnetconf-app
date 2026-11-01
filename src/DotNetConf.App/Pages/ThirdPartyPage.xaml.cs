@@ -10,6 +10,12 @@ public partial class ThirdPartyPage : ContentPage
     public IReadOnlyList<DependencyNotice> Dependencies { get; } =
     [
         new(".NET MAUI", "Controls, Maps, Core, Essentials & Graphics · 11.0.0-rc.2.26505.5 · MIT", "LICENSE-DotNetFoundation.txt"),
+#if IOS
+        new("MAUI Foldable iOS backport", "Adapted from dotnet/maui · MIT", "LICENSE-DotNetFoundation.txt"),
+        new(".NET iOS UIKit bindings", "Adapted from dotnet/macios · MIT", "LICENSE-MaciOS.txt"),
+#elif AVALONIA
+        new(".NET MAUI Foldable", "11.0.0-rc.2.26505.5 · MIT", "LICENSE-DotNetFoundation.txt"),
+#endif
         new("CommunityToolkit.Maui", "15.0.1 · MIT", "LICENSE-MauiToolkit.txt"),
         new("CommunityToolkit.Mvvm", "8.4.2 · MIT", "LICENSE-MvvmToolkit.txt"),
         new("Syncfusion.Maui.Toolkit", "1.0.11 · MIT", "LICENSE-SyncfusionToolkit.txt"),
@@ -18,6 +24,8 @@ public partial class ThirdPartyPage : ContentPage
         new("Open Sans", "Regular and Semibold · Apache 2.0", "LICENSE-OpenSans.txt"),
         new("Space Grotesk", "Bold · SIL Open Font License 1.1", "LICENSE-SpaceGrotesk.txt"),
 #if ANDROID
+        new("AndroidX Window .NET bindings", "Window, WindowJava & WindowCore · 1.5.1.3 · MIT", "LICENSE-AndroidXBindings.txt"),
+        new("AndroidX Window native components", "Window, window-java, window-core & window-core-jvm · 1.5.1 · Apache 2.0", "NOTICE-AndroidXWindow.txt"),
         new("Google Maps SDK & Google Play services native components", "Maps 20.0.0 · Base/Basement 18.10.0 · Tasks 18.4.1 · upstream third-party licenses", "NOTICE-GooglePlayServices.txt"),
 #endif
 #if AVALONIA

@@ -1,6 +1,6 @@
 namespace DotNetConf.App.Controls;
 
-public partial class SpeakerRow : ContentView
+public partial class SpeakerRow : DetailRow
 {
     public SpeakerRow() => InitializeComponent();
 }
