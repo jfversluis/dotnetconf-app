@@ -2,20 +2,33 @@ using System.Text.Json;
 using DotNetConf.App.Services;
 using DotNetConf.Core;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DotNetConf.Core.Tests;
 
+[Trait("Category", "AIAttributes")]
 public sealed class PlannerToolTests
 {
     [Fact]
-    public async Task ToolsHaveSchemasAndInvokeWithoutReflectionSerialization()
+    public void GeneratedSchemaAndBindingsUseExplicitlyEnabledJsonReflection()
+    {
+        Assert.True(JsonSerializer.IsReflectionEnabledByDefault);
+        var search = PlannerToolContext.Default.Tools.Cast<AIFunction>().Single(f => f.Name == "search_sessions");
+        Assert.Equal("string", search.JsonSchema.GetProperty("properties").GetProperty("query").GetProperty("type").GetString());
+        var submit = PlannerToolContext.Default.Tools.Cast<AIFunction>().Single(f => f.Name == "submit_proposal");
+        Assert.Equal("array", submit.JsonSchema.GetProperty("properties").GetProperty("sessionIds").GetProperty("type").GetString());
+    }
+
+    [Fact]
+    public async Task GeneratedToolsHaveSchemasAndInvokeWithTheNativeAotConfiguration()
     {
         await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
         var conference = await ConferenceJson.ReadAsync(stream);
         var tools = new PlannerTools();
         tools.Initialize(conference, TimeZoneInfo.Utc, []);
         tools.CapturePreferences(["Alex Rivera"], []);
-        var functions = tools.CreateFunctions().Cast<AIFunction>().ToArray();
+        using var services = new ServiceCollection().AddSingleton(tools).BuildServiceProvider();
+        var functions = tools.CreateFunctions(services).Cast<AIFunction>().ToArray();
         Assert.Equal(5, functions.Length);
         foreach (var function in functions)
         {
@@ -47,6 +60,107 @@ public sealed class PlannerToolTests
             """{"sessionIds":["building-with-maui"]}""", AIJsonUtilities.DefaultOptions)!;
         Assert.StartsWith("Preview ready.", Assert.IsType<string>(await submit.InvokeAsync(constrainedArguments)));
         Assert.Equal("UTC", Assert.Single(tools.Proposal!.Availability).Zone);
+    }
+
+    [Fact]
+    public async Task GeneratedBindingsHonorOptionalArgumentsAndOnlyExposeCuratedTools()
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        using var services = new ServiceCollection().AddScoped<PlannerTools>().BuildServiceProvider(
+            new ServiceProviderOptions { ValidateScopes = true });
+        using var scope = services.CreateScope();
+        var tools = scope.ServiceProvider.GetRequiredService<PlannerTools>();
+        tools.Initialize(conference, TimeZoneInfo.Utc, []);
+        tools.CapturePreferences([], [], topicFilter: new(["Mobile"], false, false, false));
+        var functions = tools.CreateFunctions(scope.ServiceProvider).Cast<AIFunction>().ToDictionary(f => f.Name);
+        Assert.Equal(["catalog_topics", "search_sessions", "speaker_sessions", "submit_proposal", "topic_sessions"],
+            functions.Keys.Order());
+        foreach (var generated in PlannerToolContext.Default.Tools.Cast<AIFunction>())
+            Assert.Equal(generated.Description, functions[generated.Name].Description);
+        var speaker = functions["speaker_sessions"];
+        Assert.Equal(["name"], speaker.JsonSchema.GetProperty("required").EnumerateArray().Select(p => p.GetString()));
+        Assert.Contains("Alex Rivera", Assert.IsType<string>(await speaker.InvokeAsync(
+            new AIFunctionArguments { ["name"] = "Alex" })));
+        Assert.Contains("building-with-maui", Assert.IsType<string>(await functions["topic_sessions"].InvokeAsync(
+            new AIFunctionArguments())));
+
+        var rawSearch = PlannerToolContext.Default.Tools.Cast<AIFunction>().Single(f => f.Name == "search_sessions");
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await rawSearch.InvokeAsync(new AIFunctionArguments { ["query"] = "Mobile", ["skip"] = 0 }));
+        var arguments = JsonSerializer.Deserialize<AIFunctionArguments>(
+            """{"query":"Mobile","skip":0}""", AIJsonUtilities.DefaultOptions)!;
+        arguments.Services = scope.ServiceProvider;
+        Assert.Contains("building-with-maui", Assert.IsType<string>(await rawSearch.InvokeAsync(arguments)));
+    }
+
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("""{"query":null,"skip":0}""")]
+    [InlineData("""{"query":"Mobile","skip":0.5}""")]
+    [InlineData("""{"query":"Mobile","skip":"not a number"}""")]
+    public async Task InvalidGeneratedSearchArgumentsStayVisible(string json)
+    {
+        var tools = new PlannerTools();
+        using var services = new ServiceCollection().AddSingleton(tools).BuildServiceProvider();
+        var search = tools.CreateFunctions(services).Cast<AIFunction>().Single(f => f.Name == "search_sessions");
+        var arguments = JsonSerializer.Deserialize<AIFunctionArguments>(json, AIJsonUtilities.DefaultOptions)!;
+        Assert.StartsWith("Invalid tool arguments:", Assert.IsType<string>(await search.InvokeAsync(arguments)));
+        Assert.Equal(1, tools.CallCount);
+        Assert.Empty(tools.CandidateIds);
+    }
+
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("""{"sessionIds":[42]}""")]
+    [InlineData("""{"sessionIds":42}""")]
+    [InlineData("""{"sessionIds":null}""")]
+    public async Task InvalidGeneratedProposalArgumentsClearPreviousPreview(string json)
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        var tools = new PlannerTools();
+        tools.Initialize(conference, TimeZoneInfo.Utc, []);
+        tools.CapturePreferences([], []);
+        tools.SubmitProposal(["building-with-maui"]);
+        Assert.NotNull(tools.Proposal);
+        using var services = new ServiceCollection().AddSingleton(tools).BuildServiceProvider();
+        var submit = tools.CreateFunctions(services).Cast<AIFunction>().Single(f => f.Name == "submit_proposal");
+        var arguments = JsonSerializer.Deserialize<AIFunctionArguments>(json, AIJsonUtilities.DefaultOptions)!;
+        Assert.StartsWith("Invalid", Assert.IsType<string>(await submit.InvokeAsync(arguments)));
+        Assert.Null(tools.Proposal);
+        Assert.Equal(1, tools.CallCount);
+    }
+
+    [Fact]
+    public async Task GeneratedToolsKeepScopesAndArgumentBoundsIndependent()
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
+        var conference = await ConferenceJson.ReadAsync(stream);
+        using var services = new ServiceCollection().AddScoped<PlannerTools>().BuildServiceProvider(
+            new ServiceProviderOptions { ValidateScopes = true });
+        using var first = services.CreateScope();
+        using var second = services.CreateScope();
+        var tools = first.ServiceProvider.GetRequiredService<PlannerTools>();
+        var other = second.ServiceProvider.GetRequiredService<PlannerTools>();
+        tools.Initialize(conference, TimeZoneInfo.Utc, []);
+        other.Initialize(conference, TimeZoneInfo.Utc, []);
+        tools.CapturePreferences(["Alex"], []);
+        other.CapturePreferences(["Ortinau"], []);
+        Assert.Throws<InvalidOperationException>(() => tools.CreateFunctions(second.ServiceProvider));
+        var functions = tools.CreateFunctions(first.ServiceProvider).Cast<AIFunction>().ToDictionary(f => f.Name);
+        Assert.StartsWith("Preview ready.", Assert.IsType<string>(await functions["submit_proposal"].InvokeAsync(
+            new AIFunctionArguments { ["sessionIds"] = new[] { "building-with-maui" }, Services = second.ServiceProvider })));
+        Assert.NotNull(tools.Proposal);
+        Assert.Null(other.Proposal);
+        Assert.Equal(0, other.CallCount);
+        Assert.StartsWith("Invalid tool arguments:", Assert.IsType<string>(await functions["search_sessions"].InvokeAsync(
+            new AIFunctionArguments { ["query"] = new string('x', 101), ["skip"] = 0 })));
+        Assert.StartsWith("Invalid tool arguments:", Assert.IsType<string>(await functions["speaker_sessions"].InvokeAsync(
+            new AIFunctionArguments { ["name"] = new string('x', 101) })));
+        Assert.StartsWith("Invalid arguments:", Assert.IsType<string>(await functions["submit_proposal"].InvokeAsync(
+            new AIFunctionArguments { ["sessionIds"] = new[] { new string('x', 101) } })));
+        Assert.Null(tools.Proposal);
     }
 
     [Fact]
@@ -93,7 +207,8 @@ public sealed class PlannerToolTests
         var tools = new PlannerTools();
         tools.Initialize(conference, TimeZoneInfo.Utc, []);
         tools.CapturePreferences([], []);
-        var submit = tools.CreateFunctions().Cast<AIFunction>().Single(f => f.Name == "submit_proposal");
+        using var services = new ServiceCollection().AddSingleton(tools).BuildServiceProvider();
+        var submit = tools.CreateFunctions(services).Cast<AIFunction>().Single(f => f.Name == "submit_proposal");
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
@@ -129,7 +244,8 @@ public sealed class PlannerToolTests
         var tools = new PlannerTools();
         tools.Initialize(conference, TimeZoneInfo.Utc, []);
         tools.CapturePreferences([], []);
-        var search = tools.CreateFunctions().Cast<AIFunction>().Single(f => f.Name == "search_sessions");
+        using var services = new ServiceCollection().AddSingleton(tools).BuildServiceProvider();
+        var search = tools.CreateFunctions(services).Cast<AIFunction>().Single(f => f.Name == "search_sessions");
         for (var i = 0; i < 32; i++)
             await search.InvokeAsync(new AIFunctionArguments { ["query"] = "", ["skip"] = 0 });
         await Assert.ThrowsAsync<InvalidOperationException>(async () =>

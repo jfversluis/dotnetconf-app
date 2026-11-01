@@ -12,7 +12,7 @@ Developers exploring the virtual .NET Conf, its sessions and speakers, and savin
 
 ## Capabilities and constraints
 
-Native .NET MAUI on .NET 11, with iOS and Android as the primary targets and experimental Linux desktop and browser builds. The app is in development and has not been released. Core features are conference information, searchable sessions/speakers, timezone-aware times, local bookmarks, and a community overview with an event list. Native maps and event details are implemented but need an official event source before they can display gatherings. No accounts or cloud synchronization. Reminders, embedded partner video, and device-local AI are deferred.
+Native .NET MAUI on .NET 11, with iOS and Android as the primary targets and experimental Linux desktop and browser builds. The app is in development and has not been released. Core features are conference information, searchable sessions/speakers, timezone-aware times, local bookmarks, optional on-device AI planning and session reminders, and a community overview with an event list. Native maps and event details are implemented but need an official event source before they can display gatherings. No accounts or cloud synchronization. Embedded partner video is deferred.
 
 ## Brand commitments
 

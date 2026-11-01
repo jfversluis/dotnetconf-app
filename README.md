@@ -13,173 +13,45 @@ Your .NET Conf, in your pocket. An **unofficial companion app for iOS and Androi
 - **Make room for details.** On wide windows, Sessions and Speakers keep the list on the left and details on the right. On supported foldables, an active division separates the panes; a horizontal division stacks them. Narrow windows or very large text retain native navigation, and resizing carries your selected details with you.
 - **Find your community.** Discover ways to watch together, meet local presenters, or organize a gathering. No community events ship with the app, and an official event feed is not connected yet. The empty event list links to the official website; the map stays hidden without events.
 - **Build your schedule.** Tap a heart to save a session. My Schedule shows only your saved sessions, as a timeline or a plain list. Only days with saved sessions appear on the timeline; overlaps are marked with how long they clash, topic filters fade what you don't need, and during the conference a live marker shows where you are. Swipe the topic row on narrow or height-constrained screens; taller wide windows show wrapped filters. The decorative headline gives way when space is tight or text is large. Wide windows can show session details beside your schedule; supported vertical folds keep the panes clear of the hinge. Compact windows, horizontal folds, and very large text retain native navigation. Pinch or use the zoom buttons to see more or less of the day. Your choices stay on your device.
+- **Plan with on-device AI.** Describe your interests, must-see speakers, and available time to get a personal shortlist from the real agenda. Already have a schedule? Find talks that fit in the gaps.
 - **See times that make sense to you.** Session times use your device's local time zone.
 - **Feel at home.** Follow your device's appearance or choose Light or Dark in Settings. The app supports larger text.
 
 The agenda opens immediately from the last downloaded update. No sessions or speaker profiles ship with the app: the first launch needs an internet connection to download them. The Microsoft agenda refreshes in the background without interrupting browsing. To check for updates yourself, pull down on Home, Sessions, Speakers, or the Schedule screen. A keyboard- and screen-reader-accessible alternative is available under Settings → About → Check for agenda updates. If an update fails, choose Retry. Downloaded data and your saved choices remain available offline.
 
-### On-device schedule planner (experimental spike)
+## Plan with on-device AI
 
-An optional first-run carousel introduces the app, lets you describe interests,
-must-see speakers and availability in natural language, and offers session
-reminders. The separate in-app builder remains available from
-**My Schedule → Plan with on-device AI (spike)**. This is not a hosted chatbot:
-there are no API keys, accounts, fake responses or cloud fallback.
+Tell the app what you want to learn, who you don't want to miss, or when you're
+free, and discover a shortlist from the downloaded .NET Conf agenda. Need
+inspiration? Playful starting points can highlight topics and speakers from the agenda.
+Once you've saved some talks, **Fill schedule gaps** helps you find more on
+those same conference days without moving your existing choices.
 
-The full-screen welcome modal opens automatically on a fresh install without a
-navigation bar. Swipe or use Next/Back to move between the three steps.
-While the welcome is visible, the app checks the registered on-device chat
-client with a short local inference. The middle step shows the AI builder only
-after that succeeds. Otherwise it explains how hearts save talks to My Schedule,
-without a disabled AI form, sample sessions, or automatic changes to likes.
-Next and Skip remain available while readiness is being checked.
-**Skip setup** dismisses the carousel at any point without discarding sessions
-you explicitly saved. Completion and skipping are remembered across launches;
-an interrupted first run is offered again. Android back moves to the previous
-step, or dismisses from the welcome step. The regular in-app builder has native
-back navigation, but no onboarding Skip or explore-on-my-own actions.
-Example prompts only fill the editor: you still choose when to generate,
-review the preview, and explicitly confirm before anything is added.
-Starting points sit in a horizontally scrolling row above the input. A small
-spinner appears while the local model picks a fresh mix of real agenda topics,
-then the whole batch appears together. Lighthearted chips include a random
-scheduled speaker's "all sessions by" request. Suggestions only fill the input.
-Generation failures reveal curated examples with an explicit status.
-The shortlist leads with sessions and times;
-optional **Show matching details** reveals the interpreted request. Warnings and
-blocking errors remain visible without opening those details.
+Open **My Schedule** and choose **Build a personal schedule**, or **Fill
+schedule gaps** once you've saved sessions. You can also try the planner during
+the welcome experience when a local model is available. Review the suggestions
+and their times, check the matching details, and choose what to add. AI can
+misunderstand, so you can edit your request and try again; nothing is saved
+until you confirm.
 
-**Session reminders** are optional local notifications, inspired by
-`jfversluis/app-myconference`. The app requests device permission only after
-**Enable session reminders** is tapped. Saved future sessions get a reminder at
-their start time; removing a like cancels its reminder. No APNs/FCM backend,
-account or push token is needed. The device controls delivery, including Focus,
-notification settings and Android scheduling delays. At most the next 60
-sessions are scheduled; app activation and saved-session changes refresh them.
-Android restores pending reminders after reboot and allows delayed delivery
-only until the session ends, without requesting exact-alarm access.
-Denied permission never blocks onboarding or browsing. Settings provides
-enable/retry, turn-off and device-settings actions. Fictional agenda reminders
-are labeled as demo sessions.
+Planning runs on your device with no account or cloud AI fallback. It requires a
+downloaded agenda and a ready local model: Apple Intelligence on supported
+iOS 26+ devices, or Gemini Nano on compatible Android 8+ devices. Availability
+depends on the device and its model settings. You can always browse and save
+sessions with hearts if the planner is unavailable.
 
-Startup navigation is owned by `App`, not Home's appearance lifecycle. To repeat
-first-run QA, clear only this app's `planner-onboarding-completed-v1` preference.
-The legacy `planner-intro-shown-v1` preference is ignored and need not be reset.
-Installing an updated build over an existing installation preserves dismissal;
-it is not a fresh first launch. Reset the preference and restart the app to
-exercise onboarding again without deleting saved sessions.
+The planner uses MAUI Labs'
+[Essentials.AI](https://github.com/dotnet/maui-labs/blob/main/src/AI/README.md)
+and [AI Attributes](https://github.com/dotnet/maui-labs/blob/main/src/AIExtensions/Microsoft.Maui.AI.Attributes/README.md).
+Explore [what you can ask and how to get started](docs/AI-PLANNER.md).
 
-The spike uses `Microsoft.Maui.Essentials.AI` **11.0.0-preview.8.26531.2**:
-`AppleIntelligenceChatClient` on supported **iOS 26+** devices and
-`GeminiNanoChatClient` on supported **Android API 26+** AICore devices.
-Both providers' `GetModelStatusAsync` APIs check availability without starting
-a model download. Onboarding shows the hearts explanation when the model is
-unavailable; the in-app planner offers an explicit retry. Apple Intelligence
-must be enabled with a supported language and downloaded model. Gemini Nano
-requires compatible hardware and prepared model assets; an emulator is not
-proof of Nano support. Android's new native library requires API 26, raising
-this app's Android minimum from API 24; no manifest override bypasses that requirement.
-Provider capabilities determine the response format: Apple supports structured
-output; Nano uses explicitly prompted JSON text followed by the same strict
-typed parsing and deterministic validation. No cloud or fake-model fallback is used.
-Normal browsing and likes still work. A simulator build alone does **not** establish
-that the model is ready or that inference works.
+### Session reminders
 
-The local model produces schema-constrained query arguments and, when needed,
-session selections. The app dispatches `Microsoft.Extensions.AI` functions:
-`search_sessions`, `speaker_sessions`, `topic_sessions`, and `submit_proposal`. This is an
-application-managed tool flow, not an autonomous native tool loop: the preview
-client can repeat native callbacks within a single request. Preference
-extraction is separate from selection; selection cannot rewrite constraints.
-C# filters by availability and existing likes. Searches return at most four
-real agenda rows per page, with at most ten function calls per request. Speaker
-requests support pagination and unique partial names; ambiguous names require
-clarification. An "all sessions" request gathers all matching speaker sessions
-deterministically, and validation rejects an incomplete result. Independent topic and
-speaker requests query both groups, not their intersection. A separate small
-local extraction identifies topical intent and its quantity. Literal topics
-are grounded directly; inferred interests combined with speakers need quoted
-source evidence, and speaker names alone cannot justify an inferred topic.
-Topics use real agenda tags. Interest lists joined by "and" or "or" use a union;
-only explicit combined-talk requests ("both", "together", "in the same session")
-require a tag intersection. Common topic phrases such as "phone apps" are
-grounded alongside literal topics, so "mobile development and AI" keeps both
-interests. The planner also supports
-single speaker/topic scopes (for example, Maddy's MAUI talks). Different
-speaker/topic pairings in one request are rejected instead of flattened.
-An "all sessions about" request paginates and validates completeness within the
-requested availability, including after the user changes the preview selection.
-Daily limits without dates are expanded over actual conference dates in the
-requested time zone. "After 10pm for me" means the entire session must finish by
-22:00 local time. Late/conflicting matches stay visible with warnings, unchecked
-and unavailable for saving; they are not silently hidden. A don't-miss speaker
-request that cannot fit remains an explicit conflict. Only the topic
-vocabulary and bounded query results enter prompts, not the complete catalog.
-No function can change likes.
-Unknown extracted speakers explicitly requested with phrases such as
-"don't miss Ada Lovelace" or "Ada Lovelace's sessions" remain blocking
-speaker-not-found constraints rather than being discarded during grounding.
-`NLEmbeddingGenerator` is not needed for this small grounded agenda.
-Requests are bounded to four topics, eight speakers, twelve availability windows
-and twelve selected talks, with one time zone per request. Matching talks are
-not hidden just because the selection limit is exceeded; the preview explains
-why it cannot be saved.
-
-`Microsoft.Maui.AI.Attributes` / `ExportAIFunction` was evaluated, but the
-current preview generator's schema construction fails with reflection-based
-JSON serialization disabled. This NativeAOT app therefore uses small explicit
-`AIFunction` adapters with literal schemas and bounded argument readers instead.
-The tool tests run with reflection-based JSON serialization disabled.
-
-The preview shows the model's interpretation of required speakers and allowed
-time windows with explicit time zones. C# converts these to instants; the model
-does not need to perform time-zone arithmetic. **Check this interpretation**: C# cannot
-prove that a language model extracted every constraint correctly. Edit and
-regenerate if anything is missing or wrong. Select proposed sessions, confirm
-that the interpreted constraints match your request, then tap **Add selected
-sessions to My Schedule**. C# rejects unknown IDs, unknown or unsatisfied
-required speakers, overlaps (including existing likes), and sessions outside
-the full availability window. Invalid or ambiguous daylight-saving times are
-rejected rather than guessed. For ordinary recommendations C# can select a
-compatible subset of model-chosen alternatives, preserving required speakers;
-it never drops a talk from an "all sessions by" request to hide a conflict.
-Saving is an atomic, additive update: it does not remove previous likes.
-
-For a demo with the downloaded **live Microsoft agenda**, try
-"Show me all sessions by Gerald Versluis" or "I'm interested in Blazor and C#."
-Proposal session times use your device's
-time zone. Requests, proposals and chat history are not persisted; only
-confirmed likes and whether the introduction was shown are stored locally.
-Cancellation, a 90-second planning timeout, or a model error leaves likes
-unchanged. Model accuracy and tool use must still be exercised on a
-model-ready physical iPhone before using this as a reliable live demo.
-
-See the [runtime prompt matrix](docs/AI-PLANNER-SPIKE.md) for vague, precise,
-ambiguous and impossible requests, expected results, and the actual simulator
-inference checks.
-
-### Fill gaps in My Schedule
-
-The Fluent sparkle action becomes **Fill schedule gaps** once sessions are saved.
-It opens a focused planner with an editable "What sessions fit in here?" request.
-Try "Fill my gaps with C# or Blazor", "What talks by Maddy Montaquila fit my gaps?"
-or "Find something about building phone apps that fits my schedule gaps."
-Gaps include free time before, between and after saved talks **on the local
-conference days containing saved sessions**, bounded by the actual agenda on
-those days. Other days are not added implicitly. Overlapping/adjacent commitments
-are merged, and proposed talks must fit entirely inside a gap. Optional topics,
-speakers and availability further restrict that free time. Saved sessions stay
-fixed; only reviewed, confirmed proposals are added.
-
-Missing saved IDs without retained details, no fitting sessions and unsatisfied speaker requests
-are visible errors, not invented alternatives. Saving rechecks the current
-stored schedule under the same update gate; changed gap anchors require a new
-proposal. An agenda refresh also requires a new preview so the times you confirmed
-cannot silently change. Exact dated clock ranges are grounded from the user's
-literal text; generic "gaps" or "free slots" cannot authorize invented availability.
-Retained withdrawn bookmarks keep their last-known time slots reserved until
-you remove their hearts; they are never suggested as active talks. Ambiguous
-clock cutoffs such as "before 9" require clarification rather than being dropped.
+Don't miss a saved talk: opt in to local reminders during setup or in Settings.
+The app asks for notification permission only when you choose to enable them
+and schedules reminders for up to your next 60 saved sessions. Your device's
+notification settings and background restrictions can affect delivery. You can
+turn reminders off in Settings; no account or push service is required.
 
 ## Availability
 

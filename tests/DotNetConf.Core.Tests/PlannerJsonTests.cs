@@ -322,9 +322,14 @@ public sealed class PlannerJsonTests
         Assert.True(scope.RestrictToRequiredSpeakers);
         Assert.Throws<InvalidDataException>(() =>
             new PlannerTopicRequest("Rust", [], "all", "any", "independent").ToFilter(conference, "Everything about Rust"));
-        Assert.Throws<InvalidDataException>(() =>
+        var pairedError = Assert.Throws<InvalidDataException>(() =>
             new PlannerTopicRequest("MAUI talks and Gerald's C# talks", [".NET MAUI", "C#"], "all", "any", "independent")
                 .ToFilter(conference, "Maddy's MAUI talks and Gerald's C# talks"));
+        Assert.Equal("Please ask about each speaker and topic combination separately.", pairedError.Message);
+        var unsupportedError = Assert.Throws<InvalidDataException>(() =>
+            new PlannerTopicRequest("MAUI and C#", [".NET MAUI", "C#"], "all", "any", "unsupported")
+                .ToFilter(conference, "Maddy's MAUI talks and Gerald's C# talks", hasSpeakers: true));
+        Assert.Equal(pairedError.Message, unsupportedError.Message);
         Assert.True(new PlannerInterpretation("Maddy", "none", "none", "all")
             .RequestsAllSpeakers("Give me everything about MAUI and don't miss a session from Maddy"));
     }

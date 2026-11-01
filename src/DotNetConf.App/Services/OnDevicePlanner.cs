@@ -132,7 +132,7 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
                 .Select(issue => issue.Message).ToArray();
             if (nameErrors.Length > 0)
                 return new(tools.Preferences, string.Join("\n", nameErrors));
-            var functions = tools.CreateFunctions().OfType<AIFunction>().ToDictionary(f => f.Name);
+            var functions = tools.CreateFunctions(scope.ServiceProvider).OfType<AIFunction>().ToDictionary(f => f.Name);
             var catalog = await functions["catalog_topics"].InvokeAsync(new AIFunctionArguments(), cancellationToken);
             var interests = PlannerCatalog.SemanticInterests(conference, request);
             var topic = new PlannerTopicRequest(request, Agenda.MentionedTopics(conference, request), "some", "any", "independent");

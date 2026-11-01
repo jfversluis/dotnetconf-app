@@ -12,6 +12,8 @@
     <UseMaterial3>true</UseMaterial3>
     <SingleProject>true</SingleProject>
     <PublishAot>true</PublishAot>
+    <!-- AI Attributes preview 14 uses the default JSON resolver for its generated schemas and bindings. -->
+    <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <MauiXamlInflator>SourceGen</MauiXamlInflator>
@@ -73,6 +75,7 @@
     <!-- Draws the schedule planner on every target; Android and iOS embed it in their native UI. -->
     <PackageReference Include="Avalonia.Controls.Maui" Version="11.0.0-rc.2.26287.618" />
     <PackageReference Include="Microsoft.Maui.Essentials.AI" Version="11.0.0-preview.8.26531.2" />
+    <PackageReference Include="Microsoft.Maui.AI.Attributes" Version="0.1.0-preview.14.26531.2" />
     <PackageReference Include="Microsoft.Extensions.AI" Version="10.4.1" />
     <PackageReference Include="Plugin.LocalNotification" Version="14.0.0" />
   </ItemGroup>

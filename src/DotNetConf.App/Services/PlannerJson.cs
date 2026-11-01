@@ -126,7 +126,7 @@ public sealed record PlannerTopicRequest(string Text, string[] Topics, string Qu
             || SpeakerScope is not ("independent" or "within-topics" or "unsupported"))
             throw new InvalidDataException("The model returned invalid topic fields.");
         if (hasSpeakers && SpeakerScope == "unsupported")
-            throw new InvalidDataException("Separate different speaker/topic pairs into individual requests; this spike cannot safely combine them.");
+            throw new InvalidDataException("Please ask about each speaker and topic combination separately.");
         var literal = Agenda.MentionedTopics(conference, request);
         if (literal.Length == 0)
         {
@@ -147,7 +147,7 @@ public sealed record PlannerTopicRequest(string Text, string[] Topics, string Qu
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
         }).Count();
         if (scopedSpeakers > 1 && topics.Length > 1)
-            throw new InvalidDataException("Separate different speaker/topic pairs into individual requests; this spike cannot safely combine them.");
+            throw new InvalidDataException("Please ask about each speaker and topic combination separately.");
         var explicitOr = Regex.IsMatch(request, @"\bor\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
             TimeSpan.FromMilliseconds(100));
         var independentClause = Regex.IsMatch(request, @"\b(?:and|plus)\s+(?:everything|all|every|don['’]?t|do not|I must)\b",

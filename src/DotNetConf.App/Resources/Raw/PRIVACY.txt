@@ -1,6 +1,6 @@
 # .NET Conf companion privacy policy
 
-Last updated: October 31, 2026.
+Last updated: November 1, 2026.
 
 This policy describes the .NET Conf companion app maintained by Gerald
 Versluis. The app is in development and has not been released. This policy is
@@ -46,10 +46,28 @@ destination's privacy policy and your browser's settings.
 The experimental browser app also makes ordinary requests to the website that
 hosts the app, which can retain server logs under its own policy.
 
+## On-device planning and reminders
+
+If you use the optional planner, your request and relevant public agenda
+information are processed by a local model through Apple Intelligence on iOS
+or Gemini Nano on supported Android devices. The app does not send planner
+requests or responses to an app-operated AI service or use a cloud-model
+fallback. It does not save planner requests, proposals, or chat history;
+confirmed session choices are stored locally. The app checks whether a local
+model is ready but does not start a model download.
+
+Session reminders are optional. If you enable them, the app requests
+notification permission and gives your device's notification service the
+session title, ID, and start time to schedule local reminders. The app does
+not send these as push notifications from an app-operated server. You can turn
+reminders off in Settings; your device's notification settings also control
+delivery.
+
 ## Data kept on your device
 
 - Your saved session IDs are stored locally so your schedule survives restarts.
-- Your appearance preference is stored in the platform's preferences store.
+- Your appearance preference, whether you completed the welcome, and whether
+  reminders are enabled are stored in the platform's preferences store.
 - The last successfully downloaded agenda, public profiles, source URLs, and
   refresh/cache metadata are stored locally. The agenda cache is limited to
   16 MiB. It has no fixed expiry: older successfully downloaded data can remain

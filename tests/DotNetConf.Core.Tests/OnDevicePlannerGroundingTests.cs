@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DotNetConf.Core.Tests;
 
+[Trait("Category", "AIAttributes")]
 public sealed class OnDevicePlannerGroundingTests
 {
     [Theory]

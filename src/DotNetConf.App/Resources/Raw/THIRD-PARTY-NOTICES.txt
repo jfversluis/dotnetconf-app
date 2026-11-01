@@ -20,6 +20,11 @@ Copyright (c) Microsoft Corporation
 https://github.com/dotnet/maui-labs
 MIT license: LICENSE-DotNetFoundation.txt
 
+Microsoft.Maui.AI.Attributes 0.1.0-preview.14.26531.2
+Copyright (c) Microsoft Corporation
+https://github.com/dotnet/maui-labs
+MIT license: LICENSE-DotNetFoundation.txt
+
 Microsoft.Extensions.AI and Microsoft.Extensions.AI.Abstractions 10.4.1
 Copyright (c) .NET Foundation and Contributors
 https://github.com/dotnet/extensions

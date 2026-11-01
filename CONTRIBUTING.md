@@ -1,6 +1,6 @@
 # Contributing to the .NET Conf companion
 
-An **unofficial**, native .NET MAUI app for iOS and Android. The same project also has **experimental Linux desktop and browser targets**, where [Avalonia.Controls.Maui](https://github.com/AvaloniaUI/Avalonia.Controls.Maui) draws the controls. The app provides five Shell tabs, session/speaker details, search and day/topic filters, local-time agenda display, persistent My Schedule bookmarks, overlap warnings, a community overview, and website links. Native maps and event details are implemented but need an official event source before they can display gatherings.
+An **unofficial**, native .NET MAUI app for iOS and Android. The same project also has **experimental Linux desktop and browser targets**, where [Avalonia.Controls.Maui](https://github.com/AvaloniaUI/Avalonia.Controls.Maui) draws the controls. The app provides five Shell tabs, session/speaker details, search and day/topic filters, local-time agenda display, persistent My Schedule bookmarks, overlap warnings, optional [on-device AI planning](docs/AI-PLANNER.md) and session reminders, a community overview, and website links. Native maps and event details are implemented but need an official event source before they can display gatherings.
 
 **Conference sessions and speaker profiles are remote-only**, downloaded from the public Microsoft conference feed and cached for offline use. None ship in the app. A first install needs an internet connection; private organizer enrichment and GitHub-hosted portraits are not used. Branding and the Bot placeholder remain local. No community-event examples are bundled; the event list stays empty until an official source is connected. The app is in development and has not been released.
 
@@ -32,7 +32,7 @@ dotnet test tests/DotNetConf.App.Tests -c Release -p:MobileTargetFramework=net11
 
 On Linux, omit `maui-ios`; the project drops the iOS target there.
 
-iOS builds require a Mac and Xcode 27.0, as required by the pinned RC2 workload's iOS 27 bindings. Android requires the workload's Android SDK dependencies, including API 37.0 tooling, and JDK 21. Deployment minimums are iOS 15 and Android API 24. These are different from the build SDK versions. See [MAUI release requirements](https://github.com/dotnet/maui/wiki/Release-Versions).
+iOS builds require a Mac and Xcode 27.0, as required by the pinned RC2 workload's iOS 27 bindings. Android requires the workload's Android SDK dependencies, including API 37.0 tooling, and JDK 21. Deployment minimums are iOS 15 and Android API 26. These are different from the build SDK versions. See [MAUI release requirements](https://github.com/dotnet/maui/wiki/Release-Versions).
 
 The iOS head uses the scene lifecycle: `Info.plist` registers the single-window `SceneDelegate`, which inherits `MauiUISceneDelegate`. MAUI owns window creation through `App.CreateWindow`; `AppDelegate` only builds the app. Window sizing and safe areas use MAUI and platform controls, not fixed offsets.
 

@@ -1,9 +1,11 @@
 using DotNetConf.App.Services;
 using DotNetConf.Core;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DotNetConf.Core.Tests;
 
+[Trait("Category", "AIAttributes")]
 public sealed class PlannerScaleTests
 {
     private static ConferenceDocument Catalog(int count) => new()
@@ -40,7 +42,8 @@ public sealed class PlannerScaleTests
         var conference = Catalog(250);
         conference.Sessions[0] = conference.Sessions[0] with { Title = new string('x', PlannerCatalog.MaximumCharacters) };
         tools.Initialize(conference, TimeZoneInfo.Utc, []);
-        var catalog = tools.CreateFunctions().OfType<AIFunction>().Single(f => f.Name == "catalog_topics");
+        using var services = new ServiceCollection().AddSingleton(tools).BuildServiceProvider();
+        var catalog = tools.CreateFunctions(services).OfType<AIFunction>().Single(f => f.Name == "catalog_topics");
         await Assert.ThrowsAsync<InvalidDataException>(async () =>
             await catalog.InvokeAsync(new AIFunctionArguments()));
     }

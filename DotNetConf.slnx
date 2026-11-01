@@ -8,5 +8,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/DotNetConf.App.Tests/DotNetConf.App.Tests.csproj" />
     <Project Path="tests/DotNetConf.Core.Tests/DotNetConf.Core.Tests.csproj" />
+    <Project Path="tests/DotNetConf.Planner.AotSmoke/DotNetConf.Planner.AotSmoke.csproj" />
   </Folder>
 </Solution>

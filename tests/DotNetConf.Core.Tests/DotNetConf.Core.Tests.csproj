@@ -5,12 +5,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
-    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+    <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.Extensions.AI" Version="10.4.1" />
+    <PackageReference Include="Microsoft.Maui.AI.Attributes" Version="0.1.0-preview.14.26531.2" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Microsoft.Maui.Essentials" Version="11.0.0-rc.2.26505.5" />
     <PackageReference Include="Plugin.LocalNotification" Version="14.0.0" />
@@ -24,6 +25,7 @@
     <Using Include="Xunit" />
     <Compile Include="../../src/DotNetConf.App/FirstRunPlannerState.cs" Link="FirstRunPlannerState.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerTools.cs" Link="PlannerTools.cs" />
+    <Compile Include="../../src/DotNetConf.App/Services/PlannerToolContext.cs" Link="PlannerToolContext.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/OnDevicePlanner.cs" Link="OnDevicePlanner.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/IOnDevicePlanner.cs" Link="IOnDevicePlanner.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/SessionReminderService.cs" Link="SessionReminderService.cs" />
