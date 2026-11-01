@@ -16,18 +16,19 @@
                                               IsVisible="{Binding Source={x:Reference Page}, Path=IsCompactSearchActive, x:DataType=pages:AdaptiveConferencePage}" />
             </Grid>
         </VerticalStackLayout>
-    <RefreshView Grid.Row="1" IsRefreshing="{Binding IsPullRefreshing, Mode=TwoWay}"
-                 Command="{Binding RequestRefreshCommand}"
-                 RefreshColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
-                 AutomationId="speakers-refresh">
-    <RefreshView.Triggers>
-        <DataTrigger TargetType="RefreshView"
+    <controls:SearchResultLayer Grid.Row="1" SafeAreaEdges="None">
+    <controls:SearchResultLayer.Triggers>
+        <DataTrigger TargetType="controls:SearchResultLayer"
                      Binding="{Binding Source={x:Reference Page}, Path=IsCompactSearchActive, x:DataType=pages:AdaptiveConferencePage}" Value="True">
             <Setter Property="Opacity" Value="0" />
             <Setter Property="InputTransparent" Value="True" />
             <Setter Property="AutomationProperties.ExcludedWithChildren" Value="True" />
         </DataTrigger>
-    </RefreshView.Triggers>
+    </controls:SearchResultLayer.Triggers>
+    <RefreshView IsRefreshing="{Binding IsPullRefreshing, Mode=TwoWay}"
+                 Command="{Binding RequestRefreshCommand}"
+                 RefreshColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
+                 AutomationId="speakers-refresh">
     <CollectionView x:Name="SearchResults" ItemsSource="{Binding Speakers}" SelectionMode="None"
                     ItemsUpdatingScrollMode="KeepScrollOffset" AutomationId="speaker-list">
         <CollectionView.Footer>
@@ -63,17 +64,19 @@
         </CollectionView.EmptyView>
     </CollectionView>
     </RefreshView>
-        <CollectionView Grid.Row="1" ItemsSource="{Binding Speakers}" SelectionMode="None"
-                        ItemsUpdatingScrollMode="KeepScrollOffset" AutomationId="compact-speaker-list"
-                        Opacity="0" InputTransparent="True" AutomationProperties.ExcludedWithChildren="True">
-            <CollectionView.Triggers>
-                <DataTrigger TargetType="CollectionView"
+    </controls:SearchResultLayer>
+        <controls:SearchResultLayer Grid.Row="1" SafeAreaEdges="None"
+                                    Opacity="0" InputTransparent="True" AutomationProperties.ExcludedWithChildren="True">
+            <controls:SearchResultLayer.Triggers>
+                <DataTrigger TargetType="controls:SearchResultLayer"
                              Binding="{Binding Source={x:Reference Page}, Path=IsCompactSearchActive, x:DataType=pages:AdaptiveConferencePage}" Value="True">
                     <Setter Property="Opacity" Value="1" />
                     <Setter Property="InputTransparent" Value="False" />
                     <Setter Property="AutomationProperties.ExcludedWithChildren" Value="False" />
                 </DataTrigger>
-            </CollectionView.Triggers>
+            </controls:SearchResultLayer.Triggers>
+        <CollectionView ItemsSource="{Binding Speakers}" SelectionMode="None"
+                        ItemsUpdatingScrollMode="KeepScrollOffset" AutomationId="compact-speaker-list">
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="vm:SpeakerViewModel">
                     <Grid Padding="8,0">
@@ -95,5 +98,6 @@
                 </VerticalStackLayout>
             </CollectionView.EmptyView>
         </CollectionView>
+        </controls:SearchResultLayer>
     </Grid>
 </pages:AdaptiveConferencePage>

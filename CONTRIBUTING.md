@@ -90,7 +90,9 @@ preserves update-failure feedback. Both virtualized lists stay laid out while
 the inactive one is transparent, input-transparent, and excluded from
 accessibility. This avoids changing a native collection header or data source
 during iOS keyboard transitions; recheck it when upgrading the MAUI items
-handler.
+handler. On Android, `SearchResultLayerHandler` keeps each input-transparent
+layer's native container in place so switching search modes does not reparent a
+RecyclerView while its items are animating.
 
 On iOS, the pinned MAUI RC2 can treat a zero-size keyboard notification during
 rotation as a visible keyboard, restoring an unwanted bottom inset. A
@@ -222,7 +224,7 @@ These pieces are also **not automatically removable with a Foldable update**:
 | `Platforms/iOS/EmptyKeyboardFrameWorkaround.cs`, `Services/KeyboardFrameRefreshGuard.cs`, its linked test compile item and `KeyboardFrameRefreshGuardTests.cs`, and the installation in `AdaptiveConferencePage` | A MAUI soft-input fix must prevent zero-height rotation notifications from restoring the blank bottom strip while still avoiding a real keyboard. Verify that a newer keyboard event supersedes an older deferred update before removing the guard and its tests. |
 | `HideSearchTabBar`/`RestoreSearchTabBar` and orphan-keyboard cleanup in `AdaptiveConferencePage` | The pinned Android Shell handler asynchronously removes tab fragments when Shell visibility changes. Waiting for detachment fixed blur but still failed during rapid navigation. The current code collapses the attached native tab view without changing Shell tab visibility. Remove or replace this only after rapid focus/fold/navigation sequences restore all five tabs and preserve pages that intentionally hide tabs. |
 | `Platforms/Android/SearchKeyboardInset.cs`, the measured-overlap logic in `AdaptiveConferencePage`, and `SearchEntry`/`AgendaSearchField` focus and IME handling | Short landscape search must retain usable results, apply only remaining IME overlap, and avoid an orphaned keyboard. Preserve the non-fullscreen request and Search action unless equivalent platform behavior is established; IMEs may ignore that request. |
-| The full/compact result-list strategy in `SessionsPage.xaml`, `SpeakersPage.xaml`, and `AdaptiveConferencePage` | Both virtualized lists currently remain laid out, with the inactive one transparent, input-transparent, and accessibility-hidden. Recheck the MAUI items handler before simplifying this: changing collection headers/data sources during iOS keyboard transitions previously required avoiding native view churn. |
+| The full/compact result-list strategy in `SessionsPage.xaml`, `SpeakersPage.xaml`, and `AdaptiveConferencePage`, plus `Controls/SearchResultLayer.cs`, `Platforms/Android/SearchResultLayerHandler.cs`, and its registration in `MauiProgram.cs` | Both virtualized lists currently remain laid out, with the inactive layer transparent, input-transparent, and accessibility-hidden. Recheck the MAUI items handler before simplifying this: changing collection headers/data sources during iOS keyboard transitions previously required avoiding native view churn. On Android, toggling input transparency directly on an updating list reparented its RecyclerView and crashed; verify repeated search/filter updates and keyboard transitions before removing the stable layers. |
 | `Controls/SafeAreaFooter.cs` and pane safe-area policies | A MAUI items/inset fix must keep the actual final rows and links above native tabs/home indicators without restoring a blank bottom viewport margin or applying keyboard insets twice. Foldable region support alone does not fix these insets. |
 
 Keep `RejectDebugDevFlowAssetsInRelease` in the app project and the Debug-only

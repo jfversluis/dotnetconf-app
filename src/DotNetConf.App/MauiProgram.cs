@@ -62,7 +62,11 @@ public static class MauiProgram
             .OnStart(activity => GetFoldableRegionSource().Start(activity))
             .OnStop(activity => GetFoldableRegionSource().Stop(activity))));
         DotNetConf.App.Platforms.Android.ShellToolbarAppearance.Register();
-        builder.ConfigureMauiHandlers(handlers => handlers.AddHandler<ShellItem, InstantTabsHandler>());
+        builder.ConfigureMauiHandlers(handlers =>
+        {
+            handlers.AddHandler<ShellItem, InstantTabsHandler>();
+            handlers.AddHandler<SearchResultLayer, SearchResultLayerHandler>();
+        });
         Microsoft.Maui.Handlers.EntryHandler2.Mapper.AppendToMapping(nameof(IEntry.Placeholder), (handler, view) =>
         {
             if (view is not SearchEntry)
