@@ -10,6 +10,7 @@ Your .NET Conf, in your pocket. An **unofficial companion app for iOS and Androi
 
 - **Find your next idea.** Browse sessions and search by title, topic, or speaker. Switch between local days with scrolling day tabs, or narrow the agenda by topic.
 - **Meet the speakers.** Read their biographies and explore their talks, with easy navigation between speakers and sessions.
+- **Make room for details.** On wide windows, Sessions and Speakers keep the list on the left and details on the right. On supported foldables, an active division separates the panes; a horizontal division stacks them. Narrow windows or very large text retain native navigation, and resizing carries your selected details with you.
 - **Find your community.** Discover ways to watch together, meet local presenters, or organize a gathering. No community events ship with the app, and an official event feed is not connected yet. The empty event list links to the official website; the map stays hidden without events.
 - **Build your schedule.** Tap a heart to save a session. Your choices stay on your device, and overlapping sessions are highlighted.
 - **See times that make sense to you.** Session times use your device's local time zone.
@@ -51,6 +52,8 @@ Built with [.NET MAUI](https://dotnet.microsoft.com/apps/maui) and .NET 11 RC2 t
 The rocket-bot artwork and website Bot placeholder are redistributed with the project owner's confirmed permission. That permission does not grant a general license to reuse Microsoft artwork or trademarks; bundled third-party notices include provenance and font licenses.
 
 Want to help build the app? See [the contributor guide](CONTRIBUTING.md) for setup, development tools, and verification details.
+
+Upgrading MAUI Foldable? Follow the [temporary-support removal checklist](CONTRIBUTING.md#replacing-temporary-foldable-support) for exact cleanup points, code to retain, and runtime regression checks.
 
 For security vulnerabilities, use the [private reporting instructions](SECURITY.md) rather than a public issue.
 

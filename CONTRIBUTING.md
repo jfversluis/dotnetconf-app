@@ -38,9 +38,237 @@ The iOS head uses the scene lifecycle: `Info.plist` registers the single-window 
 
 The current RC2/Xcode 27.0 build pairing does not claim Xcode 27.1 build support. The scene-forwarding paths for App Actions, authentication URL returns, and user activities still need validation with this workload before adding deep links or authentication.
 
-The current RC2 build was inspected on an iPhone 18 Pro and iPhone Duo simulator. The Duo uses its full 466 x 678 scene, and Settings and detail/document pages respect its side chrome through shared safe-area controls, not fixed offsets. Local validation used installed Xcode 27.1 with `ValidateXcodeVersion=false`, which is not the workload's supported pairing. Physical-device execution and folding transitions still need release validation.
+The current RC2 build was inspected on iPhone and iPhone Duo simulators. Settings and detail/document pages respect system chrome through shared safe-area controls, not fixed offsets. Local validation used installed Xcode 27.1 with `ValidateXcodeVersion=false`, which is not the workload's supported pairing. Physical-device execution and Duo folding transitions still need release validation.
+
+### Adaptive session and speaker details
+
+Sessions and Speakers use the shared `AdaptiveConferencePage` Grid and platform
+division regions. Above 640 device-independent units of window width, an
+unobstructed window uses a 42:58 list/detail split. A vertical division gets a
+reserved column; a horizontal division stacks the list above the detail with a
+reserved row. The gap disappears when the system no longer reports a division.
+Short phone landscape windows stay compact.
+
+The list needs 150 units of content width per measured text-scale unit after
+48 units of horizontal padding. Side-by-side layouts also require a window height
+of at least 600 units per scale unit; stacked layouts instead require both panes
+to have at least 200 units per scale unit. If they do not fit, the app uses the
+existing native full-width detail routes. The native fallback is not partitioned
+around a fold. A non-interactive, accessibility-hidden monitor compares scaled
+and unscaled line heights without platform-specific APIs, including on native
+details so changing text size can restore the pane. When height is constrained,
+the list headings are hidden and the Sessions day/topic controls move into the
+collection header. Search remains pinned outside the virtualized collection so
+filtering does not dismiss the keyboard. `SessionDetailView` and
+`SpeakerDetailView` supply the same content in either host.
+
+Android uses MAUI's resize input mode and page-level `SoftInput` safe area so
+the content viewport ends above the software keyboard. Adaptive pane grids use
+`None` at the bottom on Android to avoid applying that inset twice; on iOS they
+use `SoftInput` at the bottom. When compact search hides Shell chrome, Android
+compares the pane's actual position with the window's IME inset and applies only
+any remaining overlap as bottom padding. It removes that padding when compact
+search ends, so a stale navigation-bar inset cannot leave the last row under
+the keyboard or create a blank strip afterward. When a
+focused landscape search would leave less
+than 120 units of result space, the host temporarily hides Shell navigation and
+shows a headerless compact result list. Android also prepares that layout
+before the keyboard opens in short landscape windows when no hardware keyboard
+is reported, hiding both navigation and tab bars to preserve focus. The previous
+chrome visibility is restored on blur, rotation, or disappearance; Android
+Back dismisses the keyboard and unfocuses search after the keyboard has been
+shown. On Android the pinned Shell handler's native tab view is temporarily
+collapsed without changing Shell's tab visibility, avoiding overlapping fragment
+removal and reattachment during rapid fold or navigation transitions. If folding
+causes search to lose focus,
+Android also dismisses the orphaned keyboard while retaining the query and
+selection. `SearchEntry`
+requests a non-fullscreen Android IME after MAUI's initial
+handler mappings, preserving the Search action; an IME may ignore the request.
+Active day/topic filters still apply, and a compact error/Retry control
+preserves update-failure feedback. Both virtualized lists stay laid out while
+the inactive one is transparent, input-transparent, and excluded from
+accessibility. This avoids changing a native collection header or data source
+during iOS keyboard transitions; recheck it when upgrading the MAUI items
+handler.
+
+On iOS, the pinned MAUI RC2 can treat a zero-size keyboard notification during
+rotation as a visible keyboard, restoring an unwanted bottom inset. A
+page-scoped workaround refreshes the affected soft-input policies only for
+that empty frame and cancels a pending refresh when a newer keyboard event
+arrives. Recheck the workaround when upgrading MAUI.
+
+`DetailNavigationService` keeps one selected detail per master tab, not a detail
+history. List selections and speaker/session cross-links replace that detail;
+the pane has no Back or Close controls. Resizing carries only the current detail
+between the pane and a single native detail route. In compact mode, cross-links
+replace that route so native Back returns directly to the master list.
+Returning to the list retains the selection for the next expansion. The empty
+prompt appears only before the tab has a selection. Filters and other non-detail
+routes remain native; Home and My Schedule keep their normal native navigation.
+Shell's navigation stack starts with a null sentinel, not the tab's root page:
+adaptive hosts are matched to the current ShellContent instead.
+Window-size synchronization updates every cached host's layout policy. Preserve
+the selection when a pane or tab is hidden, but release its native detail
+controls and recreate them on return. An unloaded host's measured size and fold
+coordinates can be stale, so use the current window until it is loaded again.
+On iOS and Avalonia, initialize `DualScreenInfo` only after the pane has positive
+dimensions. Use actual region bounds rather than `TwoPaneView`/`SpanMode`: the
+published RC2 can retain an incorrect mode after a cached tab slides onscreen.
+Android instead observes separating AndroidX Window Manager folding features
+directly while the activity is started and converts window coordinates to pane
+coordinates. The listener uses the platform-owned main-thread executor because
+its callbacks can outlive activity stop.
+
+Avalonia uses `Microsoft.Maui.Controls.Foldable` pinned to MAUI RC2. That
+package does not yet include iPhone Duo division-region support. Until a
+compatible release is available, iOS builds use the source backport in
+`src/DotNetConf.Foldable.iOS`, based on
+[dotnet/maui@a561eaec4aacbe962416c64491aa5ffbc6bde9ae](https://github.com/dotnet/maui/tree/a561eaec4aacbe962416c64491aa5ffbc6bde9ae)
+and adapted to `IFoldableServiceCompat` because the pinned MAUI Core lacks the
+newer interface. `src/DotNetConf.Foldable.iOS.Bindings` contains the small
+public UIKit bindings needed by the pinned workload, adapted from
+[dotnet/macios@eb45b2d9f615586fdcd19c90be6ce78aeb9004b3](https://github.com/dotnet/macios/tree/eb45b2d9f615586fdcd19c90be6ce78aeb9004b3).
+The selectors are bound as `NSObject`/`UIView` extensions and the UIKit class
+factories are resolved at runtime; binding those system classes directly would
+make the NativeAOT registrar redeclare their Objective-C interfaces. The UIKit
+APIs are guarded for iOS 27.1 and later; older systems use the normal
+width-based layout. Preserve the upstream license notices. When an official
+Foldable package and workload support the same API, follow
+[Replacing temporary Foldable support](#replacing-temporary-foldable-support)
+below rather than deleting all adaptive-layout code.
+
+The Duo simulator reported a 40-point active division in both orientations:
+landscape separated the panes horizontally and portrait stacked them vertically;
+fully opening removed the gap. The Android emulator did not report a folding
+region. A temporary Debug-only test injected synthetic AndroidX callbacks and
+verified separating regions in both orientations and the absence of a gap for
+flat/non-separating features; this is not physical hinge evidence. Physical Duo
+and Android foldables and a genuinely wide iPad remain release checks; a 2D
+simulator screenshot does not establish physical crease clearance. At maximum
+accessibility text size the native full-width fallback can cross a division.
 
 After changing the scene manifest, clean and rebuild the iOS target and inspect the generated app bundle's `Info.plist` before reinstalling. During the RC1 migration, an incremental build retained the previous manifest; a successful compilation alone did not prove that the installed app used scenes.
+
+### Replacing temporary Foldable support
+
+This is the removal checklist for a future session or agent upgrading
+`Microsoft.Maui.Controls.Foldable`. The platform backport is temporary; the
+app's master/detail experience is not. A newer package version alone is not
+permission to remove every workaround. Migrate iOS and Android independently
+if the release replaces only one platform's implementation.
+
+#### Prerequisites and replacement contract
+
+Before deleting source, inspect the chosen release's APIs, implementation, and
+resolved dependencies. Record the package/workload versions and the upstream
+changes that replace each local implementation in the upgrade PR. Update
+`global.json` and the app's MAUI package pins together as required by that
+release; confirm compatibility with the experimental Avalonia targets too.
+
+For iOS, the compatible workload must provide the UIKit division-region
+bindings, and the MAUI Core/Foldable packages must provide the service
+interface currently replaced by `IFoldableServiceCompat`. Preserve the
+older-iOS width-based fallback and availability guards. Compare upstream
+behavior with the local backport,
+including active-region filtering, monitor subscription/disposal, and changes
+while views are unloaded; do not assume every local fix is in the release.
+
+For Android, the replacement must deliver separating folding-region bounds
+and change notifications through activity start/stop and repeated folding.
+Establish whether bounds are window-relative or view-relative and whether they
+use pixels or device-independent units. For both platforms, translate into
+the actual pane coordinate space exactly once and preserve current-window
+fallbacks when cached page measurements are stale. Do not switch to
+`TwoPaneView`/`SpanMode` alone unless the cached-tab regression described above
+is demonstrably fixed.
+
+#### Exact cleanup points
+
+Paths below are repository-relative; app paths are under `src/DotNetConf.App/`.
+Wire and validate the replacement before removing its predecessor.
+
+| Replacement | Files and references to change |
+|---|---|
+| Official iOS Foldable support plus compatible UIKit bindings | Replace the conditional iOS `ProjectReference` in `src/DotNetConf.App/DotNetConf.App.csproj` with the official Foldable package and adjust its existing platform condition to include iOS. Remove `src/DotNetConf.Foldable.iOS/` and `src/DotNetConf.Foldable.iOS.Bindings/` once no references remain. The backport uses the official assembly name: do not load the local and official assemblies together. Keep the official Foldable startup registration in `MauiProgram.cs` and adapt it to the actual released API. |
+| Tests tied to the iOS backport | Remove the linked `FoldableRegionHelper.cs` compile item from `tests/DotNetConf.App.Tests/DotNetConf.App.Tests.csproj`. `FoldableRegionTests.cs` directly tests the local region helper and monitor registry; retain applicable behavior coverage through replacement adapter tests or explicitly referenced upstream tests, and retire local implementation-only tests with the deleted source. Do not keep a copy of the backport solely to make those tests compile. Preserve the app-level layout and selection regression tests. |
+| Equivalent official Android region delivery | Remove `Platforms/Android/AndroidFoldableRegionSource.cs`, its two DI registrations, its `OnStart`/`OnStop` callbacks, and `GetFoldableRegionSource()` from `MauiProgram.cs`. Include Android in the official Foldable package/startup registration and namespace import; Android currently excludes them. Remove the direct `Xamarin.AndroidX.Window.WindowJava` reference only when app code no longer uses it. Inspect transitive AndroidX dependencies before changing notices. |
+| Android-specific adapter plumbing becomes unused | Replace the Android branches and source subscription in `Services/FoldableViewport.cs`. Remove `Services/IFoldableRegionSource.cs` only if it has no remaining consumers. Remove the corresponding constructor parameter/property from `Services/DetailNavigationService.cs` and update viewport construction in `Pages/AdaptiveConferencePage.cs`, `Pages/SessionDetailPage.xaml.cs`, and `Pages/SpeakerDetailPage.xaml.cs`. Keep the shared viewport's layout policy, positive-size initialization, and stale-measurement protection unless upstream demonstrably replaces them. |
+| Attribution and documentation | Update `Pages/ThirdPartyPage.xaml.cs`, `Resources/Raw/THIRD-PARTY-NOTICES.txt`, and this guide's backport/version description. Review `LICENSE-MaciOS.txt`, `LICENSE-AndroidXBindings.txt`, and `NOTICE-AndroidXWindow.txt` against the new resolved and bundled dependency graph. Remove a legal resource only if no remaining component needs it. Retain shared MAUI/.NET Foundation license text and all unrelated artwork/font notices. Update relevant `DESIGN.md` explanations if the implementation changes. |
+
+Search for residual references after migration, including test compile items:
+
+```sh
+rg -n 'DotNetConf\.Foldable|IFoldableServiceCompat|IFoldableRegionSource|AndroidFoldableRegionSource|FoldableRegionHelper|WindowJava' src tests
+```
+
+Classify each remaining match; an official package's transitive dependency is
+not necessarily an obsolete dependency. Perform clean, target-specific restores
+and builds so old local assemblies or generated binding outputs cannot make
+the migration appear successful.
+
+#### Keep app behavior; assess MAUI workarounds separately
+
+Keep `AdaptiveConferencePage`, `DetailLayout`, `DetailSelection`,
+`DetailNavigationService`, the shared session/speaker detail views, row
+selection styling, and `TextScaleMonitor`. They implement responsive sizing,
+accessible text scaling, retained selection, and native compact navigation,
+not missing Foldable APIs. Replacing the platform observer does not authorize
+changing those behaviors.
+
+These pieces are also **not automatically removable with a Foldable update**:
+
+| Code | Removal requires separate evidence |
+|---|---|
+| `Platforms/iOS/EmptyKeyboardFrameWorkaround.cs`, `Services/KeyboardFrameRefreshGuard.cs`, its linked test compile item and `KeyboardFrameRefreshGuardTests.cs`, and the installation in `AdaptiveConferencePage` | A MAUI soft-input fix must prevent zero-height rotation notifications from restoring the blank bottom strip while still avoiding a real keyboard. Verify that a newer keyboard event supersedes an older deferred update before removing the guard and its tests. |
+| `HideSearchTabBar`/`RestoreSearchTabBar` and orphan-keyboard cleanup in `AdaptiveConferencePage` | The pinned Android Shell handler asynchronously removes tab fragments when Shell visibility changes. Waiting for detachment fixed blur but still failed during rapid navigation. The current code collapses the attached native tab view without changing Shell tab visibility. Remove or replace this only after rapid focus/fold/navigation sequences restore all five tabs and preserve pages that intentionally hide tabs. |
+| `Platforms/Android/SearchKeyboardInset.cs`, the measured-overlap logic in `AdaptiveConferencePage`, and `SearchEntry`/`AgendaSearchField` focus and IME handling | Short landscape search must retain usable results, apply only remaining IME overlap, and avoid an orphaned keyboard. Preserve the non-fullscreen request and Search action unless equivalent platform behavior is established; IMEs may ignore that request. |
+| The full/compact result-list strategy in `SessionsPage.xaml`, `SpeakersPage.xaml`, and `AdaptiveConferencePage` | Both virtualized lists currently remain laid out, with the inactive one transparent, input-transparent, and accessibility-hidden. Recheck the MAUI items handler before simplifying this: changing collection headers/data sources during iOS keyboard transitions previously required avoiding native view churn. |
+| `Controls/SafeAreaFooter.cs` and pane safe-area policies | A MAUI items/inset fix must keep the actual final rows and links above native tabs/home indicators without restoring a blank bottom viewport margin or applying keyboard insets twice. Foldable region support alone does not fix these insets. |
+
+Keep `RejectDebugDevFlowAssetsInRelease` in the app project and the Debug-only
+DevFlow package, registration, logging, and network policy. These are release
+safety measures, not foldable compatibility code.
+
+#### Migration regression matrix
+
+Run the Core and App tests from [Prerequisites](#prerequisites), then the
+relevant platform builds from [Run](#run) and Release publishes from
+[NativeAOT builds](#nativeaot-builds). Run builds/tests serially because targets
+share restore assets. A Release publish must restore Release dependencies;
+do not reuse Debug assets with `--no-restore`.
+
+Reproduce the following at runtime after the replacement and again after
+removing any separately fixed workaround. Use the repo-local
+[DevFlow inspection workflow](#inspect-with-copilot-and-maui-devflow), stable
+AutomationIds, actual screenshots, and settled UI-tree geometry. Keep generated
+evidence outside the repository and identify the exact installed build.
+
+| Scenario | Required outcome and learned failure mode |
+|---|---|
+| Cold start open, half-folded, or closed; rotate between portrait and both supported landscape directions | Both Sessions and Speakers start correctly before positive pane measurements exist. An active vertical division separates left/right panes; an active horizontal division stacks them. The gap follows reported bounds and disappears when the region becomes inactive. Do not hard-code the simulator's 40 points; inactive, non-separating, or out-of-view regions must not create a reserved gap. |
+| Repeated open/half/closed transitions with no selection and with either detail type selected | The empty prompt appears only before selection. Only the latest detail moves between split and compact modes. Native Back returns directly to the master list; cross-links replace detail rather than accumulating routes. Reopening restores the retained selection. |
+| Switch cached Sessions/Speakers tabs while folded, change posture while a tab is hidden, open Filters, background/resume, and recreate views | Bounds and mode are current on return, without relying on an unloaded page's old measurements. Hidden hosts release native detail controls and recreate them on return. Monitor callbacks do not crash after activity stop or duplicate subscriptions. Filters and non-detail routes retain their intended chrome. |
+| Focused search during fold/rotation; show/dismiss keyboard; rapid blur/refocus and navigate before chrome restoration completes | Query, filters, and selection survive. Matching and empty results plus error/Retry remain usable above the keyboard. Android Back dismisses/unfocuses search, orphan keyboards do not cover the reopened screen, and all five tabs return when intended. Verify tabs are clickable, not merely present in the tree. |
+| Keyboard absent, zero-height iOS rotation notification, real keyboard visible, and a newer keyboard event during a pending refresh | Pane/list/detail scroll surfaces reach their intended bottom content edge without a blank strip, double inset, or keyboard overlap. Scroll to the true final item/link and visually verify it above native chrome; a correct outer Grid bound alone is not rendering proof. |
+| Ordinary phones, older iOS, wide tablet/desktop/browser windows, dark/light/system appearance, large and maximum accessibility text | Preserve compact native navigation on short/narrow windows and readable split/stacked panes when they fit. Preserve text-driven fallback, font scaling, selection semantics, and honest feed/cache error states. A hardware keyboard should not unnecessarily trigger software-keyboard chrome suppression. Check screen-reader focus and ensure inactive compact/full results are not announced twice. |
+| Clean Android and iOS Release NativeAOT artifacts and device execution | No duplicate Objective-C registrations, stale backport assembly, unguarded newer UIKit selector, DevFlow metadata/agent, or development-only logging. An unsigned iOS device publish is compile-only evidence, not physical-device execution. Rebuild and inspect the generated `Info.plist` if scene configuration changes. |
+
+The existing evidence is simulator/emulator evidence: Duo reported 40-point
+active regions and zero gap fully open; the Android emulator did not deliver
+a real hinge region. Synthetic AndroidX callbacks exercised layout but did not
+establish physical hinge clearance or OEM delivery. Physical Duo/Android
+foldables, a genuinely wide iPad, hardware keyboards, and real screen readers
+remain validation gaps. Gboard was the tested Android IME; other keyboards may
+choose fullscreen mode. Android dark-mode status-bar contrast is a pre-existing
+issue, and short landscape Sessions filters can initially leave little result
+space until scrolled. Report these limitations rather than claiming universal
+hardware coverage.
+
+The upgrade handoff should state which implementations were deleted, which
+workarounds remain and why, the package/workload/OS/device versions tested, and
+link the new screenshots and geometry. This checklist is complete only after
+the replacement behavior has been verified, not merely after compilation.
 
 ## Run
 
@@ -87,6 +315,10 @@ dotnet publish src/DotNetConf.App -c Release -f net11.0-android \
 dotnet publish src/DotNetConf.App -c Release -f net11.0-ios \
   -p:MobileTargetFramework=net11.0-ios -r ios-arm64
 ```
+
+Allow these commands to restore Release dependencies. Reusing a Debug restore
+with `--no-restore` can otherwise import DevFlow build targets into Release; the
+project rejects that configuration.
 
 Android's signed local APK is under
 `src/DotNetConf.App/bin/Release/net11.0-android/android-arm64/publish/`.
@@ -292,7 +524,7 @@ Microsoft's endpoint currently has no browser CORS permission. Native iOS/Androi
 
 Reminders, local AI, and Avalonia-owned video integration remain deferred. PR build validation and manual Google Play internal-testing/TestFlight release lanes are described in [CI and release setup](docs/CI.md); production promotion remains manual and store credentials must be configured by the owner.
 
-App-owned icons use [IconFont.Maui.FluentIcons](https://github.com/jfversluis/IconFont.Maui.FluentIcons). Website-matched Space Grotesk headings and Open Sans body fonts, gradients, Entry-based search, and heart save actions are documented in `DESIGN.md`. iOS uses MAUI safe-area controls and native automatic scroll insets to scroll beneath the system tab material without fixed offsets. The speaker-detail root also respects the top container safe area so its header does not begin under the Duo's navigation chrome; its bottom remains edge-to-edge.
+App-owned icons use [IconFont.Maui.FluentIcons](https://github.com/jfversluis/IconFont.Maui.FluentIcons). Website-matched Space Grotesk headings and Open Sans body fonts, gradients, Entry-based search, and heart save actions are documented in `DESIGN.md`. Adaptive pane grids protect the top and side container insets and draw through the bottom container inset, with keyboard avoidance applied as described above. On iOS, reading ScrollViews use native automatic insets and CollectionViews use an inset-aware footer so their last item remains reachable beneath the system tab material without fixed offsets. The speaker-detail root also respects the top container safe area so its header does not begin under the Duo's navigation chrome; its bottom remains edge-to-edge.
 
 Launcher and light/dark splash screens use the website's two-robots-on-a-rocket graphic, with redistribution permission confirmed by the project owner on October 7, 2026. Android's themed launcher uses a matching monochrome silhouette. Artwork provenance and font licenses/notices are bundled under `Resources/Raw`; the artwork permission is not a general open-source license. The app follows the system theme and preserves native navigation. Its Android package name and iOS bundle ID are both `dev.jfversluis.dotnetconf`.
 

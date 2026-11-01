@@ -39,6 +39,14 @@ public partial class AgendaSearchField : ContentView
     public string SearchAutomationId { get => (string)GetValue(SearchAutomationIdProperty); set => SetValue(SearchAutomationIdProperty, value); }
     public string ClearAutomationId { get => (string)GetValue(ClearAutomationIdProperty); set => SetValue(ClearAutomationIdProperty, value); }
     public bool HasQuery => !string.IsNullOrEmpty(Text);
+    public bool IsSearchFocused => SearchInput.IsFocused;
+#if ANDROID
+    internal bool IsSoftInputShowing => SearchInput.IsSoftInputShowing();
+    internal bool HasActiveInputConnection => SearchInput.HasActiveInputConnection;
+    internal Task<bool> HideKeyboardAsync() => SearchInput.HideSoftInputAsync(CancellationToken.None);
+    internal void UnfocusSearch() => SearchInput.Unfocus();
+#endif
+    public event EventHandler<FocusEventArgs>? SearchFocusChanged;
 
     private void OnFieldTapped(object? sender, TappedEventArgs e) => SearchInput.Focus();
 
@@ -61,8 +69,19 @@ public partial class AgendaSearchField : ContentView
             ApplyQueryCommand.Execute(null);
     }
 
-    private void OnFocusChanged(object? sender, FocusEventArgs e) =>
+#if ANDROID
+    private async void OnFocusChanged(object? sender, FocusEventArgs e)
+#else
+    private void OnFocusChanged(object? sender, FocusEventArgs e)
+#endif
+    {
         Outline.SetAppTheme<Brush>(Border.StrokeProperty,
             new SolidColorBrush((Color)Application.Current!.Resources[e.IsFocused ? "Purple" : "LightOutline"]),
             new SolidColorBrush((Color)Application.Current!.Resources[e.IsFocused ? "Lavender" : "DarkOutline"]));
+        SearchFocusChanged?.Invoke(this, e);
+#if ANDROID
+        if (!e.IsFocused && IsSoftInputShowing && HasActiveInputConnection)
+            await HideKeyboardAsync();
+#endif
+    }
 }

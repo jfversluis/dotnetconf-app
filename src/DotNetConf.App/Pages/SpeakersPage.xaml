@@ -1,35 +1,55 @@
-<pages:ConferencePage x:Class="DotNetConf.App.Pages.SpeakersPage"
+<pages:AdaptiveConferencePage x:Class="DotNetConf.App.Pages.SpeakersPage"
                       x:Name="Page"
                       xmlns:pages="clr-namespace:DotNetConf.App.Pages"
                       xmlns:controls="clr-namespace:DotNetConf.App.Controls"
                       xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
                       x:DataType="vm:ConferenceViewModel" Title="Speakers">
-    <Grid RowDefinitions="Auto,*" SafeAreaEdges="Container,None,Container,None">
+    <Grid x:Name="SearchLayout" RowDefinitions="Auto,*" SafeAreaEdges="Container,None,Container,None">
         <VerticalStackLayout Padding="24,16,24,8" Spacing="16">
-            <Label Text="Meet the community" Style="{StaticResource Heading}" />
-            <controls:AgendaSearchField Text="{Binding SpeakerQuery}" ApplyQueryCommand="{Binding SearchSpeakersCommand}"
-                                        Placeholder="Find a speaker"
-                                        SearchDescription="Search speakers by name or expertise"
-                                        SearchAutomationId="speaker-search" ClearAutomationId="speaker-search-clear" />
+            <Label x:Name="SpeakerHeading" Text="Meet the community" Style="{StaticResource Heading}" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <controls:AgendaSearchField x:Name="SearchField" Text="{Binding SpeakerQuery}" ApplyQueryCommand="{Binding SearchSpeakersCommand}"
+                                            Placeholder="Find a speaker"
+                                            SearchDescription="Search speakers by name or expertise"
+                                            SearchAutomationId="speaker-search" ClearAutomationId="speaker-search-clear" />
+                <controls:CompactSearchStatus Grid.Column="1"
+                                              IsVisible="{Binding Source={x:Reference Page}, Path=IsCompactSearchActive, x:DataType=pages:AdaptiveConferencePage}" />
+            </Grid>
         </VerticalStackLayout>
     <RefreshView Grid.Row="1" IsRefreshing="{Binding IsPullRefreshing, Mode=TwoWay}"
                  Command="{Binding RequestRefreshCommand}"
                  RefreshColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
                  AutomationId="speakers-refresh">
-    <CollectionView ItemsSource="{Binding Speakers}" SelectionMode="None"
+    <RefreshView.Triggers>
+        <DataTrigger TargetType="RefreshView"
+                     Binding="{Binding Source={x:Reference Page}, Path=IsCompactSearchActive, x:DataType=pages:AdaptiveConferencePage}" Value="True">
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="InputTransparent" Value="True" />
+            <Setter Property="AutomationProperties.ExcludedWithChildren" Value="True" />
+        </DataTrigger>
+    </RefreshView.Triggers>
+    <CollectionView x:Name="SearchResults" ItemsSource="{Binding Speakers}" SelectionMode="None"
                     ItemsUpdatingScrollMode="KeepScrollOffset" AutomationId="speaker-list">
         <CollectionView.Footer>
             <controls:SafeAreaFooter Page="{x:Reference Page}" />
         </CollectionView.Footer>
         <CollectionView.Header>
+            <VerticalStackLayout SafeAreaEdges="None">
             <VerticalStackLayout IsVisible="{Binding HasRefreshError}" Padding="24,8" SafeAreaEdges="None">
                 <controls:StatusBanner AutomationId="speakers-status" />
+            </VerticalStackLayout>
             </VerticalStackLayout>
         </CollectionView.Header>
         <CollectionView.ItemTemplate>
             <DataTemplate x:DataType="vm:SpeakerViewModel">
-                <Grid Padding="24,0">
-                    <controls:SpeakerRow />
+                <Grid Padding="8,0">
+                    <Border Style="{StaticResource DetailSelectionSurface}"
+                            AutomationId="{Binding AutomationId, StringFormat='{0}-selection'}"
+                            IsVisible="{Binding Source={x:Reference Item}, Path=IsSelected, x:DataType=controls:SpeakerRow}" />
+                    <BoxView Style="{StaticResource DetailSelectionMarker}"
+                             IsVisible="{Binding Source={x:Reference Item}, Path=IsSelected, x:DataType=controls:SpeakerRow}" />
+                    <controls:SpeakerRow x:Name="Item" Padding="16,0"
+                                         SelectedId="{Binding Source={RelativeSource AncestorType={x:Type pages:AdaptiveConferencePage}}, Path=SelectedId}" />
                 </Grid>
             </DataTemplate>
         </CollectionView.ItemTemplate>
@@ -43,5 +63,37 @@
         </CollectionView.EmptyView>
     </CollectionView>
     </RefreshView>
+        <CollectionView Grid.Row="1" ItemsSource="{Binding Speakers}" SelectionMode="None"
+                        ItemsUpdatingScrollMode="KeepScrollOffset" AutomationId="compact-speaker-list"
+                        Opacity="0" InputTransparent="True" AutomationProperties.ExcludedWithChildren="True">
+            <CollectionView.Triggers>
+                <DataTrigger TargetType="CollectionView"
+                             Binding="{Binding Source={x:Reference Page}, Path=IsCompactSearchActive, x:DataType=pages:AdaptiveConferencePage}" Value="True">
+                    <Setter Property="Opacity" Value="1" />
+                    <Setter Property="InputTransparent" Value="False" />
+                    <Setter Property="AutomationProperties.ExcludedWithChildren" Value="False" />
+                </DataTrigger>
+            </CollectionView.Triggers>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:SpeakerViewModel">
+                    <Grid Padding="8,0">
+                        <Border Style="{StaticResource DetailSelectionSurface}"
+                                IsVisible="{Binding Source={x:Reference CompactItem}, Path=IsSelected, x:DataType=controls:SpeakerRow}" />
+                        <BoxView Style="{StaticResource DetailSelectionMarker}"
+                                 IsVisible="{Binding Source={x:Reference CompactItem}, Path=IsSelected, x:DataType=controls:SpeakerRow}" />
+                        <controls:SpeakerRow x:Name="CompactItem" Padding="16,0" IsCompactSearch="True"
+                                             SelectedId="{Binding Source={RelativeSource AncestorType={x:Type pages:AdaptiveConferencePage}}, Path=SelectedId}" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+            <CollectionView.EmptyView>
+                <VerticalStackLayout Padding="24,0" Spacing="0">
+                    <ActivityIndicator IsRunning="{Binding IsInitialAgendaLoading}" IsVisible="{Binding IsInitialAgendaLoading}"
+                                       HorizontalOptions="Start" AutomationId="speakers-compact-loading" />
+                    <Label Text="{Binding SpeakersEmptyTitle}" Style="{StaticResource Subheading}" AutomationId="speakers-compact-empty-title" />
+                    <Label Text="{Binding SpeakersEmptyMessage}" Style="{StaticResource Secondary}" AutomationId="speakers-compact-empty-message" />
+                </VerticalStackLayout>
+            </CollectionView.EmptyView>
+        </CollectionView>
     </Grid>
-</pages:ConferencePage>
+</pages:AdaptiveConferencePage>

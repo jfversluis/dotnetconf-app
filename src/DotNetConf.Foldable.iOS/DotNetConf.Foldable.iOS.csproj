@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net11.0-ios</TargetFramework>
+    <SupportedOSPlatformVersion>15.0</SupportedOSPlatformVersion>
+    <UseMaui>true</UseMaui>
+    <AssemblyName>Microsoft.Maui.Controls.Foldable</AssemblyName>
+    <RootNamespace>Microsoft.Maui.Controls.Foldable</RootNamespace>
+    <DefineConstants>$(DefineConstants);IOS_DUO_BINDINGS</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="11.0.0-rc.2.26505.5" />
+    <ProjectReference Include="../DotNetConf.Foldable.iOS.Bindings/DotNetConf.Foldable.iOS.Bindings.csproj" />
+  </ItemGroup>
+</Project>

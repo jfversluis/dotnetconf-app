@@ -1,58 +1,30 @@
-using System.ComponentModel;
 using DotNetConf.App.ViewModels;
+using DotNetConf.App.Services;
 
 namespace DotNetConf.App.Pages;
 
 public partial class SessionDetailPage : ContentPage, IQueryAttributable
 {
     private readonly ConferenceViewModel conference;
+    private readonly FoldableViewport viewport;
     private string? sessionId;
     internal string? SessionId => sessionId;
+    internal double? TextScale => Detail.TextScaleMonitor.TextScale;
+    internal DetailLayout? CurrentLayout(double width, double height, double textScale) =>
+        viewport.IsCurrent ? viewport.GetLayout(width, height, textScale) : null;
 
-    public SessionDetailPage(ConferenceViewModel conference)
+    public SessionDetailPage(ConferenceViewModel conference, DetailNavigationService navigation)
     {
         InitializeComponent();
         this.conference = conference;
-        Status.BindingContext = conference;
+        viewport = new FoldableViewport(this, this, navigation.RequestLayoutSync, navigation.FoldableRegionSource);
+        Detail.TextScaleMonitor.TextScaleChanged += (_, _) => navigation.RequestLayoutSync();
         Shell.SetBackButtonBehavior(this, new BackButtonBehavior { AccessibilityLabel = "Back to previous page" });
     }
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
     {
         sessionId = query.TryGetValue("id", out var value) && value is string id ? Uri.UnescapeDataString(id) : null;
-        UpdateSession();
-    }
-
-    protected override async void OnAppearing()
-    {
-        base.OnAppearing();
-        conference.PropertyChanged += OnConferenceChanged;
-        conference.AgendaChanged += OnAgendaChanged;
-        await conference.InitializeAsync();
-        UpdateSession();
-    }
-
-    protected override void OnDisappearing()
-    {
-        conference.PropertyChanged -= OnConferenceChanged;
-        conference.AgendaChanged -= OnAgendaChanged;
-        base.OnDisappearing();
-    }
-
-    private void OnConferenceChanged(object? sender, PropertyChangedEventArgs args)
-    {
-        if (args.PropertyName == nameof(ConferenceViewModel.IsBusy) && !conference.IsBusy)
-            UpdateSession();
-    }
-
-    private void OnAgendaChanged(object? sender, EventArgs args) => UpdateSession();
-
-    private void UpdateSession()
-    {
-        var session = conference.FindSession(sessionId);
-        BindingContext = session;
-        Details.IsVisible = session is not null;
-        NotFound.IsVisible = session is null && !conference.IsBusy;
-        TimeZone.Text = conference.TimeZoneLabel;
+        Detail.Show(conference, sessionId);
     }
 }

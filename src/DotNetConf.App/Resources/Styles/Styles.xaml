@@ -94,6 +94,23 @@
     <Style TargetType="Border">
         <Setter Property="Stroke" Value="{AppThemeBinding Light={StaticResource LightOutline}, Dark={StaticResource DarkOutline}}" />
     </Style>
+    <Style x:Key="DetailSelectionSurface" TargetType="Border">
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource LightSelectedSurface}, Dark={StaticResource DarkSelectedSurface}}" />
+        <Setter Property="StrokeThickness" Value="0" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 12" />
+        <Setter Property="InputTransparent" Value="True" />
+        <Setter Property="AutomationProperties.IsInAccessibleTree" Value="False" />
+    </Style>
+    <Style x:Key="DetailSelectionMarker" TargetType="BoxView">
+        <Setter Property="Color" Value="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+        <Setter Property="WidthRequest" Value="1" />
+        <Setter Property="HeightRequest" Value="24" />
+        <Setter Property="Margin" Value="4,0,0,0" />
+        <Setter Property="HorizontalOptions" Value="Start" />
+        <Setter Property="VerticalOptions" Value="Center" />
+        <Setter Property="InputTransparent" Value="True" />
+        <Setter Property="AutomationProperties.IsInAccessibleTree" Value="False" />
+    </Style>
     <Style TargetType="BoxView">
         <Setter Property="Color" Value="{AppThemeBinding Light={StaticResource LightOutline}, Dark={StaticResource DarkOutline}}" />
     </Style>

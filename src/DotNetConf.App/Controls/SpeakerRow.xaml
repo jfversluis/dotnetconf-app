@@ -1,25 +1,65 @@
-<ContentView x:Class="DotNetConf.App.Controls.SpeakerRow"
+<controls:DetailRow x:Class="DotNetConf.App.Controls.SpeakerRow"
+             x:Name="DetailRowRoot"
              xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
              xmlns:controls="clr-namespace:DotNetConf.App.Controls"
              x:DataType="vm:SpeakerViewModel">
     <Grid Padding="0,16" MinimumHeightRequest="88">
+    <Grid.Triggers>
+        <DataTrigger TargetType="Grid"
+                     Binding="{Binding Source={x:Reference DetailRowRoot}, Path=IsCompactSearch, x:DataType=controls:DetailRow}" Value="True">
+            <Setter Property="Padding" Value="0,4" />
+            <Setter Property="MinimumHeightRequest" Value="56" />
+        </DataTrigger>
+    </Grid.Triggers>
     <Grid ColumnDefinitions="56,*,16" ColumnSpacing="16" InputTransparent="True"
           AutomationProperties.ExcludedWithChildren="True">
+        <Grid.Triggers>
+            <DataTrigger TargetType="Grid"
+                         Binding="{Binding Source={x:Reference DetailRowRoot}, Path=IsCompactSearch, x:DataType=controls:DetailRow}" Value="True">
+                <Setter Property="ColumnDefinitions" Value="40,*,16" />
+            </DataTrigger>
+        </Grid.Triggers>
         <Border HeightRequest="56" WidthRequest="56" StrokeThickness="0" StrokeShape="RoundRectangle 28"
                 Background="{AppThemeBinding Light={StaticResource ConferenceGradient}, Dark={StaticResource ConferenceDarkGradient}}">
+            <Border.Triggers>
+                <DataTrigger TargetType="Border"
+                             Binding="{Binding Source={x:Reference DetailRowRoot}, Path=IsCompactSearch, x:DataType=controls:DetailRow}" Value="True">
+                    <Setter Property="HeightRequest" Value="40" />
+                    <Setter Property="WidthRequest" Value="40" />
+                </DataTrigger>
+            </Border.Triggers>
             <controls:SpeakerPortrait
                    AutomationProperties.IsInAccessibleTree="False" />
         </Border>
         <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="4">
             <Label Text="{Binding Name}" FontFamily="OpenSansSemibold" FontSize="18"
                    TextColor="{AppThemeBinding Light={StaticResource Midnight}, Dark={StaticResource White}}" />
-            <Label Text="{Binding Tagline}" Style="{StaticResource Secondary}" FontSize="13" />
+            <Label Text="{Binding Tagline}" Style="{StaticResource Secondary}" FontSize="13">
+                <Label.Triggers>
+                    <DataTrigger TargetType="Label"
+                                 Binding="{Binding Source={x:Reference DetailRowRoot}, Path=IsCompactSearch, x:DataType=controls:DetailRow}" Value="True">
+                        <Setter Property="IsVisible" Value="False" />
+                    </DataTrigger>
+                </Label.Triggers>
+            </Label>
         </VerticalStackLayout>
         <Image Grid.Column="2" Source="{StaticResource ChevronIcon}" WidthRequest="16" HeightRequest="16" />
     </Grid>
     <Button Command="{Binding OpenCommand}" BackgroundColor="Transparent" BorderWidth="0"
             AutomationId="{Binding AutomationId}"
-            SemanticProperties.Description="{Binding Name, StringFormat='View speaker: {0}'}"
-            SemanticProperties.Hint="{Binding Tagline}" />
+            SemanticProperties.Hint="{Binding Tagline}">
+        <Button.Triggers>
+            <DataTrigger TargetType="Button"
+                         Binding="{Binding Source={x:Reference DetailRowRoot}, Path=IsCompactSearch, x:DataType=controls:DetailRow}" Value="True">
+                <Setter Property="AutomationId" Value="{Binding AutomationId, StringFormat='compact-{0}'}" />
+            </DataTrigger>
+        </Button.Triggers>
+        <Button.SemanticProperties.Description>
+            <MultiBinding StringFormat="View speaker: {0}{1}">
+                <Binding Path="Name" />
+                <Binding Source="{x:Reference DetailRowRoot}" Path="SelectionSuffix" x:DataType="controls:DetailRow" />
+            </MultiBinding>
+        </Button.SemanticProperties.Description>
+    </Button>
     </Grid>
-</ContentView>
+</controls:DetailRow>

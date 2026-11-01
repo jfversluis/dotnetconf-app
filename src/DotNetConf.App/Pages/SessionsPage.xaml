@@ -1,4 +1,4 @@
-<pages:ConferencePage x:Class="DotNetConf.App.Pages.SessionsPage"
+<pages:AdaptiveConferencePage x:Class="DotNetConf.App.Pages.SessionsPage"
                       x:Name="Page"
                       xmlns:pages="clr-namespace:DotNetConf.App.Pages"
                       xmlns:controls="clr-namespace:DotNetConf.App.Controls"
@@ -15,49 +15,76 @@
                      SemanticProperties.Hint="Choose topics for every day. Current selections are shown below the day tabs."
                      AutomationId="session-filters" />
     </ContentPage.ToolbarItems>
-    <Grid RowDefinitions="Auto,*" SafeAreaEdges="Container,None,Container,None">
-        <VerticalStackLayout Padding="24,16,24,8" Spacing="16">
-            <Label Text="Find your next idea" Style="{StaticResource Heading}" />
-            <controls:AgendaSearchField Text="{Binding SessionQuery}" ApplyQueryCommand="{Binding SearchSessionsCommand}"
-                                        Placeholder="Talks, topics, or speakers"
-                                        SearchDescription="Search sessions by talk, topic, or speaker"
-                                        SearchAutomationId="session-search" ClearAutomationId="session-search-clear" />
-            <tabs:SfTabView x:Name="DayTabs" SelectionChanged="OnDaySelectionChanged"
-                            TabWidthMode="Default" TabBarHeight="72" TabHeaderPadding="0"
-                            TabBarPlacement="Top" IndicatorPlacement="Bottom" IndicatorWidthMode="Stretch"
-                            EnableSwiping="False" EnableRippleAnimation="False" HeaderItemSpacing="0"
-                            TabBarBackground="Transparent" VerticalOptions="Start"
-                            IndicatorBackground="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
-                            AutomationId="day-filter" />
+    <Grid x:Name="SearchLayout" RowDefinitions="Auto,*" SafeAreaEdges="Container,None,Container,None">
+        <VerticalStackLayout x:Name="SessionHeader" Padding="24,16,24,8" Spacing="16">
+            <Label x:Name="SessionHeading" Text="Find your next idea" Style="{StaticResource Heading}" />
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                <Label Text="{Binding FilterSummary}" Style="{StaticResource Secondary}" FontSize="12"
-                       VerticalOptions="Center" AutomationId="session-filter-summary" />
-                <Button Grid.Column="1" Text="Clear" Command="{Binding ClearTopicFiltersCommand}"
-                        Style="{StaticResource QuietButton}" BorderWidth="0" Padding="8,0" FontSize="12"
-                        IsVisible="{Binding HasTopicFilters}" AutomationId="session-filters-clear"
-                        SemanticProperties.Description="Clear all topic filters"
-                        SemanticProperties.Hint="Keep your selected day and search" />
+                <controls:AgendaSearchField x:Name="SearchField" Text="{Binding SessionQuery}" ApplyQueryCommand="{Binding SearchSessionsCommand}"
+                                            Placeholder="Talks, topics, or speakers"
+                                            SearchDescription="Search sessions by talk, topic, or speaker"
+                                            SearchAutomationId="session-search" ClearAutomationId="session-search-clear" />
+                <controls:CompactSearchStatus Grid.Column="1"
+                                              IsVisible="{Binding Source={x:Reference Page}, Path=IsCompactSearchActive, x:DataType=pages:AdaptiveConferencePage}" />
             </Grid>
+            <ContentView x:Name="PinnedHeader">
+                <VerticalStackLayout x:Name="FilterHeader" Spacing="16">
+                    <tabs:SfTabView x:Name="DayTabs" SelectionChanged="OnDaySelectionChanged"
+                                    SizeChanged="OnDayHeaderSizeChanged"
+                                    TabWidthMode="Default" TabBarHeight="72" TabHeaderPadding="0"
+                                    TabBarPlacement="Top" IndicatorPlacement="Bottom" IndicatorWidthMode="Stretch"
+                                    EnableSwiping="False" EnableRippleAnimation="False" HeaderItemSpacing="0"
+                                    TabBarBackground="Transparent" VerticalOptions="Start"
+                                    IndicatorBackground="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
+                                    AutomationId="day-filter" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <Label Text="{Binding FilterSummary}" Style="{StaticResource Secondary}" FontSize="12"
+                               VerticalOptions="Center" AutomationId="session-filter-summary" />
+                        <Button Grid.Column="1" Text="Clear" Command="{Binding ClearTopicFiltersCommand}"
+                                Style="{StaticResource QuietButton}" BorderWidth="0" Padding="8,0" FontSize="12"
+                                IsVisible="{Binding HasTopicFilters}" AutomationId="session-filters-clear"
+                                SemanticProperties.Description="Clear all topic filters"
+                                SemanticProperties.Hint="Keep your selected day and search" />
+                    </Grid>
+                </VerticalStackLayout>
+            </ContentView>
         </VerticalStackLayout>
+    <!-- Keep both native lists laid out so iOS can apply collection updates during keyboard transitions. -->
     <RefreshView Grid.Row="1" IsRefreshing="{Binding IsPullRefreshing, Mode=TwoWay}"
                  Command="{Binding RequestRefreshCommand}"
                  RefreshColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
                  AutomationId="sessions-refresh">
-    <CollectionView ItemsSource="{Binding Sessions}" SelectionMode="None"
+    <RefreshView.Triggers>
+        <DataTrigger TargetType="RefreshView"
+                     Binding="{Binding Source={x:Reference Page}, Path=IsCompactSearchActive, x:DataType=pages:AdaptiveConferencePage}" Value="True">
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="InputTransparent" Value="True" />
+            <Setter Property="AutomationProperties.ExcludedWithChildren" Value="True" />
+        </DataTrigger>
+    </RefreshView.Triggers>
+    <CollectionView x:Name="SearchResults" ItemsSource="{Binding Sessions}" SelectionMode="None"
                     ItemsUpdatingScrollMode="KeepScrollOffset" AutomationId="session-list">
         <CollectionView.Footer>
             <controls:SafeAreaFooter Page="{x:Reference Page}" AutomationId="session-safe-area-footer" />
         </CollectionView.Footer>
         <CollectionView.Header>
-            <VerticalStackLayout Spacing="16" Padding="24,16,24,8" SafeAreaEdges="None">
-                <controls:StatusBanner AutomationId="sessions-status" />
-                <Label Text="{Binding TimeZoneLabel}" Style="{StaticResource Secondary}" FontSize="12" />
+            <VerticalStackLayout SafeAreaEdges="None">
+                <ContentView x:Name="ScrollingHeader" IsVisible="False" />
+                <VerticalStackLayout x:Name="SessionStatus" Spacing="16" Padding="24,16,24,8">
+                    <controls:StatusBanner AutomationId="sessions-status" />
+                    <Label Text="{Binding TimeZoneLabel}" Style="{StaticResource Secondary}" FontSize="12" />
+                </VerticalStackLayout>
             </VerticalStackLayout>
         </CollectionView.Header>
         <CollectionView.ItemTemplate>
             <DataTemplate x:DataType="vm:SessionViewModel">
-                <Grid Padding="24,0">
-                    <controls:SessionRow />
+                <Grid Padding="8,0">
+                    <Border Style="{StaticResource DetailSelectionSurface}"
+                            AutomationId="{Binding AutomationId, StringFormat='{0}-selection'}"
+                            IsVisible="{Binding Source={x:Reference Item}, Path=IsSelected, x:DataType=controls:SessionRow}" />
+                    <BoxView Style="{StaticResource DetailSelectionMarker}"
+                             IsVisible="{Binding Source={x:Reference Item}, Path=IsSelected, x:DataType=controls:SessionRow}" />
+                    <controls:SessionRow x:Name="Item" Padding="16,0"
+                                         SelectedId="{Binding Source={RelativeSource AncestorType={x:Type pages:AdaptiveConferencePage}}, Path=SelectedId}" />
                 </Grid>
             </DataTemplate>
         </CollectionView.ItemTemplate>
@@ -71,5 +98,37 @@
         </CollectionView.EmptyView>
     </CollectionView>
     </RefreshView>
+        <CollectionView Grid.Row="1" ItemsSource="{Binding Sessions}" SelectionMode="None"
+                        ItemsUpdatingScrollMode="KeepScrollOffset" AutomationId="compact-session-list"
+                        Opacity="0" InputTransparent="True" AutomationProperties.ExcludedWithChildren="True">
+            <CollectionView.Triggers>
+                <DataTrigger TargetType="CollectionView"
+                             Binding="{Binding Source={x:Reference Page}, Path=IsCompactSearchActive, x:DataType=pages:AdaptiveConferencePage}" Value="True">
+                    <Setter Property="Opacity" Value="1" />
+                    <Setter Property="InputTransparent" Value="False" />
+                    <Setter Property="AutomationProperties.ExcludedWithChildren" Value="False" />
+                </DataTrigger>
+            </CollectionView.Triggers>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:SessionViewModel">
+                    <Grid Padding="8,0">
+                        <Border Style="{StaticResource DetailSelectionSurface}"
+                                IsVisible="{Binding Source={x:Reference CompactItem}, Path=IsSelected, x:DataType=controls:SessionRow}" />
+                        <BoxView Style="{StaticResource DetailSelectionMarker}"
+                                 IsVisible="{Binding Source={x:Reference CompactItem}, Path=IsSelected, x:DataType=controls:SessionRow}" />
+                        <controls:SessionRow x:Name="CompactItem" Padding="16,0" IsCompactSearch="True"
+                                             SelectedId="{Binding Source={RelativeSource AncestorType={x:Type pages:AdaptiveConferencePage}}, Path=SelectedId}" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+            <CollectionView.EmptyView>
+                <VerticalStackLayout Padding="24,0" Spacing="0">
+                    <ActivityIndicator IsRunning="{Binding IsInitialAgendaLoading}" IsVisible="{Binding IsInitialAgendaLoading}"
+                                       HorizontalOptions="Start" AutomationId="sessions-compact-loading" />
+                    <Label Text="{Binding SessionsEmptyTitle}" Style="{StaticResource Subheading}" AutomationId="sessions-compact-empty-title" />
+                    <Label Text="{Binding SessionsEmptyMessage}" Style="{StaticResource Secondary}" AutomationId="sessions-compact-empty-message" />
+                </VerticalStackLayout>
+            </CollectionView.EmptyView>
+        </CollectionView>
     </Grid>
-</pages:ConferencePage>
+</pages:AdaptiveConferencePage>

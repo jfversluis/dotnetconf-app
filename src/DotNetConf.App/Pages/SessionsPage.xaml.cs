@@ -1,18 +1,23 @@
 using DotNetConf.App.ViewModels;
+using DotNetConf.App.Services;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using Syncfusion.Maui.Toolkit.TabView;
 
 namespace DotNetConf.App.Pages;
 
-public partial class SessionsPage : ConferencePage
+public partial class SessionsPage : AdaptiveConferencePage
 {
     private bool rebuildingDays;
     private bool rebuildQueued;
+    private bool headerScrolls;
+    private bool headerIsStacked;
 
-    public SessionsPage(ConferenceViewModel conference) : base(conference)
+    public SessionsPage(ConferenceViewModel conference, DetailNavigationService navigation) : base(conference)
     {
         InitializeComponent();
+        ConfigureDetails(DetailKind.Session, navigation);
+        ConfigureSearchViewport(SearchField, SearchLayout, SearchResults);
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
     }
@@ -29,6 +34,26 @@ public partial class SessionsPage : ConferencePage
     {
         Conference.Days.CollectionChanged -= OnDaysChanged;
         Conference.PropertyChanged -= OnConferencePropertyChanged;
+    }
+
+    protected override void OnListLayoutChanged(bool scrollHeader, bool stacked)
+    {
+        SessionHeading.IsVisible = !scrollHeader;
+        if (headerIsStacked != stacked)
+        {
+            SessionHeader.Spacing = stacked ? 8 : 16;
+            SessionHeader.Padding = new Thickness(24, stacked ? 8 : 16, 24, stacked ? 4 : 8);
+            SessionStatus.Spacing = stacked ? 8 : 16;
+            SessionStatus.Padding = new Thickness(24, stacked ? 8 : 16, 24, stacked ? 4 : 8);
+            headerIsStacked = stacked;
+        }
+
+        if (headerScrolls != scrollHeader)
+        {
+            FilterHeader.Padding = scrollHeader ? new Thickness(24, 8, 24, 8) : new Thickness(0);
+            MoveListHeader(PinnedHeader, ScrollingHeader, scrollHeader);
+            headerScrolls = scrollHeader;
+        }
     }
 
     private void OnDaysChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -53,8 +78,9 @@ public partial class SessionsPage : ConferencePage
             {
                 var header = new VerticalStackLayout
                 {
-                    Padding = new Thickness(4, 12),
+                    Padding = new Thickness(8, 12),
                     Spacing = 0,
+                    MinimumWidthRequest = DayTabLayout.MinimumWidth,
                     VerticalOptions = LayoutOptions.Center,
                     AutomationId = $"day-{day.Label}"
                 };
@@ -116,11 +142,22 @@ public partial class SessionsPage : ConferencePage
         if (DayTabs is null || DayTabs.Width <= 0 || DayTabs.Items.Count == 0)
             return;
 
-        // Measure the children: the toolkit fixes HeaderContent's height to the current bar height.
-        var width = Math.Max(1, DayTabs.Width / DayTabs.Items.Count - 8);
-        var height = DayTabs.Items.Select(item => item.HeaderContent)
+        var headers = DayTabs.Items.Select(item => item.HeaderContent)
             .OfType<VerticalStackLayout>()
-            .Select(header => 24 + header.Children.OfType<Label>()
+            .ToArray();
+        var widestLabel = headers.SelectMany(header => header.Children.OfType<Label>())
+            .Select(label => label.Measure(double.PositiveInfinity, double.PositiveInfinity).Width)
+            .DefaultIfEmpty(0).Max();
+        var scroll = DayTabLayout.ShouldScroll(DayTabs.Width, DayTabs.Items.Count, widestLabel);
+        var mode = scroll ? TabWidthMode.SizeToContent : TabWidthMode.Default;
+        if (DayTabs.TabWidthMode != mode)
+            DayTabs.TabWidthMode = mode;
+
+        // The toolkit fixes HeaderContent's height to the current bar height.
+        var width = scroll ? double.PositiveInfinity :
+            Math.Max(1, DayTabs.Width / DayTabs.Items.Count - DayTabLayout.HorizontalPadding);
+        var height = headers.Select(header => header.Padding.Top + header.Padding.Bottom +
+            header.Children.OfType<Label>()
                 .Sum(label => label.Measure(width, double.PositiveInfinity).Height))
             .DefaultIfEmpty(72).Max();
         DayTabs.TabBarHeight = Math.Max(72, Math.Ceiling(height));
