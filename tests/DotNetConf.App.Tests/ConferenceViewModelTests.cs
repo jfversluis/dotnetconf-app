@@ -296,11 +296,6 @@ public sealed class ConferenceViewModelTests
                 NullLogger<SpeakerImageCache>.Instance),
             NullLogger<ConferenceViewModel>.Instance, new TestReminders());
 
-    private sealed class TestReminders : ISessionReminderUpdates
-    {
-        public Task<bool> RefreshAsync() => Task.FromResult(true);
-    }
-
     private static ConferenceSnapshot Snapshot() => new(new ConferenceDocument
     {
         SchemaVersion = 1,
