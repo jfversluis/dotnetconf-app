@@ -1,9 +1,10 @@
 <ContentPage x:Class="DotNetConf.App.Pages.ThirdPartyPage"
              xmlns:pages="clr-namespace:DotNetConf.App.Pages"
+             xmlns:controls="clr-namespace:DotNetConf.App.Controls"
              x:Name="NoticesPage" x:DataType="pages:ThirdPartyPage" Title="Third-party dependencies">
     <ContentPage.SafeAreaEdges>
         <OnPlatform x:TypeArguments="SafeAreaEdges">
-            <On Platform="iOS" Value="All" />
+            <On Platform="iOS" Value="Container,None,Container,None" />
             <On Platform="Android" Value="SoftInput" />
         </OnPlatform>
     </ContentPage.SafeAreaEdges>
@@ -39,12 +40,15 @@
             </DataTemplate>
         </CollectionView.ItemTemplate>
         <CollectionView.Footer>
-            <VerticalStackLayout Padding="24,12,24,24" Spacing="12">
-                <Label Text="Framework components include MAUI Core, Essentials, Graphics, and Maps. CommunityToolkit.Maui includes its Core library."
-                       Style="{StaticResource Secondary}" />
-                <Button Text="All notices and artwork credits" Style="{StaticResource QuietButton}"
-                        Command="{Binding ReadNoticesCommand}" AutomationId="third-party-notices" />
-            </VerticalStackLayout>
+            <Grid RowDefinitions="Auto,Auto" SafeAreaEdges="None">
+                <VerticalStackLayout Padding="24,12,24,24" Spacing="12">
+                    <Label Text="Framework components include MAUI Core, Essentials, Graphics, and Maps. CommunityToolkit.Maui includes its Core library."
+                           Style="{StaticResource Secondary}" />
+                    <Button Text="All notices and artwork credits" Style="{StaticResource QuietButton}"
+                            Command="{Binding ReadNoticesCommand}" AutomationId="third-party-notices" />
+                </VerticalStackLayout>
+                <controls:SafeAreaFooter Grid.Row="1" Page="{x:Reference NoticesPage}" />
+            </Grid>
         </CollectionView.Footer>
     </CollectionView>
 </ContentPage>
