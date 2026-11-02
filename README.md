@@ -79,7 +79,7 @@ offline under Settings → About → Third-party dependencies.
 
 ## About the project
 
-Built with [.NET MAUI](https://dotnet.microsoft.com/apps/maui) and .NET 11 RC2 technology, with styling inspired by the .NET Conf website. Experimental Linux desktop and browser builds are drawn by [Avalonia.Controls.Maui](https://github.com/AvaloniaUI/Avalonia.Controls.Maui). The My Schedule timeline is an Avalonia control on every platform, embedded in the native app on iOS and Android. This is an unofficial project, not an official Microsoft conference app.
+Built with [.NET MAUI](https://dotnet.microsoft.com/apps/maui) and .NET 11 RC3 technology, with styling inspired by the .NET Conf website. Experimental Linux desktop and browser builds are drawn by [Avalonia.Controls.Maui](https://github.com/AvaloniaUI/Avalonia.Controls.Maui). The My Schedule timeline is an Avalonia control on every platform, embedded in the native app on iOS and Android. This is an unofficial project, not an official Microsoft conference app.
 
 The rocket-bot artwork and website Bot placeholder are redistributed with the project owner's confirmed permission. That permission does not grant a general license to reuse Microsoft artwork or trademarks; bundled third-party notices include provenance and font licenses.
 
