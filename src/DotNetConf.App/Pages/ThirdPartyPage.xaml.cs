@@ -48,7 +48,7 @@ public partial class ThirdPartyPage : ContentPage
 #endif
 #if DEBUG
         new("MAUI DevFlow", "Development builds only · 0.1.0-preview.13.26512.5 · MIT", "LICENSE-DotNetFoundation.txt"),
-        new("Microsoft.Extensions.Logging.Debug", "Development builds only · 11.0.0-rc.2.26504.105 · MIT", "LICENSE-DotNetFoundation.txt"),
+        new("Microsoft.Extensions.Logging.Debug", "Development builds only · 11.0.0-rc.3.26522.148 · MIT", "LICENSE-DotNetFoundation.txt"),
 #endif
     ];
 

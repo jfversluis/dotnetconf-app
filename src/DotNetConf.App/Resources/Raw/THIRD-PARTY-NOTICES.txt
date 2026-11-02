@@ -50,7 +50,7 @@ Copyright (c) .NET Foundation and Contributors
 https://github.com/dotnet/maui-labs
 MIT license: LICENSE-DotNetFoundation.txt
 
-Microsoft.Extensions.Logging.Debug 11.0.0-rc.2.26504.105 (Debug builds only)
+Microsoft.Extensions.Logging.Debug 11.0.0-rc.3.26522.148 (Debug builds only)
 Copyright (c) .NET Foundation and Contributors
 https://github.com/dotnet/runtime
 MIT license: LICENSE-DotNetFoundation.txt

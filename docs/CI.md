@@ -24,7 +24,9 @@ This is compilation validation, not a device/UI test or proof of store acceptanc
 The SDK and workload set come from `global.json`. Android SDK dependencies are
 installed by the workload's `InstallAndroidDependencies` target with JDK 21.
 iOS CI and TestFlight jobs use the public-preview `xcode-27` ARM64 runner and
-explicitly select Xcode 27.0, matching the pinned RC2 workload.
+explicitly select Xcode 27.0, matching the RC2 iOS bindings retained in the pinned
+RC3 workload set. Both workflows read the SDK and workload-set pins from
+`global.json`; RC3 does not require different mobile platform tooling.
 When updating the pins, review the JDK, Xcode, runner,
 and target frameworks in the workflows/local setup action together.
 
