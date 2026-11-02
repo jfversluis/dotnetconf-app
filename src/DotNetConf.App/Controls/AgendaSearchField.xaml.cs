@@ -44,8 +44,8 @@ public partial class AgendaSearchField : ContentView
     internal bool IsSoftInputShowing => SearchInput.IsSoftInputShowing();
     internal bool HasActiveInputConnection => SearchInput.HasActiveInputConnection;
     internal Task<bool> HideKeyboardAsync() => SearchInput.HideSoftInputAsync(CancellationToken.None);
-    internal void UnfocusSearch() => SearchInput.Unfocus();
 #endif
+    internal void UnfocusSearch() => SearchInput.Unfocus();
     public event EventHandler<FocusEventArgs>? SearchFocusChanged;
 
     private void OnFieldTapped(object? sender, TappedEventArgs e) => SearchInput.Focus();
