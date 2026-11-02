@@ -72,6 +72,11 @@ public sealed class DetailNavigationService(
                 host.RenderDetail();
                 if (!host.IsInline && GetDestination(stack.LastOrDefault()) != destination)
                 {
+#if IOS
+                    // Dismiss before Shell creates the page: MAUI's keyboard-hide correction
+                    // otherwise moves the incoming view during the native push animation.
+                    host.UnfocusSearch();
+#endif
                     var prefix = stack.Count > 1
                         ? string.Join("/", Enumerable.Repeat("..", stack.Count - 1)) + "/"
                         : "";

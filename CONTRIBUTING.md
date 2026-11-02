@@ -435,6 +435,14 @@ dotnet tool run maui -- devflow --device emulator-5554 wait --wait-platform Andr
 
 Use `devflow list` to identify the intended platform and agent port, then pass `--agent-port PORT` explicitly when more than one app is connected. Never drive an arbitrary first agent.
 
+When checking iOS list-to-detail navigation, focus the Speakers or Sessions search
+field before opening a result, and inspect the animation rather than only its final
+frame. `DetailNavigationService` resigns search focus before Shell creates the
+destination page to avoid MAUI RC2's keyboard-hide frame correction shifting the
+incoming page down during the push. Keep native animations and inline-pane search
+behavior intact; check both empty and populated searches, Back, and short landscape
+windows where focusing search hides navigation.
+
 This preview can time out during Android discovery without returning a failing exit code. Confirm the connection with `list` or `ui status`. If discovery is unavailable, forward the selected app's agent port directly and inspect explicitly:
 
 ```sh
