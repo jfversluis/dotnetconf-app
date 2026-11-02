@@ -12,8 +12,8 @@ Versions are deliberately pinned:
 
 | Component | Version |
 |---|---|
-| .NET SDK | `11.0.100-rc.2.26504.105` |
-| Mobile workload set | `11.0.100-rc.2.26513.2` |
+| .NET SDK | `11.0.100-rc.3.26522.148` |
+| Mobile workload set | `11.0.100-rc.3.26524.4` |
 | MAUI Controls | `11.0.0-rc.2.26505.5` |
 | DevFlow CLI / agent | `0.1.0-preview.13.26512.5` |
 | Avalonia.Controls.Maui, Desktop, Essentials | `11.0.0-rc.2.26287.618` |
@@ -21,10 +21,15 @@ Versions are deliberately pinned:
 | IconFont.Maui.FluentIcons | `1.1.1` |
 | Syncfusion.Maui.Toolkit | `1.0.11` |
 
+The [RC3 security release](https://github.com/dotnet/core/blob/main/release-notes/11.0/preview/rc3/11.0.0-rc.3.md)
+updates the SDK and runtime. Its workload set updates the Mono/WebAssembly
+toolchains but retains the RC2 MAUI, Android, and iOS manifests. MAUI package pins,
+platform prerequisites, and existing MAUI workarounds therefore remain unchanged.
+
 Install the SDK selected by `global.json`, then:
 
 ```sh
-dotnet workload install maui-android maui-ios wasm-tools --version 11.0.100-rc.2.26513.2
+dotnet workload install maui-android maui-ios wasm-tools --version 11.0.100-rc.3.26524.4
 dotnet tool restore
 dotnet test tests/DotNetConf.Core.Tests
 dotnet test tests/DotNetConf.App.Tests -c Release -p:MobileTargetFramework=net11.0
@@ -32,13 +37,13 @@ dotnet test tests/DotNetConf.App.Tests -c Release -p:MobileTargetFramework=net11
 
 On Linux, omit `maui-ios`; the project drops the iOS target there.
 
-iOS builds require a Mac and Xcode 27.0, as required by the pinned RC2 workload's iOS 27 bindings. Android requires the workload's Android SDK dependencies, including API 37.0 tooling, and JDK 21. Deployment minimums are iOS 15 and Android API 26. These are different from the build SDK versions. See [MAUI release requirements](https://github.com/dotnet/maui/wiki/Release-Versions).
+iOS builds require a Mac and Xcode 27.0, as required by the RC2 iOS 27 bindings retained in the pinned RC3 workload set. Android requires the workload's Android SDK dependencies, including API 37.0 tooling, and JDK 21. Deployment minimums are iOS 15 and Android API 26. These are different from the build SDK versions. See [MAUI release requirements](https://github.com/dotnet/maui/wiki/Release-Versions).
 
 The iOS head uses the scene lifecycle: `Info.plist` registers the single-window `SceneDelegate`, which inherits `MauiUISceneDelegate`. MAUI owns window creation through `App.CreateWindow`; `AppDelegate` only builds the app. Window sizing and safe areas use MAUI and platform controls, not fixed offsets.
 
-The current RC2/Xcode 27.0 build pairing does not claim Xcode 27.1 build support. The scene-forwarding paths for App Actions, authentication URL returns, and user activities still need validation with this workload before adding deep links or authentication.
+The retained RC2 iOS bindings/Xcode 27.0 build pairing does not claim Xcode 27.1 build support. The scene-forwarding paths for App Actions, authentication URL returns, and user activities still need validation with this workload before adding deep links or authentication.
 
-The current RC2 build was inspected on iPhone and iPhone Duo simulators. Settings and detail/document pages respect system chrome through shared safe-area controls, not fixed offsets. Local validation used installed Xcode 27.1 with `-p:ValidateXcodeVersion=false`, bypassing the workload-version check; this is not the workload's supported pairing or release certification. Physical-device execution and folding transitions remain release gates.
+The previous RC2 build was inspected on iPhone and iPhone Duo simulators. Settings and detail/document pages respect system chrome through shared safe-area controls, not fixed offsets. Local validation used installed Xcode 27.1 with `-p:ValidateXcodeVersion=false`, bypassing the workload-version check; this is not the workload's supported pairing or release certification. Physical-device execution and folding transitions remain release gates.
 
 ### Adaptive schedule timeline
 
