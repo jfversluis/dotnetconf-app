@@ -201,6 +201,8 @@ public class AdaptiveConferencePage : ConferencePage
 
     protected virtual string DetailSelectionHint => "Select from the list to explore the details here.";
 
+    internal void UnfocusSearch() => search?.UnfocusSearch();
+
     protected void ConfigureSearchViewport(AgendaSearchField field, Grid layout, CollectionView results)
     {
         search = field;
