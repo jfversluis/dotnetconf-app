@@ -6,9 +6,20 @@
              x:DataType="vm:PlannerViewModel" Title="Plan my schedule"
              Shell.TabBarIsVisible="False">
     <Grid RowDefinitions="*,Auto">
+        <Grid.SafeAreaEdges>
+            <OnPlatform x:TypeArguments="SafeAreaEdges" Default="Default">
+                <On Platform="iOS" Value="Container,None,Container,None" />
+            </OnPlatform>
+        </Grid.SafeAreaEdges>
         <controls:PlannerView x:Name="Planner" />
-        <Button Grid.Row="1" Text="View My Schedule" Margin="24,8,24,16" LineBreakMode="WordWrap"
-                IsVisible="{Binding HasAddedSessions}" Clicked="ViewScheduleClicked"
-                AutomationId="planner-view-schedule" />
+        <Grid Grid.Row="1" IsVisible="{Binding HasAddedSessions}">
+            <Grid.SafeAreaEdges>
+                <OnPlatform x:TypeArguments="SafeAreaEdges" Default="None">
+                    <On Platform="iOS" Value="None,None,None,Container" />
+                </OnPlatform>
+            </Grid.SafeAreaEdges>
+            <Button Text="View My Schedule" Margin="24,8,24,16" LineBreakMode="WordWrap"
+                    Clicked="ViewScheduleClicked" AutomationId="planner-view-schedule" />
+        </Grid>
     </Grid>
 </ContentPage>
