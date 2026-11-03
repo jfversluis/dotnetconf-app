@@ -211,6 +211,9 @@ public class AdaptiveConferencePage : ConferencePage
         field.SearchFocusChanged += OnSearchViewportChanged;
         results.SizeChanged += OnSearchViewportChanged;
         layout.SizeChanged += OnSearchLayoutSizeChanged;
+#if IOS
+        _ = new SearchKeyboardAccessoryOverlap(field, layout);
+#endif
     }
 
     private void OnSearchViewportChanged(object? sender, EventArgs e)
