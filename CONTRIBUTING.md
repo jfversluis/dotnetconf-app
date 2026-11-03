@@ -335,6 +335,13 @@ save-heart colors are covered by native screenshot checks; retain those checks
 when changing themes. Platform values in XAML use typed `OnPlatform<T>` rather
 than the reflection-based, trim-unsafe markup extension.
 
+On iOS 26+, search results extend behind MAUI's floating keyboard-dismiss button,
+matching the planner prompt. `SearchKeyboardAccessoryOverlap` compensates for the
+measured transparent accessory only; pane-level `SoftInput` avoidance still keeps
+results above the keyboard itself. Older iOS toolbars keep their reserved space.
+Recheck portrait/landscape search, keyboard dismissal, and split panes when
+upgrading MAUI's keyboard accessory implementation.
+
 ### NativeAOT builds
 
 The app enables `PublishAot=true` by default for both mobile targets, without
