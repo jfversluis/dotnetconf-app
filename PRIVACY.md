@@ -48,6 +48,10 @@ hosts the app, which can retain server logs under its own policy.
 
 ## On-device planning and reminders
 
+Random session discovery uses only the downloaded public agenda and your locally
+saved choices. It does not use an AI model or send a request to an AI service.
+Shuffling changes only the unsaved preview; additions require your explicit Add action.
+
 If you use the optional planner, your request and relevant public agenda
 information are processed by a local model through Apple Intelligence on iOS
 or Gemini Nano on supported Android devices. The app does not send planner

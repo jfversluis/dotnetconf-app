@@ -31,9 +31,11 @@ public sealed record ProposalReview(IReadOnlyList<Session> Sessions, IReadOnlyLi
     public bool CanApply => Sessions.Count > 0 && Issues.Count == 0;
 }
 
-public static class SchedulePlanner
+public static partial class SchedulePlanner
 {
-    public const int MaximumSessions = 12;
+    public const int DefaultSuggestionCount = 12;
+    // Compatibility name for callers using the suggestion target, not a save limit.
+    public const int MaximumSessions = DefaultSuggestionCount;
 
     public static bool HasSameAgenda(ConferenceDocument reviewed, ConferenceDocument current) =>
         reviewed.IsMock == current.IsMock && reviewed.StartDate == current.StartDate
@@ -49,41 +51,108 @@ public static class SchedulePlanner
                 && pair.First.Topics.SequenceEqual(pair.Second.Topics));
 
     public static string[] Recommend(ConferenceDocument conference, ScheduleProposal preferences,
-        IEnumerable<string> candidateIds, TimeZoneInfo zone, IReadOnlyCollection<string> savedIds)
+        IEnumerable<string> candidateIds, TimeZoneInfo zone, IReadOnlyCollection<string> savedIds,
+        int count = DefaultSuggestionCount)
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
         var ids = candidateIds.ToHashSet(StringComparer.Ordinal);
         var eligible = conference.Sessions.Where(s => ids.Contains(s.Id)
             && Review(conference, new([s.Id], [], preferences.Availability)
                 { GapAnchorIds = preferences.GapAnchorIds }, zone, savedIds).CanApply)
             .OrderBy(s => s.EndsAt).ThenBy(s => s.Id, StringComparer.Ordinal).ToArray();
-        var speakers = preferences.RequiredSpeakers.Select(n => Agenda.FindSpeakers(conference, n))
+        var speakers = preferences.RequiredSpeakers.Where(name => !conference.Sessions.Any(session =>
+                savedIds.Contains(session.Id)
+                && Agenda.FindSpeakers(conference, name).Any(speaker => session.SpeakerIds.Contains(speaker.Id))
+                && (preferences.TopicFilter is not { RestrictToRequiredSpeakers: true } scoped
+                    || Agenda.MatchesTopics(session, scoped))))
+            .Select(n => Agenda.FindSpeakers(conference, n))
             .Select(matches => matches.Count == 1 ? matches[0].Id : "").ToArray();
         if (speakers.Length > 8)
             throw new InvalidDataException("Use at most eight required speakers.");
-        var states = new Dictionary<(int Mask, int Count), string[]>[eligible.Length + 1];
-        states[0] = new() { [(0, 0)] = [] };
+        var target = Math.Min(count, eligible.Length);
+        var unlimited = target == eligible.Length;
+        // Without a shortlist target, retain only the longest chain for each speaker mask.
+        var states = new Dictionary<(int Mask, int Count), Recommendation?>[eligible.Length + 1];
+        states[0] = new() { [(0, 0)] = null };
         for (var i = 0; i < eligible.Length; i++)
         {
             var session = eligible[i];
-            var previous = i;
-            while (previous > 0 && eligible[previous - 1].EndsAt > session.StartsAt)
-                previous--;
-            var next = new Dictionary<(int Mask, int Count), string[]>(states[i]);
+            var low = 0;
+            var high = i;
+            while (low < high)
+            {
+                var middle = low + (high - low) / 2;
+                if (eligible[middle].EndsAt <= session.StartsAt)
+                    low = middle + 1;
+                else
+                    high = middle;
+            }
+            var next = new Dictionary<(int Mask, int Count), Recommendation?>(states[i]);
             var speakerMask = 0;
             for (var index = 0; index < speakers.Length; index++)
                 if (session.SpeakerIds.Contains(speakers[index]))
                     speakerMask |= 1 << index;
-            foreach (var (key, selected) in states[previous])
+            foreach (var (key, selected) in states[low])
             {
-                if (selected.Length >= MaximumSessions)
+                var selectedCount = selected?.Count ?? 0;
+                if (selectedCount >= target)
                     continue;
-                var combined = (key.Mask | speakerMask, selected.Length + 1);
-                next.TryAdd(combined, [.. selected, session.Id]);
+                var combined = (key.Mask | speakerMask, unlimited ? 0 : selectedCount + 1);
+                if (!next.TryGetValue(combined, out var existing)
+                    || (existing?.Count ?? 0) < selectedCount + 1)
+                    next[combined] = new(session.Id, selected, selectedCount + 1);
             }
             states[i + 1] = next;
         }
-        return states[^1].Where(s => s.Key.Mask == (1 << speakers.Length) - 1)
-            .OrderByDescending(s => s.Key.Count).Select(s => s.Value).FirstOrDefault() ?? [];
+        var best = states[^1].Where(s => s.Key.Mask == (1 << speakers.Length) - 1)
+            .OrderByDescending(s => s.Value?.Count ?? 0).Select(s => s.Value).FirstOrDefault();
+        var result = new string[best?.Count ?? 0];
+        for (var index = result.Length - 1; index >= 0; index--)
+        {
+            result[index] = best!.SessionId;
+            best = best.Previous;
+        }
+        return result;
+    }
+
+    private sealed record Recommendation(string SessionId, Recommendation? Previous, int Count);
+
+    public static string[] SelectSuggestions(ConferenceDocument conference, ScheduleProposal preferences,
+        IEnumerable<string> candidateIds, TimeZoneInfo zone, IReadOnlyCollection<string> savedIds)
+    {
+        var saved = savedIds.ToHashSet(StringComparer.Ordinal);
+        var ids = candidateIds.ToHashSet(StringComparer.Ordinal);
+        var speakerIds = preferences.RequiredSpeakers.SelectMany(name => Agenda.FindSpeakers(conference, name))
+            .Select(speaker => speaker.Id).ToHashSet(StringComparer.Ordinal);
+        var topicMatches = TopicMatches(conference, preferences).Select(session => session.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        var mandatory = conference.Sessions.Where(session => ids.Contains(session.Id) && !saved.Contains(session.Id)
+            && (preferences.AllSessionsByRequiredSpeakers && session.SpeakerIds.Any(speakerIds.Contains)
+                    && (preferences.TopicFilter is not { RestrictToRequiredSpeakers: true } scoped
+                        || Agenda.MatchesTopics(session, scoped))
+                || preferences.TopicFilter?.IncludeAll == true && topicMatches.Contains(session.Id))
+            && Review(conference, new([session.Id], [], preferences.Availability)
+                { GapAnchorIds = preferences.GapAnchorIds }, zone, savedIds).CanApply)
+            .OrderBy(session => session.StartsAt).ThenBy(session => session.Id, StringComparer.Ordinal).ToArray();
+        if (mandatory.Any(session => mandatory.Any(other => Agenda.Overlaps(session, other))))
+            return mandatory.Select(session => session.Id).ToArray();
+        var fixedIds = saved.Union(mandatory.Select(session => session.Id)).ToArray();
+        var remaining = DefaultSuggestionCount - mandatory.Length;
+        if (remaining <= 0)
+            return mandatory.Select(session => session.Id).ToArray();
+        var optional = preferences with
+        {
+            RequiredSpeakers = preferences.RequiredSpeakers.Where(name =>
+                !conference.Sessions.Any(session => fixedIds.Contains(session.Id)
+                    && Agenda.FindSpeakers(conference, name).Any(speaker => session.SpeakerIds.Contains(speaker.Id))
+                    && (preferences.TopicFilter is not { RestrictToRequiredSpeakers: true } scoped
+                        || Agenda.MatchesTopics(session, scoped)))).ToArray(),
+            AllSessionsByRequiredSpeakers = false,
+            TopicFilter = preferences.TopicFilter is { } filter ? filter with { IncludeAll = false } : null,
+            GapAnchorIds = preferences.GapAnchorIds is null ? null : fixedIds
+        };
+        var extra = Recommend(conference, optional, ids.Except(fixedIds), zone, fixedIds, remaining);
+        return mandatory.Select(session => session.Id).Concat(extra).ToArray();
     }
 
     public static ScheduleProposal Arrange(
@@ -95,21 +164,12 @@ public static class SchedulePlanner
             || review.Issues.Any(issue => issue.Code != ProposalIssueCode.OverlappingProposals))
             return candidates;
 
-        // At most 12 model-selected alternatives: search subsets, not a greedy
-        // choice that could discard the only talk by a required speaker.
-        for (var count = candidates.SessionIds.Length - 1; count > 0; count--)
-            for (var mask = 1; mask < (1 << candidates.SessionIds.Length); mask++)
-            {
-                if (System.Numerics.BitOperations.PopCount((uint)mask) != count)
-                    continue;
-                var subset = candidates with
-                {
-                    SessionIds = candidates.SessionIds.Where((_, index) => (mask & (1 << index)) != 0).ToArray()
-                };
-                if (Review(conference, subset, timeZone, savedIds).CanApply)
-                    return subset;
-            }
-        return candidates;
+        var arranged = candidates with
+        {
+            SessionIds = Recommend(conference, candidates, candidates.SessionIds, timeZone, savedIds,
+                candidates.SessionIds.Length)
+        };
+        return Review(conference, arranged, timeZone, savedIds).CanApply ? arranged : candidates;
     }
 
     public static ProposalReview Review(
@@ -133,8 +193,8 @@ public static class SchedulePlanner
                 gaps = [];
             }
         }
-        if (proposal.SessionIds.Length is 0 or > MaximumSessions)
-            errors.Add(new(ProposalIssueCode.SessionCount, $"Propose between 1 and {MaximumSessions} sessions."));
+        if (proposal.SessionIds.Length == 0)
+            errors.Add(new(ProposalIssueCode.SessionCount, "Select at least one session before saving."));
         if (proposal.RequiredSpeakers.Length > 8 || proposal.Availability.Length > 12)
             errors.Add(new(ProposalIssueCode.ConstraintCount, "Too many constraints. Use at most 8 required speakers and 12 availability windows."));
         foreach (var id in proposal.SessionIds)
@@ -191,14 +251,18 @@ public static class SchedulePlanner
                 errors.Add(new(ProposalIssueCode.UnknownSpeaker, $"Speaker not found in this agenda: {name}."));
             else if (matches.Count > 1)
                 errors.Add(new(ProposalIssueCode.AmbiguousSpeaker, $"Ambiguous speaker '{name}'. Choose {string.Join(" or ", matches.Select(s => s.Name))}."));
-            else if (!sessions.Any(s => s.SpeakerIds.Contains(matches[0].Id)))
+            else if (!sessions.Concat(conference.Sessions.Where(s => savedIds.Contains(s.Id)))
+                .Any(s => s.SpeakerIds.Contains(matches[0].Id)
+                    && (proposal.TopicFilter is not { RestrictToRequiredSpeakers: true } scoped
+                        || Agenda.MatchesTopics(s, scoped))))
                 errors.Add(new(ProposalIssueCode.MissingSpeakerSession, $"Required speaker has no proposed session: {matches[0].Name}."));
             if (matches.Count == 1 && proposal.AllSessionsByRequiredSpeakers)
             {
                 var missing = conference.Sessions.Where(s => s.SpeakerIds.Contains(matches[0].Id)
                     && (proposal.TopicFilter is not { RestrictToRequiredSpeakers: true } scoped
                         || Agenda.MatchesTopics(s, scoped))
-                    && (gaps is null || FitsAvailability(s))
+                    && FitsAvailability(s)
+                    && !savedIds.Contains(s.Id)
                     && !proposal.SessionIds.Contains(s.Id)).ToArray();
                 if (missing.Length > 0)
                     errors.Add(new(ProposalIssueCode.IncompleteSpeakerSessions, $"You requested all sessions by {matches[0].Name}. Missing: {string.Join(", ", missing.Select(s => s.Title))}. Change your request if you only want a subset."));
@@ -212,7 +276,7 @@ public static class SchedulePlanner
             var label = string.Join(filter.MatchAll ? " AND " : " OR ", filter.Topics);
             if (matching.Length == 0)
                 errors.Add(new(ProposalIssueCode.EmptyTopicMatch, $"No sessions match the requested topics within your availability: {label}."));
-            var missing = matching.Where(s => !proposal.SessionIds.Contains(s.Id)).ToArray();
+            var missing = matching.Where(s => !proposal.SessionIds.Contains(s.Id) && !savedIds.Contains(s.Id)).ToArray();
             if (missing.Length > 0)
                 errors.Add(new(ProposalIssueCode.IncompleteTopicSessions, $"You requested all sessions matching '{label}' within your availability. Missing: {string.Join(", ", missing.Select(s => s.Title))}. Change your request if you only want a subset."));
         }

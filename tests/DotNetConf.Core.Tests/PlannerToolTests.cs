@@ -394,7 +394,7 @@ public sealed class PlannerToolTests
     }
 
     [Fact]
-    public async Task LateMatchesRemainVisibleButUnselectedAndRequiredSpeakerConflictsStayExplicit()
+    public async Task LateMatchesRemainVisibleButAllSpeakerRequestsRespectAvailability()
     {
         await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
         var conference = await ConferenceJson.ReadAsync(stream);
@@ -412,7 +412,7 @@ public sealed class PlannerToolTests
         Assert.Contains("gerald-csharp-ai", tools.Proposal!.MatchedSessionIds);
         tools.CapturePreferences(["Gerald"], windows, true);
         tools.SpeakerSessions("Gerald");
-        Assert.Contains("Missing:", tools.SubmitProposal(tools.EligibleCandidateIds));
+        Assert.StartsWith("Preview ready.", tools.SubmitProposal(tools.EligibleCandidateIds));
         Assert.Equal(2, tools.Proposal!.MatchedSessionIds.Length);
         Assert.Equal(["gerald-maui-testing"], tools.Proposal.SessionIds);
     }
@@ -446,7 +446,7 @@ public sealed class PlannerToolTests
     }
 
     [Fact]
-    public void OversizedCompleteMatchesRemainVisibleInsteadOfBeingTruncatedIntoSuccess()
+    public void CompleteMatchesAboveTheSuggestionTargetRemainVisibleAndSaveable()
     {
         var conference = new ConferenceDocument
         {
@@ -463,7 +463,7 @@ public sealed class PlannerToolTests
         tools.CapturePreferences([], [], topicFilter: new(["C#"], false, false, true));
         for (var skip = 0; skip < 16; skip += 4)
             tools.TopicSessions(skip);
-        Assert.Contains("between 1 and 12", tools.SubmitProposal(tools.EligibleCandidateIds));
+        Assert.StartsWith("Preview ready.", tools.SubmitProposal(tools.EligibleCandidateIds));
         Assert.Equal(16, tools.Proposal!.MatchedSessionIds.Length);
         Assert.Equal(16, SchedulePlanner.Review(conference, tools.Proposal, TimeZoneInfo.Utc, []).Sessions.Count);
     }

@@ -47,17 +47,17 @@ public sealed class PlannerStartingPointLoadingTests
     public async Task EditingTheRequestKeepsFallbacksVisibleAndDoesNotCancelBackgroundSuggestions()
     {
         var data = Substitute.For<IConferenceDataSource>();
-        var pending = new TaskCompletionSource<ConferenceDocument>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var pending = new TaskCompletionSource<IReadOnlyList<PlannerStartingPoint>>(TaskCreationOptions.RunContinuationsAsynchronously);
         CancellationToken token = default;
-        data.LoadAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        var planner = Substitute.For<IOnDevicePlanner>();
+        var agenda = SyntheticAgenda;
+        data.LoadAsync(Arg.Any<CancellationToken>()).Returns(agenda);
+        var suggestions = PlannerStartingPoints.Ground(agenda, ["Synthetic AI", "Synthetic Web", "Synthetic Mobile"]);
+        planner.SuggestStartingPointsAsync(agenda, Arg.Any<CancellationToken>()).Returns(call =>
         {
             token = call.Arg<CancellationToken>();
             return pending.Task;
         });
-        var planner = Substitute.For<IOnDevicePlanner>();
-        var agenda = SyntheticAgenda;
-        var suggestions = PlannerStartingPoints.Ground(agenda, ["Synthetic AI", "Synthetic Web", "Synthetic Mobile"]);
-        planner.SuggestStartingPointsAsync(agenda, Arg.Any<CancellationToken>()).Returns(suggestions);
         var vm = Create(data, planner);
         var finished = RefreshFinished(vm);
         await vm.InitializeAsync();
@@ -67,7 +67,7 @@ public sealed class PlannerStartingPointLoadingTests
         var request = vm.StartingPoints[0].Request;
         vm.UseExampleCommand.Execute(request);
         Assert.False(token.IsCancellationRequested);
-        pending.SetResult(agenda);
+        pending.SetResult(suggestions);
         await finished;
         Assert.Same(suggestions, vm.StartingPoints);
         Assert.Equal(request, vm.Request);
@@ -87,7 +87,7 @@ public sealed class PlannerStartingPointLoadingTests
         await vm.InitializeAsync();
         await finished;
         Assert.Same(fallback, vm.StartingPoints);
-        Assert.False(vm.HasStatus);
+        Assert.Contains("Couldn't load suggestions", vm.Status);
         Assert.Contains(logger.ReceivedCalls(), call => call.GetMethodInfo().Name == nameof(ILogger.Log)
             && Equals(call.GetArguments()[0], LogLevel.Warning));
     }

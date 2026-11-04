@@ -205,12 +205,8 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
                 else if (preferences.RequiredSpeakers.Length == 0)
                     tools.IncludeCandidates(conference.Sessions.Select(s => s.Id));
             }
-            string[] selectedIds;
             var eligibleIds = tools.EligibleCandidateIds;
-            if (preferences.AllSessionsByRequiredSpeakers || topicFilter?.IncludeAll == true || eligibleIds.Length == 0)
-                selectedIds = eligibleIds;
-            else
-                selectedIds = SchedulePlanner.Recommend(conference, preferences, eligibleIds, zone, savedIds);
+            var selectedIds = SchedulePlanner.SelectSuggestions(conference, preferences, eligibleIds, zone, savedIds);
             var arranged = SchedulePlanner.Arrange(conference, preferences with { SessionIds = selectedIds }, zone, savedIds);
             await functions["submit_proposal"].InvokeAsync(
                 new AIFunctionArguments { ["sessionIds"] = arranged.SessionIds }, cancellationToken);

@@ -49,7 +49,7 @@ public sealed class PlannerScaleTests
     }
 
     [Fact]
-    public void AllFiftyMatchesAreVisibleAndOversizedSelectionIsExplicitlyInvalid()
+    public void AllFiftyMatchesAreVisibleAndCanBeSavedWithoutAShortlistLimit()
     {
         var conference = Catalog(100);
         var tools = new PlannerTools();
@@ -59,9 +59,9 @@ public sealed class PlannerScaleTests
         tools.IncludeCandidates(ids);
         Assert.Equal(50, tools.CandidateIds.Count);
         Assert.Equal(50, tools.EligibleCandidateIds.Length);
-        Assert.Contains("between 1 and 12", tools.SubmitProposal(ids));
+        Assert.StartsWith("Preview ready.", tools.SubmitProposal(ids));
         Assert.Equal(50, tools.Proposal!.MatchedSessionIds.Length);
-        Assert.False(SchedulePlanner.Review(conference, tools.Proposal, TimeZoneInfo.Utc, []).CanApply);
+        Assert.True(SchedulePlanner.Review(conference, tools.Proposal, TimeZoneInfo.Utc, []).CanApply);
         Assert.Throws<InvalidDataException>(() => tools.IncludeCandidates(["invented"]));
     }
 

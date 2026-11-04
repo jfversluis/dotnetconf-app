@@ -61,14 +61,16 @@ navigation bar: welcome, personal schedule introduction, and optional session
 reminders. Space Grotesk headings, typed Fluent icons and short explanatory
 copy focus each step on one task. Swipe and persistent Next/Back controls move
 between steps; Skip setup sits alongside each hero icon.
-The middle step becomes the AI builder only after a registered local model
-passes readiness. Otherwise a heart-led introduction explains Sessions and
-My Schedule, without disabled AI inputs or session examples. A small loading
-state explains the check without blocking Next or Skip.
+The middle step mounts the shared discovery view immediately. It offers up to
+six compatible, varied random sessions from the downloaded agenda without AI.
+Optional local-model readiness does not replace the view or its selections.
+The editor appears only after explicitly choosing AI. No cached agenda means an
+honest download state, never bundled session examples. Continue does not save:
+advancing prompts if nothing was added or checked suggestions remain unsaved.
 All three steps share a 34-unit heading, 48-unit Fluent icon, and the
 incumbent hero wash, with 24-unit gutters aligned to the builder.
-The builder uses a sparkle glyph to distinguish AI-assisted planning from the
-welcome's agenda and reminder's bell; the shared in-app builder retains it.
+Discovery uses the typed Fluent agenda glyph; only explicitly chosen AI mode and
+its entry action use a sparkle. The welcome's agenda and reminder's bell remain.
 On iOS and Android the onboarding hero background extends behind the status bar.
 A root MAUI `SafeAreaEdges` layout protects the carousel content; a separate
 background layer paints behind the protected region. No native inset measurement
@@ -103,7 +105,10 @@ Invalid output, cancellation or timeout keeps the curated options with explicit
 status rather than blocking input. Provider-specific local
 model availability, privacy boundaries, and the agenda's data source are stated
 explicitly. Suggestions appear progressively as a reviewable shortlist with
-native checkboxes. Matching details are collapsed behind a text action, not an
+native checkboxes. Selected, alternative, blocked, and already-saved states are
+labelled, with overlap explanations beside affected rows. A live selected count
+and Add N action explain that checking is not saving; no redundant confirmation
+checkbox is required. Matching details are collapsed behind a text action, not an
 AI-debug section ahead of the sessions. Warnings and blocking validation stay
 visible; successful validation and idle-ready boilerplate do not compete with
 the task. Users review the selected sessions and times before confirming.
@@ -120,7 +125,7 @@ reminder step. Saving freezes the shortlist and confirmation, persists a snapsho
 of the confirmed selection, and reports a reminder-refresh failure separately
 from a failed save.
 
-My Schedule's quiet, full-width Fluent sparkle action sits after the timezone
+My Schedule's quiet, full-width Fluent agenda action sits after the timezone
 and beside the existing Timeline/List workflow. Empty schedules open the personal
 builder; saved schedules open gap planning with "Make room for discovery."
 The existing scrollable builder, shortlist and confirmation controls are reused.
@@ -128,8 +133,8 @@ Free time is bounded by the real agenda on saved-session days, not assumed offic
 hours. Optional topics, speakers and clock limits narrow those slots. Retained
 withdrawn bookmarks reserve their last-known times until removed; they are never
 proposals. Changed bookmarks or agenda times invalidate confirmation. Model
-readiness uses Essentials.AI's native status APIs; unsupported devices keep the
-heart-led path, and no model download or cloud request is initiated.
+readiness uses Essentials.AI's native status APIs; unsupported devices retain
+random discovery, and no model download or cloud request is initiated.
 
 The reminder step explains the benefit before asking for OS notification
 permission, only on an explicit Enable tap. Reminders are device-local and tied
