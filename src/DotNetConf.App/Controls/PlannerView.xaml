@@ -54,7 +54,7 @@
                                        HeightRequest="24" WidthRequest="24" HorizontalOptions="Start"
                                        SemanticProperties.Description="Preparing starting points"
                                        AutomationId="planner-starting-points-loading" />
-                    <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Default"
+                    <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Never"
                                 AutomationId="planner-starting-points">
                         <HorizontalStackLayout BindableLayout.ItemsSource="{Binding StartingPoints}">
                             <BindableLayout.ItemTemplate>
