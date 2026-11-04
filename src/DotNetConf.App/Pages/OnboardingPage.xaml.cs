@@ -67,7 +67,7 @@ public partial class OnboardingPage : ContentPage
 
     private void ShowReadyPlanner()
     {
-        if (!pageVisible || !planner.IsReady || plannerView is not null)
+        if (!pageVisible || !planner.HasCheckedModel || plannerView is not null)
             return;
         plannerView = new PlannerView { BindingContext = planner };
         var skip = new Button
