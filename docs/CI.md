@@ -13,7 +13,8 @@ It does not initialize MAUI, install native Android SDK packages, or run an emul
 These tests stay separate from NativeAOT publication so restoring both app graphs
 does not exhaust a hosted runner's disk. The mobile jobs perform independent
 Android and iOS **Release** builds. Android publishes an ARM64 NativeAOT AAB;
-iOS builds an unsigned ARM64 simulator app.
+iOS builds an unsigned ARM64 simulator app. The Android job also checks
+private-member obfuscation and that the signed AAB embeds the generated R8 mapping.
 The Android publish explicitly selects `android-arm64`: the pinned preview's
 NativeAOT typemap generation fails without a concrete runtime identifier.
 The manual internal-testing lane uses the same ARM64 architecture and RID-specific
