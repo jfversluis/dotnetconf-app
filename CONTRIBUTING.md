@@ -335,6 +335,13 @@ save-heart colors are covered by native screenshot checks; retain those checks
 when changing themes. Platform values in XAML use typed `OnPlatform<T>` rather
 than the reflection-based, trim-unsafe markup extension.
 
+On iOS 26+, search results extend behind MAUI's floating keyboard-dismiss button,
+matching the planner prompt. `SearchKeyboardAccessoryOverlap` compensates for the
+measured transparent accessory only; pane-level `SoftInput` avoidance still keeps
+results above the keyboard itself. Older iOS toolbars keep their reserved space.
+Recheck portrait/landscape search, keyboard dismissal, and split panes when
+upgrading MAUI's keyboard accessory implementation.
+
 ### NativeAOT builds
 
 The app enables `PublishAot=true` by default for both mobile targets, without
@@ -358,6 +365,20 @@ project rejects that configuration.
 Android's signed local APK is under
 `src/DotNetConf.App/bin/Release/net11.0-android/android-arm64/publish/`.
 It uses the local debug signing key unless release signing is configured.
+
+Android Release explicitly uses R8 to optimize and shrink Java bytecode and
+obfuscate private and package-private members, following the
+[MAUI Google Play guidance](https://learn.microsoft.com/dotnet/maui/android/deployment/publish-google-play#google-play-code-optimization-requirements).
+The pinned .NET 11 workload already selects these settings for the app's
+NativeAOT Release build; managed .NET assemblies are not obfuscated by R8.
+The signed AAB embeds the R8 mapping, and `mapping.txt` is also written next to
+the published artifacts for decoding Java stack traces.
+
+Test the Release app, especially Java code that uses reflection. After uploading
+the signed AAB, check its DEX size and optimization, shrinking, and obfuscation
+percentages in Google Play Console's App bundle explorer. Enabling R8 does not
+guarantee that the app meets Google Play's thresholds.
+
 An installable iOS publish requires device signing; simulator builds are not a
 substitute for a NativeAOT device publish. For compile-only validation without
 signing, add `-p:EnableCodeSigning=false -p:BuildIpa=false` to the device publish.
@@ -439,6 +460,14 @@ dotnet tool run maui -- devflow --device emulator-5554 wait --wait-platform Andr
 ```
 
 Use `devflow list` to identify the intended platform and agent port, then pass `--agent-port PORT` explicitly when more than one app is connected. Never drive an arbitrary first agent.
+
+When checking iOS list-to-detail navigation, focus the Speakers or Sessions search
+field before opening a result, and inspect the animation rather than only its final
+frame. `DetailNavigationService` resigns search focus before Shell creates the
+destination page to avoid MAUI RC2's keyboard-hide frame correction shifting the
+incoming page down during the push. Keep native animations and inline-pane search
+behavior intact; check both empty and populated searches, Back, and short landscape
+windows where focusing search hides navigation.
 
 This preview can time out during Android discovery without returning a failing exit code. Confirm the connection with `list` or `ui status`. If discovery is unavailable, forward the selected app's agent port directly and inspect explicitly:
 

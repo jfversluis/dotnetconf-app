@@ -69,6 +69,22 @@ jobs:
       - name: Android Release build
         if: matrix.platform == 'android'
         run: dotnet publish src/DotNetConf.App/DotNetConf.App.csproj -c Release -f net11.0-android -r android-arm64 -p:MobileTargetFramework=net11.0-android -p:AndroidPackageFormats=aab
+      - name: Verify Android R8 mapping
+        if: matrix.platform == 'android'
+        shell: bash
+        run: |
+          set -euo pipefail
+          r8_mode="$(dotnet msbuild src/DotNetConf.App/DotNetConf.App.csproj -nologo \
+            -getProperty:AndroidR8ObfuscationMode -p:TargetFramework=net11.0-android \
+            -p:MobileTargetFramework=net11.0-android -p:Configuration=Release -p:RuntimeIdentifier=android-arm64)"
+          test "$r8_mode" = private-members || { echo "::error::Expected private-members R8 obfuscation, got '$r8_mode'."; exit 1; }
+          publish_dir=src/DotNetConf.App/bin/Release/net11.0-android/android-arm64/publish
+          test -s "$publish_dir/mapping.txt" || { echo "::error::R8 mapping.txt is missing or empty."; exit 1; }
+          shopt -s nullglob
+          bundles=("$publish_dir"/*-Signed.aab)
+          test "${#bundles[@]}" -eq 1 || { echo "::error::Expected exactly one signed Android App Bundle."; exit 1; }
+          unzip -p "${bundles[0]}" BUNDLE-METADATA/com.android.tools.build.obfuscation/proguard.map | cmp - "$publish_dir/mapping.txt" \
+            || { echo "::error::The signed AAB does not contain the generated R8 mapping."; exit 1; }
       - name: iOS Release simulator build (no signing credentials)
         if: matrix.platform == 'ios'
         run: dotnet build src/DotNetConf.App/DotNetConf.App.csproj -c Release -f net11.0-ios -p:MobileTargetFramework=net11.0-ios -p:RuntimeIdentifier=iossimulator-arm64 -p:EnableCodeSigning=false
