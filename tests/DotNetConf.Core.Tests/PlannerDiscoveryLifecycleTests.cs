@@ -210,6 +210,26 @@ public sealed class PlannerDiscoveryLifecycleTests
     }
 
     [Fact]
+    public async Task CancelledReadinessCanBeRetried()
+    {
+        var (vm, planner, _) = Create(true);
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(ready.Task);
+        var initialization = vm.InitializeAsync();
+        vm.Cancel();
+        ready.SetResult();
+        await initialization;
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+
+        await vm.CheckModelCommand.ExecuteAsync(null);
+
+        Assert.True(vm.IsReady);
+        Assert.True(vm.IsAiMode);
+        Assert.False(vm.CanExplore);
+        Assert.Empty(vm.Sessions);
+    }
+
+    [Fact]
     public async Task EmptySelectionHasAnActionableMessageAndShuffleNeverWrites()
     {
         var (vm, _, store) = Create();

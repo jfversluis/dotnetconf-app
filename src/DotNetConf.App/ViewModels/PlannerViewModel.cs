@@ -240,6 +240,7 @@ public partial class PlannerViewModel(
     {
         if (IsCheckingModel || IsBusy)
             return;
+        stopped = false;
         IsReady = false;
         IsLoadingStartingPoints = true;
         IsCheckingModel = true;
