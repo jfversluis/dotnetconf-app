@@ -58,7 +58,11 @@ previously saved sessions aren't removed.
 There is no 12-session saving limit. Selecting nothing asks you to select at
 least one session. If an "all" request has incompatible requirements, edit it
 or explicitly choose **Let me choose a subset instead**. Setup's Continue
-action does not save suggestions and asks before leaving without adding them.
+action does not save suggestions. If you haven't added any sessions during setup,
+it asks whether you meant to continue. Checked, unsaved suggestions get a separate
+warning before you continue or skip setup; choose **Keep choosing** to return and
+use **Add N to My Schedule** to save them. Use the Back and Continue buttons to
+move between setup steps.
 
 ## Ready when you are
 

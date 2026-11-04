@@ -14,6 +14,7 @@ public partial class OnboardingPage : ContentPage
     private readonly ILogger<OnboardingPage> logger;
     private FirstRunPlannerState? state;
     private bool leaving;
+    private bool confirmingSchedule;
     private bool requestingReminders;
     private bool permissionAttempted;
     private readonly ContentView scheduleStep;
@@ -25,10 +26,10 @@ public partial class OnboardingPage : ContentPage
     public IReadOnlyList<View> Slides { get; }
     public bool CanGoBack => Carousel.Position > 0;
     public string ProgressText => $"{Carousel.Position + 1} of 3";
-    public string NextText => Carousel.Position == 2 ? "Done" : "Next";
+    public string NextText => Carousel.Position == 2 ? "Done" : Carousel.Position == 1 ? "Continue" : "Next";
     public bool RequestingReminders => requestingReminders;
     public bool CanRequestReminders => !requestingReminders && !reminders.Enabled;
-    public bool CanNavigate => !requestingReminders && !leaving;
+    public bool CanNavigate => !requestingReminders && !leaving && !confirmingSchedule && !planner.IsSaving;
     public string ReminderStatus => reminders.Status;
     public bool ShowReminderStatus => permissionAttempted || reminders.Enabled;
     public bool ShowNotificationSettings => permissionAttempted && !reminders.Enabled;
@@ -107,6 +108,8 @@ public partial class OnboardingPage : ContentPage
     {
         if (!CanNavigate)
             return;
+        if (Carousel.Position == 1 && !await ConfirmScheduleDepartureAsync(continuing: true))
+            return;
         if (Carousel.Position < 2)
             Carousel.ScrollTo(Carousel.Position + 1, animate: false);
         else
@@ -133,6 +136,8 @@ public partial class OnboardingPage : ContentPage
     private async Task FinishAsync()
     {
         if (!CanNavigate)
+            return;
+        if (!await ConfirmScheduleDepartureAsync(continuing: false))
             return;
         leaving = true;
         OnPropertyChanged(nameof(CanNavigate));
@@ -161,6 +166,33 @@ public partial class OnboardingPage : ContentPage
         }
     }
 
+    private async Task<bool> ConfirmScheduleDepartureAsync(bool continuing)
+    {
+        var confirmation = OnboardingScheduleConfirmation.For(
+            planner.SelectedCount > 0, planner.HasAddedSessions, continuing);
+        if (confirmation is null)
+            return true;
+
+        confirmingSchedule = true;
+        OnPropertyChanged(nameof(CanNavigate));
+        try
+        {
+            return await DisplayAlertAsync(confirmation.Title, confirmation.Message,
+                confirmation.Accept, OnboardingScheduleConfirmation.Cancel);
+        }
+        finally
+        {
+            confirmingSchedule = false;
+            OnPropertyChanged(nameof(CanNavigate));
+        }
+    }
+
+    private void PlannerChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(PlannerViewModel.IsSaving))
+            OnPropertyChanged(nameof(CanNavigate));
+    }
+
     private async void EnableRemindersClicked(object? sender, EventArgs args)
     {
         if (!CanRequestReminders)
@@ -187,7 +219,6 @@ public partial class OnboardingPage : ContentPage
         OnPropertyChanged(nameof(ReminderStatus));
         OnPropertyChanged(nameof(ShowReminderStatus));
         OnPropertyChanged(nameof(ShowNotificationSettings));
-        Carousel.IsSwipeEnabled = !requestingReminders;
     }
 
     private void OpenSettingsClicked(object? sender, EventArgs args) => AppInfo.ShowSettingsUI();
@@ -199,6 +230,7 @@ public partial class OnboardingPage : ContentPage
         if (!observingReminders)
         {
             reminders.PropertyChanged += RemindersChanged;
+            planner.PropertyChanged += PlannerChanged;
             observingReminders = true;
         }
         if (plannerView is not null)
@@ -220,6 +252,7 @@ public partial class OnboardingPage : ContentPage
         if (observingReminders)
         {
             reminders.PropertyChanged -= RemindersChanged;
+            planner.PropertyChanged -= PlannerChanged;
             observingReminders = false;
         }
         planner.Cancel();

@@ -24,6 +24,7 @@
   <ItemGroup>
     <Using Include="Xunit" />
     <Compile Include="../../src/DotNetConf.App/FirstRunPlannerState.cs" Link="FirstRunPlannerState.cs" />
+    <Compile Include="../../src/DotNetConf.App/OnboardingScheduleConfirmation.cs" Link="OnboardingScheduleConfirmation.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerTools.cs" Link="PlannerTools.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerToolContext.cs" Link="PlannerToolContext.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/OnDevicePlanner.cs" Link="OnDevicePlanner.cs" />

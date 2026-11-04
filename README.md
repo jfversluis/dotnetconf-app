@@ -38,7 +38,8 @@ When a local model is ready, the planner instead opens the AI request form;
 mix/shuffle isn't shown. Make a specific request, then review the selected talks,
 alternatives, and overlap warnings,
 then choose **Add N to My Schedule**. Nothing is saved just by checking a box or
-continuing setup. Setup asks before continuing without adding your selections.
+continuing setup. Setup asks before continuing without adding any sessions, and
+warns before continuing or skipping setup with checked, unsaved suggestions.
 There is no 12-session saving limit; ordinary AI suggestions still start with
 a manageable shortlist. If an "all sessions" request cannot fit, you can explicitly
 choose to review a subset instead.
