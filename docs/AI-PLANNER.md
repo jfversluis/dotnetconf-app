@@ -7,16 +7,17 @@ shortlist is made up of real conference sessions.
 
 ## Tell it what you're looking for
 
-You don't need an AI model to get started. **Explore a mix / Shuffle suggestions**
+The app checks local AI availability and shows one discovery path, not a choice
+between two modes. Without a ready local model, **Explore a mix / Shuffle suggestions**
 offers up to six compatible sessions from the downloaded agenda, favoring a mix
 of topics, speakers, and days. It excludes already-saved talks and respects
 saved commitments. These suggestions are random, not personalized. Shuffling
 replaces the unsaved preview; it never rearranges or removes saved talks.
 Without a downloaded agenda, connect and refresh Sessions first.
 
-When a local model is ready, choose **Describe interests with on-device AI**.
-Write a request in your own words, or tap a suggested starting point and make
-it your own. Starting points can highlight agenda topics and speakers, with
+When a local model is ready, the AI request form opens automatically instead;
+mix/shuffle isn't shown. Write a request in your own words, or tap a suggested
+starting point and make it your own. Starting points can highlight agenda topics and speakers, with
 invitations like "Make me dangerous with [topic]" and "More [topic], less FOMO."
 Starting points are available straight away, even while the agenda downloads.
 Once the agenda and local model are ready, they can offer more topic and speaker

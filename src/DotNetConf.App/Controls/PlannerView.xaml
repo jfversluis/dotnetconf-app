@@ -36,20 +36,18 @@
                 </VerticalStackLayout>
             </Grid>
             <VerticalStackLayout Padding="24,20,24,24" Spacing="20" SafeAreaEdges="None">
-                <Button Text="Explore a mix / Shuffle suggestions" Command="{Binding ExploreCommand}"
-                        IsEnabled="{Binding CanEdit}" ImageSource="{StaticResource DiscoveryActionIcon}"
-                        ContentLayout="Left,8" LineBreakMode="WordWrap" AutomationId="planner-explore" />
-                <Label Text="Shuffle replaces this unsaved preview. Your saved schedule stays unchanged."
-                       Style="{StaticResource Secondary}" FontSize="13" />
-                <Button Text="Describe interests with on-device AI" Command="{Binding ChooseAiCommand}"
-                        IsVisible="{Binding IsReady}" IsEnabled="{Binding CanEdit}"
-                        ImageSource="{StaticResource ScheduleSparkleIcon}" ContentLayout="Left,8"
-                        Style="{StaticResource QuietButton}" LineBreakMode="WordWrap" AutomationId="planner-use-ai" />
+                <VerticalStackLayout IsVisible="{Binding CanExplore}" Spacing="20" AutomationId="planner-discovery-actions">
+                    <Button Text="Explore a mix / Shuffle suggestions" Command="{Binding ExploreCommand}"
+                            IsEnabled="{Binding CanEdit}" ImageSource="{StaticResource DiscoveryActionIcon}"
+                            ContentLayout="Left,8" LineBreakMode="WordWrap" AutomationId="planner-explore" />
+                    <Label Text="Shuffle replaces this unsaved preview. Your saved schedule stays unchanged."
+                           Style="{StaticResource Secondary}" FontSize="13" />
+                </VerticalStackLayout>
                 <Label Text="{Binding ModelStatus}" Style="{StaticResource Secondary}" FontSize="13"
                        AutomationId="planner-ai-availability" />
                 <ActivityIndicator IsRunning="{Binding IsCheckingModel}" IsVisible="{Binding IsCheckingModel}"
                                    HorizontalOptions="Start" SemanticProperties.Description="Checking optional on-device AI" />
-                <VerticalStackLayout IsVisible="{Binding IsAiMode}" Spacing="16">
+                <VerticalStackLayout IsVisible="{Binding IsAiMode}" Spacing="16" AutomationId="planner-ai-actions">
                 <VerticalStackLayout Spacing="8" IsVisible="{Binding CanEdit}">
                     <Label Text="Need a starting point?" Style="{StaticResource Secondary}" FontSize="14" />
                     <ActivityIndicator IsRunning="{Binding IsLoadingStartingPoints}" IsVisible="{Binding IsLoadingStartingPoints}"

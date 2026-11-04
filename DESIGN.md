@@ -61,16 +61,18 @@ navigation bar: welcome, personal schedule introduction, and optional session
 reminders. Space Grotesk headings, typed Fluent icons and short explanatory
 copy focus each step on one task. Swipe and persistent Next/Back controls move
 between steps; Skip setup sits alongside each hero icon.
-The middle step mounts the shared discovery view immediately. It offers up to
-six compatible, varied random sessions from the downloaded agenda without AI.
-Optional local-model readiness does not replace the view or its selections.
-The editor appears only after explicitly choosing AI. No cached agenda means an
+The middle step mounts the shared discovery view immediately and checks local-model
+readiness before showing either discovery path. A ready model opens the AI editor,
+without mix/shuffle controls. Otherwise it offers up to six compatible, varied random
+sessions from the downloaded agenda, without AI controls. A failed readiness retry
+preserves the reviewed random preview; a successful retry switches to AI only.
+No cached agenda means an
 honest download state, never bundled session examples. Continue does not save:
 advancing prompts if nothing was added or checked suggestions remain unsaved.
 All three steps share a 34-unit heading, 48-unit Fluent icon, and the
 incumbent hero wash, with 24-unit gutters aligned to the builder.
-Discovery uses the typed Fluent agenda glyph; only explicitly chosen AI mode and
-its entry action use a sparkle. The welcome's agenda and reminder's bell remain.
+Random discovery uses the typed Fluent agenda glyph; AI mode uses a sparkle.
+The welcome's agenda and reminder's bell remain.
 On iOS and Android the onboarding hero background extends behind the status bar.
 A root MAUI `SafeAreaEdges` layout protects the carousel content; a separate
 background layer paints behind the protected region. No native inset measurement

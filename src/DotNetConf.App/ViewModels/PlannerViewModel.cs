@@ -61,14 +61,31 @@ public partial class PlannerViewModel(
     public string Heading => IsGapMode ? "Make room\nfor discovery." : "Your conference,\nyour way.";
     public string Introduction => IsGapMode
         ? "Find talks in the free time on your saved conference days. Your existing schedule stays exactly as it is."
-        : "Explore a mix of topics, or use on-device AI to describe your interests. Choose what to add to your schedule.";
+        : IsAiMode
+            ? "Describe your interests with on-device AI. Choose which suggested talks to add to your schedule."
+            : IsCheckingModel || !HasCheckedModel
+                ? "Checking on-device AI availability to prepare your session suggestions."
+                : "Explore a varied mix of topics from the downloaded agenda. Choose what to add to your schedule.";
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DiscoverySource))]
+    [NotifyPropertyChangedFor(nameof(Introduction))]
     public partial bool IsAiMode { get; set; }
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanExplore))]
+    [NotifyPropertyChangedFor(nameof(Introduction))]
+    [NotifyPropertyChangedFor(nameof(CanRetryModel))]
+    [NotifyPropertyChangedFor(nameof(CanEdit))]
+    [NotifyPropertyChangedFor(nameof(CanGenerate))]
+    [NotifyPropertyChangedFor(nameof(CanApply))]
+    [NotifyPropertyChangedFor(nameof(CanConfirm))]
     public partial bool IsCheckingModel { get; set; }
     [ObservableProperty]
-    public partial string ModelStatus { get; set; } = "Checking whether on-device AI is available. You can explore now.";
+    [NotifyPropertyChangedFor(nameof(CanExplore))]
+    [NotifyPropertyChangedFor(nameof(Introduction))]
+    public partial bool HasCheckedModel { get; set; }
+    [ObservableProperty]
+    public partial string ModelStatus { get; set; } = "Checking whether on-device AI is available.";
+    public bool CanExplore => HasCheckedModel && !IsReady && !IsCheckingModel;
     public string DiscoverySource => IsAiMode
         ? "On-device AI interpreted your request. Review its matches before adding."
         : "A varied random mix from the downloaded agenda. Not personalized; no AI is used.";
@@ -110,10 +127,11 @@ public partial class PlannerViewModel(
     [NotifyPropertyChangedFor(nameof(CanGenerate))]
     [NotifyPropertyChangedFor(nameof(CanEdit))]
     [NotifyPropertyChangedFor(nameof(CanRetryModel))]
+    [NotifyPropertyChangedFor(nameof(CanExplore))]
     public partial bool IsReady { get; set; }
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasStatus))]
-    public partial string Status { get; set; } = "Checking the on-device model...";
+    public partial string Status { get; set; } = "";
     [ObservableProperty] public partial string Constraints { get; set; } = "";
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasValidationErrors))]
@@ -140,11 +158,11 @@ public partial class PlannerViewModel(
     ];
     [ObservableProperty]
     public partial bool IsLoadingStartingPoints { get; set; } = true;
-    public bool CanGenerate => IsReady && !IsBusy && !string.IsNullOrWhiteSpace(Request);
-    public bool CanEdit => !IsBusy;
-    public bool CanRetryModel => !IsReady && !IsCheckingModel && planner.UnsupportedReason is null;
-    public bool CanApply => HasValidProposal && !IsBusy;
-    public bool CanConfirm => HasValidProposal && !IsBusy;
+    public bool CanGenerate => IsReady && CanEdit && !string.IsNullOrWhiteSpace(Request);
+    public bool CanEdit => !IsBusy && !IsCheckingModel;
+    public bool CanRetryModel => !IsReady && !IsCheckingModel && !IsBusy && planner.UnsupportedReason is null;
+    public bool CanApply => HasValidProposal && CanEdit;
+    public bool CanConfirm => HasValidProposal && CanEdit;
     public event EventHandler<string>? OutcomeAvailable;
     public bool HasStatus => !string.IsNullOrWhiteSpace(Status);
     public bool HasValidationErrors => !HasValidProposal && !string.IsNullOrWhiteSpace(Validation);
@@ -166,25 +184,13 @@ public partial class PlannerViewModel(
         if (initialized)
             return;
         initialized = true;
-        await ExploreAsync();
-        if (!stopped)
-            await CheckModelAsync();
-    }
-
-    [RelayCommand]
-    private void ChooseAi()
-    {
-        if (!IsReady || IsBusy)
-            return;
-        IsAiMode = true;
-        ClearProposal();
-        Status = "Describe what you're looking for, then find sessions.";
+        await CheckModelAsync();
     }
 
     [RelayCommand]
     private async Task ExploreAsync()
     {
-        if (IsBusy)
+        if (IsBusy || !CanExplore)
             return;
         startingPointsOperation?.Cancel();
         IsAiMode = false;
@@ -232,27 +238,25 @@ public partial class PlannerViewModel(
     [RelayCommand]
     private async Task CheckModelAsync()
     {
-        if (IsCheckingModel)
+        if (IsCheckingModel || IsBusy)
             return;
         IsReady = false;
         IsLoadingStartingPoints = true;
-        if (planner.UnsupportedReason is not null)
-        {
-            ModelStatus = "On-device AI isn't supported on this device. You can still explore the agenda or build My Schedule with hearts.";
-            IsLoadingStartingPoints = false;
-            return;
-        }
         IsCheckingModel = true;
-        ModelStatus = "Checking the on-device model. Explore a mix while you wait.";
+        ModelStatus = "Checking whether on-device AI is available.";
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         modelOperation = cancellation;
         try
         {
-            await planner.CheckReadinessAsync(cancellation.Token);
-            cancellation.Token.ThrowIfCancellationRequested();
-            IsReady = true;
-            ModelStatus = "On-device AI is available. No account or cloud fallback.";
-            _ = RefreshStartingPointsAsync();
+            if (planner.UnsupportedReason is not null)
+                ModelStatus = "On-device AI isn't supported on this device. You can still explore the agenda or build My Schedule with hearts.";
+            else
+            {
+                await planner.CheckReadinessAsync(cancellation.Token);
+                cancellation.Token.ThrowIfCancellationRequested();
+                IsReady = true;
+                ModelStatus = "On-device AI is available. No account or cloud fallback.";
+            }
         }
         catch (OperationCanceledException)
         {
@@ -271,10 +275,28 @@ public partial class PlannerViewModel(
         finally
         {
             modelOperation = null;
+            HasCheckedModel = true;
             IsCheckingModel = false;
             OnPropertyChanged(nameof(CanRetryModel));
             if (!IsReady)
                 IsLoadingStartingPoints = false;
+        }
+        if (stopped)
+            return;
+        if (IsReady)
+        {
+            IsAiMode = true;
+            ClearProposal();
+            Status = "";
+            _ = RefreshStartingPointsAsync();
+        }
+        else
+        {
+            if (IsAiMode)
+                ClearProposal();
+            IsAiMode = false;
+            if (!HasProposal)
+                await ExploreAsync();
         }
     }
 

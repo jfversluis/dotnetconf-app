@@ -42,6 +42,7 @@ public sealed class PlannerDiscoveryLifecycleTests
         await vm.InitializeAsync();
         Assert.False(vm.IsReady);
         Assert.False(vm.IsAiMode);
+        Assert.True(vm.CanExplore);
         Assert.Contains("explore the agenda", vm.ModelStatus, StringComparison.OrdinalIgnoreCase);
         Assert.InRange(vm.SelectedCount, 1, 6);
         Assert.True(vm.CanApply);
@@ -71,7 +72,7 @@ public sealed class PlannerDiscoveryLifecycleTests
     }
 
     [Fact]
-    public async Task ReadinessNeverReplacesTheDiscoveryPreview()
+    public async Task ReadinessChoosesAiWithoutCreatingARandomPreview()
     {
         var (vm, planner, _) = Create(true);
         var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -79,15 +80,133 @@ public sealed class PlannerDiscoveryLifecycleTests
         var initialization = vm.InitializeAsync();
         Assert.True(vm.IsCheckingModel);
         Assert.False(vm.IsBusy);
-        var ids = vm.Sessions.Select(session => session.Id).ToArray();
-        Assert.NotEmpty(ids);
-        vm.Sessions[0].IsSelected = false;
+        Assert.False(vm.CanExplore);
+        Assert.False(vm.IsAiMode);
+        Assert.Empty(vm.Sessions);
         ready.SetResult();
         await initialization;
         Assert.True(vm.IsReady);
+        Assert.True(vm.IsAiMode);
+        Assert.False(vm.CanExplore);
+        Assert.Empty(vm.Sessions);
+        Assert.False(vm.HasProposal);
+    }
+
+    [Fact]
+    public async Task ReadyAiCannotBeReplacedWithRandomSuggestions()
+    {
+        var (vm, _, store) = Create(true);
+        await vm.InitializeAsync();
+        await vm.ExploreCommand.ExecuteAsync(null);
+        Assert.True(vm.IsAiMode);
+        Assert.False(vm.CanExplore);
+        Assert.Empty(vm.Sessions);
+        Assert.Empty(store.Saved);
+    }
+
+    [Fact]
+    public async Task SuccessfulRetrySwitchesFromRandomPreviewToAiOnly()
+    {
+        var (vm, planner, store) = Create(true);
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new NotSupportedException("Synthetic unavailable model")));
+        await vm.InitializeAsync();
+        Assert.True(vm.CanExplore);
+        Assert.NotEmpty(vm.Sessions);
+
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        await vm.CheckModelCommand.ExecuteAsync(null);
+
+        Assert.True(vm.IsAiMode);
+        Assert.False(vm.CanExplore);
+        Assert.Empty(vm.Sessions);
+        Assert.False(vm.HasProposal);
+        Assert.Empty(store.Saved);
+    }
+
+    [Fact]
+    public async Task FailedRetryKeepsTheReviewedRandomPreview()
+    {
+        var (vm, planner, store) = Create(true);
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new NotSupportedException("Synthetic unavailable model")));
+        await vm.InitializeAsync();
+        var ids = vm.Sessions.Select(session => session.Id).ToArray();
+        vm.Sessions[0].IsSelected = false;
+
+        var pending = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(pending.Task);
+        var retry = vm.CheckModelCommand.ExecuteAsync(null);
+        Assert.False(vm.CanApply);
+        Assert.False(vm.CanEdit);
+        Assert.False(vm.CanExplore);
+        await vm.ApplyCommand.ExecuteAsync(null);
+        Assert.Empty(store.Saved);
+        pending.SetException(new NotSupportedException("Synthetic unavailable model"));
+        await retry;
+
         Assert.False(vm.IsAiMode);
+        Assert.True(vm.CanExplore);
+        Assert.True(vm.CanApply);
         Assert.Equal(ids, vm.Sessions.Select(session => session.Id));
         Assert.False(vm.Sessions[0].IsSelected);
+    }
+
+    [Fact]
+    public async Task ReadinessTimeoutFallsBackToRandomDiscovery()
+    {
+        var (vm, planner, store) = Create(true);
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new OperationCanceledException()));
+
+        await vm.InitializeAsync();
+
+        Assert.False(vm.IsReady);
+        Assert.False(vm.IsAiMode);
+        Assert.True(vm.CanExplore);
+        Assert.Contains("timed out", vm.ModelStatus);
+        Assert.NotEmpty(vm.Sessions);
+        Assert.Empty(store.Saved);
+    }
+
+    [Fact]
+    public async Task LostModelReadinessReplacesAiPreviewWithRandomDiscovery()
+    {
+        var (vm, planner, store) = Create(true);
+        planner.ProposeAsync(Arg.Any<ConferenceDocument>(), Arg.Any<string>(), Arg.Any<TimeZoneInfo>(),
+            Arg.Any<string[]>(), Arg.Any<CancellationToken>(), Arg.Any<bool>())
+            .Returns(new PlannerResult(new(["synthetic-0"], [], []), ""));
+        await vm.InitializeAsync();
+        vm.Request = "Synthetic request";
+        await vm.GenerateCommand.ExecuteAsync(null);
+        Assert.True(vm.IsAiMode);
+        Assert.Single(vm.Sessions);
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new NotSupportedException("Synthetic model no longer available")));
+
+        await vm.CheckModelCommand.ExecuteAsync(null);
+
+        Assert.False(vm.IsAiMode);
+        Assert.True(vm.CanExplore);
+        Assert.InRange(vm.Sessions.Count, 2, 6);
+        Assert.Contains("no AI", vm.DiscoverySource);
+        Assert.Empty(store.Saved);
+    }
+
+    [Fact]
+    public async Task LeavingDuringReadinessDoesNotStartDiscovery()
+    {
+        var (vm, planner, store) = Create(true);
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(ready.Task);
+        var initialization = vm.InitializeAsync();
+        vm.Cancel();
+        ready.SetResult();
+        await initialization;
+        Assert.False(vm.IsReady);
+        Assert.Empty(vm.Sessions);
+        Assert.False(vm.HasProposal);
+        Assert.Empty(store.Saved);
     }
 
     [Fact]

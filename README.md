@@ -29,13 +29,14 @@ those same conference days without moving your existing choices.
 
 Open **My Schedule** and choose **Discover sessions for my schedule**, or **Find
 talks for my gaps** once you've saved sessions. Discovery is also available
-during setup, even without an AI model. **Explore a mix / Shuffle suggestions**
+during setup, even without an AI model. When local AI isn't available, **Explore a mix / Shuffle suggestions**
 picks up to six compatible talks with topic, speaker, and day variety from the
 downloaded agenda. This is random discovery, not personalized AI advice.
 Shuffle replaces the unsaved preview, never your saved schedule.
 
-On supported devices, **Describe interests with on-device AI** lets you make a
-specific request. Review the selected talks, alternatives, and overlap warnings,
+When a local model is ready, the planner instead opens the AI request form;
+mix/shuffle isn't shown. Make a specific request, then review the selected talks,
+alternatives, and overlap warnings,
 then choose **Add N to My Schedule**. Nothing is saved just by checking a box or
 continuing setup. Setup asks before continuing without adding your selections.
 There is no 12-session saving limit; ordinary AI suggestions still start with

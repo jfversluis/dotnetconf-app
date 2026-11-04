@@ -87,7 +87,7 @@ public sealed class PlannerStartingPointLoadingTests
         await vm.InitializeAsync();
         await finished;
         Assert.Same(fallback, vm.StartingPoints);
-        Assert.Contains("Couldn't load suggestions", vm.Status);
+        Assert.False(vm.HasStatus);
         Assert.Contains(logger.ReceivedCalls(), call => call.GetMethodInfo().Name == nameof(ILogger.Log)
             && Equals(call.GetArguments()[0], LogLevel.Warning));
     }
