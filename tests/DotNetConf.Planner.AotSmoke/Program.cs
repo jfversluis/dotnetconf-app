@@ -36,7 +36,7 @@ foreach (var range in new[] { "9am-5pm", "9am–5pm", "09:00—17:00" })
 }
 Require(!new PlannerInterpretation("none", "evening", "none", "some")
     .RequiresTimeExtraction("AI any time, including the evening"), "An inclusive daypart restricted unrestricted hours.");
-using var services = new ServiceCollection().AddScoped<PlannerTools>().BuildServiceProvider(
+using var services = new ServiceCollection().AddScoped<PlannerTools>().AddScoped<AskTools>().BuildServiceProvider(
     new ServiceProviderOptions { ValidateScopes = true });
 using var scope = services.CreateScope();
 var tools = scope.ServiceProvider.GetRequiredService<PlannerTools>();
@@ -154,6 +154,24 @@ Require(tools.DiscoveryComplete && tools.CandidateIds.Contains("building-with-ma
 Require(tools.Proposal is null, "The model's read-only tools submitted a proposal.");
 
 Console.WriteLine("PASS: NativeAOT planner availability, fixed Android function-calling model, generated bindings, Gemini schemas and approval, JSON and typed arguments, defaults, validation, scope isolation, cancellation, call budget and model-selected tool invocation through Microsoft.Extensions.AI. JSON reflection is explicitly enabled; dynamic code is unavailable.");
+
+var ask = scope.ServiceProvider.GetRequiredService<AskTools>();
+ask.Initialize(conference, TimeZoneInfo.Utc, "Save Mobile", []);
+var askFunctions = ask.CreateFunctions(scope.ServiceProvider).Cast<AIFunction>().ToDictionary(f => f.Name);
+Require(askFunctions.Count == 2 && AskToolContext.Default.Tools.Count == 6,
+    "Ask must offer only the requested capabilities from its curated context.");
+Require(Text(await askFunctions["save_sessions"].InvokeAsync(Arguments("""{"query":"Mobile"}""")))
+    .StartsWith("Action staged"), "Ask generated optional bindings failed under NativeAOT.");
+Require(ask.Complete()?.Intent.Action == AskAction.SaveSession, "Ask lost its grounded pending action.");
+ask.Initialize(conference, TimeZoneInfo.Utc, "Add all MAUI sessions to my schedule", []);
+Require(Text(await askFunctions["save_sessions"].InvokeAsync(Arguments("""{"speaker":"MAUI"}""")))
+    .StartsWith("Action staged"), "Ask couldn't ground a topic mislabeled as a speaker under NativeAOT.");
+Require(ask.Complete() is { Intent: { AllMatches: true, Query: "MAUI", Speaker: "" }, Choices.Length: > 1 },
+    "Ask must preserve the complete literal bulk topic under NativeAOT.");
+ask.Initialize(conference, TimeZoneInfo.Utc, "Remove everything", []);
+Require(ask.CreateFunctions(scope.ServiceProvider).Single(f => f.Name == "request_removal") is ApprovalRequiredAIFunction,
+    "Ask must preserve the curated removal approval marker.");
+Console.WriteLine("PASS: NativeAOT Ask schemas, generated bindings, grounded action staging and removal approval metadata.");
 
 static AIFunctionArguments Arguments(string json) =>
     JsonSerializer.Deserialize<AIFunctionArguments>(json, AIJsonUtilities.DefaultOptions)

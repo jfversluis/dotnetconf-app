@@ -27,7 +27,19 @@ public sealed class PlannerLifecycleTests
         var updates = Substitute.For<IPlannerScheduleUpdates>();
         updates.RefreshRemindersAsync().Returns(true);
         var store = new DelayedStore();
-        var vm = new PlannerViewModel(data, new ScheduleService(store), planner, updates,
+        var schedule = new ScheduleService(store);
+        async Task<PlannerSaveResult?> SaveProposal(ConferenceDocument agenda, ScheduleProposal proposal,
+            TimeZoneInfo zone, CancellationToken cancellationToken)
+        {
+            var review = await schedule.AddProposalAsync(agenda, proposal, zone, cancellationToken)
+                ?? throw new InvalidOperationException("The test proposal was not reviewed.");
+            return new(review, true);
+        }
+        updates.AddPlannerProposalAsync(Arg.Any<ConferenceDocument>(), Arg.Any<ScheduleProposal>(),
+                Arg.Any<TimeZoneInfo>(), Arg.Any<CancellationToken>())
+            .Returns(call => SaveProposal(call.Arg<ConferenceDocument>(), call.Arg<ScheduleProposal>(),
+                call.Arg<TimeZoneInfo>(), call.Arg<CancellationToken>()));
+        var vm = new PlannerViewModel(data, schedule, planner, updates,
             NullLogger<PlannerViewModel>.Instance, selection ?? new TestPlannerModelSelection());
         await vm.InitializeAsync();
         vm.Request = "Mobile";
@@ -61,7 +73,8 @@ public sealed class PlannerLifecycleTests
         Assert.True(vm.HasAddedSessions);
         Assert.Empty(vm.Sessions);
         Assert.Equal("1 selected session added to My Schedule. Your previous likes were kept.", Assert.Single(outcomes));
-        updates.Received(1).RefreshSavedState();
+        await updates.Received(1).AddPlannerProposalAsync(Arg.Any<ConferenceDocument>(), Arg.Any<ScheduleProposal>(),
+            Arg.Any<TimeZoneInfo>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

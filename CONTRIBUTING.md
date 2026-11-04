@@ -542,7 +542,7 @@ Use an unused host port and the actual agent port reported by the app. Remove on
 
 The preview's Android theme command also ignores device selection when multiple emulators are connected. For theme checks, target the test device explicitly with `adb -s SERIAL shell cmd uimode night yes` (dark) or `no` (light).
 
-Stable AutomationIds include `home-sessions`, `session-search`, `session-filters`, `session-filters-clear`, `filter-topics`, `filter-check-{topic}`, `filter-reset`, `filter-show-sessions`, `save-{sessionId}`, `detail-save`, `speaker-search`, `schedule-timeline-mode`, `schedule-list-mode`, `schedule-planner`, and `saved-count` (in My Schedule's List view). DevFlow sees the planner as one element; what's inside it is drawn by Avalonia. Reusable status controls should be scoped to their page. To avoid mutation lease conflicts between short-lived CLI processes, use one batch for a sequence:
+Stable AutomationIds include `home-sessions`, `home-ask`, `ask-input`, `ask-submit`, `ask-confirm-removal`, `session-search`, `session-speaker-clear`, `session-filters`, `session-filters-clear`, `filter-topics`, `filter-check-{topic}`, `filter-reset`, `filter-show-sessions`, `save-{sessionId}`, `detail-save`, `speaker-search`, `schedule-timeline-mode`, `schedule-list-mode`, `schedule-planner`, and `saved-count` (in My Schedule's List view). DevFlow sees the planner as one element; what's inside it is drawn by Avalonia. Reusable status controls should be scoped to their page. To avoid mutation lease conflicts between short-lived CLI processes, use one batch for a sequence:
 
 ```sh
 printf 'MAUI tap Tab_IMPL_sessions\nMAUI fill session-search ".NET"\nMAUI tree --depth 14\n' \

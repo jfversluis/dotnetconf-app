@@ -143,6 +143,37 @@ used offline; a first download needs an internet connection.
 
 ## Powered by MAUI Labs
 
+For a quick app action rather than a shortlist, use **Ask about the conference**
+on Home when a ready tool-capable local model is available. Ask opens filtered
+sessions or details, favorites talks, or previews removal of saved talks.
+Try “favorite all Aspire sessions” or “add all MAUI sessions to my schedule”
+to save every matching talk and open My Schedule. Without an explicit all/every,
+ambiguous matches need a choice; removal always needs a separate confirmation.
+Use separate requests for ambiguous topic combinations; Ask doesn't infer topic
+unions for bulk saves.
+Try "by" and a full speaker name when a name could also be a topic, title, or
+a request for "my" saved sessions; if it remains ambiguous, use normal search
+and hearts.
+Multi-word names must match the agenda, and a single name must match a complete
+name part. Ask matches whole search terms, not fragments of other words, and
+rejects actions whose requested scope cannot be preserved. Keep punctuation in
+technical names such as `ASP.NET`. Schedule changes match topic and title
+terms against session content; use "by" for a speaker. Use "on" before a
+weekday that might also be a speaker's name. Unambiguous full titles stay exact
+when opening or saving/removing a specific session; searches and bulk or
+plural topic requests retain every match. If a title could also be a day,
+speaker, or schedule phrase, use normal search and hearts instead. When opening
+a title, enclosing its full name in quotes can distinguish it from a separate
+speaker or day. If a quoted topic phrase could also be such a title, Ask may
+ask you to use normal search and hearts rather than narrowing a plural request.
+Ask cannot
+restrict searches, opening, or saves to sessions already in your schedule,
+including requests for "my", "saved", or "bookmarked" sessions; use My Schedule to
+review those.
+There is no chat history or cloud fallback. See [Ask for one app action](../README.md#ask-for-one-app-action).
+The planner below remains separate: its tools are read-only and its proposed
+schedule still requires confirmation before saving.
+
 The planner brings together
 [Microsoft.Maui.Essentials.AI](https://github.com/dotnet/maui-labs/blob/main/src/AI/README.md)
 for on-device models and

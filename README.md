@@ -14,6 +14,7 @@ Your .NET Conf, in your pocket. An **unofficial companion app for iOS and Androi
 - **Find your community.** Discover ways to watch together, meet local presenters, or organize a gathering. No community events ship with the app, and an official event feed is not connected yet. The empty event list links to the official website; the map stays hidden without events.
 - **Build your schedule.** Tap a heart to save a session. My Schedule shows only your saved sessions, as a timeline or a plain list. Only days with saved sessions appear on the timeline; overlaps are marked with how long they clash, topic filters fade what you don't need, and during the conference a live marker shows where you are. Swipe the topic row on narrow or height-constrained screens; taller wide windows show wrapped filters. The decorative headline gives way when space is tight or text is large. Wide windows can show session details beside your schedule; supported vertical folds keep the panes clear of the hinge. Compact windows, horizontal folds, and very large text retain native navigation. Pinch or use the zoom buttons to see more or less of the day. Your choices stay on your device.
 - **Plan with on-device AI.** Describe your interests, must-see speakers, and available time to get a personal shortlist from the real agenda. Already have a schedule? Find talks that fit in the gaps.
+- **Ask, then get on with it.** On supported devices, the glowing Ask control on Home opens sessions or speakers, filters the agenda, or saves a talk from one request. No chat transcript. Removals always need your confirmation.
 - **See times that make sense to you.** Session times use your device's local time zone.
 - **Feel at home.** Follow your device's appearance or choose Light or Dark in Settings. The app supports larger text.
 
@@ -71,6 +72,57 @@ The planner uses MAUI Labs'
 [Essentials.AI](https://github.com/dotnet/maui-labs/blob/main/src/AI/README.md)
 and [AI Attributes](https://github.com/dotnet/maui-labs/blob/main/src/AIExtensions/Microsoft.Maui.AI.Attributes/README.md).
 Explore [what you can ask and how to get started](docs/AI-PLANNER.md).
+
+### Ask for one app action
+
+When a ready local model supports tools, Home shows **Ask about the conference**
+instead of **Explore sessions**. Otherwise it keeps **Explore sessions**.
+Ask can find sessions by topic, title, speaker, and one device-local conference
+day; open session or speaker details; save matching sessions; or preview removal of
+saved sessions. Try a topic or speaker actually present in the downloaded agenda.
+Opening a specific item or saving without **all** or **every** shows a chooser
+when there are several matches rather than guessing. For example, “favorite all Aspire
+sessions” or “add all MAUI sessions to my schedule” saves the entire matching
+set in one update and opens **My Schedule**. Existing favorites stay saved;
+asking twice does not toggle them off or create duplicates.
+Use separate requests for ambiguous topic combinations; Ask does not infer topic
+unions for bulk saves.
+Try **by** with a full speaker name when the intended speaker could be confused
+with a topic, session title, or a request for "my" saved sessions. Multi-word
+names must match the agenda; a single name must match a complete name part. Ask
+matches whole search terms rather than fragments of other words and rejects
+actions whose scope cannot be preserved. If the name remains ambiguous, use
+normal search and hearts instead.
+Keep punctuation in technical names such as `ASP.NET`.
+For schedule changes, topic and title terms match session content, not speaker
+names; use **by** to target a speaker.
+Use **on** before a weekday if it could also be a speaker's name. An unambiguous
+full title stays exact when opening or saving/removing a specific session;
+searches and bulk or plural topic requests keep all matching talks even when
+one has the same title as the topic. If a title could also be a day, speaker,
+or schedule phrase, use normal search and hearts to choose the intended session.
+For opening a title, enclosing the full title in quotes can distinguish it from
+a separate speaker or day. If a quoted topic phrase could also be such a title,
+Ask may ask you to use normal search and hearts instead of narrowing a plural request.
+Ask cannot restrict searches, opening, or saves to sessions already in your
+schedule, including requests for "my", "saved", or "bookmarked" sessions; use
+**My Schedule** to review those.
+Speaker searches keep a visible speaker filter on Sessions, which you can clear
+without changing your search, day, or topic filters.
+
+Removal shows the exact saved talks and times first. Nothing is removed until
+you choose **Remove sessions**. Canceling, closing Ask, editing the request,
+or a changed agenda/schedule invalidates the pending approval. Ask supports one
+action per request, not chained instructions, exclusions, or clock-time ranges;
+the separate planner remains the place for building a multi-session shortlist.
+Unsupported devices keep the ordinary search, details, and heart controls.
+There is no cloud fallback.
+
+The sheet uses the existing MIT Syncfusion Toolkit bottom sheet and a native
+editor with a decorative animated glow. Reduced motion keeps the glow static.
+Debug builds optionally expose a local tool-call trace; Release builds do not.
+Each request exposes only relevant action tools, plus read-only agenda lookup,
+so a search cannot turn into an unsolicited save or detail navigation.
 
 ### Session reminders
 

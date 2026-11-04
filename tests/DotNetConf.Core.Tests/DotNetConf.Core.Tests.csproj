@@ -27,6 +27,10 @@
     <Compile Include="../../src/DotNetConf.App/FirstRunPlannerState.cs" Link="FirstRunPlannerState.cs" />
     <Compile Include="../../src/DotNetConf.App/OnboardingScheduleConfirmation.cs" Link="OnboardingScheduleConfirmation.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerTools.cs" Link="PlannerTools.cs" />
+    <Compile Include="../../src/DotNetConf.App/Services/AskTools.cs" Link="AskTools.cs" />
+    <Compile Include="../../src/DotNetConf.App/Services/OnDeviceAsk.cs" Link="OnDeviceAsk.cs" />
+    <Compile Include="../../src/DotNetConf.App/Services/IAskApplication.cs" Link="IAskApplication.cs" />
+    <Compile Include="../../src/DotNetConf.App/ViewModels/AskViewModel.cs" Link="AskViewModel.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerToolContext.cs" Link="PlannerToolContext.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/OnDevicePlanner.cs" Link="OnDevicePlanner.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerDiscovery.cs" Link="PlannerDiscovery.cs" />

@@ -16,6 +16,7 @@
     <PackageReference Include="Microsoft.Maui.Essentials" Version="11.0.0-rc.2.26505.5" />
     <ProjectReference Include="../../src/DotNetConf.Core/DotNetConf.Core.csproj" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerTools.cs" Link="PlannerTools.cs" />
+    <Compile Include="../../src/DotNetConf.App/Services/AskTools.cs" Link="AskTools.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerToolContext.cs" Link="PlannerToolContext.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerDiscovery.cs" Link="PlannerDiscovery.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/GeminiToolCompatibility.cs" Link="GeminiToolCompatibility.cs" />

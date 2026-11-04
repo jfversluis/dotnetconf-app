@@ -45,6 +45,11 @@
                                 SemanticProperties.Description="Clear all topic filters"
                                 SemanticProperties.Hint="Keep your selected day and search" />
                     </Grid>
+                    <Button Text="Clear speaker" Command="{Binding ClearAskSpeakerFilterCommand}"
+                            Style="{StaticResource QuietButton}" HorizontalOptions="Start" MinimumHeightRequest="44"
+                            IsVisible="{Binding HasAskSpeakerFilter}" AutomationId="session-speaker-clear"
+                            SemanticProperties.Description="Clear speaker filter"
+                            SemanticProperties.Hint="Keep your search, day, and topic filters" />
                 </VerticalStackLayout>
             </ContentView>
         </VerticalStackLayout>

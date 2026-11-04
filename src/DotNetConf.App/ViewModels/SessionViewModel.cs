@@ -66,7 +66,7 @@ public partial class SessionViewModel : ObservableObject
     public string SaveGlyph => IsSaved ? FluentIconsFilled.Heart24 : FluentIconsRegular.Heart24;
     public string SaveFontFamily => IsSaved ? FluentIconsFilled.FontFamily : FluentIconsRegular.FontFamily;
 
-    public void RefreshTime(TimeZoneInfo timeZone)
+    public void RefreshTime(TimeZoneInfo timeZone, bool republish = false)
     {
         var start = TimeZoneInfo.ConvertTime(Model.StartsAt, timeZone);
         var end = TimeZoneInfo.ConvertTime(Model.EndsAt, timeZone);
@@ -75,5 +75,12 @@ public partial class SessionViewModel : ObservableObject
         TimeLabel = startDay == endDay
             ? $"{start:t} - {end:t}"
             : $"{Agenda.MonthDay(startDay)}, {start:t} - {Agenda.MonthDay(endDay)}, {end:t}";
+        if (republish)
+        {
+            // A previous notification may have failed after changing the value.
+            OnPropertyChanged(nameof(DateLabel));
+            OnPropertyChanged(nameof(TimeLabel));
+            OnPropertyChanged(nameof(NavigationDescription));
+        }
     }
 }

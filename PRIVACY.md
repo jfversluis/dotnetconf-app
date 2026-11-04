@@ -46,17 +46,17 @@ destination's privacy policy and your browser's settings.
 The experimental browser app also makes ordinary requests to the website that
 hosts the app, which can retain server logs under its own policy.
 
-## On-device planning and reminders
+## On-device Ask, planning, and reminders
 
 Random session discovery uses only the downloaded public agenda and your locally
 saved choices. It does not use an AI model or send a request to an AI service.
 Shuffling changes only the unsaved preview; additions require your explicit Add action.
 
-If you use the optional planner, your request and relevant public agenda
+If you use optional Ask or the planner, your request and relevant public agenda
 information are processed by a local model through Apple Intelligence on iOS
-or Gemini Nano on supported Android devices. The app does not send planner
+or Gemini Nano on supported Android devices. The app does not send Ask or planner
 requests or responses to an app-operated AI service or use a cloud-model
-fallback. It does not save planner requests, proposals, or chat history;
+fallback. It does not save these requests, proposals, or chat history;
 confirmed session choices are stored locally. Checking model readiness does not
 start a download. On compatible Android devices, choosing **Download on-device
 model** explicitly requests Gemini Nano model assets through Android AICore.
@@ -72,7 +72,17 @@ downloads, and on-device requests; it does not save a model choice in app
 preferences. Function calling requires a supported device and a Google account
 enrolled in the AICore Developer Preview program. The model can request
 read-only agenda searches in the app. Their results stay within this on-device
-planning flow; the model cannot save sessions without your confirmation.
+flow. The planner requires your
+confirmation before saving a proposed schedule.
+
+Ask is shown only when a ready local model supports tools. A request can open
+filtered sessions or a session/speaker page, or save matching sessions
+without another confirmation and open My Schedule. Explicit all/every requests
+save the full matching set; otherwise ambiguous matches require your selection.
+Removing saved sessions always requires an exact preview and a separate
+confirmation in the app; model output cannot approve it. Ask reuses the normal
+local saved schedule and reminder settings. Closing Ask clears the current
+request and pending action. Unsupported requests do not change app data.
 
 Session reminders are optional. If you enable them, the app requests
 notification permission and gives your device's notification service the
@@ -124,7 +134,9 @@ There is no developer-held account or saved-schedule database to delete.
 
 ## Development builds and support
 
-Debug builds can include MAUI DevFlow inspection/automation and debug logging
+Debug builds can include MAUI DevFlow inspection/automation, a local Ask
+tool-call trace (names, timing, outcome, and argument counts, not argument
+values), and debug logging
 for development. These facilities can expose the running app's UI/state and
 diagnostic information to a developer-connected tool. They are excluded from
 Release builds and are not an end-user analytics service. Do not share device

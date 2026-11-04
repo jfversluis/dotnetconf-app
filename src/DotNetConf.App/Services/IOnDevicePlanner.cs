@@ -16,9 +16,12 @@ public interface IOnDevicePlanner
 
 public interface IPlannerScheduleUpdates
 {
-    void RefreshSavedState();
+    Task<PlannerSaveResult?> AddPlannerProposalAsync(ConferenceDocument agenda, ScheduleProposal proposal,
+        TimeZoneInfo zone, CancellationToken cancellationToken = default);
     Task<bool> RefreshRemindersAsync();
 }
+
+public sealed record PlannerSaveResult(ProposalReview Review, bool PresentationUpdated);
 
 public sealed record PlannerModelState(bool Available, bool StructuredOutput, string Reason)
 {

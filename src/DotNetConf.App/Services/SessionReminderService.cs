@@ -124,7 +124,7 @@ public partial class SessionReminderService(
     private static bool IsExpectedFailure(Exception exception) =>
         exception is IOException or InvalidDataException or UnauthorizedAccessException
             or InvalidOperationException or NotSupportedException or ArgumentException or System.Text.Json.JsonException
-            or OperationCanceledException
+            or OperationCanceledException or TimeoutException
 #if IOS
             or Foundation.NSErrorException
 #endif

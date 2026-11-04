@@ -104,8 +104,11 @@ public sealed class ScheduleService(IScheduleStore store)
             var review = validate?.Invoke(next.ToArray());
             if (review is { CanApply: false })
                 return review;
-            next.UnionWith(sessionIds);
-            await store.WriteAsync(next, cancellationToken);
+            var changed = false;
+            foreach (var id in sessionIds)
+                changed |= next.Add(id);
+            if (changed)
+                await store.WriteAsync(next, cancellationToken);
             Volatile.Write(ref savedIds, next);
             return review;
         }
@@ -138,6 +141,32 @@ public sealed class ScheduleService(IScheduleStore store)
     /// <summary>Idempotently updates the latest stored schedule and returns the actual saved state.</summary>
     public Task<bool> SetSavedAsync(string sessionId, bool desiredSaved, CancellationToken cancellationToken = default) =>
         UpdateAsync(sessionId, desiredSaved, cancellationToken);
+
+    /// <summary>Removes an exact reviewed snapshot in one write, or rejects a stale approval.</summary>
+    public async Task<bool> RemoveReviewedAsync(IReadOnlyCollection<string> ids,
+        IReadOnlyCollection<string> expectedSavedIds, Func<bool> agendaUnchanged,
+        CancellationToken cancellationToken = default)
+    {
+        foreach (var id in ids)
+            ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        await InitializeAsync(cancellationToken);
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            var next = new HashSet<string>(await store.ReadAsync(cancellationToken), StringComparer.Ordinal);
+            if (!next.SetEquals(expectedSavedIds) || !agendaUnchanged() || ids.Any(id => !next.Contains(id)))
+            {
+                Volatile.Write(ref savedIds, next);
+                return false;
+            }
+            next.ExceptWith(ids);
+            if (ids.Count > 0)
+                await store.WriteAsync(next, cancellationToken);
+            Volatile.Write(ref savedIds, next);
+            return true;
+        }
+        finally { gate.Release(); }
+    }
 
     async Task<bool> UpdateAsync(string sessionId, bool? desired, CancellationToken cancellationToken)
     {

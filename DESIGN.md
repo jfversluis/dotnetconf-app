@@ -56,6 +56,27 @@ Five Shell destinations: Home, Sessions, Speakers, My Schedule, Community. Andro
 
 ## Content and states
 
+Home's Ask launcher appears only for a ready, tool-capable on-device model,
+replacing Explore sessions; without that capability, Explore sessions remains.
+It expands the existing Syncfusion Toolkit bottom sheet, not a chat transcript.
+A native editor retains text selection and accessibility; a decorative
+purple-magenta GraphicsView halo is static at rest and under reduced motion.
+The sheet scrolls its input, controls, and results when space is tight, and is
+capped at 720 units on wide windows; close and backgrounding cancel pending
+work. Outcomes are announced while the sheet is open.
+
+Each request stages one grounded action against the actual agenda. Navigation
+uses the existing detail service and shared search state. Saving reuses the
+normal saved-state/reminder update path and never toggles an existing save.
+Tool invocations are serialized per request, including native provider callbacks;
+identical proposals are idempotent, while conflicting proposals invalidate the request.
+Saving opens My Schedule after one atomic update. Explicit all/every requests
+save the full grounded set, not just a page of model lookup results; other
+ambiguous targets require a choice. Removal lists exact saved talks and
+device-local times, with explicit confirm/cancel controls. Confirmation is
+consumed once and rejects changed agenda/saved snapshots; the model never
+approves persistence. Debug-only trace UI contains no argument values.
+
 First-run onboarding is a separate full-screen modal carousel without a
 navigation bar: welcome, personal schedule introduction, and optional session
 reminders. Space Grotesk headings, typed Fluent icons and short explanatory

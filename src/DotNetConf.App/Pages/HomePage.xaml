@@ -2,11 +2,18 @@
                       xmlns:pages="clr-namespace:DotNetConf.App.Pages"
                       xmlns:controls="clr-namespace:DotNetConf.App.Controls"
                       xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
+                      xmlns:sheet="clr-namespace:Syncfusion.Maui.Toolkit.BottomSheet;assembly=Syncfusion.Maui.Toolkit"
                       x:DataType="vm:ConferenceViewModel" Title=".NET Conf">
     <ContentPage.ToolbarItems>
         <ToolbarItem Text="Settings" IconImageSource="{StaticResource SettingsIcon}"
                      Command="{Binding BrowseSettingsCommand}" AutomationId="home-settings" />
     </ContentPage.ToolbarItems>
+    <sheet:SfBottomSheet x:Name="AskSheet" IsModal="True" State="Hidden" AllowedState="FullExpanded"
+                         FullExpandedRatio="0.94" CornerRadius="28,28,0,0" CollapseOnOverlayTap="False"
+                         Background="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}"
+                         GrabberBackground="{AppThemeBinding Light={StaticResource LightSecondary}, Dark={StaticResource DarkSecondary}}"
+                         SwipeFromHeaderOnly="True" StateChanged="AskStateChanged">
+    <sheet:SfBottomSheet.Content>
     <Grid SafeAreaEdges="Container,None,Container,None">
     <RefreshView IsRefreshing="{Binding IsPullRefreshing, Mode=TwoWay}"
                  Command="{Binding RequestRefreshCommand}"
@@ -26,8 +33,18 @@
                            TextColor="{AppThemeBinding Light={StaticResource Midnight}, Dark={StaticResource White}}" />
                     <Label Text="A free, virtual celebration of .NET 11."
                            TextColor="{AppThemeBinding Light={StaticResource Midnight}, Dark={StaticResource LavenderLight}}" />
-                    <Button Text="Explore sessions" Command="{Binding BrowseSessionsCommand}" AutomationId="home-sessions"
+                    <Button x:Name="ExploreSessions" Text="Explore sessions" Command="{Binding BrowseSessionsCommand}" AutomationId="home-sessions"
                             HorizontalOptions="Start" Padding="24,14" />
+                    <Border x:Name="AskLauncher" Stroke="{AppThemeBinding Light={StaticResource ConferenceGradient}, Dark={StaticResource ConferenceDarkGradient}}"
+                            StrokeThickness="1.5" StrokeShape="RoundRectangle 24" IsVisible="False"
+                            BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}">
+                        <Border.Shadow>
+                            <Shadow Brush="{StaticResource Magenta}" Offset="0,2" Radius="18" Opacity="0.25" />
+                        </Border.Shadow>
+                        <Button x:Name="AskLauncherButton" Text="Ask about the conference" ImageSource="{StaticResource ScheduleSparkleIcon}"
+                                Clicked="OpenAskClicked" Style="{StaticResource QuietButton}"
+                                Padding="18,16" AutomationId="home-ask" />
+                    </Border>
                 </VerticalStackLayout>
             </Grid>
             <VerticalStackLayout Padding="24,24,24,32" Spacing="28" SafeAreaEdges="None">
@@ -67,4 +84,10 @@
     </ScrollView>
     </RefreshView>
     </Grid>
+    </sheet:SfBottomSheet.Content>
+    <sheet:SfBottomSheet.BottomSheetContent>
+        <controls:AskSheetView x:Name="AskContent" CloseRequested="CloseAskRequested"
+                               ScheduleRequested="AskScheduleRequested" />
+    </sheet:SfBottomSheet.BottomSheetContent>
+    </sheet:SfBottomSheet>
 </pages:ConferencePage>

@@ -857,6 +857,7 @@ public partial class PlannerViewModel(
         IsSaving = true;
         IsBusy = true;
         Status = "Saving selected sessions...";
+        var presentationUpdated = true;
         try
         {
             var latest = await dataSource.LoadAsync();
@@ -868,16 +869,25 @@ public partial class PlannerViewModel(
                 AnnounceOutcome();
                 return;
             }
-            var reviewed = await schedule.AddProposalAsync(latest, selected, timeZone);
-            if (reviewed is { CanApply: false })
+            var reviewed = await scheduleUpdates.AddPlannerProposalAsync(latest, selected, timeZone);
+            if (reviewed is null)
+            {
+                ClearProposal();
+                Status = "The agenda was refreshed. Generate a new proposal to review the latest session times.";
+                IsBusy = false;
+                AnnounceOutcome();
+                return;
+            }
+            if (!reviewed.Review.CanApply)
             {
                 HasValidProposal = false;
-                Validation = string.Join("\n", reviewed.Errors);
+                Validation = string.Join("\n", reviewed.Review.Errors);
                 Status = "Your schedule changed. Nothing was added; generate a new proposal.";
                 IsBusy = false;
                 AnnounceOutcome();
                 return;
             }
+            presentationUpdated = reviewed.PresentationUpdated;
         }
         catch (Exception exception) when (IsExpectedFailure(exception))
         {
@@ -889,10 +899,11 @@ public partial class PlannerViewModel(
         }
         try
         {
-            scheduleUpdates.RefreshSavedState();
             ClearProposal();
             HasAddedSessions = true;
-            Status = $"{selected.SessionIds.Length} selected {(selected.SessionIds.Length == 1 ? "session" : "sessions")} added to My Schedule. Your previous likes were kept.";
+            Status = presentationUpdated
+                ? $"{selected.SessionIds.Length} selected {(selected.SessionIds.Length == 1 ? "session" : "sessions")} added to My Schedule. Your previous likes were kept."
+                : "Your selected sessions were saved, but the display couldn't be refreshed. Reopen My Schedule.";
             if (!await scheduleUpdates.RefreshRemindersAsync())
                 Status += " Reminders couldn't be updated; check Settings.";
         }

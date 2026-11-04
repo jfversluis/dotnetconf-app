@@ -106,6 +106,10 @@ public static class MauiProgram
         builder.Services.AddSingleton<DetailNavigationService>();
         builder.Services.TryAddSingleton(Browser.Default);
         builder.Services.AddSingleton<ConferenceViewModel>();
+        builder.Services.AddSingleton<IAskApplication>(services => services.GetRequiredService<ConferenceViewModel>());
+        builder.Services.AddTransient<IOnDeviceAsk, OnDeviceAsk>();
+        builder.Services.AddScoped<AskTools>();
+        builder.Services.AddTransient<AskViewModel>();
 #if IOS
         if (OperatingSystem.IsIOSVersionAtLeast(26))
         {
