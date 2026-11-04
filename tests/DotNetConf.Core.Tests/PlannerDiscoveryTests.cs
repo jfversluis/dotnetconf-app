@@ -354,7 +354,7 @@ public sealed class PlannerDiscoveryTests
         await Assert.ThrowsAsync<InvalidDataException>(() => PlannerDiscovery.RunAsync(client,
             tools, scope.ServiceProvider, "Save all", NullLogger.Instance, default));
         Assert.Null(tools.Proposal);
-        Assert.Empty(tools.CandidateIds);
+        Assert.Equal(conference.Sessions.Select(session => session.Id).Order(), tools.CandidateIds.Order());
         Assert.Equal(0, tools.CallCount);
     }
 

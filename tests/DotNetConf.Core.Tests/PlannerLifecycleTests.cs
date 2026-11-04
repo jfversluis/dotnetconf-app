@@ -45,6 +45,8 @@ public sealed class PlannerLifecycleTests
         var save = vm.ApplyCommand.ExecuteAsync(null);
         await store.Started.Task;
         Assert.True(vm.IsBusy);
+        Assert.True(vm.IsSaving);
+        Assert.False(vm.CanCancel);
         Assert.False(session.CanSelect);
         Assert.False(vm.CanConfirm);
         Assert.False(vm.CanApply);
@@ -124,7 +126,9 @@ public sealed class PlannerLifecycleTests
         Assert.False(vm.IsReady);
         Assert.False(vm.CanGenerate);
         Assert.True(vm.CanEdit);
-        Assert.Equal("No model", vm.Status);
+        Assert.Equal(
+            "On-device AI isn't supported on this device. You can still explore the agenda or build My Schedule with hearts.",
+            vm.ModelStatus);
         Assert.Equal(["already-liked"], store.Saved);
     }
 

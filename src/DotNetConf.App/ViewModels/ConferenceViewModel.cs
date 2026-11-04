@@ -110,10 +110,10 @@ public partial class ConferenceViewModel(
 
     public string ScheduleSummary => !IsScheduleAvailable ? "Saved schedule unavailable"
         : SavedCount == 1 ? "1 saved session" : $"{SavedCount} saved sessions";
-    public string SchedulePlannerAction => SavedCount > 0 ? "Fill schedule gaps" : "Build a personal schedule";
+    public string SchedulePlannerAction => SavedCount > 0 ? "Find talks for my gaps" : "Discover sessions for my schedule";
     public string SchedulePlannerHint => SavedCount > 0
-        ? "Suggest sessions around your saved talks, with optional topics or speakers. Opens the on-device planner."
-        : "Describe your interests to the on-device planner. Review suggestions before saving.";
+        ? "Explore a mix of talks around your saved sessions, or use optional on-device AI. Review before adding."
+        : "Explore a varied mix of sessions, or describe your interests with optional on-device AI. Review before adding.";
     public int SelectedDayIndex
     {
         get => SelectedDay is null ? 0 : Math.Max(0, Days.IndexOf(SelectedDay));

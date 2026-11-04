@@ -27,18 +27,27 @@ inspiration? Playful starting points can highlight topics and speakers from the 
 Once you've saved some talks, **Fill schedule gaps** helps you find more on
 those same conference days without moving your existing choices.
 
-Open **My Schedule** and choose **Build a personal schedule**, or **Fill
-schedule gaps** once you've saved sessions. You can also try the planner during
-the welcome experience when a local model is available. Review the suggestions
-and their times, check the matching details, and choose what to add. AI can
-misunderstand, so you can edit your request and try again; nothing is saved
-until you confirm.
+Open **My Schedule** and choose **Discover sessions for my schedule**, or **Find
+talks for my gaps** once you've saved sessions. Discovery is also available
+during setup, even without an AI model. When local AI isn't available, **Explore a mix / Shuffle suggestions**
+picks up to six compatible talks with topic, speaker, and day variety from the
+downloaded agenda. This is random discovery, not personalized AI advice.
+Shuffle replaces the unsaved preview, never your saved schedule.
+
+When a local model is ready, the planner instead opens the AI request form;
+mix/shuffle isn't shown. Make a specific request, then review the selected talks,
+alternatives, and overlap warnings,
+then choose **Add N to My Schedule**. Nothing is saved just by checking a box or
+continuing setup. Setup asks before continuing without adding your selections.
+There is no 12-session saving limit; ordinary AI suggestions still start with
+a manageable shortlist. If an "all sessions" request cannot fit, you can explicitly
+choose to review a subset instead.
 
 Planning runs on your device with no account or cloud AI fallback. It requires a
 downloaded agenda and a ready local model: Apple Intelligence on supported
 iOS 26+ devices, or Gemini Nano on compatible Android 8+ devices. Availability
-depends on the device and its model settings. You can always browse and save
-sessions with hearts if the planner is unavailable.
+depends on the device and its model settings. Random discovery and saving
+sessions with hearts remain available without a local model.
 
 The planner uses MAUI Labs'
 [Essentials.AI](https://github.com/dotnet/maui-labs/blob/main/src/AI/README.md)

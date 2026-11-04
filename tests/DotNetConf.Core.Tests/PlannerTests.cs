@@ -122,9 +122,10 @@ public sealed class PlannerTests
     }
 
     [Fact]
-    public void EmptyAndOversizedProposalsCannotBeApplied()
+    public void EmptyDuplicateAndOverconstrainedProposalsCannotBeApplied()
     {
-        Assert.False(Review(new([], [], [])).CanApply);
+        Assert.Equal("Select at least one session before saving.",
+            Assert.Single(Review(new([], [], [])).Errors));
         Assert.False(Review(new(Enumerable.Repeat("mobile", 13).ToArray(), [], [])).CanApply);
         Assert.False(Review(new(["mobile"], Enumerable.Repeat("Alex Rivera", 9).ToArray(), [])).CanApply);
     }
@@ -173,7 +174,7 @@ public sealed class PlannerTests
     }
 
     [Fact]
-    public void AllSpeakerRequestsMustNotDropOverlapsOrUnavailableTalks()
+    public void AllSpeakerRequestsPreserveOverlapsButOnlyRequireTalksWithinAvailability()
     {
         var all = new ScheduleProposal(["language", "overlap", "midnight"], ["Sam"], [])
         {
@@ -186,7 +187,186 @@ public sealed class PlannerTests
             SessionIds = ["language"],
             Availability = [Window("2026-11-10T17:00/2026-11-10T18:00")]
         };
-        Assert.Contains(Review(unavailable).Errors, e => e.StartsWith("You requested all sessions"));
+        Assert.True(Review(unavailable).CanApply);
+    }
+
+    [Fact]
+    public void SavedSessionsSatisfySpeakerAndAllMatchingRequirements()
+    {
+        var proposal = new ScheduleProposal(["adjacent"], ["Alex"], [])
+        {
+            AllSessionsByRequiredSpeakers = true,
+            TopicFilter = new(["Mobile"], false, true, true)
+        };
+        Assert.True(SchedulePlanner.Review(Conference, proposal, TimeZoneInfo.Utc, ["mobile"]).CanApply);
+        var requiredSaved = new ScheduleProposal(["language"], ["Alex"], []);
+        Assert.True(SchedulePlanner.Review(Conference, requiredSaved, TimeZoneInfo.Utc, ["mobile"]).CanApply);
+        Assert.Equal(["language"], SchedulePlanner.Recommend(Conference, requiredSaved, ["language"],
+            TimeZoneInfo.Utc, ["mobile"]));
+        var scoped = requiredSaved with { TopicFilter = new(["C#"], false, true, false) };
+        Assert.Contains(SchedulePlanner.Review(Conference, scoped, TimeZoneInfo.Utc, ["mobile"]).Issues,
+            issue => issue.Code == ProposalIssueCode.MissingSpeakerSession);
+    }
+
+    [Fact]
+    public void MixedAllSpeakerAndOptionalTopicsNeverForceOptionalConflicts()
+    {
+        var preferences = new ScheduleProposal([], ["Alex"], [])
+        {
+            AllSessionsByRequiredSpeakers = true,
+            TopicFilter = new(["C#"], false, false, false)
+        };
+        var ids = SchedulePlanner.SelectSuggestions(Conference, preferences,
+            Conference.Sessions.Select(session => session.Id), TimeZoneInfo.Utc, []);
+        Assert.Contains("mobile", ids);
+        Assert.Contains("adjacent", ids);
+        Assert.DoesNotContain("overlap", ids);
+        Assert.Contains("language", ids);
+        Assert.True(Review(preferences with { SessionIds = ids }).CanApply);
+        var allTopics = preferences with
+        {
+            RequiredSpeakers = ["Sam"], AllSessionsByRequiredSpeakers = false,
+            TopicFilter = new(["Mobile"], false, false, true)
+        };
+        var topicIds = SchedulePlanner.SelectSuggestions(Conference, allTopics,
+            Conference.Sessions.Select(session => session.Id), TimeZoneInfo.Utc, []);
+        Assert.Contains("mobile", topicIds);
+        Assert.Contains("adjacent", topicIds);
+        Assert.Contains("language", topicIds);
+        Assert.DoesNotContain("overlap", topicIds);
+        Assert.True(Review(allTopics with { SessionIds = topicIds }).CanApply);
+    }
+
+    [Fact]
+    public void InherentlyConflictingMandatorySessionsRemainExplicit()
+    {
+        var preferences = new ScheduleProposal([], ["Sam"], []) { AllSessionsByRequiredSpeakers = true };
+        var ids = SchedulePlanner.SelectSuggestions(Conference, preferences,
+            Conference.Sessions.Select(session => session.Id), TimeZoneInfo.Utc, []);
+        Assert.Equal(["language", "midnight", "overlap"], ids.Order().ToArray());
+        Assert.Contains(Review(preferences with { SessionIds = ids }).Issues,
+            issue => issue.Code == ProposalIssueCode.OverlappingProposals);
+    }
+
+    [Fact]
+    public void ArrangementHandlesHundredsOfAlternativesWithoutCappingTheSavedSelection()
+    {
+        var sessions = Enumerable.Range(0, 250).SelectMany(index =>
+        {
+            var start = DateTimeOffset.Parse("2026-11-10T00:00Z").AddHours(index);
+            return new[]
+            {
+                Talk($"a-{index}", start.ToString("O"), start.AddMinutes(30).ToString("O"), "alex"),
+                Talk($"s-{index}", start.ToString("O"), start.AddMinutes(30).ToString("O"), "sam")
+            };
+        }).ToList();
+        var conference = Conference with { Sessions = sessions };
+        var candidates = new ScheduleProposal(sessions.Select(session => session.Id).ToArray(),
+            ["Alex", "Sam"], []);
+        var arranged = SchedulePlanner.Arrange(conference, candidates, TimeZoneInfo.Utc, []);
+        Assert.Equal(250, arranged.SessionIds.Length);
+        Assert.True(SchedulePlanner.Review(conference, arranged, TimeZoneInfo.Utc, []).CanApply);
+    }
+
+    [Fact]
+    public void RecommendationTargetIsSeparateFromValidationAndCanBeOverridden()
+    {
+        var start = DateTimeOffset.Parse("2026-11-10T00:00Z");
+        var conference = Conference with
+        {
+            Sessions = Enumerable.Range(0, 20).Select(index => Talk($"synthetic-{index}",
+                start.AddHours(index).ToString("O"), start.AddHours(index).AddMinutes(30).ToString("O"),
+                "alex")).ToList()
+        };
+        var preferences = new ScheduleProposal([], [], []);
+        var ids = conference.Sessions.Select(session => session.Id).ToArray();
+        Assert.Equal(SchedulePlanner.DefaultSuggestionCount,
+            SchedulePlanner.Recommend(conference, preferences, ids, TimeZoneInfo.Utc, []).Length);
+        var selected = SchedulePlanner.Recommend(conference, preferences, ids, TimeZoneInfo.Utc, [], count: 20);
+        Assert.Equal(20, selected.Length);
+        Assert.True(SchedulePlanner.Review(conference, preferences with { SessionIds = selected },
+            TimeZoneInfo.Utc, []).CanApply);
+    }
+
+    [Fact]
+    public void ArrangementNeverRelaxesAnImpossibleRequiredSpeakerCombination()
+    {
+        var candidates = new ScheduleProposal(["mobile", "overlap"], ["Alex", "Sam"], []);
+        Assert.Same(candidates, SchedulePlanner.Arrange(Conference, candidates, TimeZoneInfo.Utc, []));
+    }
+
+    [Fact]
+    public async Task AllRequestsAboveTwelveSessionsCanBeSavedWithoutDroppingExistingLikes()
+    {
+        var start = DateTimeOffset.Parse("2026-11-10T00:00Z");
+        var conference = Conference with
+        {
+            Sessions = Enumerable.Range(0, 50).Select(index => Talk($"synthetic-{index}",
+                start.AddHours(index).ToString("O"), start.AddHours(index).AddMinutes(30).ToString("O"),
+                "alex")).ToList()
+        };
+        var proposal = new ScheduleProposal(conference.Sessions.Select(session => session.Id).ToArray(),
+            ["Alex"], [])
+        {
+            AllSessionsByRequiredSpeakers = true,
+            TopicFilter = new(["Mobile"], false, false, true)
+        };
+        var schedule = new ScheduleService(new MemoryStore());
+        var review = await schedule.AddProposalAsync(conference, proposal, TimeZoneInfo.Utc);
+        Assert.True(review!.CanApply);
+        Assert.Equal(51, schedule.SavedCount);
+        Assert.Contains("previous-like", schedule.SavedIds);
+        Assert.All(proposal.SessionIds, id => Assert.True(schedule.IsSaved(id)));
+        Assert.Same(proposal, SchedulePlanner.Arrange(conference, proposal, TimeZoneInfo.Utc, []));
+        Assert.Equal(50, SchedulePlanner.SelectSuggestions(conference, proposal, proposal.SessionIds,
+            TimeZoneInfo.Utc, []).Length);
+    }
+
+    [Fact]
+    public void IntervalRecommendationsMatchExhaustiveReferenceWithAndWithoutATarget()
+    {
+        var random = new Random(27);
+        var start = DateTimeOffset.Parse("2026-11-10T00:00Z");
+        for (var sample = 0; sample < 8; sample++)
+        {
+            var conference = Conference with
+            {
+                Sessions = Enumerable.Range(0, 9).Select(index =>
+                {
+                    var instant = start.AddMinutes(random.Next(18));
+                    return Talk($"synthetic-{index}", instant.ToString("O"),
+                        instant.AddMinutes(random.Next(1, 7)).ToString("O"), index % 2 == 0 ? "alex" : "sam");
+                }).ToList()
+            };
+            foreach (var target in new[] { 2, 4, 9 })
+            {
+                var preferences = new ScheduleProposal([], ["Alex", "Sam"], []);
+                var expected = Enumerable.Range(1, (1 << conference.Sessions.Count) - 1).Select(mask =>
+                    conference.Sessions.Where((_, index) => (mask & (1 << index)) != 0)
+                        .Select(session => session.Id).ToArray())
+                    .Where(ids => ids.Length <= target && SchedulePlanner.Review(conference,
+                        preferences with { SessionIds = ids }, TimeZoneInfo.Utc, []).CanApply)
+                    .Select(ids => ids.Length).DefaultIfEmpty().Max();
+                var selected = SchedulePlanner.Recommend(conference, preferences,
+                    conference.Sessions.Select(session => session.Id), TimeZoneInfo.Utc, [], target);
+                Assert.Equal(expected, selected.Length);
+                if (expected > 0)
+                    Assert.True(SchedulePlanner.Review(conference, preferences with { SessionIds = selected },
+                        TimeZoneInfo.Utc, []).CanApply);
+            }
+        }
+    }
+
+    private sealed class MemoryStore : IScheduleStore
+    {
+        private string[] ids = ["previous-like"];
+        public Task<IReadOnlyCollection<string>> ReadAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyCollection<string>>(ids);
+        public Task WriteAsync(IReadOnlyCollection<string> sessionIds, CancellationToken cancellationToken = default)
+        {
+            ids = sessionIds.ToArray();
+            return Task.CompletedTask;
+        }
     }
 
     private static ProposalReview Review(ScheduleProposal proposal) =>

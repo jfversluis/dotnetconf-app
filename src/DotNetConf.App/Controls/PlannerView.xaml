@@ -16,9 +16,15 @@
             <Grid SafeAreaEdges="None" Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}">
                 <VerticalStackLayout x:Name="HeroContent" Padding="24,32,24,28" Spacing="24" SafeAreaEdges="None">
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
-                        <Image Source="{StaticResource PlannerIcon}" HeightRequest="48" WidthRequest="48"
+                        <Image Source="{StaticResource DiscoveryIcon}" HeightRequest="48" WidthRequest="48"
                                HorizontalOptions="Start" InputTransparent="True"
-                               AutomationProperties.IsInAccessibleTree="False" AutomationId="planner-hero-icon" />
+                               AutomationProperties.IsInAccessibleTree="False" AutomationId="planner-hero-icon">
+                            <Image.Triggers>
+                                <DataTrigger TargetType="Image" Binding="{Binding IsAiMode}" Value="True">
+                                    <Setter Property="Source" Value="{StaticResource PlannerIcon}" />
+                                </DataTrigger>
+                            </Image.Triggers>
+                        </Image>
                         <ContentView x:Name="HeroAction" Grid.Column="1" VerticalOptions="Center" />
                     </Grid>
                     <VerticalStackLayout Spacing="16">
@@ -30,6 +36,18 @@
                 </VerticalStackLayout>
             </Grid>
             <VerticalStackLayout Padding="24,20,24,24" Spacing="20" SafeAreaEdges="None">
+                <VerticalStackLayout IsVisible="{Binding CanExplore}" Spacing="20" AutomationId="planner-discovery-actions">
+                    <Button Text="Explore a mix / Shuffle suggestions" Command="{Binding ExploreCommand}"
+                            IsEnabled="{Binding CanEdit}" ImageSource="{StaticResource DiscoveryActionIcon}"
+                            ContentLayout="Left,8" LineBreakMode="WordWrap" AutomationId="planner-explore" />
+                    <Label Text="Shuffle replaces this unsaved preview. Your saved schedule stays unchanged."
+                           Style="{StaticResource Secondary}" FontSize="13" />
+                </VerticalStackLayout>
+                <Label Text="{Binding ModelStatus}" Style="{StaticResource Secondary}" FontSize="13"
+                       AutomationId="planner-ai-availability" />
+                <ActivityIndicator IsRunning="{Binding IsCheckingModel}" IsVisible="{Binding IsCheckingModel}"
+                                   HorizontalOptions="Start" SemanticProperties.Description="Checking optional on-device AI" />
+                <VerticalStackLayout IsVisible="{Binding IsAiMode}" Spacing="16" AutomationId="planner-ai-actions">
                 <VerticalStackLayout Spacing="8" IsVisible="{Binding CanEdit}">
                     <Label Text="Need a starting point?" Style="{StaticResource Secondary}" FontSize="14" />
                     <ActivityIndicator IsRunning="{Binding IsLoadingStartingPoints}" IsVisible="{Binding IsLoadingStartingPoints}"
@@ -72,18 +90,21 @@
                         Clicked="GenerateClicked" AutomationId="planner-generate" />
                 <Label Text="On-device with Essentials.AI on supported devices. No account or cloud."
                        Style="{StaticResource Secondary}" FontSize="13" />
+                </VerticalStackLayout>
                 <VerticalStackLayout Spacing="8" AutomationId="planner-model-state">
                     <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" HorizontalOptions="Start" />
                     <Label Text="{Binding Status}" IsVisible="{Binding HasStatus}" AutomationId="planner-status" />
                     <Button Text="Check the local model again" LineBreakMode="WordWrap" Command="{Binding CheckModelCommand}"
                             IsVisible="{Binding CanRetryModel}" Style="{StaticResource QuietButton}"
                             AutomationId="planner-check-model" />
-                    <Button Text="Cancel" LineBreakMode="WordWrap" Command="{Binding CancelCommand}" IsVisible="{Binding IsBusy}"
+                    <Button Text="Cancel suggestions" LineBreakMode="WordWrap" Command="{Binding CancelCommand}" IsVisible="{Binding CanCancel}"
                             Style="{StaticResource QuietButton}" AutomationId="planner-cancel" />
                 </VerticalStackLayout>
                 <VerticalStackLayout IsVisible="{Binding HasProposal}" Spacing="16" AutomationId="planner-preview">
                     <BoxView HeightRequest="1" Margin="0,8" />
-                    <Label Text="Your shortlist" Style="{StaticResource Heading}" />
+                    <Label Text="Review suggestions" Style="{StaticResource Subheading}" SemanticProperties.HeadingLevel="Level2" />
+                    <Label Text="{Binding DiscoverySource}" Style="{StaticResource Secondary}" FontSize="14" />
+                    <Label Text="{Binding SelectionSummary}" AutomationId="planner-selection-summary" />
                     <VerticalStackLayout BindableLayout.ItemsSource="{Binding Sessions}" Spacing="20">
                         <BindableLayout.ItemTemplate>
                             <DataTemplate x:DataType="vm:ProposedSessionViewModel">
@@ -96,7 +117,9 @@
                                     <VerticalStackLayout Grid.Column="1" Spacing="4">
                                         <Label Text="{Binding Title}" FontFamily="OpenSansSemibold" />
                                         <Label Text="{Binding SpeakerNames}" Style="{StaticResource Secondary}" FontSize="14" />
+                                        <Label Text="{Binding Topics}" Style="{StaticResource Secondary}" FontSize="13" />
                                         <Label Text="{Binding Time}" Style="{StaticResource Secondary}" FontSize="14" />
+                                        <Label Text="{Binding ChoiceLabel}" FontFamily="OpenSansSemibold" FontSize="13" />
                                         <Label Text="{Binding Warning}" IsVisible="{Binding HasWarning}"
                                                TextColor="{AppThemeBinding Light={StaticResource LightError}, Dark={StaticResource DarkError}}"
                                                AutomationId="{Binding WarningAutomationId}" FontFamily="OpenSansSemibold" />
@@ -105,7 +128,7 @@
                             </DataTemplate>
                         </BindableLayout.ItemTemplate>
                     </VerticalStackLayout>
-                    <Button Text="{Binding MatchingDetailsAction}" LineBreakMode="WordWrap"
+                    <Button Text="{Binding MatchingDetailsAction}" LineBreakMode="WordWrap" IsVisible="{Binding IsAiMode}"
                             Command="{Binding ToggleMatchingDetailsCommand}" Style="{StaticResource QuietButton}"
                             BorderWidth="0" Padding="0,8" HorizontalOptions="Start"
                             AutomationId="planner-toggle-details" />
@@ -117,15 +140,11 @@
                     </VerticalStackLayout>
                     <Label Text="{Binding Validation}" IsVisible="{Binding HasValidationErrors}" AutomationId="planner-validation"
                            TextColor="{AppThemeBinding Light={StaticResource LightError}, Dark={StaticResource DarkError}}" />
-                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-                        <CheckBox IsChecked="{Binding ConstraintsConfirmed}" IsEnabled="{Binding CanConfirm}"
-                                  Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
-                                  MinimumHeightRequest="48" MinimumWidthRequest="48"
-                                  SemanticProperties.Description="I have reviewed the selected sessions and their times"
-                                  AutomationId="planner-confirm-constraints" />
-                        <Label Grid.Column="1" Text="I've reviewed these sessions and times." VerticalOptions="Center" />
-                    </Grid>
-                    <Button Text="Add selected to My Schedule" LineBreakMode="WordWrap" Command="{Binding ApplyCommand}"
+                    <Button Text="Let me choose a subset instead" Command="{Binding ChooseSubsetCommand}"
+                            IsVisible="{Binding CanRelaxConstraints}" IsEnabled="{Binding CanEdit}"
+                            Style="{StaticResource QuietButton}" LineBreakMode="WordWrap"
+                            AutomationId="planner-choose-subset" />
+                    <Button Text="{Binding ApplyLabel}" LineBreakMode="WordWrap" Command="{Binding ApplyCommand}"
                             IsEnabled="{Binding CanApply}" AutomationId="planner-apply" />
                 </VerticalStackLayout>
                 <Label Text="{Binding AgendaDisclosure}"

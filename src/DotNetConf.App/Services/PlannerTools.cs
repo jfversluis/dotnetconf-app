@@ -112,9 +112,11 @@ public sealed class PlannerTools
             matches = matches.Concat(SchedulePlanner.TopicMatches(conference, preferences));
         else if (preferences.RequiredSpeakers.Length == 0)
             matches = conference.Sessions;
-        discoveryRemainingIds = matches.Where(IsEligible).Select(s => s.Id).ToHashSet(StringComparer.Ordinal);
+        var inventory = matches.DistinctBy(session => session.Id).ToArray();
+        discoveryRemainingIds = inventory.Where(IsEligible).Select(s => s.Id).ToHashSet(StringComparer.Ordinal);
         discoveryQueries = 0;
         candidateIds.Clear();
+        candidateIds.UnionWith(inventory.Select(session => session.Id));
     }
 
     private IEnumerable<Session> MatchingSpeakerSessions(string name)
@@ -163,7 +165,7 @@ public sealed class PlannerTools
         var conference = GetDocument();
         Proposal = null;
         if (sessionIds is null || sessionIds.Any(id => id is null || id.Length > 100)
-            || sessionIds.Length > Math.Max(SchedulePlanner.MaximumSessions, conference.Sessions.Count))
+            || sessionIds.Length > conference.Sessions.Count)
             return "Invalid arguments: provide real session IDs within the agenda bounds.";
         var preferences = Preferences ?? throw new InvalidOperationException("Capture preferences before proposing sessions.");
         Proposal = preferences with
@@ -180,6 +182,8 @@ public sealed class PlannerTools
 
     private bool IsEligible(Session session)
     {
+        if (savedIds.Contains(session.Id))
+            return false;
         var preferences = Preferences ?? throw new InvalidOperationException("Capture preferences before searching.");
         var candidate = preferences with
         {

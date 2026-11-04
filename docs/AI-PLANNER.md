@@ -7,8 +7,17 @@ shortlist is made up of real conference sessions.
 
 ## Tell it what you're looking for
 
-Write a request in your own words, or tap a suggested starting point and make
-it your own. Starting points can highlight agenda topics and speakers, with
+The app checks local AI availability and shows one discovery path, not a choice
+between two modes. Without a ready local model, **Explore a mix / Shuffle suggestions**
+offers up to six compatible sessions from the downloaded agenda, favoring a mix
+of topics, speakers, and days. It excludes already-saved talks and respects
+saved commitments. These suggestions are random, not personalized. Shuffling
+replaces the unsaved preview; it never rearranges or removes saved talks.
+Without a downloaded agenda, connect and refresh Sessions first.
+
+When a local model is ready, the AI request form opens automatically instead;
+mix/shuffle isn't shown. Write a request in your own words, or tap a suggested
+starting point and make it your own. Starting points can highlight agenda topics and speakers, with
 invitations like "Make me dangerous with [topic]" and "More [topic], less FOMO."
 Starting points are available straight away, even while the agenda downloads.
 Once the agenda and local model are ready, they can offer more topic and speaker
@@ -27,7 +36,7 @@ or "09:00 to 11:00".
 
 ## Make room for discovery
 
-Already saved a few talks? In **My Schedule**, choose **Fill schedule gaps**
+Already saved a few talks? In **My Schedule**, choose **Find talks for my gaps**
 to find sessions that fit around them. You can focus on a topic, a speaker, or
 an available time, or leave the request open for ideas. The planner looks for
 free time on conference days where you already have saved sessions, within
@@ -35,16 +44,21 @@ those days' published agenda. Your existing choices stay in place.
 
 ## Make it yours
 
-On a supported device, try the planner in the welcome experience or open
-**My Schedule** and choose **Build a personal schedule**. If you've already
-saved sessions, choose **Fill schedule gaps** instead. Find sessions, then
+Try discovery in the welcome experience or open
+**My Schedule** and choose **Discover sessions for my schedule**. If you've already
+saved sessions, choose **Find talks for my gaps** instead. Find sessions, then
 review the shortlist, session times, and any warnings. Open **Show matching
 details** to see how the planner understood your request.
 
 AI can misunderstand, so edit your request and try again if something is
-wrong. Select the talks you want, confirm you've reviewed them, and choose
-**Add selected to My Schedule**. Nothing is added until you confirm, and your
+wrong. Checked sessions are the proposed additions, not already-saved talks.
+Unchecked alternatives also match; their overlap warnings explain tradeoffs.
+Select the talks you want and choose **Add N to My Schedule**. Nothing is added until that action, and your
 previously saved sessions aren't removed.
+There is no 12-session saving limit. Selecting nothing asks you to select at
+least one session. If an "all" request has incompatible requirements, edit it
+or explicitly choose **Let me choose a subset instead**. Setup's Continue
+action does not save suggestions and asks before leaving without adding them.
 
 ## Ready when you are
 
@@ -57,8 +71,8 @@ service. You'll need a downloaded agenda and a ready local model:
 
 Device, language, region, and model settings affect availability. The app
 doesn't start a model download. Linux desktop and browser builds don't support
-the on-device planner. If the model isn't available, you can still explore the
-agenda and save sessions with hearts. A previously downloaded agenda can be
+the on-device AI option. If the model isn't available, you can still explore a
+random mix or browse the agenda and save sessions with hearts. A previously downloaded agenda can be
 used offline; a first download needs an internet connection.
 
 ## Powered by MAUI Labs
