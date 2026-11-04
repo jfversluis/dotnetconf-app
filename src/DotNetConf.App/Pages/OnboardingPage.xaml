@@ -129,7 +129,7 @@
     </ContentPage.Resources>
     <Grid SafeAreaEdges="None" Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}">
         <Grid RowDefinitions="*,Auto" RowSpacing="0" SafeAreaEdges="None,Container,None,None">
-            <CarouselView x:Name="Carousel" ItemsSource="{Binding Slides}" Loop="False"
+            <CarouselView x:Name="Carousel" ItemsSource="{Binding Slides}" Loop="False" IsSwipeEnabled="False"
                           BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}"
                           HorizontalScrollBarVisibility="Never"
                           PositionChanged="PositionChanged" IndicatorView="Progress"
