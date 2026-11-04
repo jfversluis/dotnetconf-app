@@ -135,7 +135,7 @@ public static class Agenda
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
             throw new InvalidDataException("The agenda doesn't label session difficulty. Try a topic or speaker instead.");
         const string clock = @"(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)?|noon|midnight)";
-        var ranges = Regex.Matches(request, $@"\b(?:between|from)\s+{clock}\s+(?:and|to|until|through|-)\s+{clock}\b",
+        var ranges = Regex.Matches(request, $@"\b(?:between|from)\s+{clock}(?:\s+(?:and|to|until|through)\s+|\s*[-–—]\s*){clock}\b",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
         if (ranges.Any(range => IsNegatedTimeConstraint(request[..range.Index])))
             throw new InvalidDataException("Excluding a time range isn't supported yet. Request the hours you can watch.");

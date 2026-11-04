@@ -249,8 +249,11 @@ public sealed class PlannerTools
     {
         if (!ReferenceEquals(this, services.GetRequiredService<PlannerTools>()))
             throw new InvalidOperationException("Planner functions must use the scope that owns their planner state.");
-        return PlannerToolContext.Default.Tools.Cast<AIFunction>()
-            .Select(function => (AITool)new PlannerFunction(this, services, function)).ToArray();
+        var functions = PlannerToolContext.Default.Tools.Cast<AIFunction>();
+#if ANDROID
+        functions = functions.Select(GeminiToolCompatibility.Adapt);
+#endif
+        return functions.Select(function => (AITool)new PlannerFunction(this, services, function)).ToArray();
     }
 
     private sealed class PlannerFunction(PlannerTools tools, IServiceProvider services, AIFunction inner)

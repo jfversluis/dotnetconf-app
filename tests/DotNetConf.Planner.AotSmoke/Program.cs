@@ -24,6 +24,13 @@ Require(windows.Length > 0 && windows.All(window => window.Zone == zone
     && window.Start.EndsWith("T07:00", StringComparison.Ordinal)
     && window.End.EndsWith("T23:00", StringComparison.Ordinal)), "NativeAOT changed the requested availability.");
 Require(PlannerInterpretation.RequestedZone("HTTP/2 before 11pm UTC.") == "UTC", "A protocol version became a time zone.");
+foreach (var range in new[] { "9am-5pm", "9am–5pm", "09:00—17:00" })
+{
+    var compact = new PlannerDailyAvailability("none", "none", "UTC").Ground($"AI from {range} UTC");
+    Require(compact.DailyStart == "09:00" && compact.DailyEnd == "17:00", "A compact range lost a clock boundary.");
+}
+Require(!new PlannerInterpretation("none", "evening", "none", "some")
+    .RequiresTimeExtraction("AI any time, including the evening"), "An inclusive daypart restricted unrestricted hours.");
 using var services = new ServiceCollection().AddScoped<PlannerTools>().BuildServiceProvider(
     new ServiceProviderOptions { ValidateScopes = true });
 using var scope = services.CreateScope();
@@ -50,6 +57,22 @@ Require(rawSubmit.JsonSchema.GetProperty("properties").GetProperty("sessionIds")
 Require(Text(await rawSearch.InvokeAsync(searchArguments)).Contains("building-with-maui"), "Generated JSON binding failed.");
 Require(Text(await functions["search_sessions"].InvokeAsync(Arguments("""{"query":"Mobile","skip":0}""")))
     .Contains("building-with-maui"), "Adapted search failed.");
+var approvalRequired = new ApprovalRequiredAIFunction(functions["search_sessions"]);
+var geminiSearch = GeminiToolCompatibility.Adapt(approvalRequired);
+Require(!geminiSearch.JsonSchema.TryGetProperty("additionalProperties", out _), "Gemini schema was not adapted.");
+Require(geminiSearch.GetService<ApprovalRequiredAIFunction>() == approvalRequired, "Tool approval was lost.");
+Require(Text(await geminiSearch.InvokeAsync(Arguments("""{"query":"Mobile","skip":0}""")))
+    .Contains("building-with-maui"), "Gemini-compatible search failed.");
+var beforeUnknownArgument = tools.CallCount;
+try
+{
+    await geminiSearch.InvokeAsync(Arguments("""{"query":"Mobile","skip":0,"extra":true}"""));
+    throw new InvalidOperationException("Unknown tool argument was accepted.");
+}
+catch (ArgumentException)
+{
+    Require(tools.CallCount == beforeUnknownArgument, "Unknown tool argument reached the function.");
+}
 Require(Text(await functions["speaker_sessions"].InvokeAsync(Arguments("""{"name":"Alex"}""")))
     .Contains("Alex Rivera"), "Generated optional speaker offset failed.");
 Require(Text(await functions["topic_sessions"].InvokeAsync(new AIFunctionArguments()))
@@ -125,7 +148,7 @@ Require(tools.DiscoveryComplete && tools.CandidateIds.Contains("building-with-ma
     "Model-selected discovery lost real candidates.");
 Require(tools.Proposal is null, "The model's read-only tools submitted a proposal.");
 
-Console.WriteLine("PASS: NativeAOT planner availability, generated bindings, schemas, JSON and typed arguments, defaults, validation, scope isolation, cancellation, call budget and model-selected tool invocation through Microsoft.Extensions.AI. JSON reflection is explicitly enabled; dynamic code is unavailable.");
+Console.WriteLine("PASS: NativeAOT planner availability, generated bindings, Gemini schemas and approval, JSON and typed arguments, defaults, validation, scope isolation, cancellation, call budget and model-selected tool invocation through Microsoft.Extensions.AI. JSON reflection is explicitly enabled; dynamic code is unavailable.");
 
 static AIFunctionArguments Arguments(string json) =>
     JsonSerializer.Deserialize<AIFunctionArguments>(json, AIJsonUtilities.DefaultOptions)

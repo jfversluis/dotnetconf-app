@@ -9,6 +9,52 @@ namespace DotNetConf.Core.Tests;
 [Trait("Category", "AIAttributes")]
 public sealed class OnDeviceGapPlannerTests
 {
+    [Fact]
+    public async Task ReadinessModelIsUsedForInterpretationAndToolDiscovery()
+    {
+        var client = Substitute.For<IChatClient>();
+        var jsonCalls = 0;
+        var toolCalls = 0;
+        client.GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var options = call.Arg<ChatOptions>();
+                Assert.Equal("synthetic-profile", options.ModelId);
+                if (options.Tools is null)
+                {
+                    jsonCalls++;
+                    var schema = call.Arg<IEnumerable<ChatMessage>>().First().Text;
+                    var json = jsonCalls == 1
+                        ? """{"speakerNames":"none","availabilityText":"none","quantity":"some","searchQuery":"none"}"""
+                        : schema.Contains("\"speakerScope\"", StringComparison.Ordinal)
+                            ? """{"quantity":"some","speakerScope":"independent"}"""
+                            : """{"topic":"AI"}""";
+                    return new ChatResponse(new ChatMessage(ChatRole.Assistant, json));
+                }
+
+                toolCalls++;
+                if (call.Arg<IEnumerable<ChatMessage>>().SelectMany(message => message.Contents)
+                    .OfType<FunctionResultContent>().Any())
+                    return new ChatResponse(new ChatMessage(ChatRole.Assistant, "Synthetic completion"));
+                return new ChatResponse(new ChatMessage(ChatRole.Assistant,
+                    [new FunctionCallContent("call", "search_sessions", new Dictionary<string, object?>
+                    {
+                        ["query"] = "", ["skip"] = 0
+                    })]));
+            });
+        using var services = new TestServices(client);
+        var planner = new OnDevicePlanner(services, NullLoggerFactory.Instance, services,
+            new TestPlannerModelStatus(toolCalling: true, modelId: "synthetic-profile"));
+
+        Assert.Equal("synthetic-profile", (await planner.CheckReadinessAsync(default)).ModelId);
+        var result = await planner.ProposeAsync(Agenda(), "I'm interested in AI",
+            TimeZoneInfo.Utc, [], default);
+
+        Assert.True(result.Proposal is not null, result.Message);
+        Assert.True(jsonCalls >= 1);
+        Assert.Equal(2, toolCalls);
+    }
+
     [Theory]
     [InlineData("I see gaps in my schedule. What sessions fit in here?", "none", false)]
     [InlineData("Fill my free slots with AI", "none", true)]
@@ -29,6 +75,7 @@ public sealed class OnDeviceGapPlannerTests
                     var messages = call.Arg<IEnumerable<ChatMessage>>().ToArray();
                     Assert.Contains("JSON object", messages[0].Text);
                     Assert.NotNull(options.ResponseFormat);
+                    Assert.Equal("synthetic-profile", options.ModelId);
                     Assert.Equal(!structured, ReferenceEquals(ChatResponseFormat.Text, options.ResponseFormat));
                     var json = responses.Dequeue();
                     return new ChatResponse(new ChatMessage(ChatRole.Assistant, fenced ? $"```json\n{json}\n```" : json));
@@ -36,7 +83,7 @@ public sealed class OnDeviceGapPlannerTests
             using var services = new TestServices(client);
             var planner = new OnDevicePlanner(services,
                 NullLoggerFactory.Instance, services,
-                new TestPlannerModelStatus(structuredOutput: structured));
+                new TestPlannerModelStatus(structuredOutput: structured, modelId: "synthetic-profile"));
             var agenda = Agenda();
             var result = await planner.ProposeAsync(agenda, request, TimeZoneInfo.Utc, ["saved"], default, true);
             Assert.NotNull(result.Proposal);
@@ -55,10 +102,14 @@ public sealed class OnDeviceGapPlannerTests
         var client = Substitute.For<IChatClient>();
         const string json = """{"topics":["Synthetic AI","Synthetic Web","Synthetic Mobile"]}""";
         client.GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions>(), Arg.Any<CancellationToken>())
-            .Returns(new ChatResponse(new ChatMessage(ChatRole.Assistant, fenced ? $"```json\n{json}\n```" : json)));
+            .Returns(call =>
+            {
+                Assert.Equal("synthetic-profile", call.Arg<ChatOptions>().ModelId);
+                return new ChatResponse(new ChatMessage(ChatRole.Assistant, fenced ? $"```json\n{json}\n```" : json));
+            });
         using var services = new TestServices(client);
         var planner = new OnDevicePlanner(services, NullLoggerFactory.Instance, services,
-            new TestPlannerModelStatus(structuredOutput: structured));
+            new TestPlannerModelStatus(structuredOutput: structured, modelId: "synthetic-profile"));
         var agenda = new ConferenceDocument
         {
             Sessions = [new() { Id = "synthetic-session", Topics = ["Synthetic AI", "Synthetic Web", "Synthetic Mobile"] }]

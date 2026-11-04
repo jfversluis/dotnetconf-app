@@ -8,7 +8,8 @@ internal static class PlannerDiscovery
     internal const int MaximumCalls = 12;
 
     public static async Task RunAsync(IChatClient innerClient, PlannerTools tools,
-        IServiceProvider services, string request, ILogger logger, CancellationToken cancellationToken)
+        IServiceProvider services, string request, ILogger logger, CancellationToken cancellationToken,
+        string? modelId = null)
     {
         using var budget = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         budget.CancelAfter(TimeSpan.FromSeconds(30));
@@ -72,7 +73,7 @@ internal static class PlannerDiscovery
             for (var attempt = 0; attempt < 2 && !tools.DiscoveryComplete; attempt++)
             {
                 var response = await client.GetResponseAsync(messages,
-                    new ChatOptions { Tools = functions, Temperature = 0, MaxOutputTokens = 300 }, budgetToken);
+                    new ChatOptions { Tools = functions, Temperature = 0, MaxOutputTokens = 300, ModelId = modelId }, budgetToken);
                 cancellationToken.ThrowIfCancellationRequested();
                 if (!tools.DiscoveryComplete)
                 {

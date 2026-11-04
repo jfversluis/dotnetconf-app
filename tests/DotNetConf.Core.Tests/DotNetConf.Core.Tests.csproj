@@ -29,6 +29,7 @@
     <Compile Include="../../src/DotNetConf.App/Services/PlannerToolContext.cs" Link="PlannerToolContext.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/OnDevicePlanner.cs" Link="OnDevicePlanner.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerDiscovery.cs" Link="PlannerDiscovery.cs" />
+    <Compile Include="../../src/DotNetConf.App/Services/GeminiToolCompatibility.cs" Link="GeminiToolCompatibility.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/IOnDevicePlanner.cs" Link="IOnDevicePlanner.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/SessionReminderService.cs" Link="SessionReminderService.cs" />
     <Compile Include="../../src/DotNetConf.App/ViewModels/PlannerViewModel.cs" Link="PlannerViewModel.cs" />

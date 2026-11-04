@@ -194,6 +194,8 @@ public sealed class PlannerRelevanceTests
     [InlineData("I can't watch sessions so late after 5pm", "07:00", "17:00")]
     [InlineData("Avoid beginner sessions; show talks after 9am", "09:00", "23:00")]
     [InlineData("No sessions about Java, but show sessions before 11pm", "07:00", "23:00")]
+    [InlineData("AI 3-5 talks after 9am", "09:00", "23:00")]
+    [InlineData("AI 3–5 talks after 9am", "09:00", "23:00")]
     public void MissingBoundariesUseDefaultsWithoutOverrulingExplicitEarlyOrLateLimits(string request, string start, string end)
     {
         var actual = new PlannerDailyAvailability("10:00", "20:00", "local").Ground(request).Complete(PlannerWatchingHours.Default);
@@ -206,6 +208,10 @@ public sealed class PlannerRelevanceTests
     [InlineData("between 1am and 5am", "01:00", "05:00")]
     [InlineData("from 10pm to 2am", "22:00", "02:00")]
     [InlineData("from 10pm until 2am", "22:00", "02:00")]
+    [InlineData("from 9am-5pm", "09:00", "17:00")]
+    [InlineData("9am–5pm", "09:00", "17:00")]
+    [InlineData("from 09:00—17:00", "09:00", "17:00")]
+    [InlineData("from 10pm-2am", "22:00", "02:00")]
     [InlineData("10pm to 2am", "22:00", "02:00")]
     [InlineData("from midnight to 5am", "00:00", "05:00")]
     [InlineData("from 12am to 12pm", "00:00", "12:00")]
@@ -218,7 +224,7 @@ public sealed class PlannerRelevanceTests
     [InlineData("before 11pm, including overnight", "00:00", "23:00")]
     public void ExplicitHoursOverrideDefaultsAndDoNotClaimAnAssumption(string request, string start, string end)
     {
-        var actual = new PlannerDailyAvailability("09:00", "17:00", "local").Ground(request).Complete(PlannerWatchingHours.Default);
+        var actual = new PlannerDailyAvailability("none", "none", "local").Ground(request).Complete(PlannerWatchingHours.Default);
         Assert.Equal(start, actual.DailyStart);
         Assert.Equal(end, actual.DailyEnd);
         Assert.Empty(actual.Assumption);
@@ -250,12 +256,22 @@ public sealed class PlannerRelevanceTests
     [InlineData("I am not available between 9am and 5pm UTC")]
     [InlineData("I cannot attend between 9am and 5pm UTC")]
     [InlineData("I can't watch AI sessions from 9am to 5pm")]
+    [InlineData("I can't watch AI sessions from 9am-5pm")]
+    [InlineData("I can't watch AI sessions from 09:00—17:00")]
     [InlineData("I am not able to watch AI between 9am and 5pm UTC")]
     [InlineData("I won't watch AI between 9am and 5pm UTC")]
     public void NegatedTimeRangesAreNotTreatedAsAllowed(string request)
     {
         Assert.Throws<InvalidDataException>(() => Agenda.ValidatePlannerRequest(request));
     }
+
+    [Theory]
+    [InlineData("I can't watch AI 9am-5pm")]
+    [InlineData("I can't watch AI 9am–5pm")]
+    [InlineData("I can't watch AI 09:00—17:00")]
+    [InlineData("I can't watch AI 9am to 5pm")]
+    public void BareNegatedTimeRangesAreNotGroundedAsAllowed(string request) =>
+        Assert.Throws<InvalidDataException>(() => new PlannerDailyAvailability("none", "none", "UTC").Ground(request));
 
     [Theory]
     [InlineData("AI in the afternoons before 11pm", "12:00", "18:00")]
@@ -310,8 +326,18 @@ public sealed class PlannerRelevanceTests
     [InlineData("AI in the afternoons on November 10 before 11pm", true)]
     [InlineData("AI early in the day on November 10 before 11pm", true)]
     [InlineData("AI for early-career developers on November 10 before 11pm", false)]
+    [InlineData("AI talks any time, including the evening", false)]
+    [InlineData("AI talks any time in the evening", true)]
+    [InlineData("AI talks any time, but don't include the evening", true)]
+    [InlineData("AI talks in the evening", true)]
     public void TimeHintsDescribeTimeRatherThanUnrelatedWords(string request, bool expected) =>
         Assert.Equal(expected, PlannerInterpretation.HasAdditionalTimeHint(request));
+
+    [Theory]
+    [InlineData("AI talks any time, not including the evening")]
+    [InlineData("AI talks any time, without including the evening")]
+    public void ExcludedInclusiveDayPartsNeedPositiveWatchingHours(string request) =>
+        Assert.Throws<InvalidDataException>(() => PlannerInterpretation.HasAdditionalTimeHint(request));
 
     [Fact]
     public void PluralDayPartsTriggerTimeExtractionButEarlyCareerDoesNot()
@@ -325,6 +351,7 @@ public sealed class PlannerRelevanceTests
     [Theory]
     [InlineData("AI on November 10 in the afternoons before 11pm UTC", "AI on November 10 in the afternoons  UTC")]
     [InlineData("AI in the afternoons from 7am to 11pm UTC", "AI in the afternoons  UTC")]
+    [InlineData("AI in the afternoons from 7am-11pm UTC", "AI in the afternoons  UTC")]
     [InlineData("AI after 9am during work", "AI  during work")]
     public void QualitativeExtractionDoesNotSeeExplicitClockLimits(string request, string expected) =>
         Assert.Equal(expected, PlannerInterpretation.WithoutClockLimits(request));
@@ -715,6 +742,54 @@ public sealed class PlannerRelevanceTests
         Assert.Equal(["focused", "untagged"], result.Proposal.SessionIds);
         Assert.Empty(result.Proposal.Availability);
         Assert.Empty(result.Proposal.AvailabilityAssumption);
+    }
+
+    [Theory]
+    [InlineData(true, "from 9am-5pm")]
+    [InlineData(false, "from 9am-5pm")]
+    [InlineData(true, "9am–5pm")]
+    [InlineData(false, "9am–5pm")]
+    [InlineData(true, "from 09:00—17:00")]
+    [InlineData(false, "from 09:00—17:00")]
+    public async Task CompactClockRangesCannotExtendPastTheRequestedFinish(bool structured, string range)
+    {
+        var agenda = SyntheticAgenda();
+        agenda.Sessions.Add(Talk("morning", "Synthetic AI morning lab", "", ["AI"], 10));
+        var responses = new Queue<string>([
+            """{"speakerNames":"none","availabilityText":"9am-5pm","quantity":"some","searchQuery":"none"}""",
+            """{"dailyStart":"09:00","dailyEnd":"17:00","zone":"UTC"}""",
+            """{"quantity":"some","speakerScope":"independent"}"""
+        ]);
+        using var services = CreateServices(structured, responses);
+        var result = await CreatePlanner(services, structured).ProposeAsync(agenda,
+            $"AI {range} UTC", TimeZoneInfo.Utc, [], default);
+
+        Assert.NotNull(result.Proposal);
+        Assert.Equal(["morning"], result.Proposal.SessionIds);
+        Assert.Equal(new AvailabilityWindow("2026-11-10T09:00", "2026-11-10T17:00", "UTC"),
+            Assert.Single(result.Proposal.Availability));
+        Assert.Empty(result.Proposal.AvailabilityAssumption);
+        Assert.Empty(responses);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task InclusiveDayPartsDoNotRestrictExplicitlyUnrestrictedRequests(bool structured)
+    {
+        var responses = new Queue<string>([
+            """{"speakerNames":"none","availabilityText":"evening","quantity":"some","searchQuery":"none"}""",
+            """{"quantity":"some","speakerScope":"independent"}"""
+        ]);
+        using var services = CreateServices(structured, responses);
+        var result = await CreatePlanner(services, structured).ProposeAsync(SyntheticAgenda(),
+            "AI talks any time, including the evening", TimeZoneInfo.Utc, [], default);
+
+        Assert.True(result.Proposal is not null, result.Message);
+        Assert.Contains("overnight", result.Proposal.SessionIds);
+        Assert.Empty(result.Proposal.Availability);
+        Assert.Empty(result.Proposal.AvailabilityAssumption);
+        Assert.Empty(responses);
     }
 
     [Theory]

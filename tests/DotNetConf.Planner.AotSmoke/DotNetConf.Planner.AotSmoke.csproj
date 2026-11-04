@@ -16,6 +16,7 @@
     <Compile Include="../../src/DotNetConf.App/Services/PlannerTools.cs" Link="PlannerTools.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerToolContext.cs" Link="PlannerToolContext.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerDiscovery.cs" Link="PlannerDiscovery.cs" />
+    <Compile Include="../../src/DotNetConf.App/Services/GeminiToolCompatibility.cs" Link="GeminiToolCompatibility.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerCatalog.cs" Link="PlannerCatalog.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerJson.cs" Link="PlannerJson.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerStartingPoints.cs" Link="PlannerStartingPoints.cs" />

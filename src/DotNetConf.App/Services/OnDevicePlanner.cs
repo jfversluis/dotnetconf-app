@@ -43,7 +43,7 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
             new ChatOptions
             {
                 ResponseFormat = state.StructuredOutput ? ChatResponseFormat.ForJsonSchema(schema) : ChatResponseFormat.Text,
-                MaxOutputTokens = tokens, Temperature = temperature
+                MaxOutputTokens = tokens, Temperature = temperature, ModelId = state.ModelId
             }, token);
 
     private static AvailabilityWindow[] MergeAdjacentDays(AvailabilityWindow[] dates)
@@ -290,7 +290,7 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
             cancellationToken.ThrowIfCancellationRequested();
             if (state.ToolCalling)
                 await PlannerDiscovery.RunAsync(client, tools, scope.ServiceProvider, request,
-                    loggerFactory.CreateLogger<OnDevicePlanner>(), cancellationToken);
+                    loggerFactory.CreateLogger<OnDevicePlanner>(), cancellationToken, state.ModelId);
             else
             {
                 foreach (var speaker in preferences.RequiredSpeakers)

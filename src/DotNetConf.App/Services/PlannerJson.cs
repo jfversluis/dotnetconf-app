@@ -42,7 +42,9 @@ public sealed record PlannerInterpretation(string SpeakerNames, string Availabil
         @"(?:early|late)\s+(?:morning|afternoon|evening|night|day|hours?)|" +
         @"(?:before|after|during)[ -](?:my\s+)?(?:work|school|commute)|(?:during|while)\s+(?:my|our)\s+\p{L}+|" +
         @"(?:business|working|office)\s+hours|daytime|midday|tonight|(?:early|late)\s+in\s+the\s+day|during\s+the\s+day)\b";
+    private const string UnrestrictedTime = @"\b(?:no\s+matter\s+(?:the\s+)?time|regardless\s+of\s+(?:the\s+)?time|any\s*time)\b";
     internal const string ClockPattern = @"(?:(?<named>noon|midnight)|(?<hour>\d{1,2})(?::(?<minute>\d{2}))?\s*(?<period>am|pm)?)";
+    internal const string ClockRangeSeparator = @"(?:\s+(?:to|until|through)\s+|\s*[-–—]\s*)";
     internal const string QuantityNoun = @"(?:(?:of|out\s+of)\s+(?:(?:the|these|those)\s+)?(?:\d+\s+)?)?(?:(?!(?:for|about|on|at|in|of|with|during|before|after|from|between)\b)[\p{L}+#.-]+\s+){0,3}(?:sessions?|talks?|workshops?|keynotes?)\b";
     internal const string QuantityRangeSeparator = @"(?:to\b|and\b|or\b|through\b|[-–—])";
     public bool HasAvailability => !string.IsNullOrWhiteSpace(AvailabilityText)
@@ -56,7 +58,7 @@ public sealed record PlannerInterpretation(string SpeakerNames, string Availabil
             return true;
         if (HasAdditionalTimeHint(request))
             return true;
-        if (Regex.IsMatch(request, @"\b(?:no\s+matter\s+(?:the\s+)?time|regardless\s+of\s+(?:the\s+)?time|any\s*time)\b",
+        if (Regex.IsMatch(request, UnrestrictedTime,
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
             return false;
         return HasAvailability && Regex.IsMatch(request,
@@ -64,8 +66,18 @@ public sealed record PlannerInterpretation(string SpeakerNames, string Availabil
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
     }
 
-    public static bool HasAdditionalTimeHint(string request) => Regex.IsMatch(request, AdditionalTimeHints,
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+    public static bool HasAdditionalTimeHint(string request)
+    {
+        if (Regex.IsMatch(request, UnrestrictedTime,
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
+            request = Regex.Replace(request, $@"\bincluding\s+(?:the\s+)?{AdditionalTimeHints}",
+                match => Agenda.IsNegatedTimeConstraint(request[..match.Index])
+                    ? throw new InvalidDataException("Excluding a time period isn't supported yet. Request the hours you can watch.")
+                    : "",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        return Regex.IsMatch(request, AdditionalTimeHints,
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+    }
 
     private static bool HasClockHint(string request) => Regex.IsMatch(request,
         @"\b(?:\d{1,2}:\d{2}|\d{1,2}\s*(?:am|pm)|noon|midnight)\b|\b(?:before|after|until|by|from)\s+(?:1[3-9]|2[0-3])\b",
@@ -75,7 +87,7 @@ public sealed record PlannerInterpretation(string SpeakerNames, string Availabil
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
 
     public static string WithoutClockLimits(string request) => Regex.Replace(request,
-        $@"\b(?:before|until|by|after|from|between|earlier than|later than)\s+{ClockPattern}(?:\s+(?:to|and|until|through|-)\s+{ClockPattern})?\b",
+        $@"\b(?:before|until|by|after|from|between|earlier than|later than)\s+{ClockPattern}(?:(?:\s+and\s+|{ClockRangeSeparator}){ClockPattern})?\b",
         "", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
 
     public static string WithoutCalendarDates(string request)
@@ -404,7 +416,7 @@ public sealed record PlannerTopicRequest(string Text, string[] Topics, string Qu
             remaining = Regex.Replace(remaining, @"\b(?:gaps?|fill|fits?|fitting|here|my|schedule|free|slots?|spare|have|what|could|around|commitments|saved|help|suggest|something|attend)\b", "",
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
             return Regex.Replace(remaining,
-                @"\b(?:all|every|everything|each|day|daily|sessions?|talks?|show|give|find|me|by|from|with|and|or|of|the|please|s|a|an|I|want|would|like|must|can|see|watch|only|just|available|unavailable|unable|able|availability|on|at|in|before|after|between|until|to|time|local|UTC|am|pm|noon|midnight|don|won|will|t|do|not|nothing|without|avoid|avoiding|except|miss|any|but|exclude|excluding|ending|ends?|finish(?:ing|es)?|they|are|for|no|matter|regardless|about|surprise|January|February|March|April|May|June|July|August|September|October|November|December|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b", "",
+                @"\b(?:all|every|everything|each|day|daily|sessions?|talks?|show|give|find|me|by|from|with|and|or|of|the|please|s|a|an|I|want|would|like|must|can|see|watch|only|just|available|unavailable|unable|able|availability|on|at|in|before|after|between|until|to|time|local|UTC|am|pm|noon|midnight|don|won|will|t|do|not|nothing|without|avoid|avoiding|except|miss|any|but|exclude|excluding|including|ending|ends?|finish(?:ing|es)?|they|are|for|no|matter|regardless|about|surprise|January|February|March|April|May|June|July|August|September|October|November|December|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b", "",
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
         }
         if (!Remaining(request).Any(char.IsLetter))
@@ -472,7 +484,7 @@ public sealed record PlannerDailyAvailability(string DailyStart, string DailyEnd
         request = Regex.Replace(PlannerInterpretation.WithoutCalendarDates(request), @"\b\d{1,2}/\d{1,2}(?:/\d{2,4})?\b", "",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
         request = Regex.Replace(request,
-            $@"\b(?<minimum>\d{{1,2}})\s+{PlannerInterpretation.QuantityRangeSeparator}\s+(?<maximum>\d{{1,2}})\b(?=\s+{PlannerInterpretation.QuantityNoun})",
+            $@"\b(?<minimum>\d{{1,2}})\s*{PlannerInterpretation.QuantityRangeSeparator}\s*(?<maximum>\d{{1,2}})\b(?=\s+{PlannerInterpretation.QuantityNoun})",
             match => int.Parse(match.Groups["minimum"].Value, CultureInfo.InvariantCulture)
                     <= int.Parse(match.Groups["maximum"].Value, CultureInfo.InvariantCulture)
                 ? "" : match.Value,
@@ -483,19 +495,22 @@ public sealed record PlannerDailyAvailability(string DailyStart, string DailyEnd
         if (bareCutoffs.Any(m => int.Parse(m.Groups["hour"].Value, CultureInfo.InvariantCulture) <= 12))
             throw new InvalidDataException("Clarify the clock cutoff with am/pm or HH:mm, such as 9am, 9pm or 09:00.");
         const string clock = PlannerInterpretation.ClockPattern;
+        const string separator = PlannerInterpretation.ClockRangeSeparator;
         var range = Regex.Match(request,
-            $@"\b(?:(?:from|between)\s+{clock}\s+(?:to|and|until|through|-)\s+{clock}|{clock}\s+(?:to|until|through|-)\s+{clock})\b",
+            $@"\b(?:(?:from|between)\s+{clock}(?:\s+and\s+|{separator}){clock}|{clock}{separator}{clock})\b",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        if (range.Success && Agenda.IsNegatedTimeConstraint(request[..range.Index]))
+            throw new InvalidDataException("Excluding a time range isn't supported yet. Request the hours you can watch.");
         if (range.Success && !Regex.IsMatch(range.Value, @"^\s*(?:from|between)\b|:|(?:am|pm)\b|\b(?:noon|midnight)\b",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
             throw new InvalidDataException("Clarify the clock range with am/pm or HH:mm, such as 9am to 5pm.");
-        var bareRangeEnd = Regex.Match(request, $@"\b{clock}\s+(?:to|and|until|through|-)\s+(?<bareEnd>\d{{1,2}})\b(?!:\d|\s*(?:am|pm)\b)",
+        var bareRangeEnd = Regex.Match(request, $@"\b{clock}(?:\s+and\s+|{separator})(?<bareEnd>\d{{1,2}})\b(?!:\d|\s*(?:am|pm)\b)",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
         if (bareRangeEnd.Success && int.Parse(bareRangeEnd.Groups["bareEnd"].Value, CultureInfo.InvariantCulture) <= 12)
             throw new InvalidDataException("Clarify the clock cutoff with am/pm or HH:mm, such as 9am, 9pm or 09:00.");
         var cutoffs = Regex.Matches(request, $@"\b(?<operator>before|until|by|after|from|earlier than|later than)\s+{clock}\b",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)).Cast<Match>().ToArray();
-        var clocks = Regex.Matches(request, $@"\b{clock}(?=\s|[.,;!?]|$)",
+        var clocks = Regex.Matches(request, $@"\b{clock}(?=\s|[.,;!?\-–—]|$)",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100))
             .Where(m => m.Groups["named"].Success || m.Groups["period"].Success || m.Groups["minute"].Success
                 || int.Parse(m.Groups["hour"].Value, CultureInfo.InvariantCulture) > 12

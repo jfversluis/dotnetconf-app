@@ -1,11 +1,14 @@
 using Microsoft.Maui.Essentials.AI;
+using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
 
 namespace DotNetConf.App.Services;
 
 #pragma warning disable MAUIAI0001
-public sealed class OnDeviceModelStatus : IPlannerModelStatus
+public sealed class OnDeviceModelStatus(ILogger<OnDeviceModelStatus> logger) : IPlannerModelStatus
 {
+    private readonly ILogger<OnDeviceModelStatus> logger = logger;
+
     public async Task<PlannerModelState> ReadAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -40,6 +43,9 @@ public sealed class OnDeviceModelStatus : IPlannerModelStatus
             _ => "Gemini Nano isn't available right now. Check for Android AICore updates in Google Play, then try again. Device support and model settings affect availability. You can still save talks with hearts in Sessions."
         };
 #endif
+        if (setup == PlannerModelSetup.Unavailable)
+            logger.LogWarning("On-device model is {Availability}: {Reason}.",
+                status.Availability, status.UnavailableReason);
         return new(status.Availability == ChatModelAvailability.Available,
             status.Capabilities?.Contains(ChatModelCapability.StructuredOutput) == true,
             setup == PlannerModelSetup.Ready ? "" : reason)

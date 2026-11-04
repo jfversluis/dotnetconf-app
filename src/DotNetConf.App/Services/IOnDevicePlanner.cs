@@ -23,6 +23,7 @@ public interface IPlannerScheduleUpdates
 public sealed record PlannerModelState(bool Available, bool StructuredOutput, string Reason)
 {
     public bool ToolCalling { get; init; }
+    public string? ModelId { get; init; }
     public PlannerModelSetup Setup { get; init; } = Available ? PlannerModelSetup.Ready : PlannerModelSetup.Unavailable;
 }
 

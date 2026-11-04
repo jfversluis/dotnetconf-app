@@ -72,6 +72,7 @@ public sealed class PlannerJsonTests
     [InlineData("Everything from Gerald, no matter the time", false)]
     [InlineData("All of Alex's talks, regardless of time", false)]
     [InlineData("All Alex talks anytime", false)]
+    [InlineData("AI talks any time, including the evening", false)]
     [InlineData("Alex on November 11, no matter the time", true)]
     [InlineData("Alex anytime after 10:00", true)]
     [InlineData("Alex anytime before noon", true)]
