@@ -1,6 +1,6 @@
 # .NET Conf companion privacy policy
 
-Last updated: November 1, 2026.
+Last updated: November 3, 2026.
 
 This policy describes the .NET Conf companion app maintained by Gerald
 Versluis. The app is in development and has not been released. This policy is
@@ -57,8 +57,16 @@ information are processed by a local model through Apple Intelligence on iOS
 or Gemini Nano on supported Android devices. The app does not send planner
 requests or responses to an app-operated AI service or use a cloud-model
 fallback. It does not save planner requests, proposals, or chat history;
-confirmed session choices are stored locally. The app checks whether a local
-model is ready but does not start a model download.
+confirmed session choices are stored locally. Checking model readiness does not
+start a download. On compatible Android devices, choosing **Download on-device
+model** explicitly requests Gemini Nano model assets through Android AICore.
+This uses internet access and device storage; mobile data charges may apply.
+Google and its delivery providers receive the network/device metadata needed to
+provide those assets, under their own policies. Planner requests and agenda
+content are not included in the model-download request. Android manages the
+model's storage and may continue a download after you leave the planner or stop
+waiting. Stopping waiting is not a guarantee of cancelling or deleting the
+system-managed model. On iOS, model setup remains in device settings.
 On tool-capable models, the model can request read-only agenda searches in the
 app. Their results stay within this on-device planning flow; the model cannot
 save sessions without your confirmation.

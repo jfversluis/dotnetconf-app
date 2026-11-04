@@ -5,6 +5,8 @@ namespace DotNetConf.Core.Tests;
 internal sealed class TestPlannerModelStatus(bool available = true, bool structuredOutput = true, bool toolCalling = false) : IPlannerModelStatus
 {
     public int Calls { get; private set; }
+    public IAsyncEnumerable<PlannerModelDownload> DownloadAsync(CancellationToken cancellationToken) =>
+        throw new NotSupportedException("Synthetic model does not support downloads.");
     public Task<PlannerModelState> ReadAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();

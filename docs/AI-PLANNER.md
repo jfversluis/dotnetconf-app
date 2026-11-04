@@ -34,6 +34,45 @@ Times use your device's time zone, or you can name UTC or a time-zone ID such as
 `America/New_York`. For time ranges, use explicit times such as "9am to 11am"
 or "09:00 to 11:00".
 
+For one-sided time requests, **Watching hours** supplies the missing
+boundary. The initial defaults are 07:00–23:00: "before 10pm" means
+07:00–22:00, and "after 6pm" means 18:00–23:00. Choose **Change** beside
+the hours to edit either clock before searching, or state both times in your request.
+The assumed boundary appears above your shortlist, with the time zone if you
+specified one. Defaults use the requested time zone and never restrict a request
+with no time limits.
+
+Explicit early or late limits still work: "before 6am" means midnight–06:00,
+not 07:00 through the following morning. "After 11:30pm" means
+23:30–midnight. Explicit ranges such as "from 10pm to 2am" and "anytime before
+11pm" override the defaults. The whole session must fit within your availability,
+not just its start time. Changing the defaults clears the old preview so you
+can review a fresh one. Talks outside your availability aren't offered as
+alternative choices in the shortlist. If an overnight default conflicts with a
+single cutoff, or you want to exclude a block of time, state the hours you can
+watch explicitly instead. For phrases such as "afternoon" or "after work,"
+the model estimates the hours and shows them above the shortlist. Review them;
+if the estimate isn't right or can't be determined, use explicit times instead.
+Write dates with a month name or as `yyyy-MM-dd` to avoid ambiguity, and put date
+ranges in chronological order. If a number after a date could be another day or
+a session count, repeat the month for each date or remove the count. For different
+hours on different days, or to exclude a date, make separate requests listing when
+you can watch. The agenda doesn't label session difficulty, so requests that
+filter by difficulty need to use a topic or speaker instead.
+
+## Why a session matches
+
+Focused topic requests prefer sessions whose published title or description
+mentions the topic, including sessions missing topic tags. When a topic has
+no such matches in the requested speaker scope, the planner falls back to
+Microsoft's topic tags. These tags can be broad. This is keyword-based grounding,
+not a claim that AI has judged the session's quality or depth.
+
+Ask for **all** sessions about a topic to include tag-only matches as well as
+title/description matches. Requests for a speaker's sessions remain independent
+unless you specifically ask for that person's talks about a topic. Topic filters
+in the normal agenda continue to use Microsoft's tags unchanged.
+
 ## Make room for discovery
 
 Already saved a few talks? In **My Schedule**, choose **Find talks for my gaps**
@@ -47,13 +86,16 @@ those days' published agenda. Your existing choices stay in place.
 Try discovery in the welcome experience or open
 **My Schedule** and choose **Discover sessions for my schedule**. If you've already
 saved sessions, choose **Find talks for my gaps** instead. Find sessions, then
-review the shortlist, session times, and any warnings. Open **Show matching
+review the shortlist and any warnings. Each talk shows its local start date
+and time, plus its duration, without repeating the end timestamp.
+Open **Show matching
 details** to see how the planner understood your request.
 
 AI can misunderstand, so edit your request and try again if something is
 wrong. Checked sessions are the proposed additions, not already-saved talks.
 Unchecked alternatives also match; their overlap warnings explain tradeoffs.
-Select the talks you want and choose **Add N to My Schedule**. Nothing is added until that action, and your
+Select the talks you want. For AI suggestions, confirm you've reviewed the sessions
+and times, then choose **Add N to My Schedule**. Nothing is added until that action, and your
 previously saved sessions aren't removed.
 There is no 12-session saving limit. Selecting nothing asks you to select at
 least one session. If an "all" request has incompatible requirements, edit it
@@ -73,9 +115,22 @@ service. You'll need a downloaded agenda and a ready local model:
 - **Android:** Gemini Nano on a compatible device with Android 8 or later and
   the model available through AICore.
 
-Device, language, region, and model settings affect availability. The app
-doesn't start a model download. Linux desktop and browser builds don't support
-the on-device AI option. If the model isn't available, you can still explore a
+Device, language, region, and model settings affect availability. Checking
+availability never starts a download.
+
+On compatible Android phones that need Gemini Nano, choose **Download on-device
+model** in the planner or welcome experience. This is a one-time setup using
+internet access and device storage, potentially several GB. Wi-Fi is recommended; mobile data charges
+may apply. The planner shows progress when Android provides it and checks
+readiness again before enabling planning. If setup fails, check your connection
+and available storage, then choose **Check again** to retry. You can choose
+**Stop waiting**, skip setup, or leave the screen; Android may continue the
+download in the background. Return to the planner and choose **Check again**
+to see whether it's ready. The app does not remove system-managed model assets.
+On iOS, enable Apple Intelligence and manage model setup in device settings.
+
+Linux desktop and browser builds don't support
+the on-device planner. If the model isn't available, you can still explore a
 random mix or browse the agenda and save sessions with hearts. A previously downloaded agenda can be
 used offline; a first download needs an internet connection.
 

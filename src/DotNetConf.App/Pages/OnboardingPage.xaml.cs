@@ -93,6 +93,14 @@ public partial class OnboardingPage : ContentPage
     private void RemindersChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args) =>
         UpdatePermissionState();
 
+    private void PlannerChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(PlannerViewModel.HasCheckedModel))
+            ShowReadyPlanner();
+        if (args.PropertyName == nameof(PlannerViewModel.IsSaving))
+            OnPropertyChanged(nameof(CanNavigate));
+    }
+
     private void PositionChanged(object? sender, PositionChangedEventArgs args)
     {
         OnPropertyChanged(nameof(CanGoBack));
@@ -100,7 +108,7 @@ public partial class OnboardingPage : ContentPage
         OnPropertyChanged(nameof(ProgressText));
         if (plannerView is not null)
             plannerView.IsActive = pageVisible && Carousel.Position == 1;
-        if (args.PreviousPosition == 1 && !PreparingScheduleStep)
+        if (args.PreviousPosition == 1 && (plannerView is not null || !PreparingScheduleStep))
             planner.Cancel();
     }
 
@@ -185,12 +193,6 @@ public partial class OnboardingPage : ContentPage
             confirmingSchedule = false;
             OnPropertyChanged(nameof(CanNavigate));
         }
-    }
-
-    private void PlannerChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
-    {
-        if (args.PropertyName == nameof(PlannerViewModel.IsSaving))
-            OnPropertyChanged(nameof(CanNavigate));
     }
 
     private async void EnableRemindersClicked(object? sender, EventArgs args)

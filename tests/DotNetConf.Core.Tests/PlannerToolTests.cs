@@ -361,7 +361,7 @@ public sealed class PlannerToolTests
         tools.TopicSessions(0);
         tools.TopicSessions(4);
         Assert.StartsWith("Preview ready.", tools.SubmitProposal(tools.EligibleCandidateIds));
-        Assert.True(tools.Proposal!.MatchedSessionIds.Length > tools.Proposal.SessionIds.Length);
+        Assert.Equal(tools.Proposal!.SessionIds.Order(), tools.Proposal.MatchedSessionIds.Order());
         var proposal = tools.Proposal!;
         Assert.Same(proposal, SchedulePlanner.Arrange(conference, proposal, TimeZoneInfo.Utc, []));
     }
@@ -409,11 +409,11 @@ public sealed class PlannerToolTests
         Assert.DoesNotContain("gerald-csharp-ai", tools.EligibleCandidateIds);
         Assert.Equal(4, tools.EligibleCandidateIds.Length);
         Assert.StartsWith("Preview ready.", tools.SubmitProposal(tools.EligibleCandidateIds));
-        Assert.Contains("gerald-csharp-ai", tools.Proposal!.MatchedSessionIds);
+        Assert.DoesNotContain("gerald-csharp-ai", tools.Proposal!.MatchedSessionIds);
         tools.CapturePreferences(["Gerald"], windows, true);
         tools.SpeakerSessions("Gerald");
         Assert.StartsWith("Preview ready.", tools.SubmitProposal(tools.EligibleCandidateIds));
-        Assert.Equal(2, tools.Proposal!.MatchedSessionIds.Length);
+        Assert.Single(tools.Proposal!.MatchedSessionIds);
         Assert.Equal(["gerald-maui-testing"], tools.Proposal.SessionIds);
     }
 

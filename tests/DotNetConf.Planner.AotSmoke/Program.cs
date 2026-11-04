@@ -11,6 +11,19 @@ Require(JsonSerializer.IsReflectionEnabledByDefault, "AI Attributes preview 14 r
 
 await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
 var conference = await ConferenceJson.ReadAsync(stream);
+const string request = "AI sessions before 11pm Etc/GMT+2.";
+var daily = PlannerJson.DeserializeResponse(
+    "```json\n{\"dailyStart\":\"none\",\"dailyEnd\":\"23:00\",\"zone\":\"local\"}\n```",
+    PlannerJsonContext.Default.PlannerDailyAvailability)
+    ?? throw new InvalidDataException("Missing daily availability.");
+var zone = PlannerInterpretation.RequestedZone(request);
+var limits = (daily.Ground(request) with { Zone = zone }).Complete(PlannerWatchingHours.Default);
+var windows = limits.ToWindows(TimeZoneInfo.Utc, conference);
+Require(limits.Assumption == "Assumed daily start: 07:00 (Etc/GMT+2).", "Requested zone or assumed hours were lost.");
+Require(windows.Length > 0 && windows.All(window => window.Zone == zone
+    && window.Start.EndsWith("T07:00", StringComparison.Ordinal)
+    && window.End.EndsWith("T23:00", StringComparison.Ordinal)), "NativeAOT changed the requested availability.");
+Require(PlannerInterpretation.RequestedZone("HTTP/2 before 11pm UTC.") == "UTC", "A protocol version became a time zone.");
 using var services = new ServiceCollection().AddScoped<PlannerTools>().BuildServiceProvider(
     new ServiceProviderOptions { ValidateScopes = true });
 using var scope = services.CreateScope();
@@ -112,7 +125,7 @@ Require(tools.DiscoveryComplete && tools.CandidateIds.Contains("building-with-ma
     "Model-selected discovery lost real candidates.");
 Require(tools.Proposal is null, "The model's read-only tools submitted a proposal.");
 
-Console.WriteLine("PASS: NativeAOT generated planner bindings, schemas, JSON and typed arguments, defaults, validation, scope isolation, cancellation, call budget and model-selected tool invocation through Microsoft.Extensions.AI. JSON reflection is explicitly enabled; dynamic code is unavailable.");
+Console.WriteLine("PASS: NativeAOT planner availability, generated bindings, schemas, JSON and typed arguments, defaults, validation, scope isolation, cancellation, call budget and model-selected tool invocation through Microsoft.Extensions.AI. JSON reflection is explicitly enabled; dynamic code is unavailable.");
 
 static AIFunctionArguments Arguments(string json) =>
     JsonSerializer.Deserialize<AIFunctionArguments>(json, AIJsonUtilities.DefaultOptions)

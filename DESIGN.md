@@ -113,7 +113,13 @@ and Add N action explain that checking is not saving; no redundant confirmation
 checkbox is required. Matching details are collapsed behind a text action, not an
 AI-debug section ahead of the sessions. Warnings and blocking validation stay
 visible; successful validation and idle-ready boilerplate do not compete with
-the task. Users review the selected sessions and times before confirming.
+the task. Shortlist rows keep title and speaker prominent, followed by one
+compact line of local start date/time and duration, without per-talk matching
+explanations. The accessible checkbox description retains the end date/time.
+Watching hours sit in a single summary row with a Change action; native clock
+pickers and guidance expand only when needed. Any assumed time boundary stays
+visible above the shortlist as a short factual note. Users review the selected
+sessions and times before confirming.
 After saving, View My Schedule provides the next step. The same semantic theme
 tokens, scalable text, 48-unit actions, and typed Fluent icons apply throughout.
 The planner editor has an explicit iOS accessibility label; Android uses matching

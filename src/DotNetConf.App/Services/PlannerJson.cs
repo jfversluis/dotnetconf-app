@@ -1,13 +1,50 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using DotNetConf.Core;
 
 namespace DotNetConf.App.Services;
 
+internal static class PlannerJson
+{
+    public static T? DeserializeResponse<T>(string text, JsonTypeInfo<T> typeInfo)
+    {
+        var json = text.AsSpan().Trim();
+        if (json.StartsWith("```", StringComparison.Ordinal))
+        {
+            var firstLineEnd = json.IndexOf('\n');
+            if (firstLineEnd < 0)
+                throw new JsonException("The model returned an incomplete JSON code block.");
+            var language = json[3..firstLineEnd].Trim();
+            if (!language.IsEmpty && !language.Equals("json", StringComparison.OrdinalIgnoreCase))
+                throw new JsonException("The model returned a code block that is not JSON.");
+            json = json[(firstLineEnd + 1)..];
+            var lastLineStart = json.LastIndexOf('\n');
+            if (lastLineStart < 0 || !json[(lastLineStart + 1)..].Trim().SequenceEqual("```"))
+                throw new JsonException("The model returned an incomplete JSON code block or extra text.");
+            json = json[..lastLineStart];
+        }
+        return JsonSerializer.Deserialize(json, typeInfo);
+    }
+}
+
 public sealed record PlannerInterpretation(string SpeakerNames, string AvailabilityText, string SearchQuery, string Quantity)
 {
+    private const string FullMonths = @"January|February|March|April|May|June|July|August|September|October|November|December";
+    private const string Months = @"Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?";
+    private const string Weekdays = @"Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday";
+    internal const string DatePattern = @"\b(?:(?<iso>\d{4}-\d{2}-\d{2})|(?<month>" + Months +
+        @")\.?\s+(?<day>\d{1,2})(?:st|nd|rd|th)?(?:,?\s+(?<year>\d{4}))?)\b";
+    private const string DayParts = @"(?:morning|afternoon|evening|night)s?|(?:early|late)(?!-)|lunchtime";
+    private const string AdditionalTimeHints = @"\b(?:(?:morning|afternoon|evening|night)s?|lunchtime|lunch|breakfast|dinner|" +
+        @"(?:early|late)\s+(?:morning|afternoon|evening|night|day|hours?)|" +
+        @"(?:before|after|during)[ -](?:my\s+)?(?:work|school|commute)|(?:during|while)\s+(?:my|our)\s+\p{L}+|" +
+        @"(?:business|working|office)\s+hours|daytime|midday|tonight|(?:early|late)\s+in\s+the\s+day|during\s+the\s+day)\b";
+    internal const string ClockPattern = @"(?:(?<named>noon|midnight)|(?<hour>\d{1,2})(?::(?<minute>\d{2}))?\s*(?<period>am|pm)?)";
+    internal const string QuantityNoun = @"(?:(?:of|out\s+of)\s+(?:(?:the|these|those)\s+)?(?:\d+\s+)?)?(?:(?!(?:for|about|on|at|in|of|with|during|before|after|from|between)\b)[\p{L}+#.-]+\s+){0,3}(?:sessions?|talks?|workshops?|keynotes?)\b";
+    internal const string QuantityRangeSeparator = @"(?:to\b|and\b|or\b|through\b|[-–—])";
     public bool HasAvailability => !string.IsNullOrWhiteSpace(AvailabilityText)
         && !AvailabilityText.Equals("none", StringComparison.OrdinalIgnoreCase);
 
@@ -17,78 +54,250 @@ public sealed record PlannerInterpretation(string SpeakerNames, string Availabil
             @"\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\b\d{1,2}:\d{2}\b|\b(?:before|after|until|by|from|between)\s+(?:\d{1,2}|noon|midnight)\b",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
             return true;
+        if (HasAdditionalTimeHint(request))
+            return true;
         if (Regex.IsMatch(request, @"\b(?:no\s+matter\s+(?:the\s+)?time|regardless\s+of\s+(?:the\s+)?time|any\s*time)\b",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
             return false;
         return HasAvailability && Regex.IsMatch(request,
-            @"\b(?:morning|afternoon|evening|night|late|early|noon|midnight|lunchtime|weekends?|weekdays?|hours?|before|after|until|between|during)\b",
+            $@"\b(?:{DayParts}|noon|midnight|weekends?|weekdays?|hours?|before|after|until|between|during)\b",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
     }
 
-    public static bool TryDatedWindow(string request, int conferenceYear, string zone, out AvailabilityWindow window)
+    public static bool HasAdditionalTimeHint(string request) => Regex.IsMatch(request, AdditionalTimeHints,
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+
+    private static bool HasClockHint(string request) => Regex.IsMatch(request,
+        @"\b(?:\d{1,2}:\d{2}|\d{1,2}\s*(?:am|pm)|noon|midnight)\b|\b(?:before|after|until|by|from)\s+(?:1[3-9]|2[0-3])\b",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+
+    public static string WithoutTimeHints(string request) => Regex.Replace(request, AdditionalTimeHints, "",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+
+    public static string WithoutClockLimits(string request) => Regex.Replace(request,
+        $@"\b(?:before|until|by|after|from|between|earlier than|later than)\s+{ClockPattern}(?:\s+(?:to|and|until|through|-)\s+{ClockPattern})?\b",
+        "", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+
+    public static string WithoutCalendarDates(string request)
     {
-        window = null!;
-        var dates = Regex.Matches(request,
-            @"\b(?:(?<iso>\d{4}-\d{2}-\d{2})|(?<month>January|February|March|April|May|June|July|August|September|October|November|December)\s+(?<day>\d{1,2})(?:st|nd|rd|th)?(?:,?\s+(?<year>\d{4}))?)\b",
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
-        const string clock = @"(?<hour>\d{1,2})(?::(?<minute>\d{2}))?\s*(?<period>am|pm)?";
-        var range = Regex.Match(request, $@"\b(?:from|between)\s+{clock}\s+(?:to|and|-)\s+{clock}\b",
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
-        if (dates.Count != 1 || !range.Success)
-            return false;
-        var date = dates[0];
-        DateOnly day;
+        var dates = Regex.Matches(request, DatePattern,
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)).Cast<Match>().ToArray();
+        foreach (var date in dates.Reverse())
+        {
+            var end = date.Index + date.Length;
+            end += DateLabelLength(request, end);
+            while (DateContinuation(request, end) is { Success: true } continuation)
+                end += continuation.Length;
+            var prefix = Regex.Match(request[..date.Index],
+                $@"\b(?:(?:on|before|after|until|from|since|starting|beginning|between|and|to|through|till|by)\s+)?(?:{Weekdays}),?\s*$|" +
+                @"\b(?:on\s+or\s+(?:before|after)|on|before|after|until|from|since|starting|beginning|between|and|to|through|till|by)\s*$",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+            var start = prefix.Success ? prefix.Index : date.Index;
+            request = request.Remove(start, end - start);
+        }
+        return request;
+    }
+
+    private static DateOnly ReadDate(Match date, int conferenceYear)
+    {
         if (date.Groups["iso"].Success)
+            return DateOnly.TryParseExact(date.Groups["iso"].Value, "yyyy-MM-dd", CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var iso) ? iso : throw new InvalidDataException("The requested date is invalid.");
+        var year = date.Groups["year"].Success ? int.Parse(date.Groups["year"].Value, CultureInfo.InvariantCulture) : conferenceYear;
+        var month = DateTime.ParseExact(date.Groups["month"].Value, ["MMM", "MMMM"], CultureInfo.InvariantCulture,
+            DateTimeStyles.None).Month;
+        try { return new(year, month, int.Parse(date.Groups["day"].Value, CultureInfo.InvariantCulture)); }
+        catch (ArgumentOutOfRangeException exception) { throw new InvalidDataException("The requested date is invalid.", exception); }
+    }
+
+    private static Match DateContinuation(string request, int index) => Regex.Match(request[index..],
+        @"^\s*(?<separator>,|&|and\b|or\b|plus\b|to\b|through\b|until\b|till\b|[-–—])\s*(?<day>\d{1,2})(?:st|nd|rd|th)?\b(?!\s*(?::\d|am\b|pm\b))",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+
+    private static int DateLabelLength(string request, int index) => Regex.Match(request[index..],
+        $@"^\s*(?:\(\s*(?:{Weekdays})\s*\)|,\s*(?:{Weekdays})\b)",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)).Length;
+
+    private sealed record SourceDates(DateOnly[] Days, bool IsRange, string? Boundary)
+    {
+        public DateOnly First => Days[0];
+        public DateOnly Last => Days[^1];
+
+        public bool Contains(DateOnly day) => Boundary switch
         {
-            if (!DateOnly.TryParseExact(date.Groups["iso"].Value, "yyyy-MM-dd", CultureInfo.InvariantCulture,
-                DateTimeStyles.None, out day))
-                throw new InvalidDataException("The requested date is invalid.");
+            "before" => day < First,
+            "after" => day > First,
+            "until" => day <= First,
+            not null => day >= First,
+            _ => IsRange ? day >= First && day <= Last : Days.Contains(day)
+        };
+    }
+
+    private static SourceDates? ReadSourceDates(string request, int conferenceYear)
+    {
+        var matches = Regex.Matches(request, DatePattern,
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)).Cast<Match>().ToArray();
+        if (matches.Length == 0)
+            return null;
+        var labels = Regex.Matches(request, $@"\b(?:{Weekdays}|today|tomorrow)\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        var labelledDates = new HashSet<int>();
+        foreach (Match label in labels)
+        {
+            if (!Enum.TryParse<DayOfWeek>(label.Value, true, out var day))
+                throw new InvalidDataException("Use matching weekdays and calendar dates, or name each day explicitly.");
+            var date = matches.FirstOrDefault(match => !labelledDates.Contains(match.Index)
+                && ReadDate(match, conferenceYear).DayOfWeek == day
+                && (label.Index + label.Length <= match.Index && request[(label.Index + label.Length)..match.Index].Trim() is "" or ","
+                    || match.Index + match.Length <= label.Index && request[(match.Index + match.Length)..label.Index].Trim() is "" or "(" or ","));
+            if (date is null)
+                throw new InvalidDataException("Use matching weekdays and calendar dates, or name each day explicitly.");
+            labelledDates.Add(date.Index);
         }
-        else
+        foreach (var match in matches)
         {
-            var year = date.Groups["year"].Success ? int.Parse(date.Groups["year"].Value, CultureInfo.InvariantCulture) : conferenceYear;
-            var month = DateTime.ParseExact(date.Groups["month"].Value, "MMMM", CultureInfo.InvariantCulture).Month;
-            try { day = new(year, month, int.Parse(date.Groups["day"].Value, CultureInfo.InvariantCulture)); }
-            catch (ArgumentOutOfRangeException exception) { throw new InvalidDataException("The requested date is invalid.", exception); }
-        }
-        var clocks = Regex.Matches(range.Value, clock, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
-            TimeSpan.FromMilliseconds(100));
-        TimeOnly ReadClock(int index)
-        {
-            var clockText = clocks[index];
-            var hour = int.Parse(clockText.Groups["hour"].Value, CultureInfo.InvariantCulture);
-            var minute = clockText.Groups["minute"].Success ? int.Parse(clockText.Groups["minute"].Value, CultureInfo.InvariantCulture) : 0;
-            var period = clockText.Groups["period"].Value.ToLowerInvariant();
-            if (period.Length == 0 && !clockText.Groups["minute"].Success && hour is >= 1 and <= 12)
-                throw new InvalidDataException("Clarify the clock cutoff with am/pm or HH:mm, such as 9am, 9pm or 09:00.");
-            if (period.Length > 0)
+            var beforeDate = Regex.Replace(request[..match.Index], $@"\b(?:{Weekdays}),?\s*$", "",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+            beforeDate = Regex.Replace(beforeDate, @"\b(?:on|during|before|after|until|from|since)\s*$", "",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+            if (Regex.IsMatch(beforeDate, @"\b(?:skip(?:ping)?|ignor(?:e|ing)|other\s+than|apart\s+from)\s*$",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
+                throw new InvalidDataException("Excluding dates isn't supported yet. List the days you can watch.");
+            if (Agenda.IsNegatedTimeConstraint(beforeDate))
             {
-                if (hour is < 1 or > 12)
-                    throw new InvalidDataException("The requested clock time is invalid.");
-                hour = hour % 12 + (period == "pm" ? 12 : 0);
+                var clock = Regex.Match(beforeDate, $@"\b(?:before|after|until|by|from)\s+{ClockPattern}\s*$",
+                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+                var clockAfterDate = Regex.IsMatch(request[(match.Index + match.Length)..],
+                    $@"^\s*,?\s*(?:before|after|until|by|from)\s+{ClockPattern}\b",
+                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+                if ((!clock.Success || !Agenda.IsNegatedTimeConstraint(beforeDate[..clock.Index])) && !clockAfterDate)
+                    throw new InvalidDataException("Excluding dates isn't supported yet. List the days you can watch.");
             }
-            if (hour > 23 || minute > 59)
-                throw new InvalidDataException("The requested clock time is invalid.");
-            return new(hour, minute);
         }
-        var start = ReadClock(0);
-        var end = ReadClock(1);
-        if (end <= start)
-            throw new InvalidDataException("Use explicit dates for an overnight availability window.");
-        window = new(day.ToDateTime(start).ToString("yyyy-MM-dd'T'HH:mm", CultureInfo.InvariantCulture),
-            day.ToDateTime(end).ToString("yyyy-MM-dd'T'HH:mm", CultureInfo.InvariantCulture), zone);
+        for (var index = 0; index < matches.Length - 1; index++)
+        {
+            var betweenDates = request[(matches[index].Index + matches[index].Length)..matches[index + 1].Index];
+            if (HasAdditionalTimeHint(betweenDates) || HasClockHint(betweenDates) || Regex.IsMatch(betweenDates,
+                @"\b(?:before|after|since|starting|beginning)\s*$|\b(?:and|but|or)\s+(?:until|from)\s*$",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
+                throw new InvalidDataException("For different dates or time limits, use separate planner requests.");
+        }
+        var dates = matches.Select(match => ReadDate(match, conferenceYear)).ToHashSet();
+        var leading = Regex.Replace(request[..matches[0].Index], $@"\b(?:{Weekdays}),?\s*$", "",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        var boundary = Regex.Match(leading,
+            @"\b(?<direction>on\s+or\s+after|on\s+or\s+before|by|through|from|after|since|starting|beginning|before|until)\s*$",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        var direction = boundary.Groups["direction"].Value.ToLowerInvariant() switch
+        {
+            var value when value.StartsWith("on", StringComparison.Ordinal) =>
+                value.EndsWith("after", StringComparison.Ordinal) ? "from" : "until",
+            "by" or "through" => "until",
+            var value => value
+        };
+        var between = Regex.IsMatch(request[..matches[0].Index], @"\bbetween\s*$",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        var continuationRange = false;
+        foreach (var match in matches.Where(match => match.Groups["month"].Success))
+        {
+            var firstDate = ReadDate(match, conferenceYear);
+            var previousDate = firstDate;
+            var index = match.Index + match.Length;
+            index += DateLabelLength(request, index);
+            var firstContinuation = index;
+            while (DateContinuation(request, index) is { Success: true } continuation)
+            {
+                var separator = continuation.Groups["separator"].Value.ToLowerInvariant();
+                var list = separator is "," or "&" or "and" or "or" or "plus";
+                if (list && index == firstContinuation && Regex.IsMatch(request[(index + continuation.Length)..],
+                    $@"^\s*(?:{QuantityRangeSeparator}\s*\d{{1,2}}\s+)?{QuantityNoun}",
+                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
+                    throw new InvalidDataException("That number could be a day or a session count. Repeat the month for each date or remove the session count.");
+                continuationRange |= !list;
+                try
+                {
+                    var date = new DateOnly(firstDate.Year, firstDate.Month, int.Parse(continuation.Groups["day"].Value, CultureInfo.InvariantCulture));
+                    if ((!list || between) && date < previousDate)
+                        throw new InvalidDataException("The date range ends before it starts.");
+                    dates.Add(date);
+                    previousDate = date;
+                }
+                catch (ArgumentOutOfRangeException exception) { throw new InvalidDataException("The requested date is invalid.", exception); }
+                index += continuation.Length;
+            }
+            if (Regex.IsMatch(request[index..],
+                @"^\s*,?\s*(?:(?:and|but)\s+)?(?:not|except|exclud(?:e|ing)|skip(?:ping)?)\s+(?:the\s+)?\d{1,2}(?:st|nd|rd|th)?\b(?!\s*(?::\d|am\b|pm\b))",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
+                throw new InvalidDataException("Excluding dates isn't supported yet. List the days you can watch.");
+            if (!boundary.Success && Regex.IsMatch(request[index..],
+                @"^\s*(?:(?:,\s*)?(?:and|or)\s+(?:after|later|before|earlier)\b(?!\s+(?:\d|noon\b|midnight\b))|onwards?\b)",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
+                throw new InvalidDataException("Put 'from', 'after' or 'until' ahead of the date.");
+        }
+        var beforeFirstDate = request[..matches[0].Index];
+        var afterLastDate = request[(matches[^1].Index + matches[^1].Length)..];
+        if (dates.Count > 1 && (HasAdditionalTimeHint(beforeFirstDate) || HasClockHint(beforeFirstDate))
+            && (HasAdditionalTimeHint(afterLastDate) || HasClockHint(afterLastDate)))
+            throw new InvalidDataException("For different dates or time limits, use separate planner requests.");
+        var namedRange = Enumerable.Range(0, matches.Length - 1).Any(index =>
+            Regex.IsMatch(request[(matches[index].Index + matches[index].Length)..matches[index + 1].Index],
+                @"(?:\b(?:to|through|until|till)|[-–—])\s*$",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)));
+        if ((namedRange || between) && matches.Length == 2
+            && ReadDate(matches[0], conferenceYear) > ReadDate(matches[1], conferenceYear))
+            throw new InvalidDataException("The date range ends before it starts.");
+        if ((continuationRange || namedRange || between) && dates.Count > 2)
+            throw new InvalidDataException("List date ranges separately from individual days.");
+        if (dates.Count > 1 && boundary.Success
+            && (direction != "from" || !(continuationRange || namedRange || between)))
+            throw new InvalidDataException("For different date boundaries, use separate planner requests.");
+        return new(dates.Order().ToArray(), continuationRange || namedRange || dates.Count == 2 && between,
+            dates.Count == 1 && boundary.Success ? direction : null);
+    }
+
+    public static bool TryCalendarDates(string request, int conferenceYear, string zone, out AvailabilityWindow[] windows,
+        out bool openEnded, ConferenceDocument? conference = null, TimeZoneInfo? local = null)
+    {
+        windows = [];
+        var scope = ReadSourceDates(request, conferenceYear);
+        openEnded = scope?.Boundary is not null;
+        if (scope is null)
+            return false;
+        if (openEnded)
+        {
+            if (conference is null || local is null)
+                return false;
+            windows = SchedulePlanner.DailyAvailability(conference, local, TimeOnly.MinValue, TimeOnly.MinValue, zone)
+                .Where(window => scope.Contains(DateOnly.ParseExact(window.Start[..10], "yyyy-MM-dd", CultureInfo.InvariantCulture)))
+                .ToArray();
+            if (windows.Length == 0)
+                throw new InvalidDataException("No conference dates fit the requested date limit.");
+            return true;
+        }
+        if (scope.Days.Length > 12 || scope.IsRange && scope.Last.DayNumber - scope.First.DayNumber >= 12)
+            throw new InvalidDataException("Specify at most twelve conference days.");
+        var days = scope.IsRange
+            ? Enumerable.Range(0, scope.Last.DayNumber - scope.First.DayNumber + 1).Select(scope.First.AddDays)
+            : scope.Days;
+        windows = days.Select(day =>
+        {
+            if (day == DateOnly.MaxValue)
+                throw new InvalidDataException("The requested date is too late to form an availability window.");
+            return new AvailabilityWindow($"{day:yyyy-MM-dd}T00:00", $"{day.AddDays(1):yyyy-MM-dd}T00:00", zone);
+        }).ToArray();
         return true;
     }
 
     public static bool HasExplicitDate(string request) => Regex.IsMatch(request,
-        @"\b\d{4}-\d{2}-\d{2}\b|\b(?:January|February|March|April|May|June|July|August|September|October|November|December|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|today|tomorrow)\b|\b\d{1,2}/\d{1,2}\b",
+        DatePattern + @"|\b(?:" + FullMonths + "|" + Weekdays + @"|today|tomorrow)\b|\b\d{1,2}/\d{1,2}\b",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
 
     public static string RequestedZone(string request)
     {
-        var zones = Regex.Matches(request, @"\bUTC\b|\b[A-Za-z_]+/[A-Za-z_]+(?:/[A-Za-z_]+)?\b",
+        var zones = Regex.Matches(request, @"\bUTC\b|\b[A-Za-z_]+/[A-Za-z_][A-Za-z0-9_+.-]*(?:/[A-Za-z_][A-Za-z0-9_+.-]*)?",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100))
-            .Select(m => m.Value.Equals("UTC", StringComparison.OrdinalIgnoreCase) ? "UTC" : m.Value)
+            .Select(m => m.Value.TrimEnd('.'))
+            .Select(value => value.Equals("UTC", StringComparison.OrdinalIgnoreCase) ? "UTC" : value)
             .Distinct(StringComparer.Ordinal).ToArray();
         return zones.Length switch
         {
@@ -185,7 +394,8 @@ public sealed record PlannerTopicRequest(string Text, string[] Topics, string Qu
             .Select(Regex.Escape);
         string Remaining(string value)
         {
-            var remaining = Regex.Replace(value, @"\b(?:a\s+)?single\s+(?:session|talk)\b", "",
+            var remaining = Regex.Replace(PlannerInterpretation.WithoutClockLimits(PlannerInterpretation.WithoutTimeHints(value)),
+                @"\b(?:(?:a\s+)?single\s+(?:session|talk)|nothing\s+too\s+[\p{L}\p{M}-]+|(?:not\s+|without\s+)?including\s+overnight)\b", "",
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
             remaining = Regex.Replace(remaining, @"\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b", "",
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
@@ -194,7 +404,7 @@ public sealed record PlannerTopicRequest(string Text, string[] Topics, string Qu
             remaining = Regex.Replace(remaining, @"\b(?:gaps?|fill|fits?|fitting|here|my|schedule|free|slots?|spare|have|what|could|around|commitments|saved|help|suggest|something|attend)\b", "",
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
             return Regex.Replace(remaining,
-                @"\b(?:all|every|everything|each|day|daily|sessions?|talks?|show|give|find|me|by|from|with|and|or|of|the|please|s|a|an|I|want|would|like|must|can|see|watch|only|just|available|availability|on|at|in|before|after|between|until|to|time|local|UTC|am|pm|don|t|do|not|miss|any|but|exclude|excluding|ending|ends?|finish(?:ing|es)?|they|are|for|no|matter|regardless|about|surprise|January|February|March|April|May|June|July|August|September|October|November|December|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b", "",
+                @"\b(?:all|every|everything|each|day|daily|sessions?|talks?|show|give|find|me|by|from|with|and|or|of|the|please|s|a|an|I|want|would|like|must|can|see|watch|only|just|available|unavailable|unable|able|availability|on|at|in|before|after|between|until|to|time|local|UTC|am|pm|noon|midnight|don|won|will|t|do|not|nothing|without|avoid|avoiding|except|miss|any|but|exclude|excluding|ending|ends?|finish(?:ing|es)?|they|are|for|no|matter|regardless|about|surprise|January|February|March|April|May|June|July|August|September|October|November|December|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b", "",
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
         }
         if (!Remaining(request).Any(char.IsLetter))
@@ -207,38 +417,192 @@ public sealed record PlannerTopicIntent(string Quantity, string SpeakerScope);
 public sealed record PlannerTopicClassification(string Topic);
 public sealed record PlannerDailyAvailability(string DailyStart, string DailyEnd, string Zone)
 {
-    public PlannerDailyAvailability Ground(string request)
+    internal const string NeedsExplicitTime = "Use explicit start and finish times for this time preference.";
+    public string Assumption { get; init; } = "";
+
+    public PlannerDailyAvailability Complete(PlannerWatchingHours hours)
     {
+        var (start, end) = hours.Complete(
+            PlannerAvailability.ReadDailyLimit(DailyStart), PlannerAvailability.ReadDailyLimit(DailyEnd));
+        var startText = start.ToString("HH:mm", CultureInfo.InvariantCulture);
+        var endText = end.ToString("HH:mm", CultureInfo.InvariantCulture);
+        var zone = Zone == "local" ? "" : $" ({Zone})";
+        var assumption = DailyStart == "none" ? $"Assumed daily start: {startText}{zone}."
+            : DailyEnd == "none" ? $"Assumed daily finish: {(end == TimeOnly.MinValue ? "midnight" : endText)}{zone}." : "";
+        return this with
+        {
+            DailyStart = startText, DailyEnd = endText,
+            Assumption = assumption
+        };
+    }
+
+    public AvailabilityWindow[] RestrictDatedWindows(AvailabilityWindow[] dated, TimeZoneInfo zone,
+        ConferenceDocument conference)
+    {
+        var limits = ToWindows(zone, conference);
+        var result = dated.SelectMany(window => limits.Select(limit =>
+        {
+            if (window.Zone != limit.Zone)
+                throw new InvalidDataException("Use one time zone for dated clock limits.");
+            var start = string.CompareOrdinal(window.Start, limit.Start) > 0 ? window.Start : limit.Start;
+            var end = string.CompareOrdinal(window.End, limit.End) < 0 ? window.End : limit.End;
+            return new AvailabilityWindow(start, end, window.Zone);
+        })).Where(window => string.CompareOrdinal(window.Start, window.End) < 0).Distinct().ToArray();
+        return result.Length > 0 ? result
+            : throw new InvalidDataException("No conference dates fit the requested dates and clock limits.");
+    }
+
+    public static AvailabilityWindow CalendarDates(AvailabilityWindow window)
+    {
+        const string format = "yyyy-MM-dd'T'HH:mm";
+        if (!DateTime.TryParseExact(window.Start, format, CultureInfo.InvariantCulture, DateTimeStyles.None, out var start)
+            || !DateTime.TryParseExact(window.End, format, CultureInfo.InvariantCulture, DateTimeStyles.None, out var end)
+            || end.Date < start.Date || (end.Date == DateTime.MaxValue.Date
+                && (end.Date == start.Date || end.TimeOfDay != TimeSpan.Zero)))
+            throw new InvalidDataException("The model returned an invalid dated availability window.");
+        if (start.Date != end.Date && end.TimeOfDay != TimeSpan.Zero)
+            throw new InvalidDataException("The date span was ambiguous. Try listing the days separately.");
+        var endDate = end.Date > start.Date && end.TimeOfDay == TimeSpan.Zero ? end.Date : end.Date.AddDays(1);
+        return new(start.Date.ToString(format, CultureInfo.InvariantCulture),
+            endDate.ToString(format, CultureInfo.InvariantCulture), window.Zone);
+    }
+
+    public PlannerDailyAvailability Ground(string request, bool sourceOnly = false)
+    {
+        request = Regex.Replace(PlannerInterpretation.WithoutCalendarDates(request), @"\b\d{1,2}/\d{1,2}(?:/\d{2,4})?\b", "",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        request = Regex.Replace(request,
+            $@"\b(?<minimum>\d{{1,2}})\s+{PlannerInterpretation.QuantityRangeSeparator}\s+(?<maximum>\d{{1,2}})\b(?=\s+{PlannerInterpretation.QuantityNoun})",
+            match => int.Parse(match.Groups["minimum"].Value, CultureInfo.InvariantCulture)
+                    <= int.Parse(match.Groups["maximum"].Value, CultureInfo.InvariantCulture)
+                ? "" : match.Value,
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
         var bareCutoffs = Regex.Matches(request,
             @"\b(?:before|until|by|after|from|between)\s+(?<hour>\d{1,2})\b(?!:\d|\s*(?:am|pm)\b)",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
         if (bareCutoffs.Any(m => int.Parse(m.Groups["hour"].Value, CultureInfo.InvariantCulture) <= 12))
             throw new InvalidDataException("Clarify the clock cutoff with am/pm or HH:mm, such as 9am, 9pm or 09:00.");
-        const string clock = @"(?<hour>\d{1,2})(?::(?<minute>\d{2}))?\s*(?<period>am|pm)?";
+        const string clock = PlannerInterpretation.ClockPattern;
+        var range = Regex.Match(request,
+            $@"\b(?:(?:from|between)\s+{clock}\s+(?:to|and|until|through|-)\s+{clock}|{clock}\s+(?:to|until|through|-)\s+{clock})\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        if (range.Success && !Regex.IsMatch(range.Value, @"^\s*(?:from|between)\b|:|(?:am|pm)\b|\b(?:noon|midnight)\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
+            throw new InvalidDataException("Clarify the clock range with am/pm or HH:mm, such as 9am to 5pm.");
+        var bareRangeEnd = Regex.Match(request, $@"\b{clock}\s+(?:to|and|until|through|-)\s+(?<bareEnd>\d{{1,2}})\b(?!:\d|\s*(?:am|pm)\b)",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        if (bareRangeEnd.Success && int.Parse(bareRangeEnd.Groups["bareEnd"].Value, CultureInfo.InvariantCulture) <= 12)
+            throw new InvalidDataException("Clarify the clock cutoff with am/pm or HH:mm, such as 9am, 9pm or 09:00.");
+        var cutoffs = Regex.Matches(request, $@"\b(?<operator>before|until|by|after|from|earlier than|later than)\s+{clock}\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)).Cast<Match>().ToArray();
         var clocks = Regex.Matches(request, $@"\b{clock}(?=\s|[.,;!?]|$)",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100))
-            .Where(m => m.Groups["period"].Success || m.Groups["minute"].Success
-                || int.Parse(m.Groups["hour"].Value, CultureInfo.InvariantCulture) > 12).ToArray();
-        if (clocks.Length != 1)
-            return this;
-        var match = Regex.Match(request, $@"\b(?<operator>before|until|by|after|from)\s+{clock}\b",
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
-        if (!match.Success)
-            return this;
-        var hour = int.Parse(match.Groups["hour"].Value, CultureInfo.InvariantCulture);
-        var minute = match.Groups["minute"].Success ? int.Parse(match.Groups["minute"].Value, CultureInfo.InvariantCulture) : 0;
-        var period = match.Groups["period"].Value;
-        if (minute > 59 || hour > (period.Length > 0 ? 12 : 23) || (period.Length > 0 && hour == 0))
-            throw new InvalidDataException("The requested clock time is invalid.");
-        if (period.Length > 0)
-            hour = hour % 12 + (period.Equals("pm", StringComparison.OrdinalIgnoreCase) ? 12 : 0);
-        var time = new TimeOnly(hour, minute).ToString("HH:mm", CultureInfo.InvariantCulture);
-        var op = match.Groups["operator"].Value.ToLowerInvariant();
-        var excludeAfter = op == "after" && Regex.IsMatch(request, @"\b(?:exclud(?:e|ing)|avoid|nothing|no\s+(?:sessions?|talks?)|not\s+after)\b",
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
-        return op is "before" or "until" or "by" || excludeAfter
-            ? this with { DailyStart = "none", DailyEnd = time }
-            : this with { DailyStart = time, DailyEnd = "none" };
+            .Where(m => m.Groups["named"].Success || m.Groups["period"].Success || m.Groups["minute"].Success
+                || int.Parse(m.Groups["hour"].Value, CultureInfo.InvariantCulture) > 12
+                    && (range.Success && m.Index >= range.Index && m.Index + m.Length <= range.Index + range.Length
+                        || cutoffs.Any(cutoff => m.Index >= cutoff.Index && m.Index + m.Length <= cutoff.Index + cutoff.Length))).ToArray();
+        TimeOnly ReadClock(Match value)
+        {
+            if (value.Groups["named"].Success)
+                return value.Groups["named"].Value.Equals("noon", StringComparison.OrdinalIgnoreCase) ? new TimeOnly(12, 0) : TimeOnly.MinValue;
+            var hour = int.Parse(value.Groups["hour"].Value, CultureInfo.InvariantCulture);
+            var minute = value.Groups["minute"].Success ? int.Parse(value.Groups["minute"].Value, CultureInfo.InvariantCulture) : 0;
+            var period = value.Groups["period"].Value;
+            if (minute > 59 || hour > (period.Length > 0 ? 12 : 23) || (period.Length > 0 && hour == 0))
+                throw new InvalidDataException("The requested clock time is invalid.");
+            if (period.Length > 0)
+                hour = hour % 12 + (period.Equals("pm", StringComparison.OrdinalIgnoreCase) ? 12 : 0);
+            return new TimeOnly(hour, minute);
+        }
+        var qualitative = !sourceOnly && PlannerInterpretation.HasAdditionalTimeHint(request);
+        PlannerDailyAvailability IntersectQualitative(TimeOnly? lower, TimeOnly? upper)
+        {
+            var start = PlannerAvailability.ReadDailyLimit(DailyStart);
+            var end = PlannerAvailability.ReadDailyLimit(DailyEnd);
+            var duration = end?.ToTimeSpan() - start?.ToTimeSpan();
+            if (duration is not null && duration <= TimeSpan.Zero)
+                duration += TimeSpan.FromDays(1);
+            if (start is null || end is null || duration >= TimeSpan.FromMinutes(1439))
+                throw new InvalidDataException(NeedsExplicitTime);
+            if (lower is null && upper is null)
+                return this;
+            if (end != TimeOnly.MinValue && start > end)
+            {
+                if (lower is not null && lower <= end
+                    || upper == start
+                    || lower is not null && upper is not null && lower > end && upper <= start && upper > lower
+                    || lower is not null && upper is not null && lower > start && upper > start && upper <= lower)
+                    throw new InvalidDataException("For an overnight time preference, state just the explicit start and finish times.");
+                if (upper is not null && (upper <= end || upper > start))
+                    end = upper;
+                if (lower is not null && lower > start)
+                    start = lower;
+            }
+            else
+            {
+                if (lower is not null && upper is not null && upper != TimeOnly.MinValue && lower >= upper)
+                    throw new InvalidDataException("For an overnight time preference, state just the explicit start and finish times.");
+                if (lower is not null && lower > start)
+                    start = lower;
+                if (upper is not null && (end == TimeOnly.MinValue || upper != TimeOnly.MinValue && upper < end))
+                    end = upper;
+                if (end != TimeOnly.MinValue && start >= end)
+                    throw new InvalidDataException("The requested time preferences don't overlap. State both the start and finish times.");
+            }
+            return this with
+            {
+                DailyStart = start.Value.ToString("HH:mm", CultureInfo.InvariantCulture),
+                DailyEnd = end.Value.ToString("HH:mm", CultureInfo.InvariantCulture)
+            };
+        }
+        if (clocks.Length == 2 && range.Success)
+        {
+            var start = ReadClock(clocks[0]);
+            var end = ReadClock(clocks[1]);
+            if (start == end)
+                throw new InvalidDataException("Choose different start and finish times for the requested range.");
+            return qualitative ? IntersectQualitative(start, end)
+                : this with { DailyStart = start.ToString("HH:mm", CultureInfo.InvariantCulture),
+                    DailyEnd = end.ToString("HH:mm", CultureInfo.InvariantCulture) };
+        }
+        if (cutoffs.Length != clocks.Length)
+            return qualitative || sourceOnly
+                ? throw new InvalidDataException("Use an explicit start or finish for each clock time.")
+                : this;
+        if (cutoffs.Length == 0)
+            return qualitative ? IntersectQualitative(null, null) : this;
+        TimeOnly? lower = null;
+        TimeOnly? upper = null;
+        var previousExcluded = false;
+        var previousEnd = 0;
+        foreach (var cutoff in cutoffs)
+        {
+            var time = ReadClock(cutoff);
+            var op = cutoff.Groups["operator"].Value.ToLowerInvariant();
+            var clause = request[previousEnd..cutoff.Index];
+            var excluded = Agenda.IsNegatedTimeConstraint(clause)
+                || previousExcluded && Regex.IsMatch(clause, @"^[\s,]*(?:and|or)\s*$",
+                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+            var finish = op is "before" or "until" or "by" or "earlier than";
+            if (finish != excluded)
+                upper = upper is null || upper == TimeOnly.MinValue || time != TimeOnly.MinValue && time < upper ? time : upper;
+            else
+                lower = lower is null || time > lower ? time : lower;
+            previousExcluded = excluded;
+            previousEnd = cutoff.Index + cutoff.Length;
+        }
+        if (qualitative)
+            return IntersectQualitative(lower, upper);
+        if (lower is not null && upper is not null && upper != TimeOnly.MinValue && lower >= upper)
+            throw new InvalidDataException("For an overnight time preference, state the start and finish as one range.");
+        var unrestrictedEdge = Regex.Matches(request, @"\b(?:any\s*time|all\s+hours|around\s+the\s+clock|including\s+overnight)\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100))
+            .Any(unrestricted => !Agenda.IsNegatedTimeConstraint(request[..unrestricted.Index])) ? "00:00" : "none";
+        return this with
+        {
+            DailyStart = lower?.ToString("HH:mm", CultureInfo.InvariantCulture) ?? unrestrictedEdge,
+            DailyEnd = upper?.ToString("HH:mm", CultureInfo.InvariantCulture) ?? unrestrictedEdge
+        };
     }
 
     public AvailabilityWindow[] ToWindows(TimeZoneInfo zone, ConferenceDocument conference) =>
@@ -268,8 +632,8 @@ public sealed record PlannerAvailability(PlannerWindow[] Windows, string DailySt
         {
             if (Windows.Length != 0 || conference is null)
                 throw new InvalidDataException("Do not combine dated windows and recurring clock limits in one request.");
-            var start = Clock(DailyStart, TimeOnly.MinValue);
-            var end = Clock(DailyEnd, TimeOnly.MinValue);
+            var start = ReadDailyLimit(DailyStart) ?? TimeOnly.MinValue;
+            var end = ReadDailyLimit(DailyEnd) ?? TimeOnly.MinValue;
             return SchedulePlanner.DailyAvailability(conference, zone, start, end, Zone);
         }
         if (Windows is not { Length: > 0 and <= 12 })
@@ -278,7 +642,7 @@ public sealed record PlannerAvailability(PlannerWindow[] Windows, string DailySt
             ?? throw new InvalidDataException("The model returned an empty window.")).ToArray();
     }
 
-    private static TimeOnly Clock(string value, TimeOnly unspecified) => value == "none" ? unspecified
+    internal static TimeOnly? ReadDailyLimit(string value) => value == "none" ? null
         : TimeOnly.TryParseExact(value, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var time)
             ? time : throw new InvalidDataException("Use HH:mm for daily clock limits.");
 }
@@ -305,7 +669,7 @@ public sealed record PlannerWindow(string Start, string End, string Zone)
                 throw new InvalidDataException("The model returned an invalid wall-clock time.");
             var zone = local;
             if (Zone != "local" && !TimeZoneInfo.TryFindSystemTimeZoneById(Zone, out zone))
-                throw new InvalidDataException("The model returned an unknown time zone.");
+                throw new InvalidDataException(SchedulePlanner.UnrecognizedTimeZoneMessage);
             dateTime = withOffset.DateTime;
             if (withOffset.Offset != zone.GetUtcOffset(dateTime))
                 throw new InvalidDataException("The model returned an offset inconsistent with its time zone.");
@@ -349,7 +713,7 @@ internal static class PlannerSchemas
 
     public static JsonElement DailyAvailability { get; } = Parse(
         """
-        {"title":"ConferenceDailyClockLimits","type":"object","properties":{"dailyStart":{"type":"string","description":"Allowed start HH:mm, or none if not stated. Do not invent a morning limit."},"dailyEnd":{"type":"string","description":"Allowed finish HH:mm, or none. Exclude after 10pm means 22:00. The ENTIRE session must finish by this time."},"zone":{"type":"string","description":"local for for me or unspecified; UTC if explicit; otherwise explicit IANA zone. Never convert clock times."}},"required":["dailyStart","dailyEnd","zone"],"additionalProperties":false}
+        {"title":"ConferenceDailyClockLimits","type":"object","properties":{"dailyStart":{"type":"string","description":"Allowed start HH:mm. Infer a start for a named period, otherwise use none if unspecified. Do not invent a morning limit from a finish time."},"dailyEnd":{"type":"string","description":"Allowed finish HH:mm. Infer a finish for a named period, otherwise use none if unspecified. The ENTIRE session must finish by this time."},"zone":{"type":"string","description":"local for an unspecified time zone; UTC if explicit; otherwise an explicit IANA zone. Never convert clock times."}},"required":["dailyStart","dailyEnd","zone"],"additionalProperties":false}
         """);
 
     public static JsonElement Interpretation(ConferenceDocument conference) =>

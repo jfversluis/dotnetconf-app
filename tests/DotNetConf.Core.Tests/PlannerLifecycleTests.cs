@@ -16,11 +16,11 @@ public sealed class PlannerLifecycleTests
         data.LoadAsync(Arg.Any<CancellationToken>()).Returns(document);
         var planner = Substitute.For<IOnDevicePlanner>();
         planner.UnsupportedReason.Returns((string?)null);
-        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(new PlannerModelState(true, false, ""));
         planner.SuggestStartingPointsAsync(document, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<PlannerStartingPoint>>([]));
         planner.ProposeAsync(document, Arg.Any<string>(), Arg.Any<TimeZoneInfo>(),
-                Arg.Any<string[]>(), Arg.Any<CancellationToken>())
+                Arg.Any<string[]>(), Arg.Any<CancellationToken>(), Arg.Any<bool>(), Arg.Any<PlannerWatchingHours>())
             .Returns(new PlannerResult(new(["building-with-maui"], [], []), ""));
         var updates = Substitute.For<IPlannerScheduleUpdates>();
         updates.RefreshRemindersAsync().Returns(true);
@@ -99,7 +99,7 @@ public sealed class PlannerLifecycleTests
         var pending = new TaskCompletionSource<PlannerResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         CancellationToken token = default;
         planner.ProposeAsync(Arg.Any<ConferenceDocument>(), Arg.Any<string>(), Arg.Any<TimeZoneInfo>(),
-            Arg.Any<string[]>(), Arg.Any<CancellationToken>()).Returns(call =>
+            Arg.Any<string[]>(), Arg.Any<CancellationToken>(), Arg.Any<bool>(), Arg.Any<PlannerWatchingHours>()).Returns(call =>
             {
                 token = call.Arg<CancellationToken>();
                 return pending.Task;
@@ -183,7 +183,84 @@ public sealed class PlannerLifecycleTests
         Assert.DoesNotContain("model may be unavailable", vm.Status);
         Assert.Equal(["already-liked"], store.Saved);
         await planner.DidNotReceive().ProposeAsync(Arg.Any<ConferenceDocument>(), Arg.Any<string>(),
-            Arg.Any<TimeZoneInfo>(), Arg.Any<string[]>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
+            Arg.Any<TimeZoneInfo>(), Arg.Any<string[]>(), Arg.Any<CancellationToken>(), Arg.Any<bool>(), Arg.Any<PlannerWatchingHours>());
+    }
+
+    [Fact]
+    public async Task WatchingHourChangesInvalidateAnAlreadyConfirmedShortlist()
+    {
+        var (vm, planner, _, store, _) = await CreateAsync();
+        vm.ToggleWatchingHoursCommand.Execute(null);
+        vm.ConstraintsConfirmed = true;
+        var changed = new List<string?>();
+        vm.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
+        vm.WatchingStart = TimeSpan.FromHours(8);
+        Assert.Equal("Watching hours: 08:00\u201323:00", vm.WatchingHoursSummary);
+        Assert.Contains(nameof(vm.WatchingHoursSummary), changed);
+        Assert.Contains(nameof(vm.WatchingHoursActionDescription), changed);
+        Assert.False(vm.HasProposal);
+        Assert.False(vm.CanApply);
+        Assert.False(vm.ConstraintsConfirmed);
+        Assert.Empty(vm.Sessions);
+        await vm.GenerateCommand.ExecuteAsync(null);
+        Assert.False(vm.ShowWatchingHours);
+        await planner.Received().ProposeAsync(Arg.Any<ConferenceDocument>(), Arg.Any<string>(), Arg.Any<TimeZoneInfo>(),
+            Arg.Any<string[]>(), Arg.Any<CancellationToken>(), false,
+            new PlannerWatchingHours(new(8, 0), new(23, 0)));
+        Assert.Equal(["already-liked"], store.Saved);
+    }
+
+    [Fact]
+    public async Task WatchingHoursDisclosureDoesNotInvalidateAReviewedShortlist()
+    {
+        var (vm, _, _, store, _) = await CreateAsync();
+        var row = Assert.Single(vm.Sessions);
+        vm.ConstraintsConfirmed = true;
+        Assert.False(vm.ShowWatchingHours);
+        Assert.Equal("Watching hours: 07:00\u201323:00", vm.WatchingHoursSummary);
+        Assert.Equal("Change", vm.WatchingHoursAction);
+
+        vm.ToggleWatchingHoursCommand.Execute(null);
+        Assert.True(vm.ShowWatchingHours);
+        Assert.Equal("Hide", vm.WatchingHoursAction);
+        vm.ToggleWatchingHoursCommand.Execute(null);
+
+        Assert.False(vm.ShowWatchingHours);
+        Assert.Same(row, Assert.Single(vm.Sessions));
+        Assert.True(vm.ConstraintsConfirmed);
+        Assert.True(vm.CanApply);
+        Assert.Equal(["already-liked"], store.Saved);
+    }
+
+    [Fact]
+    public async Task MissingWatchingHoursReopenTheEditorWithARecoverableError()
+    {
+        var (vm, _, _, store, _) = await CreateAsync();
+        vm.WatchingStart = null;
+        Assert.Equal("Watching hours: choose times", vm.WatchingHoursSummary);
+
+        await vm.GenerateCommand.ExecuteAsync(null);
+
+        Assert.True(vm.ShowWatchingHours);
+        Assert.True(vm.HasStatus);
+        Assert.Contains("Choose different", vm.Status);
+        Assert.False(vm.CanApply);
+        Assert.Empty(vm.Sessions);
+        Assert.Equal(["already-liked"], store.Saved);
+    }
+
+    [Fact]
+    public async Task InvalidWatchingHoursShowAnErrorBeforeInference()
+    {
+        var (vm, planner, _, _, _) = await CreateAsync();
+        planner.ClearReceivedCalls();
+        vm.WatchingEnd = vm.WatchingStart;
+        await vm.GenerateCommand.ExecuteAsync(null);
+        Assert.Contains("Choose different", vm.Status);
+        Assert.True(vm.ShowWatchingHours);
+        Assert.False(vm.HasProposal);
+        await planner.DidNotReceive().ProposeAsync(Arg.Any<ConferenceDocument>(), Arg.Any<string>(), Arg.Any<TimeZoneInfo>(),
+            Arg.Any<string[]>(), Arg.Any<CancellationToken>(), Arg.Any<bool>(), Arg.Any<PlannerWatchingHours>());
     }
 
     private sealed class DelayedStore : IScheduleStore

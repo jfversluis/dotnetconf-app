@@ -19,6 +19,7 @@ public sealed class PlannerTools
     private readonly HashSet<string> candidateIds = new(StringComparer.Ordinal);
     private HashSet<string>? discoveryRemainingIds;
     private int discoveryQueries;
+    private HashSet<string>? topicCandidateIds;
 
     public ScheduleProposal? Proposal { get; private set; }
     public ScheduleProposal? Preferences { get; private set; }
@@ -40,6 +41,7 @@ public sealed class PlannerTools
         candidateIds.Clear();
         discoveryRemainingIds = null;
         discoveryQueries = 0;
+        topicCandidateIds = null;
     }
 
     private ConferenceDocument GetDocument() =>
@@ -124,16 +126,17 @@ public sealed class PlannerTools
         var conference = GetDocument();
         var speakers = Agenda.FindSpeakers(conference, name);
         return conference.Sessions.Where(s => speakers.Any(p => s.SpeakerIds.Contains(p.Id))
-            && (Preferences?.TopicFilter is not { RestrictToRequiredSpeakers: true } filter
-                || Agenda.MatchesTopics(s, filter)));
+            && (Preferences?.TopicFilter is not { RestrictToRequiredSpeakers: true }
+                || topicCandidateIds?.Contains(s.Id) == true));
     }
 
     public string CapturePreferences(string[] requiredSpeakers, AvailabilityWindow[] availability,
-        bool allSessionsByRequiredSpeakers = false, PlannerTopicFilter? topicFilter = null)
+        bool allSessionsByRequiredSpeakers = false, PlannerTopicFilter? topicFilter = null, string availabilityAssumption = "")
     {
         GetDocument();
         Proposal = null;
         Preferences = null;
+        topicCandidateIds = null;
         candidateIds.Clear();
         if (requiredSpeakers is null || availability is null || requiredSpeakers.Any(n => n is null)
             || availability.Any(w => w is null || w.Start is null || w.End is null || w.Zone is null))
@@ -152,8 +155,12 @@ public sealed class PlannerTools
         {
             AllSessionsByRequiredSpeakers = allSessionsByRequiredSpeakers,
             TopicFilter = topicFilter,
+            AvailabilityAssumption = availabilityAssumption,
             GapAnchorIds = fillGaps ? savedIds.ToArray() : null
         };
+        if (topicFilter is not null)
+            topicCandidateIds = SchedulePlanner.TopicMatches(GetDocument(), Preferences)
+                .Select(s => s.Id).ToHashSet(StringComparer.Ordinal);
         return "Preferences captured for user review. They cannot be changed during agenda selection.";
     }
 
@@ -171,9 +178,9 @@ public sealed class PlannerTools
         Proposal = preferences with
         {
             SessionIds = sessionIds,
-            MatchedSessionIds = (fillGaps
-                ? candidateIds.Where(id => !savedIds.Contains(id) && IsEligible(conference.Sessions.Single(s => s.Id == id)))
-                : candidateIds).Concat(sessionIds).Distinct(StringComparer.Ordinal).ToArray()
+            MatchedSessionIds = candidateIds.Where(id => (!fillGaps || !savedIds.Contains(id))
+                && IsEligible(conference.Sessions.Single(s => s.Id == id)))
+                .Concat(sessionIds).Distinct(StringComparer.Ordinal).ToArray()
         };
         var review = SchedulePlanner.Review(conference, Proposal, timeZone, savedIds);
         return review.CanApply ? "Preview ready. Ask the user to review interpreted constraints and confirm in the app."
@@ -185,6 +192,11 @@ public sealed class PlannerTools
         if (savedIds.Contains(session.Id))
             return false;
         var preferences = Preferences ?? throw new InvalidOperationException("Capture preferences before searching.");
+        if (preferences.TopicFilter is { } filter
+            && topicCandidateIds?.Contains(session.Id) != true
+            && (filter.RestrictToRequiredSpeakers || !preferences.RequiredSpeakers.Any(name =>
+                Agenda.FindSpeakers(GetDocument(), name).Any(s => session.SpeakerIds.Contains(s.Id)))))
+            return false;
         var candidate = preferences with
         {
             SessionIds = [session.Id], RequiredSpeakers = [], AllSessionsByRequiredSpeakers = false,

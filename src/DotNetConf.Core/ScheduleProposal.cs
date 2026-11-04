@@ -9,18 +9,39 @@ public sealed record ScheduleProposal(
     public PlannerTopicFilter? TopicFilter { get; init; }
     public string[] MatchedSessionIds { get; init; } = [];
     public string[]? GapAnchorIds { get; init; }
+    public string AvailabilityAssumption { get; init; } = "";
 }
 
 public sealed record PlannerTopicFilter(string[] Topics, bool MatchAll, bool RestrictToRequiredSpeakers, bool IncludeAll);
 
 public sealed record AvailabilityWindow(string Start, string End, string Zone);
 
+public sealed record PlannerWatchingHours(TimeOnly Start, TimeOnly End)
+{
+    public static PlannerWatchingHours Default { get; } = new(new(7, 0), new(23, 0));
+
+    public (TimeOnly Start, TimeOnly End) Complete(TimeOnly? start, TimeOnly? end)
+    {
+        if (Start == End)
+            throw new InvalidDataException("Choose different start and finish times for default watching hours.");
+        if (start is null && end is null)
+            throw new InvalidDataException("No daily time limit was found. State a start or finish time.");
+        if (Start > End && (start is null && end > End && end <= Start
+            || end is null && start >= End && start < Start))
+            throw new InvalidDataException("The requested cutoff conflicts with your overnight watching hours. State both a start and finish time.");
+        // An explicitly early finish or late start must not become an almost
+        // 24-hour window merely because it falls outside the daytime defaults.
+        return (start ?? (Start < End && end != TimeOnly.MinValue && end <= Start ? TimeOnly.MinValue : Start),
+            end ?? (Start < End && start >= End ? TimeOnly.MinValue : End));
+    }
+}
+
 public enum ProposalIssueCode
 {
     SessionCount, ConstraintCount, UnknownSession, DuplicateSession, InvalidAvailability, InvalidTopics,
     MissingSpeakerScope, OutsideAvailability, OverlappingProposals, SavedConflict,
     UnknownSpeaker, AmbiguousSpeaker, MissingSpeakerSession, IncompleteSpeakerSessions, EmptyTopicMatch, IncompleteTopicSessions,
-    InvalidGapSchedule, OutsideScheduleGap
+    InvalidGapSchedule, OutsideScheduleGap, OutsideTopicScope
 }
 
 public sealed record ProposalIssue(ProposalIssueCode Code, string Message);
@@ -36,6 +57,8 @@ public static partial class SchedulePlanner
     public const int DefaultSuggestionCount = 12;
     // Compatibility name for callers using the suggestion target, not a save limit.
     public const int MaximumSessions = DefaultSuggestionCount;
+    public const string UnrecognizedTimeZoneMessage =
+        "A time zone wasn't recognized. Use a valid time zone, such as UTC or Europe/Paris.";
 
     public static bool HasSameAgenda(ConferenceDocument reviewed, ConferenceDocument current) =>
         reviewed.IsMock == current.IsMock && reviewed.StartDate == current.StartDate
@@ -60,11 +83,13 @@ public static partial class SchedulePlanner
             && Review(conference, new([s.Id], [], preferences.Availability)
                 { GapAnchorIds = preferences.GapAnchorIds }, zone, savedIds).CanApply)
             .OrderBy(s => s.EndsAt).ThenBy(s => s.Id, StringComparer.Ordinal).ToArray();
+        var scopedTopics = preferences.TopicFilter is { RestrictToRequiredSpeakers: true }
+            ? TopicMatches(conference, preferences).Select(session => session.Id).ToHashSet(StringComparer.Ordinal)
+            : null;
         var speakers = preferences.RequiredSpeakers.Where(name => !conference.Sessions.Any(session =>
                 savedIds.Contains(session.Id)
                 && Agenda.FindSpeakers(conference, name).Any(speaker => session.SpeakerIds.Contains(speaker.Id))
-                && (preferences.TopicFilter is not { RestrictToRequiredSpeakers: true } scoped
-                    || Agenda.MatchesTopics(session, scoped))))
+                && (scopedTopics is null || scopedTopics.Contains(session.Id))))
             .Select(n => Agenda.FindSpeakers(conference, n))
             .Select(matches => matches.Count == 1 ? matches[0].Id : "").ToArray();
         if (speakers.Length > 8)
@@ -128,8 +153,8 @@ public static partial class SchedulePlanner
             .ToHashSet(StringComparer.Ordinal);
         var mandatory = conference.Sessions.Where(session => ids.Contains(session.Id) && !saved.Contains(session.Id)
             && (preferences.AllSessionsByRequiredSpeakers && session.SpeakerIds.Any(speakerIds.Contains)
-                    && (preferences.TopicFilter is not { RestrictToRequiredSpeakers: true } scoped
-                        || Agenda.MatchesTopics(session, scoped))
+                    && (preferences.TopicFilter is not { RestrictToRequiredSpeakers: true }
+                        || topicMatches.Contains(session.Id))
                 || preferences.TopicFilter?.IncludeAll == true && topicMatches.Contains(session.Id))
             && Review(conference, new([session.Id], [], preferences.Availability)
                 { GapAnchorIds = preferences.GapAnchorIds }, zone, savedIds).CanApply)
@@ -145,8 +170,8 @@ public static partial class SchedulePlanner
             RequiredSpeakers = preferences.RequiredSpeakers.Where(name =>
                 !conference.Sessions.Any(session => fixedIds.Contains(session.Id)
                     && Agenda.FindSpeakers(conference, name).Any(speaker => session.SpeakerIds.Contains(speaker.Id))
-                    && (preferences.TopicFilter is not { RestrictToRequiredSpeakers: true } scoped
-                        || Agenda.MatchesTopics(session, scoped)))).ToArray(),
+                    && (preferences.TopicFilter is not { RestrictToRequiredSpeakers: true }
+                        || topicMatches.Contains(session.Id)))).ToArray(),
             AllSessionsByRequiredSpeakers = false,
             TopicFilter = preferences.TopicFilter is { } filter ? filter with { IncludeAll = false } : null,
             GapAnchorIds = preferences.GapAnchorIds is null ? null : fixedIds
@@ -220,6 +245,7 @@ public static partial class SchedulePlanner
         }
         bool FitsAvailability(Session session) => (gaps is null || ScheduleGaps.Fits(session, gaps))
             && (proposal.Availability.Length == 0 || windows.Any(w => session.StartsAt >= w.Start && session.EndsAt <= w.End));
+        var topicMatches = TopicMatches(conference, proposal).Select(s => s.Id).ToHashSet(StringComparer.Ordinal);
         if (proposal.TopicFilter is { } topicFilter)
         {
             var known = conference.Sessions.SelectMany(s => s.Topics).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -231,6 +257,10 @@ public static partial class SchedulePlanner
 
         foreach (var session in sessions)
         {
+            if (proposal.TopicFilter is { } scope && !topicMatches.Contains(session.Id)
+                && (scope.RestrictToRequiredSpeakers || !proposal.RequiredSpeakers.Any(name =>
+                    Agenda.FindSpeakers(conference, name).Any(s => session.SpeakerIds.Contains(s.Id)))))
+                errors.Add(new(ProposalIssueCode.OutsideTopicScope, $"Doesn't match your requested topics or speakers: {session.Title}."));
             if (gaps is not null && (savedIds.Contains(session.Id) || !ScheduleGaps.Fits(session, gaps)))
                 errors.Add(new(ProposalIssueCode.OutsideScheduleGap, $"Not in a free slot in your saved schedule: {session.Title}."));
             if (!FitsAvailability(session))
@@ -253,14 +283,14 @@ public static partial class SchedulePlanner
                 errors.Add(new(ProposalIssueCode.AmbiguousSpeaker, $"Ambiguous speaker '{name}'. Choose {string.Join(" or ", matches.Select(s => s.Name))}."));
             else if (!sessions.Concat(conference.Sessions.Where(s => savedIds.Contains(s.Id)))
                 .Any(s => s.SpeakerIds.Contains(matches[0].Id)
-                    && (proposal.TopicFilter is not { RestrictToRequiredSpeakers: true } scoped
-                        || Agenda.MatchesTopics(s, scoped))))
+                    && (proposal.TopicFilter is not { RestrictToRequiredSpeakers: true }
+                        || topicMatches.Contains(s.Id))))
                 errors.Add(new(ProposalIssueCode.MissingSpeakerSession, $"Required speaker has no proposed session: {matches[0].Name}."));
             if (matches.Count == 1 && proposal.AllSessionsByRequiredSpeakers)
             {
                 var missing = conference.Sessions.Where(s => s.SpeakerIds.Contains(matches[0].Id)
-                    && (proposal.TopicFilter is not { RestrictToRequiredSpeakers: true } scoped
-                        || Agenda.MatchesTopics(s, scoped))
+                    && (proposal.TopicFilter is not { RestrictToRequiredSpeakers: true }
+                        || topicMatches.Contains(s.Id))
                     && FitsAvailability(s)
                     && !savedIds.Contains(s.Id)
                     && !proposal.SessionIds.Contains(s.Id)).ToArray();
@@ -289,8 +319,17 @@ public static partial class SchedulePlanner
             return [];
         var speakerIds = proposal.RequiredSpeakers.SelectMany(n => Agenda.FindSpeakers(conference, n))
             .Select(s => s.Id).ToHashSet(StringComparer.Ordinal);
-        return conference.Sessions.Where(s => Agenda.MatchesTopics(s, filter)
-            && (!filter.RestrictToRequiredSpeakers || s.SpeakerIds.Any(speakerIds.Contains)))
+        var scoped = conference.Sessions.Where(s => !filter.RestrictToRequiredSpeakers
+            || s.SpeakerIds.Any(speakerIds.Contains)).ToArray();
+        var scopeIds = scoped.Select(s => s.Id).ToHashSet(StringComparer.Ordinal);
+        var content = filter.Topics.Select(topic => Agenda.TopicContentMatches(conference, topic).Where(s => scopeIds.Contains(s.Id))
+            .Select(s => s.Id).ToHashSet(StringComparer.Ordinal)).ToArray();
+        bool Matches(Session session, int index) => content[index].Contains(session.Id)
+            || (filter.IncludeAll || content[index].Count == 0)
+                && session.Topics.Contains(filter.Topics[index], StringComparer.OrdinalIgnoreCase);
+        return scoped.Where(s => filter.MatchAll
+                ? Enumerable.Range(0, filter.Topics.Length).All(index => Matches(s, index))
+                : Enumerable.Range(0, filter.Topics.Length).Any(index => Matches(s, index)))
             .OrderBy(s => s.StartsAt).ThenBy(s => s.Id, StringComparer.Ordinal);
     }
 
@@ -298,9 +337,12 @@ public static partial class SchedulePlanner
         TimeOnly start, TimeOnly end, string zoneId)
     {
         if (!TryTimeZone(zoneId, local, out var zone))
-            throw new InvalidDataException("The model returned an unknown time zone.");
-        var first = Agenda.LocalDay(conference.Sessions.Min(s => s.StartsAt), zone);
+            throw new InvalidDataException(UnrecognizedTimeZoneMessage);
+        var firstSession = TimeZoneInfo.ConvertTime(conference.Sessions.Min(s => s.StartsAt), zone);
+        var first = DateOnly.FromDateTime(firstSession.DateTime);
         var last = Agenda.LocalDay(conference.Sessions.Max(s => s.EndsAt), zone);
+        if (end <= start && end != TimeOnly.MinValue && TimeOnly.FromDateTime(firstSession.DateTime) < end)
+            first = first.AddDays(-1);
         if (last.DayNumber - first.DayNumber >= 12)
             throw new InvalidDataException("Recurring availability spans more than twelve days. Specify a narrower date range.");
         return Enumerable.Range(0, last.DayNumber - first.DayNumber + 1).Select(offset =>

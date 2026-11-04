@@ -18,17 +18,20 @@ public partial class ProposedSessionViewModel(Session session, string speakerNam
     public string SelectionAutomationId => $"planner-select-{Id}";
     public string Title => session.Title;
     public string SpeakerNames => speakerNames;
-    public string Time => $"{TimeZoneInfo.ConvertTime(session.StartsAt, zone):ddd, MMM d HH:mm} - " +
-        $"{TimeZoneInfo.ConvertTime(session.EndsAt, zone):ddd, MMM d HH:mm}";
-    public string Topics => string.Join(" · ", session.Topics);
+    public string Time
+    {
+        get
+        {
+            var start = TimeZoneInfo.ConvertTime(session.StartsAt, zone);
+            return $"{start:ddd}, {Agenda.MonthDay(DateOnly.FromDateTime(start.DateTime))} \u00b7 " +
+                $"{start:HH:mm} \u00b7 {Agenda.Duration(session.EndsAt - session.StartsAt)}";
+        }
+    }
     public DateTimeOffset StartsAt => session.StartsAt;
     public DateTimeOffset EndsAt => session.EndsAt;
     public string Warning => string.Join(" ", new[] { warning, Conflict }.Where(value => value.Length > 0));
     public bool HasWarning => Warning.Length > 0;
     public bool CanSelect => warning.Length == 0 && !IsBusy;
-    public string ChoiceLabel => warning.StartsWith("Already saved", StringComparison.Ordinal) ? "Already saved"
-        : warning.Length > 0 ? "Can't fit"
-        : IsSelected ? "Selected to add" : "Alternative - not selected";
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Warning))]
     [NotifyPropertyChangedFor(nameof(HasWarning))]
@@ -37,10 +40,10 @@ public partial class ProposedSessionViewModel(Session session, string speakerNam
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanSelect))]
     public partial bool IsBusy { get; set; }
-    public string SelectionDescription => $"{Title}. {SpeakerNames}. {Time}." +
+    public string SelectionDescription => $"{Title}. {SpeakerNames}. {Time}. " +
+        $"Ends {TimeZoneInfo.ConvertTime(session.EndsAt, zone):ddd, MMM d HH:mm}." +
         (HasWarning ? $" {Warning}" : "");
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ChoiceLabel))]
     public partial bool IsSelected { get; set; } = selected && warning.Length == 0;
     partial void OnIsSelectedChanged(bool value) => changed();
 }
@@ -69,6 +72,7 @@ public partial class PlannerViewModel(
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DiscoverySource))]
     [NotifyPropertyChangedFor(nameof(Introduction))]
+    [NotifyPropertyChangedFor(nameof(CanApply))]
     public partial bool IsAiMode { get; set; }
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanExplore))]
@@ -78,10 +82,13 @@ public partial class PlannerViewModel(
     [NotifyPropertyChangedFor(nameof(CanGenerate))]
     [NotifyPropertyChangedFor(nameof(CanApply))]
     [NotifyPropertyChangedFor(nameof(CanConfirm))]
+    [NotifyPropertyChangedFor(nameof(CanDownloadModel))]
     public partial bool IsCheckingModel { get; set; }
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanExplore))]
     [NotifyPropertyChangedFor(nameof(Introduction))]
+    [NotifyPropertyChangedFor(nameof(ShowModelSetup))]
+    [NotifyPropertyChangedFor(nameof(ShowAvailabilityStatus))]
     public partial bool HasCheckedModel { get; set; }
     [ObservableProperty]
     public partial string ModelStatus { get; set; } = "Checking whether on-device AI is available.";
@@ -118,21 +125,71 @@ public partial class PlannerViewModel(
     [NotifyPropertyChangedFor(nameof(CanRetryModel))]
     [NotifyPropertyChangedFor(nameof(CanConfirm))]
     [NotifyPropertyChangedFor(nameof(CanCancel))]
+    [NotifyPropertyChangedFor(nameof(CanDownloadModel))]
     public partial bool IsBusy { get; set; }
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanCancel))]
     public partial bool IsSaving { get; set; }
-    public bool CanCancel => IsBusy && !IsSaving;
+    public bool CanCancel => IsBusy && !IsSaving && !IsDownloadingModel;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanGenerate))]
     [NotifyPropertyChangedFor(nameof(CanEdit))]
     [NotifyPropertyChangedFor(nameof(CanRetryModel))]
     [NotifyPropertyChangedFor(nameof(CanExplore))]
+    [NotifyPropertyChangedFor(nameof(ShowModelSetup))]
+    [NotifyPropertyChangedFor(nameof(ShowAvailabilityStatus))]
+    [NotifyPropertyChangedFor(nameof(CanOfferModelSetup))]
     public partial bool IsReady { get; set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanDownloadModel))]
+    [NotifyPropertyChangedFor(nameof(ModelSetupHeading))]
+    [NotifyPropertyChangedFor(nameof(CanOfferModelSetup))]
+    public partial PlannerModelSetup ModelSetup { get; set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanCancel))]
+    public partial bool IsDownloadingModel { get; set; }
+    [ObservableProperty]
+    public partial bool HasDownloadProgress { get; set; }
+    [ObservableProperty]
+    public partial double DownloadProgress { get; set; }
+    [ObservableProperty]
+    public partial string DownloadProgressText { get; set; } = "";
+    public bool ShowModelSetup => HasCheckedModel && !IsReady && planner.UnsupportedReason is null;
+    public bool ShowAvailabilityStatus => !ShowModelSetup;
+    public bool CanOfferModelSetup => IsReady || ModelSetup is PlannerModelSetup.DownloadRequired or PlannerModelSetup.Downloading;
+    public bool CanDownloadModel => ModelSetup == PlannerModelSetup.DownloadRequired && !IsBusy && !IsCheckingModel;
+    public string ModelSetupHeading => ModelSetup switch
+    {
+        PlannerModelSetup.DownloadRequired => "A one-time download. Then it's all you.",
+        PlannerModelSetup.Downloading => "Getting your phone ready",
+        _ => "Plan with on-device AI"
+    };
+    public string ModelDownloadDisclosure => "Gemini Nano can use several GB of internet data and device storage. " +
+        "Android AICore manages the download. Wi-Fi is recommended; mobile data charges may apply. Your planning requests stay on this device.";
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasStatus))]
     public partial string Status { get; set; } = "";
     [ObservableProperty] public partial string Constraints { get; set; } = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAvailabilityAssumption))]
+    public partial string AvailabilityAssumption { get; set; } = "";
+    public bool HasAvailabilityAssumption => AvailabilityAssumption.Length > 0;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(WatchingHoursSummary))]
+    [NotifyPropertyChangedFor(nameof(WatchingHoursActionDescription))]
+    public partial TimeSpan? WatchingStart { get; set; } = PlannerWatchingHours.Default.Start.ToTimeSpan();
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(WatchingHoursSummary))]
+    [NotifyPropertyChangedFor(nameof(WatchingHoursActionDescription))]
+    public partial TimeSpan? WatchingEnd { get; set; } = PlannerWatchingHours.Default.End.ToTimeSpan();
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(WatchingHoursAction))]
+    [NotifyPropertyChangedFor(nameof(WatchingHoursActionDescription))]
+    public partial bool ShowWatchingHours { get; set; }
+    public string WatchingHoursSummary => WatchingStart is { } start && WatchingEnd is { } end
+        ? $"Watching hours: {start:hh\\:mm}\u2013{end:hh\\:mm}" : "Watching hours: choose times";
+    public string WatchingHoursAction => ShowWatchingHours ? "Hide" : "Change";
+    public string WatchingHoursActionDescription => $"{(ShowWatchingHours ? "Hide" : "Change")} default {WatchingHoursSummary.ToLowerInvariant()}";
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasValidationErrors))]
     public partial string Validation { get; set; } = "";
@@ -161,16 +218,19 @@ public partial class PlannerViewModel(
     public bool CanGenerate => IsReady && CanEdit && !string.IsNullOrWhiteSpace(Request);
     public bool CanEdit => !IsBusy && !IsCheckingModel;
     public bool CanRetryModel => !IsReady && !IsCheckingModel && !IsBusy && planner.UnsupportedReason is null;
-    public bool CanApply => HasValidProposal && CanEdit;
+    public bool CanApply => HasValidProposal && CanEdit && (!IsAiMode || ConstraintsConfirmed);
     public bool CanConfirm => HasValidProposal && CanEdit;
     public event EventHandler<string>? OutcomeAvailable;
     public bool HasStatus => !string.IsNullOrWhiteSpace(Status);
     public bool HasValidationErrors => !HasValidProposal && !string.IsNullOrWhiteSpace(Validation);
     public string MatchingDetailsAction => ShowMatchingDetails ? "Hide matching details" : "Show matching details";
-    public string TimeZoneLabel => $"Use dates and times in {TimeZoneInfo.Local.Id}, or explicitly name another time zone.";
+    public string TimeZoneLabel => $"Session times in {TimeZoneInfo.Local.Id}.";
 
     [RelayCommand]
     private void ToggleMatchingDetails() => ShowMatchingDetails = !ShowMatchingDetails;
+
+    [RelayCommand]
+    private void ToggleWatchingHours() => ShowWatchingHours = !ShowWatchingHours;
 
     [RelayCommand]
     private void UseExample(string example)
@@ -242,6 +302,9 @@ public partial class PlannerViewModel(
             return;
         stopped = false;
         IsReady = false;
+        ModelSetup = PlannerModelSetup.Unavailable;
+        HasDownloadProgress = false;
+        DownloadProgressText = "";
         IsLoadingStartingPoints = true;
         IsCheckingModel = true;
         ModelStatus = "Checking whether on-device AI is available.";
@@ -252,21 +315,18 @@ public partial class PlannerViewModel(
             if (planner.UnsupportedReason is not null)
                 ModelStatus = "On-device AI isn't supported on this device. You can still explore the agenda or build My Schedule with hearts.";
             else
-            {
-                await planner.CheckReadinessAsync(cancellation.Token);
-                cancellation.Token.ThrowIfCancellationRequested();
-                IsReady = true;
-                ModelStatus = "On-device AI is available. No account or cloud fallback.";
-            }
+                await ReadModelAsync(cancellation);
         }
         catch (OperationCanceledException)
         {
-            ModelStatus = "Model check cancelled or timed out. Explore a mix, or retry AI.";
+            ModelStatus = IsDownloadingModel ? StoppedDownloadMessage
+                : "Model check cancelled or timed out. Explore a mix, or retry AI.";
         }
         catch (Exception exception) when (IsExpectedFailure(exception))
         {
             if (cancellation.IsCancellationRequested)
-                ModelStatus = "Model check cancelled or timed out. Explore a mix, or retry AI.";
+                ModelStatus = IsDownloadingModel ? StoppedDownloadMessage
+                    : "Model check cancelled or timed out. Explore a mix, or retry AI.";
             else
             {
                 logger.LogWarning(exception, "On-device planner readiness check failed.");
@@ -276,21 +336,19 @@ public partial class PlannerViewModel(
         finally
         {
             modelOperation = null;
+            IsDownloadingModel = false;
             HasCheckedModel = true;
             IsCheckingModel = false;
             OnPropertyChanged(nameof(CanRetryModel));
+            OnPropertyChanged(nameof(ShowModelSetup));
+            OnPropertyChanged(nameof(ShowAvailabilityStatus));
             if (!IsReady)
                 IsLoadingStartingPoints = false;
         }
         if (stopped)
             return;
         if (IsReady)
-        {
-            IsAiMode = true;
-            ClearProposal();
-            Status = "";
-            _ = RefreshStartingPointsAsync();
-        }
+            EnableAiMode();
         else
         {
             if (IsAiMode)
@@ -298,6 +356,114 @@ public partial class PlannerViewModel(
             IsAiMode = false;
             if (!HasProposal)
                 await ExploreAsync();
+        }
+    }
+
+    private const string StoppedDownloadMessage = "Stopped waiting for the model. Android may continue the download in the background. Check again when you're ready; you can still save talks with hearts.";
+
+    private void EnableAiMode()
+    {
+        IsAiMode = true;
+        ClearProposal();
+        Status = "";
+        _ = RefreshStartingPointsAsync();
+    }
+
+    private async Task ReadModelAsync(CancellationTokenSource cancellation)
+    {
+        var state = await planner.CheckReadinessAsync(cancellation.Token);
+        cancellation.Token.ThrowIfCancellationRequested();
+        SetModelState(state);
+        if (state.Setup == PlannerModelSetup.Downloading)
+        {
+            cancellation.CancelAfter(TimeSpan.FromMinutes(15));
+            IsDownloadingModel = true;
+            while (state.Setup == PlannerModelSetup.Downloading)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2), cancellation.Token);
+                state = await planner.CheckReadinessAsync(cancellation.Token);
+                cancellation.Token.ThrowIfCancellationRequested();
+                SetModelState(state);
+            }
+        }
+    }
+
+    private void SetModelState(PlannerModelState state)
+    {
+        ModelSetup = state.Setup;
+        IsReady = state.Available;
+        ModelStatus = state.Available ? "On-device AI is available. No account or cloud fallback." : state.Reason;
+        Status = state.Available ? "" : state.Reason;
+        HasCheckedModel = true;
+    }
+
+    [RelayCommand]
+    private async Task DownloadModelAsync()
+    {
+        if (!CanDownloadModel)
+            return;
+        IsBusy = true;
+        IsDownloadingModel = true;
+        IsLoadingStartingPoints = false;
+        HasDownloadProgress = false;
+        DownloadProgress = 0;
+        DownloadProgressText = "";
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromMinutes(15));
+        operation = cancellation;
+        long? totalBytes = null;
+        try
+        {
+            Status = "Preparing the download...";
+            var state = await planner.CheckReadinessAsync(cancellation.Token);
+            cancellation.Token.ThrowIfCancellationRequested();
+            SetModelState(state);
+            if (state.Setup == PlannerModelSetup.DownloadRequired)
+            {
+                ModelSetup = PlannerModelSetup.Downloading;
+                Status = "Downloading Gemini Nano. Keep the app open while we get things ready.";
+                await foreach (var update in planner.DownloadModelAsync(cancellation.Token))
+                {
+                    cancellation.Token.ThrowIfCancellationRequested();
+                    if (update.TotalBytes is > 0)
+                        totalBytes = update.TotalBytes;
+                    if (update.BytesDownloaded is { } downloaded && downloaded >= 0)
+                    {
+                        HasDownloadProgress = totalBytes is > 0;
+                        DownloadProgress = totalBytes is > 0 ? Math.Clamp((double)downloaded / totalBytes.Value, 0, 1) : 0;
+                        DownloadProgressText = totalBytes is > 0
+                            ? $"{downloaded / 1048576d:0.0} of {totalBytes.Value / 1048576d:0.0} MB downloaded"
+                            : $"{downloaded / 1048576d:0.0} MB downloaded";
+                    }
+                    else if (totalBytes is > 0)
+                        DownloadProgressText = $"Download size: {totalBytes.Value / 1048576d:0.0} MB";
+                }
+            }
+            Status = "Checking that the model is ready...";
+            await ReadModelAsync(cancellation);
+            if (IsReady)
+            {
+                EnableAiMode();
+                Status = "Your on-device model is ready. Tell us what you'd like to learn.";
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            ModelStatus = Status = StoppedDownloadMessage;
+        }
+        catch (Exception exception) when (IsExpectedFailure(exception))
+        {
+            logger.LogWarning(exception, "Could not prepare the on-device model.");
+            ModelStatus = Status = cancellation.IsCancellationRequested ? StoppedDownloadMessage
+                : "Couldn't finish setting up the model. Check your internet connection and free storage, then check again to retry. Your saved talks haven't changed.";
+        }
+        finally
+        {
+            operation = null;
+            IsDownloadingModel = false;
+            HasDownloadProgress = false;
+            DownloadProgressText = "";
+            IsBusy = false;
+            AnnounceOutcome();
         }
     }
 
@@ -346,6 +512,16 @@ public partial class PlannerViewModel(
             return;
         IsAiMode = true;
         ClearProposal();
+        if (WatchingStart is not { } watchingStart || WatchingEnd is not { } watchingEnd
+            || watchingStart < TimeSpan.Zero || watchingStart >= TimeSpan.FromDays(1)
+            || watchingEnd < TimeSpan.Zero || watchingEnd >= TimeSpan.FromDays(1) || watchingStart == watchingEnd)
+        {
+            ShowWatchingHours = true;
+            Status = "Choose different start and finish times for default watching hours.";
+            AnnounceOutcome();
+            return;
+        }
+        ShowWatchingHours = false;
         startingPointsOperation?.Cancel();
         IsBusy = true;
         Status = "Searching the real agenda with the on-device model...";
@@ -362,7 +538,8 @@ public partial class PlannerViewModel(
             await schedule.ReloadAsync(cancellation.Token);
             timeZone = TimeZoneInfo.Local;
             OnPropertyChanged(nameof(AgendaDisclosure));
-            var result = await planner.ProposeAsync(document, Request, timeZone, SavedIds(), cancellation.Token, IsGapMode);
+            var result = await planner.ProposeAsync(document, Request, timeZone, SavedIds(), cancellation.Token, IsGapMode,
+                new(TimeOnly.FromTimeSpan(watchingStart), TimeOnly.FromTimeSpan(watchingEnd)));
             cancellation.Token.ThrowIfCancellationRequested();
             proposal = result.Proposal;
             if (proposal is null)
@@ -382,6 +559,7 @@ public partial class PlannerViewModel(
                     : "") +
                 $"Availability: {(proposal.Availability.Length == 0 ? "Unrestricted" : string.Join("; ", proposal.Availability.Select(w => $"{w.Start} to {w.End} ({(w.Zone == "local" ? timeZone.Id : w.Zone)})")))}";
             PopulateSessions();
+            AvailabilityAssumption = proposal.AvailabilityAssumption;
             Status = Sessions.Count == 0
                 ? "No schedule was proposed. Check the explanation below; your likes have not changed."
                 : "";
@@ -427,7 +605,7 @@ public partial class PlannerViewModel(
                 .Where(s => session.SpeakerIds.Contains(s.Id)).Select(s => s.Name)), timeZone,
                 proposal.SessionIds.Contains(session.Id), warning, ReviewSelection));
         }
-        HasProposal = Sessions.Count > 0;
+        HasProposal = IsAiMode || Sessions.Count > 0;
         OnPropertyChanged(nameof(CanRelaxConstraints));
         ReviewSelection();
     }
@@ -566,6 +744,18 @@ public partial class PlannerViewModel(
         ClearProposal();
     }
 
+    partial void OnWatchingStartChanged(TimeSpan? value)
+    {
+        operation?.Cancel();
+        ClearProposal();
+    }
+
+    partial void OnWatchingEndChanged(TimeSpan? value)
+    {
+        operation?.Cancel();
+        ClearProposal();
+    }
+
     partial void OnIsBusyChanged(bool value)
     {
         if (!value)
@@ -591,6 +781,7 @@ public partial class PlannerViewModel(
         HasValidProposal = false;
         ConstraintsConfirmed = false;
         Constraints = "";
+        AvailabilityAssumption = "";
         Validation = "";
         NotifySelection();
         OnPropertyChanged(nameof(CanRelaxConstraints));

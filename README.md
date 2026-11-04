@@ -37,17 +37,30 @@ Shuffle replaces the unsaved preview, never your saved schedule.
 When a local model is ready, the planner instead opens the AI request form;
 mix/shuffle isn't shown. Make a specific request, then review the selected talks,
 alternatives, and overlap warnings,
-then choose **Add N to My Schedule**. Nothing is saved just by checking a box or
+confirm you've reviewed the sessions and times, then choose **Add N to My Schedule**. Nothing is saved just by checking a box or
 continuing setup. Setup asks before continuing without adding any sessions, and
 warns before continuing or skipping setup with checked, unsaved suggestions.
 There is no 12-session saving limit; ordinary AI suggestions still start with
 a manageable shortlist. If an "all sessions" request cannot fit, you can explicitly
 choose to review a subset instead.
 
+Focused topic suggestions favor evidence in session titles and descriptions,
+with agenda tags as a fallback; **Show matching details** explains the approach.
+Each suggestion shows its local start date, time and duration. Asking for
+all topic sessions also includes tag-only matches. **Watching hours**
+(initially 07:00–23:00, editable with **Change**) fill the missing boundary in one-sided time
+requests, with the assumption shown in the preview. Explicit ranges override
+those defaults, and requests without time limits remain unrestricted.
+
 Planning runs on your device with no account or cloud AI fallback. It requires a
 downloaded agenda and a ready local model: Apple Intelligence on supported
 iOS 26+ devices, or Gemini Nano on compatible Android 8+ devices. Availability
-depends on the device and its model settings. Random discovery and saving
+depends on the device and its model settings. If a compatible Android phone needs
+the model, the planner offers **Download on-device model**, with download progress
+when Android provides it. Downloads only start when you choose that action and
+can use several GB of internet data and device storage; Wi-Fi is recommended. You can stop
+waiting or leave the planner, though Android may continue in the background.
+On iOS, enable Apple Intelligence in device settings. Random discovery and saving
 sessions with hearts remain available without a local model.
 
 The planner uses MAUI Labs'

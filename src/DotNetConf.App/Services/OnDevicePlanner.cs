@@ -1,4 +1,5 @@
 using DotNetConf.Core;
+using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
@@ -14,12 +15,17 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
     public string? UnsupportedReason => registeredServices.IsService(typeof(IChatClient)) ? null :
         "No on-device chat model is supported by this app on your device. You can build My Schedule using the hearts in the agenda.";
 
-    public async Task CheckReadinessAsync(CancellationToken cancellationToken)
+    public async Task<PlannerModelState> CheckReadinessAsync(CancellationToken cancellationToken)
     {
         if (UnsupportedReason is { } reason)
             throw new PlatformNotSupportedException(reason);
-        await RequireModelAsync(cancellationToken);
+        var state = await modelStatus.ReadAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        return state;
     }
+
+    public IAsyncEnumerable<PlannerModelDownload> DownloadModelAsync(CancellationToken cancellationToken) =>
+        modelStatus.DownloadAsync(cancellationToken);
 
     private async Task<PlannerModelState> RequireModelAsync(CancellationToken token)
     {
@@ -33,12 +39,34 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
     private static Task<ChatResponse> JsonResponseAsync(IChatClient client, PlannerModelState state,
         IEnumerable<ChatMessage> messages, JsonElement schema, int tokens, float temperature, CancellationToken token) =>
         client.GetResponseAsync(
-            [new ChatMessage(ChatRole.System, $"Return only a JSON object matching this schema, without markdown or commentary:\n{schema.GetRawText()}"), .. messages],
+            [new ChatMessage(ChatRole.System, $"Return only a JSON object with values matching this schema, not the schema itself. No markdown or commentary:\n{schema.GetRawText()}"), .. messages],
             new ChatOptions
             {
                 ResponseFormat = state.StructuredOutput ? ChatResponseFormat.ForJsonSchema(schema) : ChatResponseFormat.Text,
                 MaxOutputTokens = tokens, Temperature = temperature
             }, token);
+
+    private static AvailabilityWindow[] MergeAdjacentDays(AvailabilityWindow[] dates)
+    {
+        List<AvailabilityWindow> merged = [];
+        foreach (var date in dates)
+            if (merged.Count > 0 && merged[^1].End == date.Start && merged[^1].Zone == date.Zone)
+                merged[^1] = merged[^1] with { End = date.End };
+            else
+                merged.Add(date);
+        return [.. merged];
+    }
+
+    private static AvailabilityWindow[] OnRequestedDays(PlannerDailyAvailability limits, AvailabilityWindow[] dates,
+        bool openEnded, TimeZoneInfo zone, ConferenceDocument conference)
+    {
+        if (openEnded)
+            return limits.RestrictDatedWindows(MergeAdjacentDays(dates), zone, conference);
+        var days = dates.Select(date => date.Start[..10]).ToHashSet(StringComparer.Ordinal);
+        var selected = limits.ToWindows(zone, conference).Where(window => days.Contains(window.Start[..10])).ToArray();
+        return selected.Length > 0 ? selected
+            : throw new InvalidDataException("No conference dates fit the requested dates and clock limits.");
+    }
 
     public async Task<IReadOnlyList<PlannerStartingPoint>> SuggestStartingPointsAsync(
         ConferenceDocument conference, CancellationToken cancellationToken)
@@ -56,14 +84,15 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
                 $"Choose {Math.Min(5, candidates.Length)} different, inviting starting topics for a software conference attendee from the provided candidate list. Use ONLY exact candidate names. Favor a varied mix, using this agenda as context. Return JSON with a topics array.\n{catalog}"),
              new ChatMessage(ChatRole.User, $"Choose from these candidates:\n{string.Join('\n', candidates)}")],
             schema, 160, 0.8f, cancellationToken);
-        var result = JsonSerializer.Deserialize(response.Text, PlannerJsonContext.Default.PlannerStartingPointTopics);
+        var result = PlannerJson.DeserializeResponse(response.Text, PlannerJsonContext.Default.PlannerStartingPointTopics);
         if (result?.Topics is { } selected && selected.Any(topic => !candidates.Contains(topic, StringComparer.Ordinal)))
             throw new InvalidDataException("The model suggested a topic outside this visit's candidate mix.");
         return PlannerStartingPoints.Ground(conference, result?.Topics);
     }
 
     public async Task<PlannerResult> ProposeAsync(ConferenceDocument conference, string request,
-        TimeZoneInfo zone, string[] savedIds, CancellationToken cancellationToken, bool fillGaps = false)
+        TimeZoneInfo zone, string[] savedIds, CancellationToken cancellationToken, bool fillGaps = false,
+        PlannerWatchingHours? watchingHours = null)
     {
         using var scope = scopeFactory.CreateScope();
         var tools = scope.ServiceProvider.GetRequiredService<PlannerTools>();
@@ -94,7 +123,7 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
                      """{"speakerNames":"Pat Doe","availabilityText":"none","quantity":"all","searchQuery":"none"}"""),
                  new ChatMessage(ChatRole.User, request)],
                 interpretationSchema, 500, 0, cancellationToken);
-            var interpretation = JsonSerializer.Deserialize(extracted.Text, PlannerJsonContext.Default.PlannerInterpretation)
+            var interpretation = PlannerJson.DeserializeResponse(extracted.Text, PlannerJsonContext.Default.PlannerInterpretation)
                 ?? throw new InvalidDataException("The model returned no interpretation.");
             if (interpretation.SpeakerNames is null
                 || interpretation.AvailabilityText is null
@@ -102,26 +131,99 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
                 || interpretation.Quantity is not ("all" or "some"))
                 throw new InvalidDataException("The model returned missing or invalid preference fields.");
             AvailabilityWindow[] windows = [];
+            var availabilityAssumption = "";
             var requestedZone = PlannerInterpretation.RequestedZone(request);
-            if (PlannerInterpretation.TryDatedWindow(request, first.Year, requestedZone, out var sourceWindow))
-                windows = [sourceWindow];
-            else if (interpretation.RequiresTimeExtraction(request))
+            var hasTimeHint = PlannerInterpretation.HasAdditionalTimeHint(request);
+            if (interpretation.RequiresTimeExtraction(request))
             {
                 var dated = PlannerInterpretation.HasExplicitDate(request);
-                var schema = dated ? PlannerSchemas.Availability : PlannerSchemas.DailyAvailability;
-                var available = await JsonResponseAsync(client, state,
-                    [new ChatMessage(ChatRole.System, $"Extract ONLY {(dated ? "the dated allowed time windows" : "the recurring daily clock limits, without dates")}. Conference year: {first:yyyy}. Local time means {zone.Id}; use zone local for local or unspecified times, and UTC for UTC. Never convert clock times. Respond with JSON using this schema:\n{schema.GetRawText()}"),
-                     new ChatMessage(ChatRole.User, request)],
-                    schema, 800, 0, cancellationToken);
+                AvailabilityWindow[] requestedDates = [];
+                var openEndedDates = false;
+                var knownDates = dated && PlannerInterpretation.TryCalendarDates(request, first.Year, requestedZone,
+                    out requestedDates, out openEndedDates, conference, zone);
+                PlannerDailyAvailability? datedHours = null;
+                var assumedDatedStart = false;
+                var useModelDatesOnly = false;
                 if (dated)
-                    windows = JsonSerializer.Deserialize(available.Text, PlannerJsonContext.Default.PlannerAvailability)
-                        ?.InZone(requestedZone, zone).ToWindows(zone, conference)
-                        ?? throw new InvalidDataException("The model returned no availability.");
+                {
+                    var sourceLimit = new PlannerDailyAvailability("none", "none", requestedZone).Ground(request, sourceOnly: true);
+                    if (sourceLimit.DailyStart != "none" || sourceLimit.DailyEnd != "none")
+                    {
+                        assumedDatedStart = sourceLimit.DailyStart == "none";
+                        datedHours = sourceLimit.Complete(watchingHours ?? PlannerWatchingHours.Default);
+                        useModelDatesOnly = !hasTimeHint
+                            && (datedHours.DailyEnd == "00:00"
+                                || string.CompareOrdinal(datedHours.DailyStart, datedHours.DailyEnd) < 0);
+                    }
+                }
+                if (knownDates && !hasTimeHint)
+                {
+                    availabilityAssumption = datedHours?.Assumption ?? "";
+                    windows = datedHours is null ? MergeAdjacentDays(requestedDates)
+                        : OnRequestedDays(datedHours, requestedDates, openEndedDates, zone, conference);
+                }
                 else
                 {
-                    var daily = JsonSerializer.Deserialize(available.Text, PlannerJsonContext.Default.PlannerDailyAvailability)
-                        ?? throw new InvalidDataException("The model returned no daily clock limits.");
-                    windows = (daily.Ground(request) with { Zone = requestedZone }).ToWindows(zone, conference);
+                    var extractDaily = !dated || knownDates;
+                    var schema = extractDaily ? PlannerSchemas.DailyAvailability : PlannerSchemas.Availability;
+                    var target = useModelDatesOnly
+                        ? "the calendar dates, ignoring clock times. Use midnight as the start and the exclusive end after the last requested day; keep nonconsecutive dates in separate windows"
+                        : extractDaily ? "the recurring daily clock limits, without dates" : "the dated allowed time windows";
+                    var timeGuidance = hasTimeHint
+                        ? " Extract the bounded interval implied by the named time preference, including both its start and finish. Do not return an unspecified boundary. The app applies explicit clock cutoffs separately."
+                        : "";
+                    var modelRequest = hasTimeHint ? PlannerInterpretation.WithoutClockLimits(request) : request;
+                    if (extractDaily && dated)
+                        modelRequest = PlannerInterpretation.WithoutCalendarDates(modelRequest);
+                    var available = await JsonResponseAsync(client, state,
+                        [new ChatMessage(ChatRole.System, $"Extract ONLY {target}.{timeGuidance} Conference year: {first:yyyy}. Local time means {zone.Id}; use zone local for local or unspecified times, and UTC for UTC. Never convert clock times. Return actual requested values, not schema definitions."),
+                         new ChatMessage(ChatRole.User, modelRequest)],
+                        schema, 800, 0, cancellationToken);
+                    if (!extractDaily)
+                    {
+                        windows = PlannerJson.DeserializeResponse(available.Text, PlannerJsonContext.Default.PlannerAvailability)
+                            ?.InZone(requestedZone, zone).ToWindows(zone, conference)
+                            ?? throw new InvalidDataException("The model returned no availability.");
+                        if (useModelDatesOnly)
+                            windows = windows.Select(PlannerDailyAvailability.CalendarDates).ToArray();
+                        else if (hasTimeHint && windows.Any(window =>
+                            DateTime.ParseExact(window.End, "yyyy-MM-dd'T'HH:mm", CultureInfo.InvariantCulture)
+                            - DateTime.ParseExact(window.Start, "yyyy-MM-dd'T'HH:mm", CultureInfo.InvariantCulture) >= TimeSpan.FromMinutes(1439)))
+                            throw new InvalidDataException(PlannerDailyAvailability.NeedsExplicitTime);
+                        if (datedHours is not null)
+                        {
+                            availabilityAssumption = datedHours.Assumption;
+                            windows = datedHours.RestrictDatedWindows(windows, zone, conference);
+                            if (!useModelDatesOnly && availabilityAssumption.Length > 0
+                                && !windows.Any(window => assumedDatedStart
+                                    ? window.Start.EndsWith($"T{datedHours.DailyStart}", StringComparison.Ordinal)
+                                    : window.End.EndsWith($"T{datedHours.DailyEnd}", StringComparison.Ordinal)))
+                                availabilityAssumption = "";
+                        }
+                    }
+                    else
+                    {
+                        var daily = PlannerJson.DeserializeResponse(available.Text, PlannerJsonContext.Default.PlannerDailyAvailability)
+                            ?? throw new InvalidDataException("The model returned no daily clock limits.");
+                        if (daily.DailyStart is null || daily.DailyEnd is null || daily.Zone is null)
+                            throw new InvalidDataException("The model didn't return usable hours. Try stating both the start and finish.");
+                        var limits = (daily.Ground(request) with { Zone = requestedZone })
+                            .Complete(watchingHours ?? PlannerWatchingHours.Default);
+                        availabilityAssumption = limits.Assumption;
+                        windows = knownDates ? OnRequestedDays(limits, requestedDates, openEndedDates, zone, conference)
+                            : limits.ToWindows(zone, conference);
+                    }
+                }
+                if (hasTimeHint)
+                {
+                    var times = windows.Select(window =>
+                        $"{window.Start[11..]}–{window.End[11..]} ({(window.Zone == "local" ? zone.Id : window.Zone)})")
+                        .Distinct(StringComparer.Ordinal).Take(2).ToArray();
+                    var interpretationNotice = times.Length == 1
+                        ? $"Interpreted hours: {times[0]}. Review the times."
+                        : "Review the interpreted dates and times in matching details.";
+                    availabilityAssumption = string.Join(" ", new[] { availabilityAssumption, interpretationNotice }
+                        .Where(text => text.Length > 0));
                 }
             }
             var (speakerNames, _) = interpretation.Ground(conference, request);
@@ -150,7 +252,7 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
                         """),
                      new ChatMessage(ChatRole.User, request)],
                     PlannerSchemas.TopicIntent, 150, 0, cancellationToken);
-                var intent = JsonSerializer.Deserialize(topical.Text, PlannerJsonContext.Default.PlannerTopicIntent)
+                var intent = PlannerJson.DeserializeResponse(topical.Text, PlannerJsonContext.Default.PlannerTopicIntent)
                     ?? throw new InvalidDataException("The model returned no topic intent.");
                 topic = topic with { Quantity = intent.Quantity, SpeakerScope = intent.SpeakerScope };
             }
@@ -170,7 +272,7 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
                             """),
                          new ChatMessage(ChatRole.User, phrase)],
                         schema, 100, 0, cancellationToken);
-                    var match = JsonSerializer.Deserialize(classified.Text, PlannerJsonContext.Default.PlannerTopicClassification)
+                    var match = PlannerJson.DeserializeResponse(classified.Text, PlannerJsonContext.Default.PlannerTopicClassification)
                         ?? throw new InvalidDataException("The model returned no interest classification.");
                     if (match.Topic != "none")
                         mapped.Add(match.Topic);
@@ -182,7 +284,7 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
             var topicFilter = topic.ToFilter(conference, request, speakerNames.Length > 0);
             var captured = tools.CapturePreferences(speakerNames, windows,
                 allSpeakerSessions,
-                topicFilter);
+                topicFilter, availabilityAssumption);
             if (tools.Preferences is not { } preferences)
                 return new(null, captured);
             cancellationToken.ThrowIfCancellationRequested();
