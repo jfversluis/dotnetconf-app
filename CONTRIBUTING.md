@@ -38,7 +38,7 @@ dotnet test tests/DotNetConf.App.Tests -c Release -p:MobileTargetFramework=net11
 
 On Linux, omit `maui-ios`; the project drops the iOS target there.
 
-iOS builds require a Mac and Xcode 27.0, as required by the RC2 iOS 27 bindings retained in the pinned RC3 workload set. Android requires the workload's Android SDK dependencies, including API 37.0 tooling, and JDK 21. Deployment minimums are iOS 15 and Android API 26. These are different from the build SDK versions. See [MAUI release requirements](https://github.com/dotnet/maui/wiki/Release-Versions).
+iOS builds require a Mac and Xcode 27.1, matching the pinned CI toolchain. The pinned RC3 workload set retains the RC2 iOS 27 bindings. Android requires the workload's Android SDK dependencies, including API 37.0 tooling, and JDK 21. Deployment minimums are iOS 15 and Android API 26. These are different from the build SDK versions. See [MAUI release requirements](https://github.com/dotnet/maui/wiki/Release-Versions).
 
 ### Temporary Essentials.AI source package
 
@@ -72,7 +72,7 @@ temporary and should be removed when switching to the official release.
 
 The iOS head uses the scene lifecycle: `Info.plist` registers the single-window `SceneDelegate`, which inherits `MauiUISceneDelegate`. MAUI owns window creation through `App.CreateWindow`; `AppDelegate` only builds the app. Window sizing and safe areas use MAUI and platform controls, not fixed offsets.
 
-The retained RC2 iOS bindings/Xcode 27.0 build pairing does not claim Xcode 27.1 build support. The scene-forwarding paths for App Actions, authentication URL returns, and user activities still need validation with this workload before adding deep links or authentication.
+The Xcode 27.1 CI pin does not change the retained RC2 iOS bindings or establish official workload support for that pairing. The scene-forwarding paths for App Actions, authentication URL returns, and user activities still need validation with this workload before adding deep links or authentication.
 
 The previous RC2 build was inspected on iPhone and iPhone Duo simulators. Settings and detail/document pages respect system chrome through shared safe-area controls, not fixed offsets. Local validation used installed Xcode 27.1 with `-p:ValidateXcodeVersion=false`, bypassing the workload-version check; this is not the workload's supported pairing or release certification. Physical-device execution and folding transitions remain release gates.
 
