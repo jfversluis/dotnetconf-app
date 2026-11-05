@@ -144,8 +144,11 @@ public sealed class AskTools
     public AskResolution? Complete() => !invalid && terminalCalls == 1 ? Pending : null;
     private ConferenceDocument GetDocument() => document ?? throw new InvalidOperationException("Ask is not initialized.");
 
-    public IReadOnlyList<AITool> CreateFunctions(IServiceProvider services)
+    public IReadOnlyList<AITool> CreateFunctions(IServiceProvider services, bool useGeminiSchema = false)
     {
+#if ANDROID
+        useGeminiSchema = true;
+#endif
         _ = GetDocument();
         if (!ReferenceEquals(services.GetService(typeof(AskTools)), this))
             throw new InvalidOperationException("Ask tools must be bound to their owning request scope.");
@@ -160,8 +163,9 @@ public sealed class AskTools
                 _ => throw new InvalidOperationException("Unknown Ask capability.")
             }))
             .Select(f => f is ApprovalRequiredAIFunction
-                ? (AITool)new ApprovalRequiredAIFunction(new CheckedFunction(this, services, f))
-                : new CheckedFunction(this, services, f)).ToArray();
+                ? (AITool)new ApprovalRequiredAIFunction(new CheckedFunction(this, services,
+                    useGeminiSchema ? GeminiToolCompatibility.Adapt(f) : f))
+                : new CheckedFunction(this, services, useGeminiSchema ? GeminiToolCompatibility.Adapt(f) : f)).ToArray();
     }
 
     private sealed class CheckedFunction(AskTools owner, IServiceProvider services, AIFunction inner)

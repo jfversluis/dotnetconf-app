@@ -2783,6 +2783,49 @@ public sealed class AskTests
             TimeZoneInfo.Utc, "Save Blazor", [], new CancellationToken(true)));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GeminiRunnerUsesTheCapturedProfileAndPreservesContinuationAndApproval(bool removal)
+    {
+        const string modelId = "gemini-nano-preview-fast";
+        var client = new ActionClient(removal, modelId);
+        using var services = new ServiceCollection().AddScoped<AskTools>()
+            .AddTransient<IChatClient>(_ => client).BuildServiceProvider();
+        var status = Substitute.For<IPlannerModelStatus>();
+        status.ReadAsync(Arg.Any<CancellationToken>()).Returns(
+            new PlannerModelState(true, false, "") { ToolCalling = true, ModelId = modelId },
+            new PlannerModelState(true, false, "") { ToolCalling = true, ModelId = "gemini-nano-preview-full" });
+        var runner = new OnDeviceAsk(services.GetRequiredService<IServiceScopeFactory>(),
+            services.GetRequiredService<IServiceProviderIsService>(), status);
+
+        var result = await runner.InterpretAsync(AgendaDocument(), TimeZoneInfo.Utc,
+            removal ? "Remove everything on Thursday" : "Save Blazor", ["one"], default);
+
+        Assert.Equal(removal ? AskAction.RemoveSessions : AskAction.SaveSession, result!.Intent.Action);
+        Assert.Equal("one", Assert.Single(result.Choices).Id);
+        Assert.Equal(removal ? 1 : 2, client.Calls);
+        await status.Received(1).ReadAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GeminiSchemaRejectsUnknownArgumentsAndInvalidatesAnEarlierStagedAction()
+    {
+        var tools = CreateTools(AgendaDocument(), "Save Blazor", []);
+        using var services = new ServiceCollection().AddSingleton(tools).BuildServiceProvider();
+        var functions = tools.CreateFunctions(services, useGeminiSchema: true).Cast<AIFunction>().ToArray();
+        Assert.All(functions, function => Assert.False(function.JsonSchema.TryGetProperty("additionalProperties", out _)));
+        var save = functions.Single(function => function.Name == "save_sessions");
+        await save.InvokeAsync(new AIFunctionArguments { ["query"] = "Blazor" });
+        Assert.NotNull(tools.Complete());
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => save.InvokeAsync(
+            new AIFunctionArguments { ["query"] = "Blazor", ["unexpected"] = "Synthetic argument" }).AsTask());
+
+        Assert.Null(tools.Complete());
+        Assert.NotNull(tools.Failure);
+    }
+
     [Fact]
     public async Task AnyLaterToolFailureInvalidatesAnAlreadyStagedAction()
     {
@@ -2940,13 +2983,28 @@ public sealed class AskTests
         }
     }
 
-    private sealed class ActionClient(bool removal) : IChatClient
+    private sealed class ActionClient(bool removal, string? expectedModelId = null) : IChatClient
     {
         private int calls;
+        public int Calls => calls;
         public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (expectedModelId is not null)
+            {
+                Assert.NotNull(options);
+                Assert.NotNull(options.Tools);
+                Assert.Equal(expectedModelId, options.ModelId);
+                Assert.All(options.Tools.Cast<AIFunction>(),
+                    function => Assert.False(function.JsonSchema.TryGetProperty("additionalProperties", out _)));
+                if (removal)
+                    Assert.IsType<ApprovalRequiredAIFunction>(options.Tools.Single(tool => tool.Name == "request_removal"));
+                if (calls > 0)
+                    Assert.Contains("Action staged", Assert.IsType<string>(
+                        Assert.Single(messages.SelectMany(message => message.Contents)
+                            .OfType<FunctionResultContent>()).Result));
+            }
             if (++calls == 1)
                 return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant,
                     [new FunctionCallContent("action", removal ? "request_removal" : "save_sessions",

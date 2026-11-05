@@ -157,7 +157,9 @@ Console.WriteLine("PASS: NativeAOT planner availability, fixed Android function-
 
 var ask = scope.ServiceProvider.GetRequiredService<AskTools>();
 ask.Initialize(conference, TimeZoneInfo.Utc, "Save Mobile", []);
-var askFunctions = ask.CreateFunctions(scope.ServiceProvider).Cast<AIFunction>().ToDictionary(f => f.Name);
+var askFunctions = ask.CreateFunctions(scope.ServiceProvider, useGeminiSchema: true).Cast<AIFunction>().ToDictionary(f => f.Name);
+Require(askFunctions.Values.All(function => !function.JsonSchema.TryGetProperty("additionalProperties", out _)),
+    "Ask must use Gemini-compatible native schemas.");
 Require(askFunctions.Count == 2 && AskToolContext.Default.Tools.Count == 6,
     "Ask must offer only the requested capabilities from its curated context.");
 Require(Text(await askFunctions["save_sessions"].InvokeAsync(Arguments("""{"query":"Mobile"}""")))
@@ -169,7 +171,7 @@ Require(Text(await askFunctions["save_sessions"].InvokeAsync(Arguments("""{"spea
 Require(ask.Complete() is { Intent: { AllMatches: true, Query: "MAUI", Speaker: "" }, Choices.Length: > 1 },
     "Ask must preserve the complete literal bulk topic under NativeAOT.");
 ask.Initialize(conference, TimeZoneInfo.Utc, "Remove everything", []);
-Require(ask.CreateFunctions(scope.ServiceProvider).Single(f => f.Name == "request_removal") is ApprovalRequiredAIFunction,
+Require(ask.CreateFunctions(scope.ServiceProvider, useGeminiSchema: true).Single(f => f.Name == "request_removal") is ApprovalRequiredAIFunction,
     "Ask must preserve the curated removal approval marker.");
 Console.WriteLine("PASS: NativeAOT Ask schemas, generated bindings, grounded action staging and removal approval metadata.");
 

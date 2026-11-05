@@ -77,6 +77,9 @@ Explore [what you can ask and how to get started](docs/AI-PLANNER.md).
 
 When a ready local model supports tools, Home shows **Ask about the conference**
 instead of **Explore sessions**. Otherwise it keeps **Explore sessions**.
+On Android, Ask uses the same model profile selected in the schedule planner.
+A ready text-only model is not enough: the selected profile must support native
+tool calling. Choosing a profile does not download it or enable Google's developer preview.
 Ask can find sessions by topic, title, speaker, and one device-local conference
 day; open session or speaker details; save matching sessions; or preview removal of
 saved sessions. Try a topic or speaker actually present in the downloaded agenda.

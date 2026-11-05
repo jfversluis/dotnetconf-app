@@ -33,7 +33,19 @@ public sealed class PlannerDiscoveryLifecycleTests
         var updates = Substitute.For<IPlannerScheduleUpdates>();
         updates.RefreshRemindersAsync().Returns(true);
         var store = new MemoryStore();
-        return (new(source, new ScheduleService(store), planner, updates,
+        var schedule = new ScheduleService(store);
+        async Task<PlannerSaveResult?> SaveProposal(ConferenceDocument agenda, ScheduleProposal proposal,
+            TimeZoneInfo zone, CancellationToken cancellationToken)
+        {
+            var review = await schedule.AddProposalAsync(agenda, proposal, zone, cancellationToken)
+                ?? throw new InvalidOperationException("The synthetic proposal was not reviewed.");
+            return new(review, true);
+        }
+        updates.AddPlannerProposalAsync(Arg.Any<ConferenceDocument>(), Arg.Any<ScheduleProposal>(),
+                Arg.Any<TimeZoneInfo>(), Arg.Any<CancellationToken>())
+            .Returns(call => SaveProposal(call.Arg<ConferenceDocument>(), call.Arg<ScheduleProposal>(),
+                call.Arg<TimeZoneInfo>(), call.Arg<CancellationToken>()));
+        return (new(source, schedule, planner, updates,
             NullLogger<PlannerViewModel>.Instance, new TestPlannerModelSelection()), planner, store);
     }
 

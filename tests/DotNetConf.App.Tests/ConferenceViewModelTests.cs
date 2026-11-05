@@ -1389,7 +1389,7 @@ public sealed class ConferenceViewModelTests
         ConferenceDocument document, ScheduleService schedule, ConferenceViewModel conference)
     {
         var planner = new PlannerViewModel(new FixedDataSource(document), schedule, new TestPlanner(),
-            conference, NullLogger<PlannerViewModel>.Instance);
+            conference, NullLogger<PlannerViewModel>.Instance, new TestModelSelection());
         await planner.InitializeAsync();
         planner.Request = "Test";
         await planner.GenerateCommand.ExecuteAsync(null);
@@ -1478,13 +1478,26 @@ public sealed class ConferenceViewModelTests
     private sealed class TestPlanner : IOnDevicePlanner
     {
         public string? UnsupportedReason => null;
-        public Task CheckReadinessAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task<PlannerModelState> CheckReadinessAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(new PlannerModelState(true, false, ""));
+        public IAsyncEnumerable<PlannerModelDownload> DownloadModelAsync(string? modelId,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
         public Task<IReadOnlyList<PlannerStartingPoint>> SuggestStartingPointsAsync(
             ConferenceDocument conference, CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<PlannerStartingPoint>>([]);
         public Task<PlannerResult> ProposeAsync(ConferenceDocument conference, string request,
-            TimeZoneInfo zone, string[] savedIds, CancellationToken cancellationToken, bool fillGaps = false) =>
+            TimeZoneInfo zone, string[] savedIds, CancellationToken cancellationToken, bool fillGaps = false,
+            PlannerWatchingHours? watchingHours = null) =>
             Task.FromResult(new PlannerResult(new(["id"], [], []), ""));
+    }
+
+    private sealed class TestModelSelection : IPlannerModelSelection
+    {
+        public bool IsSupported => false;
+        public string? SelectedModelId => null;
+        public string? Warning => null;
+        public event EventHandler? Changed { add { } remove { } }
+        public void Select(string? modelId) => throw new NotSupportedException();
     }
 
     private sealed class TestRepository(ConferenceSnapshot snapshot) : IConferenceRepository

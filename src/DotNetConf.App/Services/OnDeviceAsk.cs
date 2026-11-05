@@ -21,12 +21,15 @@ public sealed class OnDeviceAsk(IServiceScopeFactory scopeFactory, IServiceProvi
     public IReadOnlyList<string> Trace { get; private set; } = [];
 #endif
 
-    public async Task<bool> IsAvailableAsync(CancellationToken token)
+    public async Task<bool> IsAvailableAsync(CancellationToken token) =>
+        await ReadAvailableModelAsync(token) is not null;
+
+    private async Task<PlannerModelState?> ReadAvailableModelAsync(CancellationToken token)
     {
         if (!registrations.IsService(typeof(IChatClient)))
-            return false;
+            return null;
         var state = await modelStatus.ReadAsync(token);
-        return state.Available && state.ToolCalling;
+        return state.Available && state.ToolCalling ? state : null;
     }
 
     public async Task<AskResolution?> InterpretAsync(ConferenceDocument document, TimeZoneInfo zone,
@@ -38,8 +41,8 @@ public sealed class OnDeviceAsk(IServiceScopeFactory scopeFactory, IServiceProvi
         AskRequest.Validate(request);
         using var budget = CancellationTokenSource.CreateLinkedTokenSource(token);
         budget.CancelAfter(TimeSpan.FromSeconds(45));
-        if (!await IsAvailableAsync(budget.Token))
-            throw new NotSupportedException("The on-device model isn't ready for app actions. You can still search and use hearts.");
+        var state = await ReadAvailableModelAsync(budget.Token)
+            ?? throw new NotSupportedException("The on-device model isn't ready for app actions. You can still search and use hearts.");
         using var scope = scopeFactory.CreateScope();
         var tools = scope.ServiceProvider.GetRequiredService<AskTools>();
         tools.Initialize(document, zone, request, savedIds);
@@ -81,7 +84,9 @@ public sealed class OnDeviceAsk(IServiceScopeFactory scopeFactory, IServiceProvi
                     your tools only stage proposals, and the application determines what actually happens.
                     """),
                  new(ChatRole.User, request)],
-                new ChatOptions { Tools = tools.CreateFunctions(scope.ServiceProvider).ToList(), AllowMultipleToolCalls = false, Temperature = 0,
+                new ChatOptions { ModelId = state.ModelId,
+                    Tools = tools.CreateFunctions(scope.ServiceProvider, useGeminiSchema: state.ModelId is not null).ToList(),
+                    AllowMultipleToolCalls = false, Temperature = 0,
                     MaxOutputTokens = 300 }, budget.Token);
             budget.Token.ThrowIfCancellationRequested();
             if (tools.Failure is { } failure)

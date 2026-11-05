@@ -10,7 +10,7 @@ public sealed class PlannerLifecycleTests
 {
     private static async Task<(PlannerViewModel ViewModel, IOnDevicePlanner Planner,
         IPlannerScheduleUpdates Updates, DelayedStore Store, IConferenceDataSource Data)> CreateAsync(
-            IPlannerModelSelection? selection = null)
+            IPlannerModelSelection? selection = null, bool presentationUpdated = true)
     {
         await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
         var document = await ConferenceJson.ReadAsync(stream);
@@ -33,7 +33,7 @@ public sealed class PlannerLifecycleTests
         {
             var review = await schedule.AddProposalAsync(agenda, proposal, zone, cancellationToken)
                 ?? throw new InvalidOperationException("The test proposal was not reviewed.");
-            return new(review, true);
+            return new(review, presentationUpdated);
         }
         updates.AddPlannerProposalAsync(Arg.Any<ConferenceDocument>(), Arg.Any<ScheduleProposal>(),
                 Arg.Any<TimeZoneInfo>(), Arg.Any<CancellationToken>())
@@ -223,8 +223,7 @@ public sealed class PlannerLifecycleTests
     public async Task ReturningAfterASavedPresentationFailsKeepsTheWarning()
     {
         var selection = new TestPlannerModelSelection { IsSupported = true };
-        var (vm, planner, updates, store, _) = await CreateAsync(selection);
-        updates.When(value => value.RefreshSavedState()).Do(_ => throw new IOException("Synthetic display failure"));
+        var (vm, planner, updates, store, _) = await CreateAsync(selection, presentationUpdated: false);
         vm.ConstraintsConfirmed = true;
         store.Delay = new(TaskCreationOptions.RunContinuationsAsynchronously);
         var save = vm.ApplyCommand.ExecuteAsync(null);
