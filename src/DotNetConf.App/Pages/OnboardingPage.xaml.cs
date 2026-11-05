@@ -242,7 +242,13 @@ public partial class OnboardingPage : ContentPage
             await reminders.RefreshAsync();
             UpdatePermissionState();
         }
-        await (schedulePreparation ??= PrepareScheduleStepAsync());
+        if (schedulePreparation is null)
+            await (schedulePreparation = PrepareScheduleStepAsync());
+        else
+        {
+            await schedulePreparation;
+            await planner.InitializeAsync();
+        }
         ShowReadyPlanner();
     }
 

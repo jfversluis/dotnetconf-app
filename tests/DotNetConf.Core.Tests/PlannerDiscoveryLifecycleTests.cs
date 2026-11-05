@@ -34,7 +34,7 @@ public sealed class PlannerDiscoveryLifecycleTests
         updates.RefreshRemindersAsync().Returns(true);
         var store = new MemoryStore();
         return (new(source, new ScheduleService(store), planner, updates,
-            NullLogger<PlannerViewModel>.Instance), planner, store);
+            NullLogger<PlannerViewModel>.Instance, new TestPlannerModelSelection()), planner, store);
     }
 
     [Fact]

@@ -127,6 +127,7 @@ public static class MauiProgram
 #pragma warning restore MAUIAI0001
         }
 #endif
+        builder.Services.AddSingleton<IPlannerModelSelection, PlannerModelSelection>();
         builder.Services.AddSingleton<IPlannerModelStatus, OnDeviceModelStatus>();
         // Inactive cloud-provider example; setup and privacy requirements: docs/AI-PLANNER-DEMO.md.
         // builder.Services.AddTransient<IChatClient>(_ =>

@@ -6,7 +6,7 @@ internal sealed class TestPlannerModelStatus(bool available = true, bool structu
     string? modelId = null) : IPlannerModelStatus
 {
     public int Calls { get; private set; }
-    public IAsyncEnumerable<PlannerModelDownload> DownloadAsync(CancellationToken cancellationToken) =>
+    public IAsyncEnumerable<PlannerModelDownload> DownloadAsync(string? modelId, CancellationToken cancellationToken) =>
         throw new NotSupportedException("Synthetic model does not support downloads.");
     public Task<PlannerModelState> ReadAsync(CancellationToken cancellationToken)
     {

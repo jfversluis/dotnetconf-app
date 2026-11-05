@@ -15,14 +15,15 @@ public sealed class PlannerModelSetupTests
         { Setup = PlannerModelSetup.Downloading };
     private static PlannerModelState Ready => new(true, false, "");
 
-    private static PlannerViewModel Create(SyntheticPlanner planner, ConferenceDocument? agenda = null)
+    private static PlannerViewModel Create(SyntheticPlanner planner, ConferenceDocument? agenda = null,
+        IPlannerModelSelection? selection = null)
     {
         var data = Substitute.For<IConferenceDataSource>();
         data.LoadAsync(Arg.Any<CancellationToken>()).Returns(agenda ?? new ConferenceDocument());
         var store = Substitute.For<IScheduleStore>();
         store.ReadAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<string>());
         return new(data, new ScheduleService(store), planner, Substitute.For<IPlannerScheduleUpdates>(),
-            NullLogger<PlannerViewModel>.Instance);
+            NullLogger<PlannerViewModel>.Instance, selection ?? new TestPlannerModelSelection());
     }
 
     private static Task When(PlannerViewModel vm, Func<bool> predicate)
@@ -162,6 +163,46 @@ public sealed class PlannerModelSetupTests
     }
 
     [Fact]
+    public async Task ReturningAfterStoppedReadinessKeepsTheReviewedFallbackUntilAnExplicitRecheck()
+    {
+        var start = DateTimeOffset.Parse("2026-11-10T09:00:00Z");
+        var agenda = new ConferenceDocument
+        {
+            IsMock = true,
+            Sessions =
+            [
+                new Session { Id = "synthetic-1", Title = "Synthetic session 1", StartsAt = start, EndsAt = start.AddMinutes(45) },
+                new Session { Id = "synthetic-2", Title = "Synthetic session 2", StartsAt = start.AddHours(1), EndsAt = start.AddHours(1).AddMinutes(45) }
+            ]
+        };
+        var planner = new SyntheticPlanner { State = Downloading };
+        var vm = Create(planner, agenda);
+        var initialCheck = vm.InitializeAsync();
+        Assert.True(vm.IsDownloadingModel);
+        vm.Cancel();
+        await initialCheck;
+        await vm.ExploreCommand.ExecuteAsync(null);
+        var rows = vm.Sessions.ToArray();
+        Assert.Equal(2, rows.Length);
+        rows[0].IsSelected = false;
+        planner.State = Ready;
+
+        await vm.InitializeAsync();
+
+        Assert.True(vm.HasProposal);
+        Assert.False(vm.IsAiMode);
+        Assert.False(vm.IsReady);
+        Assert.True(vm.CanRetryModel);
+        Assert.Equal(rows, vm.Sessions);
+        Assert.False(rows[0].IsSelected);
+        Assert.True(vm.CanApply);
+
+        await vm.CheckModelCommand.ExecuteAsync(null);
+        Assert.True(vm.IsReady);
+        Assert.True(vm.IsAiMode);
+    }
+
+    [Fact]
     public async Task FailedDownloadExplainsRecoveryAndDoesNotEnablePlanning()
     {
         var planner = new SyntheticPlanner();
@@ -257,12 +298,321 @@ public sealed class PlannerModelSetupTests
         Assert.Equal(0, planner.Downloads);
     }
 
+    [Fact]
+    public async Task ChoosingAnotherModelRechecksItWithoutStartingADownload()
+    {
+        var selection = new TestPlannerModelSelection { IsSupported = true };
+        var planner = new SyntheticPlanner { State = Ready };
+        var vm = Create(planner, selection: selection);
+        await vm.InitializeAsync();
+        vm.Request = "Synthetic request";
+        var outcomes = new List<string>();
+        vm.OutcomeAvailable += (_, message) => outcomes.Add(message);
+        Assert.True(vm.ShowModelSelection);
+        Assert.Contains("Standard", vm.CurrentModelText);
+
+        vm.ToggleModelSelectionCommand.Execute(null);
+        vm.SelectedModelIndex = 2;
+        Assert.True(vm.CanUseSelectedModel);
+        Assert.Null(selection.SelectedModelId);
+        planner.State = DownloadRequired with { ModelId = "gemini-nano-preview-fast" };
+        await vm.UseSelectedModelCommand.ExecuteAsync(null);
+
+        Assert.Equal("gemini-nano-preview-fast", selection.SelectedModelId);
+        Assert.Contains("Preview fast", vm.CurrentModelText);
+        Assert.True(vm.CanDownloadModel);
+        Assert.Equal("Synthetic request", vm.Request);
+        Assert.Equal(0, planner.Downloads);
+        Assert.False(vm.ShowModelChoices);
+        Assert.Contains(outcomes, message => message.Contains("Preview fast") && message.Contains("Download"));
+    }
+
+    [Fact]
+    public async Task ChangingModelsClearsAnUnsavedDiscoveryPreviewBeforeRechecking()
+    {
+        var start = DateTimeOffset.Parse("2026-11-10T09:00:00Z");
+        var agenda = new ConferenceDocument
+        {
+            IsMock = true,
+            Sessions =
+            [
+                new Session { Id = "synthetic-1", Title = "Synthetic session", StartsAt = start, EndsAt = start.AddMinutes(45) }
+            ]
+        };
+        var selection = new TestPlannerModelSelection { IsSupported = true };
+        var planner = new SyntheticPlanner();
+        var vm = Create(planner, agenda, selection);
+        await vm.InitializeAsync();
+        Assert.True(vm.HasProposal);
+        Assert.NotEmpty(vm.Sessions);
+
+        vm.ToggleModelSelectionCommand.Execute(null);
+        vm.SelectedModelIndex = 2;
+        var pending = new TaskCompletionSource<PlannerModelState>(TaskCreationOptions.RunContinuationsAsynchronously);
+        planner.PendingCheck = pending.Task;
+        var change = vm.UseSelectedModelCommand.ExecuteAsync(null);
+
+        Assert.False(vm.HasProposal);
+        Assert.Empty(vm.Sessions);
+        Assert.True(vm.IsCheckingModel);
+
+        pending.SetResult(DownloadRequired with { ModelId = "gemini-nano-preview-fast" });
+        await change;
+        Assert.Equal(0, planner.Downloads);
+    }
+
+    [Fact]
+    public async Task ChangingTheSharedModelInvalidatesOtherPlannerViews()
+    {
+        var selection = new TestPlannerModelSelection { IsSupported = true };
+        var firstPlanner = new SyntheticPlanner { State = Ready };
+        var secondPlanner = new SyntheticPlanner { State = Ready };
+        var first = Create(firstPlanner, selection: selection);
+        var second = Create(secondPlanner, selection: selection);
+        await first.InitializeAsync();
+        await second.InitializeAsync();
+        second.Request = "Synthetic request";
+        Assert.True(second.CanGenerate);
+        var modelChanged = false;
+        second.PropertyChanged += (_, args) => modelChanged |= args.PropertyName == nameof(second.CurrentModelText);
+
+        first.ToggleModelSelectionCommand.Execute(null);
+        first.SelectedModelIndex = 2;
+        firstPlanner.State = DownloadRequired with { ModelId = "gemini-nano-preview-fast" };
+        await first.UseSelectedModelCommand.ExecuteAsync(null);
+
+        Assert.False(second.IsReady);
+        Assert.False(second.CanGenerate);
+        Assert.True(second.CanRetryModel);
+        Assert.Contains("Preview fast", second.CurrentModelText);
+        Assert.True(modelChanged);
+    }
+
+    [Fact]
+    public async Task ASharedModelChangeDiscardsAnOlderPendingReadinessCheck()
+    {
+        var selection = new TestPlannerModelSelection { IsSupported = true };
+        var firstPlanner = new SyntheticPlanner { State = Ready };
+        var secondPlanner = new SyntheticPlanner { State = Ready };
+        var first = Create(firstPlanner, selection: selection);
+        var second = Create(secondPlanner, selection: selection);
+        await first.InitializeAsync();
+        await second.InitializeAsync();
+        var pending = new TaskCompletionSource<PlannerModelState>(TaskCreationOptions.RunContinuationsAsynchronously);
+        secondPlanner.PendingCheck = pending.Task;
+        var check = second.CheckModelCommand.ExecuteAsync(null);
+        Assert.True(second.IsCheckingModel);
+
+        first.ToggleModelSelectionCommand.Execute(null);
+        first.SelectedModelIndex = 2;
+        firstPlanner.State = DownloadRequired with { ModelId = "gemini-nano-preview-fast" };
+        await first.UseSelectedModelCommand.ExecuteAsync(null);
+        await check.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.False(second.IsReady);
+        Assert.True(second.CanRetryModel);
+        Assert.Contains("model changed", second.ModelStatus);
+        pending.SetResult(Ready);
+    }
+
+    [Fact]
+    public async Task ReturningToARetainedPlannerRechecksTheChangedModel()
+    {
+        var selection = new TestPlannerModelSelection { IsSupported = true };
+        var firstPlanner = new SyntheticPlanner { State = Ready };
+        var secondPlanner = new SyntheticPlanner { State = Ready };
+        var first = Create(firstPlanner, selection: selection);
+        var second = Create(secondPlanner, selection: selection);
+        await first.InitializeAsync();
+        first.Cancel();
+        await second.InitializeAsync();
+        var checks = firstPlanner.Checks;
+
+        second.ToggleModelSelectionCommand.Execute(null);
+        second.SelectedModelIndex = 2;
+        secondPlanner.State = DownloadRequired with { ModelId = "gemini-nano-preview-fast" };
+        await second.UseSelectedModelCommand.ExecuteAsync(null);
+        firstPlanner.State = DownloadRequired with { ModelId = "gemini-nano-preview-fast" };
+        await first.InitializeAsync();
+
+        Assert.Equal(checks + 1, firstPlanner.Checks);
+        Assert.False(first.IsReady);
+        Assert.True(first.CanDownloadModel);
+        Assert.Equal(0, firstPlanner.Downloads);
+    }
+
+    [Fact]
+    public async Task ReturningAfterACancelledCheckRetriesTheChangedModel()
+    {
+        var selection = new TestPlannerModelSelection { IsSupported = true };
+        var planner = new SyntheticPlanner { State = Ready };
+        var vm = Create(planner, selection: selection);
+        await vm.InitializeAsync();
+        selection.Select("gemini-nano-preview-fast");
+        var pending = new TaskCompletionSource<PlannerModelState>(TaskCreationOptions.RunContinuationsAsynchronously);
+        planner.PendingCheck = pending.Task;
+        var check = vm.InitializeAsync();
+        vm.Cancel();
+        await check.WaitAsync(TimeSpan.FromSeconds(5));
+        planner.PendingCheck = null;
+        planner.State = DownloadRequired with { ModelId = "gemini-nano-preview-fast" };
+        var checks = planner.Checks;
+
+        await vm.InitializeAsync();
+
+        Assert.Equal(checks + 1, planner.Checks);
+        Assert.True(vm.CanDownloadModel);
+        pending.SetResult(Ready);
+    }
+
+    [Fact]
+    public async Task ReturningWhileACancelledCheckIsFinishingWaitsAndRechecks()
+    {
+        var selection = new TestPlannerModelSelection { IsSupported = true };
+        var planner = new SyntheticPlanner { State = Ready };
+        var vm = Create(planner, selection: selection);
+        await vm.InitializeAsync();
+        selection.Select("gemini-nano-preview-fast");
+        var pending = new TaskCompletionSource<PlannerModelState>(TaskCreationOptions.RunContinuationsAsynchronously);
+        planner.PendingCheck = pending.Task;
+        var oldCheck = vm.InitializeAsync();
+        vm.Cancel();
+        planner.PendingCheck = null;
+        planner.State = DownloadRequired with { ModelId = "gemini-nano-preview-fast" };
+        var checks = planner.Checks;
+
+        await Task.WhenAll(oldCheck, vm.InitializeAsync()).WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal(checks + 1, planner.Checks);
+        Assert.True(vm.CanDownloadModel);
+        pending.SetResult(Ready);
+    }
+
+    [Fact]
+    public async Task ASharedModelChangeClearsAnotherViewsUnsavedPreview()
+    {
+        var start = DateTimeOffset.Parse("2026-11-10T09:00:00Z");
+        var agenda = new ConferenceDocument
+        {
+            IsMock = true,
+            Sessions =
+            [
+                new Session { Id = "synthetic-1", Title = "Synthetic session", StartsAt = start, EndsAt = start.AddMinutes(45) }
+            ]
+        };
+        var selection = new TestPlannerModelSelection { IsSupported = true };
+        var firstPlanner = new SyntheticPlanner { State = Ready };
+        var secondPlanner = new SyntheticPlanner();
+        var first = Create(firstPlanner, selection: selection);
+        var second = Create(secondPlanner, agenda, selection);
+        await first.InitializeAsync();
+        await second.InitializeAsync();
+        Assert.True(second.HasProposal);
+
+        first.ToggleModelSelectionCommand.Execute(null);
+        first.SelectedModelIndex = 2;
+        await first.UseSelectedModelCommand.ExecuteAsync(null);
+
+        Assert.False(second.HasProposal);
+        Assert.Empty(second.Sessions);
+        Assert.True(second.CanRetryModel);
+    }
+
+    [Fact]
+    public async Task ChangingBackDoesNotRestoreTheFirstModelsPendingResult()
+    {
+        var selection = new TestPlannerModelSelection { IsSupported = true };
+        var firstPlanner = new SyntheticPlanner { State = Ready };
+        var secondPlanner = new SyntheticPlanner { State = Ready };
+        var first = Create(firstPlanner, selection: selection);
+        var second = Create(secondPlanner, selection: selection);
+        await first.InitializeAsync();
+        await second.InitializeAsync();
+        var pending = new TaskCompletionSource<PlannerModelState>(TaskCreationOptions.RunContinuationsAsynchronously);
+        secondPlanner.PendingCheck = pending.Task;
+        var oldCheck = second.CheckModelCommand.ExecuteAsync(null);
+
+        first.ToggleModelSelectionCommand.Execute(null);
+        first.SelectedModelIndex = 2;
+        await first.UseSelectedModelCommand.ExecuteAsync(null);
+        first.ToggleModelSelectionCommand.Execute(null);
+        first.SelectedModelIndex = 0;
+        await first.UseSelectedModelCommand.ExecuteAsync(null);
+        await oldCheck.WaitAsync(TimeSpan.FromSeconds(5));
+        secondPlanner.PendingCheck = null;
+        await second.InitializeAsync();
+        Assert.True(second.IsReady);
+
+        pending.SetResult(DownloadRequired);
+        Assert.True(second.IsReady);
+        Assert.False(second.CanDownloadModel);
+    }
+
+    [Fact]
+    public async Task DownloadUsesTheProfileFromTheReadinessSnapshot()
+    {
+        var selection = new TestPlannerModelSelection { IsSupported = true };
+        selection.Select("gemini-nano-preview-fast");
+        var planner = new SyntheticPlanner
+        {
+            State = DownloadRequired with { ModelId = "gemini-nano-preview-fast" }
+        };
+        var vm = Create(planner, selection: selection);
+        await vm.InitializeAsync();
+        var download = vm.DownloadModelCommand.ExecuteAsync(null);
+        Assert.False(vm.CanChangeModel);
+        selection.Select(null);
+        planner.State = Ready;
+        planner.Updates.Writer.Complete();
+        await download;
+
+        Assert.Equal("gemini-nano-preview-fast", planner.DownloadedModelId);
+        Assert.Equal(1, planner.Downloads);
+        Assert.False(vm.IsReady);
+        Assert.Contains("model changed", vm.ModelStatus);
+    }
+
+    [Fact]
+    public async Task FailedModelSelectionKeepsTheCurrentModelAndShowsRecovery()
+    {
+        var selection = new TestPlannerModelSelection
+        {
+            IsSupported = true,
+            SelectionFailure = new IOException("Synthetic preference failure")
+        };
+        var planner = new SyntheticPlanner { State = Ready };
+        var vm = Create(planner, selection: selection);
+        await vm.InitializeAsync();
+        vm.ToggleModelSelectionCommand.Execute(null);
+        vm.SelectedModelIndex = 2;
+        var checks = planner.Checks;
+
+        await vm.UseSelectedModelCommand.ExecuteAsync(null);
+
+        Assert.Null(selection.SelectedModelId);
+        Assert.True(vm.IsReady);
+        Assert.True(vm.ShowModelChoices);
+        Assert.Contains("try again", vm.ModelSelectionError);
+        Assert.Equal(checks, planner.Checks);
+        Assert.Equal(0, planner.Downloads);
+    }
+
+    [Fact]
+    public async Task ModelChoiceIsHiddenOnOtherPlatforms()
+    {
+        var vm = Create(new SyntheticPlanner { State = Ready });
+        await vm.InitializeAsync();
+        Assert.False(vm.ShowModelSelection);
+        Assert.False(vm.CanChangeModel);
+    }
+
     private sealed class SyntheticPlanner : IOnDevicePlanner
     {
         public PlannerModelState State { get; set; } = DownloadRequired;
         public Task<PlannerModelState>? PendingCheck { get; set; }
         public Channel<PlannerModelDownload> Updates { get; } = Channel.CreateUnbounded<PlannerModelDownload>();
         public int Downloads { get; private set; }
+        public string? DownloadedModelId { get; private set; }
         public int Checks { get; private set; }
         public int Generations { get; private set; }
         public string? UnsupportedReason => null;
@@ -272,10 +622,11 @@ public sealed class PlannerModelSetupTests
             Checks++;
             return PendingCheck ?? Task.FromResult(State);
         }
-        public async IAsyncEnumerable<PlannerModelDownload> DownloadModelAsync(
+        public async IAsyncEnumerable<PlannerModelDownload> DownloadModelAsync(string? modelId,
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             Downloads++;
+            DownloadedModelId = modelId;
             await foreach (var update in Updates.Reader.ReadAllAsync(cancellationToken))
                 yield return update;
         }

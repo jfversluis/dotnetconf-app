@@ -1,6 +1,7 @@
 <ContentView x:Class="DotNetConf.App.Controls.PlannerView"
              xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:DotNetConf.App.Controls"
              xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
              xmlns:services="clr-namespace:DotNetConf.App.Services"
              x:DataType="vm:PlannerViewModel" SafeAreaEdges="None">
@@ -48,6 +49,35 @@
                     <Label Text="Shuffle replaces this unsaved preview. Your saved schedule stays unchanged."
                            Style="{StaticResource Secondary}" FontSize="13" />
                 </VerticalStackLayout>
+                <VerticalStackLayout IsVisible="{Binding ShowModelSelection}" Spacing="8" AutomationId="planner-model-selection">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                        <Label Text="{Binding CurrentModelText}" Style="{StaticResource Secondary}" FontSize="14"
+                               VerticalOptions="Center" AutomationId="planner-current-model" />
+                        <Button Grid.Column="1" Text="{Binding ModelSelectionAction}"
+                                Command="{Binding ToggleModelSelectionCommand}" IsEnabled="{Binding CanChangeModel}"
+                                Style="{StaticResource DisclosureButton}" MinimumWidthRequest="64"
+                                SemanticProperties.Description="{Binding ModelSelectionActionDescription}"
+                                AutomationId="planner-toggle-model" />
+                    </Grid>
+                    <Label Text="{Binding ModelSelectionError}" IsVisible="{Binding HasModelSelectionError}"
+                           TextColor="{AppThemeBinding Light={StaticResource LightError}, Dark={StaticResource DarkError}}"
+                           AutomationId="planner-model-selection-error" />
+                    <VerticalStackLayout IsVisible="{Binding ShowModelChoices}" Spacing="8">
+                        <Label Text="Choose an on-device model" />
+                        <Border Padding="12,0" StrokeShape="RoundRectangle 8">
+                            <controls:AgendaPicker Title="On-device model" ItemsSource="{Binding ModelChoices}"
+                                                   SelectedIndex="{Binding SelectedModelIndex}" IsEnabled="{Binding CanChangeModel}"
+                                                   SemanticProperties.Description="On-device AI model"
+                                                   AutomationId="planner-model-picker" />
+                        </Border>
+                        <Label Text="{Binding SelectedModelDescription}" Style="{StaticResource Secondary}" FontSize="14" />
+                        <Label Text="Changing models clears this unsaved preview. Your saved talks stay as they are."
+                               IsVisible="{Binding HasProposal}" Style="{StaticResource Secondary}" FontSize="14" />
+                        <Button Text="Use selected model" Command="{Binding UseSelectedModelCommand}"
+                                IsEnabled="{Binding CanUseSelectedModel}" Style="{StaticResource QuietButton}"
+                                LineBreakMode="WordWrap" AutomationId="planner-use-model" />
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
                 <Label Text="{Binding ModelStatus}" IsVisible="{Binding ShowAvailabilityStatus}"
                        Style="{StaticResource Secondary}" FontSize="13"
                        AutomationId="planner-ai-availability" />
@@ -62,6 +92,8 @@
                         <Label Text="{Binding ModelStatus}" AutomationId="planner-model-status" />
                         <Label Text="{Binding ModelDownloadDisclosure}" IsVisible="{Binding CanOfferModelSetup}"
                                Style="{StaticResource Secondary}" FontSize="14" AutomationId="planner-download-disclosure" />
+                        <Label Text="Checking or setting up AI can replace this unsaved preview. Your saved talks stay as they are."
+                               IsVisible="{Binding HasProposal}" Style="{StaticResource Secondary}" FontSize="14" />
                         <Button Text="Download on-device model" Command="{Binding DownloadModelCommand}"
                                 IsVisible="{Binding CanDownloadModel}" IsEnabled="{Binding CanDownloadModel}"
                                 LineBreakMode="WordWrap" MinimumHeightRequest="48"

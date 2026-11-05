@@ -5,9 +5,22 @@ using DotNetConf.Core;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Maui.Storage;
 
 Require(!RuntimeFeature.IsDynamicCodeSupported, "Run the published NativeAOT executable, not dotnet run.");
 Require(JsonSerializer.IsReflectionEnabledByDefault, "AI Attributes preview 14 requires JSON reflection explicitly enabled.");
+
+var modelSelection = new PlannerModelSelection(new SmokePreferences(), NullLogger<PlannerModelSelection>.Instance);
+var modelObserver = new ModelObserver(modelSelection);
+modelObserver.Subscribe();
+var discardedObserver = RegisterDiscardedObserver(modelSelection);
+GC.Collect();
+GC.WaitForPendingFinalizers();
+GC.Collect();
+Require(!discardedObserver.IsAlive, "Model selection retained an abandoned observer.");
+modelSelection.Select("gemini-nano-preview-fast");
+Require(modelObserver.ChangeCount == 1, "The model-change notification did not reach a live observer.");
+GC.KeepAlive(modelObserver);
 
 await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
 var conference = await ConferenceJson.ReadAsync(stream);
@@ -148,7 +161,15 @@ Require(tools.DiscoveryComplete && tools.CandidateIds.Contains("building-with-ma
     "Model-selected discovery lost real candidates.");
 Require(tools.Proposal is null, "The model's read-only tools submitted a proposal.");
 
-Console.WriteLine("PASS: NativeAOT planner availability, generated bindings, Gemini schemas and approval, JSON and typed arguments, defaults, validation, scope isolation, cancellation, call budget and model-selected tool invocation through Microsoft.Extensions.AI. JSON reflection is explicitly enabled; dynamic code is unavailable.");
+Console.WriteLine("PASS: NativeAOT planner availability, weak model-selection notifications, generated bindings, Gemini schemas and approval, JSON and typed arguments, defaults, validation, scope isolation, cancellation, call budget and model-selected tool invocation through Microsoft.Extensions.AI. JSON reflection is explicitly enabled; dynamic code is unavailable.");
+
+[MethodImpl(MethodImplOptions.NoInlining)]
+static WeakReference RegisterDiscardedObserver(PlannerModelSelection selection)
+{
+    var observer = new ModelObserver(selection);
+    observer.Subscribe();
+    return new WeakReference(observer);
+}
 
 static AIFunctionArguments Arguments(string json) =>
     JsonSerializer.Deserialize<AIFunctionArguments>(json, AIJsonUtilities.DefaultOptions)
@@ -161,6 +182,22 @@ static void Require(bool condition, string message)
 {
     if (!condition)
         throw new InvalidOperationException(message);
+}
+
+sealed class ModelObserver(PlannerModelSelection selection)
+{
+    public int ChangeCount { get; private set; }
+    public void Subscribe() => selection.Changed += OnChanged;
+    private void OnChanged(object? sender, EventArgs args) => ChangeCount++;
+}
+
+sealed class SmokePreferences : IPreferences
+{
+    public bool ContainsKey(string key, string? sharedName = null) => false;
+    public void Remove(string key, string? sharedName = null) { }
+    public void Clear(string? sharedName = null) { }
+    public void Set<T>(string key, T value, string? sharedName = null) { }
+    public T Get<T>(string key, T defaultValue, string? sharedName = null) => defaultValue;
 }
 
 sealed class ToolCallingClient : IChatClient

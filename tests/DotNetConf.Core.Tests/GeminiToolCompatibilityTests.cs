@@ -6,6 +6,7 @@ using NSubstitute;
 
 namespace DotNetConf.Core.Tests;
 
+[Trait("Category", "AIAttributes")]
 public sealed class GeminiToolCompatibilityTests
 {
     [Fact]

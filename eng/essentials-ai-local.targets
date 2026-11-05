@@ -1,0 +1,7 @@
+<Project>
+  <Import Project="$(MSBuildProjectDirectory)/../../../Directory.Build.targets" />
+  <PropertyGroup>
+    <TargetFrameworks>net10.0;net10.0-android</TargetFrameworks>
+    <TargetFrameworks Condition="'$(EssentialsAILocalApple)' == 'true'">$(TargetFrameworks);net10.0-ios</TargetFrameworks>
+  </PropertyGroup>
+</Project>

@@ -724,6 +724,7 @@ public sealed class PlannerRelevanceTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    [Trait("Category", "AIAttributes")]
     public async Task WatchingDefaultsNeverRestrictAnUnrestrictedTopicRequest(bool structured)
     {
         var client = Substitute.For<IChatClient>();
@@ -751,6 +752,7 @@ public sealed class PlannerRelevanceTests
     [InlineData(false, "9am–5pm")]
     [InlineData(true, "from 09:00—17:00")]
     [InlineData(false, "from 09:00—17:00")]
+    [Trait("Category", "AIAttributes")]
     public async Task CompactClockRangesCannotExtendPastTheRequestedFinish(bool structured, string range)
     {
         var agenda = SyntheticAgenda();
@@ -775,6 +777,7 @@ public sealed class PlannerRelevanceTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    [Trait("Category", "AIAttributes")]
     public async Task InclusiveDayPartsDoNotRestrictExplicitlyUnrestrictedRequests(bool structured)
     {
         var responses = new Queue<string>([
@@ -797,6 +800,7 @@ public sealed class PlannerRelevanceTests
     [InlineData(false, "AI sessions before 11pm UTC")]
     [InlineData(true, "AI sessions before 11pm UTC, not including overnight.")]
     [InlineData(false, "AI sessions before 11pm UTC, not including overnight.")]
+    [Trait("Category", "AIAttributes")]
     public async Task ProvidersKeepDaytimeLimitsAndRejectFullSessionsCrossingTheCutoff(bool structured, string request)
     {
         var agenda = SyntheticAgenda();
@@ -827,6 +831,7 @@ public sealed class PlannerRelevanceTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    [Trait("Category", "AIAttributes")]
     public async Task ProvidersKeepTheCompleteExplicitOffsetZone(bool structured)
     {
         var responses = new Queue<string>([
@@ -876,6 +881,7 @@ public sealed class PlannerRelevanceTests
     [InlineData(false, "I can't watch AI before 5pm and must finish before 9pm UTC", "17:00", "21:00")]
     [InlineData(true, "I can't watch any of the AI sessions, after 5pm UTC", "07:00", "17:00")]
     [InlineData(false, "I can't watch any of the AI sessions, after 5pm UTC", "07:00", "17:00")]
+    [Trait("Category", "AIAttributes")]
     public async Task ProvidersKeepNegationScopedToItsCutoff(bool structured, string request, string start, string end)
     {
         var agenda = SyntheticAgenda();
@@ -966,6 +972,7 @@ public sealed class PlannerRelevanceTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    [Trait("Category", "AIAttributes")]
     public async Task NamedClockClauseDoesNotIntroduceAnUnrelatedTopic(bool structured)
     {
         var agenda = SyntheticAgenda();
@@ -991,6 +998,7 @@ public sealed class PlannerRelevanceTests
     [InlineData(false, "AI on November 10-12 sessions UTC", "2026-11-10T00:00", "2026-11-13T00:00")]
     [InlineData(true, "AI on November 10 (Tuesday) to 12 UTC", "2026-11-10T00:00", "2026-11-13T00:00")]
     [InlineData(false, "AI on November 10 (Tuesday) to 12 UTC", "2026-11-10T00:00", "2026-11-13T00:00")]
+    [Trait("Category", "AIAttributes")]
     public async Task ProvidersKeepNamedWeekdaysAndCompleteDateRanges(bool structured, string request, string start, string end)
     {
         var agenda = SyntheticAgenda();
@@ -1046,6 +1054,7 @@ public sealed class PlannerRelevanceTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    [Trait("Category", "AIAttributes")]
     public async Task DatedTimePreferencesKeepEveryRequestedDayAcrossProviders(bool structured)
     {
         var agenda = SyntheticAgenda();
@@ -1072,6 +1081,7 @@ public sealed class PlannerRelevanceTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    [Trait("Category", "AIAttributes")]
     public async Task NamedNightStaysAnchoredAcrossMidnight(bool structured)
     {
         var agenda = SyntheticAgenda();
@@ -1099,6 +1109,7 @@ public sealed class PlannerRelevanceTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    [Trait("Category", "AIAttributes")]
     public async Task OpenEndedDatesKeepEveryEligibleConferenceDay(bool structured)
     {
         var agenda = SyntheticAgenda();
@@ -1132,6 +1143,7 @@ public sealed class PlannerRelevanceTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    [Trait("Category", "AIAttributes")]
     public async Task OpenEndedNightIsClippedOnlyAtTheDateBoundary(bool structured)
     {
         var agenda = SyntheticAgenda();
@@ -1158,6 +1170,7 @@ public sealed class PlannerRelevanceTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    [Trait("Category", "AIAttributes")]
     public async Task AdjacentFullDaysAllowSessionsThatCrossMidnight(bool structured)
     {
         var agenda = SyntheticAgenda();
@@ -1203,6 +1216,7 @@ public sealed class PlannerRelevanceTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    [Trait("Category", "AIAttributes")]
     public async Task DatedCutoffsUseTheSameGroundedHoursAcrossProviders(bool structured)
     {
         var agenda = SyntheticAgenda();
@@ -1254,6 +1268,7 @@ public sealed class PlannerRelevanceTests
     [InlineData(false, "AI on November 10 and November 12 before 11pm UTC")]
     [InlineData(true, "AI on November 10, Tuesday, November 12, Thursday before 11pm UTC")]
     [InlineData(false, "AI on November 10, Tuesday, November 12, Thursday before 11pm UTC")]
+    [Trait("Category", "AIAttributes")]
     public async Task SeparateRequestedDatesCannotExpandToTheMiddleDay(bool structured, string request)
     {
         var agenda = SyntheticAgenda();
@@ -1323,6 +1338,7 @@ public sealed class PlannerRelevanceTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    [Trait("Category", "AIAttributes")]
     public async Task DatesOutsideTheConferenceDoNotHideValidRequestedDays(bool structured)
     {
         var responses = new Queue<string>([
@@ -1343,6 +1359,7 @@ public sealed class PlannerRelevanceTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    [Trait("Category", "AIAttributes")]
     public async Task DatedExplicitRangeDoesNotDiscardARequestedDayPart(bool structured)
     {
         var responses = new Queue<string>([
@@ -1366,6 +1383,7 @@ public sealed class PlannerRelevanceTests
     [InlineData(false, "in the afternoon", "13:00", "18:00")]
     [InlineData(true, "during lunch", "12:00", "13:00")]
     [InlineData(false, "after work", "18:00", "23:00")]
+    [Trait("Category", "AIAttributes")]
     public async Task DatedCutoffsKeepAnAdditionalRequestedDayPart(
         bool structured, string dayPart, string start, string end)
     {

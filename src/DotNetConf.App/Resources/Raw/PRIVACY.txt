@@ -11,7 +11,7 @@ policy.
 
 The app has no account sign-in, advertising, analytics SDK, or app-operated
 tracking service. It does not upload your saved schedule, appearance preference,
-or searches to the developer. It does not request device location, contacts,
+Android model choice, or searches to the developer. It does not request device location, contacts,
 camera, microphone, or photo-library access. It does not sell personal data.
 
 ## Public conference content and network requests
@@ -67,6 +67,9 @@ content are not included in the model-download request. Android manages the
 model's storage and may continue a download after you leave the planner or stop
 waiting. Stopping waiting is not a guarantee of cancelling or deleting the
 system-managed model. On iOS, model setup remains in device settings.
+On Android, your selected model profile is stored in app preferences and used
+for readiness checks, explicit downloads, and on-device requests. Choosing a
+profile does not itself download a model or change your device's AI settings.
 On tool-capable models, the model can request read-only agenda searches in the
 app. Their results stay within this on-device planning flow; the model cannot
 save sessions without your confirmation.
@@ -81,8 +84,8 @@ delivery.
 ## Data kept on your device
 
 - Your saved session IDs are stored locally so your schedule survives restarts.
-- Your appearance preference, whether you completed the welcome, and whether
-  reminders are enabled are stored in the platform's preferences store.
+- Your appearance preference, Android model choice, whether you completed the
+  welcome, and whether reminders are enabled are stored in the platform's preferences store.
 - The last successfully downloaded agenda, public profiles, source URLs, and
   refresh/cache metadata are stored locally. The agenda cache is limited to
   16 MiB. It has no fixed expiry: older successfully downloaded data can remain
@@ -112,8 +115,8 @@ providers and your settings, not by an app-operated service.
 
 ## Retention and your choices
 
-Remove a saved session by toggling its save control, and change your appearance
-preference in Settings. Device app-data controls or uninstalling the app remove
+Remove a saved session by toggling its save control, change your appearance
+preference in Settings, and change your Android model choice in the planner. Device app-data controls or uninstalling the app remove
 local app data subject to platform behavior; clear this site's storage for
 the browser app. Platform backups may retain or restore data separately.
 Clearing data also removes the offline agenda, which must be downloaded again.

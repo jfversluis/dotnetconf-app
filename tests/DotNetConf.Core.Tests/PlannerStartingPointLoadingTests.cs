@@ -21,7 +21,7 @@ public sealed class PlannerStartingPointLoadingTests
         var store = Substitute.For<IScheduleStore>();
         store.ReadAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<string>());
         return new(data, new ScheduleService(store), planner, Substitute.For<IPlannerScheduleUpdates>(),
-            logger ?? NullLogger<PlannerViewModel>.Instance);
+            logger ?? NullLogger<PlannerViewModel>.Instance, new TestPlannerModelSelection());
     }
 
     private static Task RefreshFinished(PlannerViewModel vm)

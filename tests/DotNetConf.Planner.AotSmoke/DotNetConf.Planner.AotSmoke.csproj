@@ -12,6 +12,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.AI" Version="10.4.1" />
     <PackageReference Include="Microsoft.Maui.AI.Attributes" Version="0.1.0-preview.14.26531.2" />
+    <PackageReference Include="Microsoft.Maui.Core" Version="11.0.0-rc.2.26505.5" />
+    <PackageReference Include="Microsoft.Maui.Essentials" Version="11.0.0-rc.2.26505.5" />
     <ProjectReference Include="../../src/DotNetConf.Core/DotNetConf.Core.csproj" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerTools.cs" Link="PlannerTools.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerToolContext.cs" Link="PlannerToolContext.cs" />
@@ -20,6 +22,7 @@
     <Compile Include="../../src/DotNetConf.App/Services/PlannerCatalog.cs" Link="PlannerCatalog.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerJson.cs" Link="PlannerJson.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerStartingPoints.cs" Link="PlannerStartingPoints.cs" />
+    <Compile Include="../../src/DotNetConf.App/Services/PlannerModelSelection.cs" Link="PlannerModelSelection.cs" />
     <None Include="../DotNetConf.Core.Tests/Fixtures/conference.mock.json"
           Link="conference.mock.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>

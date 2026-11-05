@@ -1,0 +1,4 @@
+# The package verifier compares these notices with the exact upstream bytes.
+src/DotNetConf.App/Resources/Raw/LICENSE-AndroidXBindings.txt -text
+src/DotNetConf.App/Resources/Raw/NOTICE-DataTransport.txt -text
+src/DotNetConf.App/Resources/Raw/NOTICE-MLKit*.txt -text

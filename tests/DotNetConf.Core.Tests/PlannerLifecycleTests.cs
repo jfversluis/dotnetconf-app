@@ -1,6 +1,7 @@
 using DotNetConf.App.Services;
 using DotNetConf.App.ViewModels;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Maui.Storage;
 using NSubstitute;
 
 namespace DotNetConf.Core.Tests;
@@ -8,7 +9,8 @@ namespace DotNetConf.Core.Tests;
 public sealed class PlannerLifecycleTests
 {
     private static async Task<(PlannerViewModel ViewModel, IOnDevicePlanner Planner,
-        IPlannerScheduleUpdates Updates, DelayedStore Store, IConferenceDataSource Data)> CreateAsync()
+        IPlannerScheduleUpdates Updates, DelayedStore Store, IConferenceDataSource Data)> CreateAsync(
+            IPlannerModelSelection? selection = null)
     {
         await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.mock.json"));
         var document = await ConferenceJson.ReadAsync(stream);
@@ -26,7 +28,7 @@ public sealed class PlannerLifecycleTests
         updates.RefreshRemindersAsync().Returns(true);
         var store = new DelayedStore();
         var vm = new PlannerViewModel(data, new ScheduleService(store), planner, updates,
-            NullLogger<PlannerViewModel>.Instance);
+            NullLogger<PlannerViewModel>.Instance, selection ?? new TestPlannerModelSelection());
         await vm.InitializeAsync();
         vm.Request = "Mobile";
         await vm.GenerateCommand.ExecuteAsync(null);
@@ -60,6 +62,282 @@ public sealed class PlannerLifecycleTests
         Assert.Empty(vm.Sessions);
         Assert.Contains("added to My Schedule", Assert.Single(outcomes));
         updates.Received(1).RefreshSavedState();
+    }
+
+    [Fact]
+    public async Task ReturningDuringASaveRechecksTheChangedModelAfterSaving()
+    {
+        var selection = new TestPlannerModelSelection { IsSupported = true };
+        var (vm, planner, _, store, _) = await CreateAsync(selection);
+        planner.ClearReceivedCalls();
+        vm.ConstraintsConfirmed = true;
+        store.Delay = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var save = vm.ApplyCommand.ExecuteAsync(null);
+        await store.Started.Task;
+
+        vm.Cancel();
+        selection.Select("gemini-nano-preview-fast");
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(
+            new PlannerModelState(false, false, "Download the selected model.")
+            {
+                Setup = PlannerModelSetup.DownloadRequired,
+                ModelId = "gemini-nano-preview-fast"
+            });
+        var returning = vm.InitializeAsync();
+        store.Delay.SetResult();
+        await Task.WhenAll(save, returning).WaitAsync(TimeSpan.FromSeconds(5));
+
+        await planner.Received(1).CheckReadinessAsync(Arg.Any<CancellationToken>());
+        Assert.True(vm.CanDownloadModel);
+        Assert.Contains("building-with-maui", store.Saved);
+        Assert.Contains("added to My Schedule", vm.Status);
+        Assert.Empty(vm.Sessions);
+    }
+
+    [Fact]
+    public async Task ReturningDuringAFailedSaveKeepsThePreviewAndFailureAfterTheModelChanges()
+    {
+        var selection = new TestPlannerModelSelection { IsSupported = true };
+        var (vm, planner, _, store, _) = await CreateAsync(selection);
+        planner.ClearReceivedCalls();
+        var row = Assert.Single(vm.Sessions);
+        vm.ConstraintsConfirmed = true;
+        store.Fail = true;
+        store.Delay = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var save = vm.ApplyCommand.ExecuteAsync(null);
+        await store.Started.Task;
+
+        vm.Cancel();
+        selection.Select("gemini-nano-preview-fast");
+        var returning = vm.InitializeAsync();
+        store.Delay.SetResult();
+        await Task.WhenAll(save, returning).WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.True(vm.IsAiMode);
+        Assert.False(vm.IsReady);
+        Assert.True(vm.CanRetryModel);
+        Assert.Same(row, Assert.Single(vm.Sessions));
+        Assert.True(row.IsSelected);
+        Assert.False(vm.ConstraintsConfirmed);
+        Assert.Contains("Couldn't save", vm.Status);
+        Assert.Equal(["already-liked"], store.Saved);
+        await planner.DidNotReceive().CheckReadinessAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReturningAfterASaveFinishesKeepsItsOutcomeWhileRecheckingTheModel()
+    {
+        var selection = new TestPlannerModelSelection { IsSupported = true };
+        var (vm, planner, _, store, _) = await CreateAsync(selection);
+        planner.ClearReceivedCalls();
+        vm.ConstraintsConfirmed = true;
+        store.Delay = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var save = vm.ApplyCommand.ExecuteAsync(null);
+        await store.Started.Task;
+
+        vm.Cancel();
+        selection.Select("gemini-nano-preview-fast");
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(
+            new PlannerModelState(false, false, "Download the selected model.")
+            {
+                Setup = PlannerModelSetup.DownloadRequired,
+                ModelId = "gemini-nano-preview-fast"
+            });
+        store.Delay.SetResult();
+        await save;
+        await vm.InitializeAsync();
+
+        await planner.Received(1).CheckReadinessAsync(Arg.Any<CancellationToken>());
+        Assert.True(vm.CanDownloadModel);
+        Assert.Contains("added to My Schedule", vm.Status);
+        Assert.Empty(vm.Sessions);
+        Assert.Contains("building-with-maui", store.Saved);
+    }
+
+    [Fact]
+    public async Task ReturningAfterASavedPresentationFailsKeepsTheWarning()
+    {
+        var selection = new TestPlannerModelSelection { IsSupported = true };
+        var (vm, planner, updates, store, _) = await CreateAsync(selection);
+        updates.When(value => value.RefreshSavedState()).Do(_ => throw new IOException("Synthetic display failure"));
+        vm.ConstraintsConfirmed = true;
+        store.Delay = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var save = vm.ApplyCommand.ExecuteAsync(null);
+        await store.Started.Task;
+
+        vm.Cancel();
+        selection.Select("gemini-nano-preview-fast");
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(
+            new PlannerModelState(false, false, "Download the selected model.")
+            {
+                Setup = PlannerModelSetup.DownloadRequired,
+                ModelId = "gemini-nano-preview-fast"
+            });
+        var returning = vm.InitializeAsync();
+        store.Delay.SetResult();
+        await Task.WhenAll(save, returning).WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.True(vm.HasAddedSessions);
+        Assert.Contains("were saved, but", vm.Status);
+        Assert.Empty(vm.Sessions);
+        Assert.Contains("building-with-maui", store.Saved);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ModelChangeAfterAHiddenSaveKeepsItsOutcome(bool fail)
+    {
+        var selection = new TestPlannerModelSelection { IsSupported = true };
+        var (vm, planner, _, store, _) = await CreateAsync(selection);
+        var row = Assert.Single(vm.Sessions);
+        vm.ConstraintsConfirmed = true;
+        store.Fail = fail;
+        store.Delay = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var save = vm.ApplyCommand.ExecuteAsync(null);
+        await store.Started.Task;
+
+        vm.Cancel();
+        store.Delay.SetResult();
+        await save;
+        selection.Select("gemini-nano-preview-fast");
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(
+            new PlannerModelState(false, false, "Download the selected model.")
+            {
+                Setup = PlannerModelSetup.DownloadRequired,
+                ModelId = "gemini-nano-preview-fast"
+            });
+        await vm.InitializeAsync();
+
+        if (fail)
+        {
+            Assert.Contains("Couldn't save", vm.Status);
+            Assert.Same(row, Assert.Single(vm.Sessions));
+            Assert.True(vm.IsAiMode);
+            Assert.Equal(["already-liked"], store.Saved);
+        }
+        else
+        {
+            Assert.Contains("added to My Schedule", vm.Status);
+            Assert.Empty(vm.Sessions);
+            Assert.Contains("building-with-maui", store.Saved);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InterruptedAutomaticDownloadingCheckKeepsTheSaveOutcomeForTheNextCheck(bool changeModel)
+    {
+        var selection = new TestPlannerModelSelection { IsSupported = true };
+        var (vm, planner, _, store, _) = await CreateAsync(selection);
+        vm.ConstraintsConfirmed = true;
+        store.Delay = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var save = vm.ApplyCommand.ExecuteAsync(null);
+        await store.Started.Task;
+
+        vm.Cancel();
+        selection.Select("gemini-nano-preview-fast");
+        store.Delay.SetResult();
+        await save;
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(
+            new PlannerModelState(false, false, "Android is downloading the selected model.")
+            {
+                Setup = PlannerModelSetup.Downloading,
+                ModelId = "gemini-nano-preview-fast"
+            });
+        var check = vm.InitializeAsync();
+        Assert.True(vm.IsDownloadingModel);
+        Assert.Contains("added to My Schedule", vm.Status);
+        if (changeModel)
+            selection.Select("gemini-nano-fast");
+        else
+            vm.Cancel();
+        await check;
+        Assert.Contains("added to My Schedule", vm.Status);
+
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(
+            new PlannerModelState(true, false, "") { ModelId = selection.SelectedModelId });
+        await vm.InitializeAsync();
+        Assert.True(vm.IsReady);
+        Assert.Contains("added to My Schedule", vm.Status);
+        Assert.Empty(vm.Sessions);
+    }
+
+    [Fact]
+    public async Task TimedOutAutomaticCheckKeepsTheSaveOutcomeForTheNextCheck()
+    {
+        var selection = new TestPlannerModelSelection { IsSupported = true };
+        var (vm, planner, _, store, _) = await CreateAsync(selection);
+        vm.ConstraintsConfirmed = true;
+        store.Delay = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var save = vm.ApplyCommand.ExecuteAsync(null);
+        await store.Started.Task;
+
+        vm.Cancel();
+        selection.Select("gemini-nano-preview-fast");
+        store.Delay.SetResult();
+        await save;
+        var pending = new TaskCompletionSource<PlannerModelState>(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken checkToken = default;
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            checkToken = call.Arg<CancellationToken>();
+            return pending.Task;
+        });
+
+        await vm.InitializeAsync().WaitAsync(TimeSpan.FromSeconds(45));
+        Assert.True(checkToken.IsCancellationRequested);
+        Assert.Contains("added to My Schedule", vm.Status);
+
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(
+            new PlannerModelState(true, false, "") { ModelId = "gemini-nano-preview-fast" });
+        await vm.InitializeAsync();
+        Assert.True(vm.IsReady);
+        Assert.Contains("added to My Schedule", vm.Status);
+        Assert.Empty(vm.Sessions);
+    }
+
+    [Fact]
+    public async Task RealWeakSelectionNotifiesALivePlannerAfterCollection()
+    {
+        var selection = new PlannerModelSelection(Substitute.For<IPreferences>(),
+            NullLogger<PlannerModelSelection>.Instance);
+        var (vm, _, _, _, _) = await CreateAsync(selection);
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        selection.Select("gemini-nano-preview-fast");
+
+        Assert.False(vm.IsReady);
+        Assert.False(vm.HasProposal);
+        Assert.Contains("model changed", vm.ModelStatus, StringComparison.OrdinalIgnoreCase);
+        GC.KeepAlive(vm);
+    }
+
+    [Fact]
+    public async Task LeavingAgainDuringASaveDoesNotStartAHiddenRecheck()
+    {
+        var selection = new TestPlannerModelSelection { IsSupported = true };
+        var (vm, planner, _, store, _) = await CreateAsync(selection);
+        planner.ClearReceivedCalls();
+        vm.ConstraintsConfirmed = true;
+        store.Delay = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var save = vm.ApplyCommand.ExecuteAsync(null);
+        await store.Started.Task;
+
+        vm.Cancel();
+        selection.Select("gemini-nano-preview-fast");
+        var returning = vm.InitializeAsync();
+        vm.Cancel();
+        store.Delay.SetResult();
+        await Task.WhenAll(save, returning).WaitAsync(TimeSpan.FromSeconds(5));
+
+        await planner.DidNotReceive().CheckReadinessAsync(Arg.Any<CancellationToken>());
+        Assert.Contains("building-with-maui", store.Saved);
+        await vm.InitializeAsync();
+        await planner.Received(1).CheckReadinessAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]

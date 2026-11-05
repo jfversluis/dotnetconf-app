@@ -6,7 +6,7 @@ public interface IOnDevicePlanner
 {
     string? UnsupportedReason { get; }
     Task<PlannerModelState> CheckReadinessAsync(CancellationToken cancellationToken);
-    IAsyncEnumerable<PlannerModelDownload> DownloadModelAsync(CancellationToken cancellationToken);
+    IAsyncEnumerable<PlannerModelDownload> DownloadModelAsync(string? modelId, CancellationToken cancellationToken);
     Task<IReadOnlyList<PlannerStartingPoint>> SuggestStartingPointsAsync(
         ConferenceDocument conference, CancellationToken cancellationToken);
     Task<PlannerResult> ProposeAsync(ConferenceDocument conference, string request,
@@ -34,5 +34,5 @@ public sealed record PlannerModelDownload(long? BytesDownloaded, long? TotalByte
 public interface IPlannerModelStatus
 {
     Task<PlannerModelState> ReadAsync(CancellationToken cancellationToken);
-    IAsyncEnumerable<PlannerModelDownload> DownloadAsync(CancellationToken cancellationToken);
+    IAsyncEnumerable<PlannerModelDownload> DownloadAsync(string? modelId, CancellationToken cancellationToken);
 }

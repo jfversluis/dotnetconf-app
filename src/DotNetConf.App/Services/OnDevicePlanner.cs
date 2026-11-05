@@ -24,8 +24,8 @@ public sealed class OnDevicePlanner(IServiceScopeFactory scopeFactory, ILoggerFa
         return state;
     }
 
-    public IAsyncEnumerable<PlannerModelDownload> DownloadModelAsync(CancellationToken cancellationToken) =>
-        modelStatus.DownloadAsync(cancellationToken);
+    public IAsyncEnumerable<PlannerModelDownload> DownloadModelAsync(string? modelId, CancellationToken cancellationToken) =>
+        modelStatus.DownloadAsync(modelId, cancellationToken);
 
     private async Task<PlannerModelState> RequireModelAsync(CancellationToken token)
     {

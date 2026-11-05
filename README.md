@@ -60,6 +60,10 @@ the model, the planner offers **Download on-device model**, with download progre
 when Android provides it. Downloads only start when you choose that action and
 can use several GB of internet data and device storage; Wi-Fi is recommended. You can stop
 waiting or leave the planner, though Android may continue in the background.
+On Android, **Change** beside the AI model lets you choose a standard or
+experimental preview model. Preview availability and tool support depend on
+the phone and may require Google's developer preview. The app checks your
+choice without switching models or downloading one automatically.
 On iOS, enable Apple Intelligence in device settings. Random discovery and saving
 sessions with hearts remain available without a local model.
 
@@ -86,7 +90,7 @@ The app is **in development and not yet available in the App Store or Google Pla
 
 ## Your data
 
-Saved sessions and your appearance preference are stored locally on your device. There is no account or bookmark upload/cloud sync. The app downloads public agenda data from Microsoft and approved speaker portraits into local caches. Validated downloads remain available offline, and failed updates do not replace them. Saved choices remain local even when session details are unavailable or a session is withdrawn from the feed. Unreachable portraits retain their downloaded cache or show the bundled .NET Bot placeholder; a first offline launch has no speaker photographs. GitHub-hosted portraits are not used, and no GitHub credentials are required. Links to the conference website open in your browser.
+Saved sessions, your appearance preference, and your Android model choice are stored locally on your device. There is no account or bookmark upload/cloud sync. The app downloads public agenda data from Microsoft and approved speaker portraits into local caches. Validated downloads remain available offline, and failed updates do not replace them. Saved choices remain local even when session details are unavailable or a session is withdrawn from the feed. Unreachable portraits retain their downloaded cache or show the bundled .NET Bot placeholder; a first offline launch has no speaker photographs. GitHub-hosted portraits are not used, and no GitHub credentials are required. Links to the conference website open in your browser.
 
 Microsoft's feed blocks cross-origin browser requests. A fresh browser startup cannot download the agenda directly and shows an honest empty/download error state. A validated local cache remains readable when updates fail. Browser downloads require upstream CORS support or a separately provided same-origin relay.
 

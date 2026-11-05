@@ -118,6 +118,15 @@ service. You'll need a downloaded agenda and a ready local model:
 Device, language, region, and model settings affect availability. Checking
 availability never starts a download.
 
+On Android, choose **Change** beside **AI model** in the planner to select a
+standard or preview model. The selection is saved on this device and shared
+with on-device AI features. The standard model is the default; preview models
+are experimental, may require Google's developer preview, and aren't available
+on every phone. The app checks the selected model and its tool support; it
+doesn't switch models or start a download automatically. Changing models clears
+an unsaved preview, not your saved schedule. If a model cannot be checked or
+isn't available, choose another or check Android's AI settings.
+
 On compatible Android phones that need Gemini Nano, choose **Download on-device
 model** in the planner or welcome experience. This is a one-time setup using
 internet access and device storage, potentially several GB. Wi-Fi is recommended; mobile data charges
@@ -143,7 +152,7 @@ for on-device models and
 to connect the planner with the agenda. Learn more about how your information
 is handled in our [privacy policy](../PRIVACY.md).
 
-On a model that supports tools, the AI requests read-only agenda searches and
+On a selected model that supports tools, the AI requests read-only agenda searches and
 receives their results. The app checks your constraints, arranges the sessions,
 and asks you to confirm before saving. Models without tool support use structured
 request interpretation instead; your existing schedule remains protected.
