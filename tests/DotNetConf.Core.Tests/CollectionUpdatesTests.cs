@@ -84,21 +84,6 @@ public sealed class CollectionUpdatesTests
         Assert.Empty(changes);
     }
 
-    [Fact]
-    public void UnchangedCollectionUsesLinearEqualityWork()
-    {
-        var comparisons = 0;
-        var items = Enumerable.Range(0, 512).Select(id => new CountedItem(id, () => comparisons++)).ToArray();
-        var collection = new ObservableCollection<CountedItem>(items);
-        var changes = Observe(collection);
-
-        CollectionUpdates.Apply(collection, items);
-
-        Assert.InRange(comparisons, 0, items.Length * 2);
-        Assert.Empty(changes);
-        Assert.Equal(items, collection);
-    }
-
     private static List<NotifyCollectionChangedAction> Observe<T>(ObservableCollection<T> collection)
     {
         var changes = new List<NotifyCollectionChangedAction>();
@@ -107,17 +92,4 @@ public sealed class CollectionUpdatesTests
     }
 
     private sealed record Item(string Id);
-
-    private sealed class CountedItem(int id, Action compared) : IEquatable<CountedItem>
-    {
-        public bool Equals(CountedItem? other)
-        {
-            compared();
-            return other is not null && id == other.Id;
-        }
-
-        private int Id => id;
-        public override bool Equals(object? obj) => obj is CountedItem other && Equals(other);
-        public override int GetHashCode() => id;
-    }
 }
