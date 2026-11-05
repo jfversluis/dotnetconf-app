@@ -11,7 +11,7 @@ policy.
 
 The app has no account sign-in, advertising, analytics SDK, or app-operated
 tracking service. It does not upload your saved schedule, appearance preference,
-Android model choice, or searches to the developer. It does not request device location, contacts,
+or searches to the developer. It does not request device location, contacts,
 camera, microphone, or photo-library access. It does not sell personal data.
 
 ## Public conference content and network requests
@@ -72,8 +72,7 @@ downloads, and on-device requests; it does not save a model choice in app
 preferences. Function calling requires a supported device and a Google account
 enrolled in the AICore Developer Preview program. The model can request
 read-only agenda searches in the app. Their results stay within this on-device
-flow. The planner requires your
-confirmation before saving a proposed schedule.
+flow. The planner requires your confirmation before saving a proposed schedule.
 
 Ask is shown only when a ready local model supports tools. A request can open
 filtered sessions or a session/speaker page, or save matching sessions
@@ -94,7 +93,7 @@ delivery.
 ## Data kept on your device
 
 - Your saved session IDs are stored locally so your schedule survives restarts.
-- Your appearance preference, Android model choice, whether you completed the
+- Your appearance preference, whether you completed the
   welcome, and whether reminders are enabled are stored in the platform's preferences store.
 - The last successfully downloaded agenda, public profiles, source URLs, and
   refresh/cache metadata are stored locally. The agenda cache is limited to
@@ -126,7 +125,7 @@ providers and your settings, not by an app-operated service.
 ## Retention and your choices
 
 Remove a saved session by toggling its save control, change your appearance
-preference in Settings, and change your Android model choice in the planner. Device app-data controls or uninstalling the app remove
+preference in Settings. Device app-data controls or uninstalling the app remove
 local app data subject to platform behavior; clear this site's storage for
 the browser app. Platform backups may retain or restore data separately.
 Clearing data also removes the offline agenda, which must be downloaded again.

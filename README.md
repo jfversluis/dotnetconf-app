@@ -77,9 +77,10 @@ Explore [what you can ask and how to get started](docs/AI-PLANNER.md).
 
 When a ready local model supports tools, Home shows **Ask about the conference**
 instead of **Explore sessions**. Otherwise it keeps **Explore sessions**.
-On Android, Ask uses the same model profile selected in the schedule planner.
-A ready text-only model is not enough: the selected profile must support native
-tool calling. Choosing a profile does not download it or enable Google's developer preview.
+On Android, Ask and the schedule planner both use Gemini Nano 4 Fast
+(`gemini-nano-preview-fast`), with no model picker. Readiness requires reported
+native tool-calling support. Checking readiness does not download the model or
+enroll your account in Google's AICore Developer Preview.
 Ask can find sessions by topic, title, speaker, and one device-local conference
 day; open session or speaker details; save matching sessions; or preview removal of
 saved sessions. Try a topic or speaker actually present in the downloaded agenda.
@@ -145,7 +146,7 @@ The app is **in development and not yet available in the App Store or Google Pla
 
 ## Your data
 
-Saved sessions, your appearance preference, and your Android model choice are stored locally on your device. There is no account or bookmark upload/cloud sync. The app downloads public agenda data from Microsoft and approved speaker portraits into local caches. Validated downloads remain available offline, and failed updates do not replace them. Saved choices remain local even when session details are unavailable or a session is withdrawn from the feed. Unreachable portraits retain their downloaded cache or show the bundled .NET Bot placeholder; a first offline launch has no speaker photographs. GitHub-hosted portraits are not used, and no GitHub credentials are required. Links to the conference website open in your browser.
+Saved sessions and your appearance preference are stored locally on your device. There is no app account or bookmark upload/cloud sync. The app downloads public agenda data from Microsoft and approved speaker portraits into local caches. Validated downloads remain available offline, and failed updates do not replace them. Saved choices remain local even when session details are unavailable or a session is withdrawn from the feed. Unreachable portraits retain their downloaded cache or show the bundled .NET Bot placeholder; a first offline launch has no speaker photographs. GitHub-hosted portraits are not used, and no GitHub credentials are required. Links to the conference website open in your browser.
 
 Microsoft's feed blocks cross-origin browser requests. A fresh browser startup cannot download the agenda directly and shows an honest empty/download error state. A validated local cache remains readable when updates fail. Browser downloads require upstream CORS support or a separately provided same-origin relay.
 

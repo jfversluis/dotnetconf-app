@@ -89,7 +89,7 @@ sessions from the downloaded agenda, without AI controls. A failed readiness ret
 preserves the reviewed random preview; a successful retry switches to AI only.
 Status feedback stays visible above the scrolling planner; long messages scroll independently,
 with a compact scroll cue beside them. The status area gives the request editor more room while editing.
-Review and AI setup shortcuts lead to the shortlist and optional model setup without changing the model choice,
+Review and AI setup shortcuts lead to the shortlist and optional model setup without switching models,
 including while an existing model download is being checked.
 Shuffle guidance appears only alongside a preview. No cached agenda means an honest
 download state, never bundled session examples. Continue does not save:
