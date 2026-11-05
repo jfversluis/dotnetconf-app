@@ -9,6 +9,57 @@ namespace DotNetConf.App.Tests;
 public sealed class ConferenceViewModelTests
 {
     [Fact]
+    public async Task RevisitingLoadedAgendaPreservesFiltersWithoutRebuildingLocalDays()
+    {
+        var repository = new TestRepository(Snapshot());
+        var viewModel = Create(repository, new TestScheduleStore(), new TestConnectivity());
+        await viewModel.InitializeAsync();
+        await (viewModel.RefreshCommand.ExecutionTask ?? Task.CompletedTask);
+        viewModel.SelectedDay = viewModel.Days[1];
+        viewModel.SessionQuery = "Synthetic unmatched search";
+        viewModel.SearchSessionsCommand.Execute(null);
+        var selectedDay = viewModel.SelectedDay;
+        var selectionNotifications = 0;
+        viewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(ConferenceViewModel.SelectedDayIndex))
+                selectionNotifications++;
+        };
+
+        await viewModel.InitializeAsync();
+        await viewModel.InitializeAsync();
+
+        Assert.Same(selectedDay, viewModel.SelectedDay);
+        Assert.Empty(viewModel.Sessions);
+        Assert.Equal(0, selectionNotifications);
+        Assert.Equal(1, repository.LoadCalls);
+        Assert.Equal(1, repository.RefreshCalls);
+    }
+
+    [Fact]
+    public async Task ResumeRefreshesLocalTimesEvenWithoutAnAgendaDownload()
+    {
+        var snapshot = Snapshot() with { LastCheckedAt = DateTimeOffset.UtcNow };
+        var repository = new TestRepository(snapshot);
+        var viewModel = Create(repository, new TestScheduleStore(), new TestConnectivity());
+        await viewModel.InitializeAsync();
+        await (viewModel.RefreshCommand.ExecutionTask ?? Task.CompletedTask);
+        var session = Assert.Single(viewModel.Sessions);
+        var date = session.DateLabel;
+        var time = session.TimeLabel;
+        session.DateLabel = "Synthetic stale date";
+        session.TimeLabel = "Synthetic stale time";
+        viewModel.PauseRefresh();
+
+        await viewModel.ResumeAsync();
+
+        Assert.Equal(date, session.DateLabel);
+        Assert.Equal(time, session.TimeLabel);
+        Assert.Equal(1, repository.RefreshCalls);
+        Assert.Same(session, Assert.Single(viewModel.Sessions));
+    }
+
+    [Fact]
     public async Task UnknownSavedIdsStayLocalWithoutInventingAgendaDetails()
     {
         var snapshot = Snapshot();
@@ -342,10 +393,15 @@ public sealed class ConferenceViewModelTests
     {
         public ConferenceSnapshot Snapshot { get; set; } = snapshot;
         public bool HoldFirstRequest { get; init; }
+        public int LoadCalls { get; private set; }
         public int RefreshCalls { get; private set; }
         public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        public Task<ConferenceSnapshot> LoadAsync(CancellationToken cancellationToken = default) => Task.FromResult(Snapshot);
+        public Task<ConferenceSnapshot> LoadAsync(CancellationToken cancellationToken = default)
+        {
+            LoadCalls++;
+            return Task.FromResult(Snapshot);
+        }
         public async Task<ConferenceSnapshot> RefreshAsync(CancellationToken cancellationToken = default,
             IProgress<ConferenceSnapshot>? progress = null)
         {

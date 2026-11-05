@@ -139,18 +139,21 @@ public static class Agenda
         IReadOnlyCollection<string>? topics, TimeZoneInfo timeZone)
     {
         var terms = (query ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        var speakers = conference.Speakers.ToDictionary(speaker => speaker.Id, speaker => speaker.Name);
-        return conference.Sessions
+        IEnumerable<Session> sessions = conference.Sessions
             .Where(session => localDay is null || LocalDay(session.StartsAt, timeZone) == localDay)
             .Where(session => topics is null || topics.Count == 0
-                || session.Topics.Any(topic => topics.Contains(topic, StringComparer.OrdinalIgnoreCase)))
-            .Where(session =>
+                || session.Topics.Any(topic => topics.Contains(topic, StringComparer.OrdinalIgnoreCase)));
+        if (terms.Length > 0)
+        {
+            var speakers = conference.Speakers.ToDictionary(speaker => speaker.Id, speaker => speaker.Name);
+            sessions = sessions.Where(session =>
             {
                 var text = string.Join(' ', session.Title, session.Description,
                     string.Join(' ', session.Topics), string.Join(' ', session.SpeakerIds.Select(id => speakers[id])));
                 return terms.All(term => text.Contains(term, StringComparison.OrdinalIgnoreCase));
-            })
-            .OrderBy(session => session.StartsAt)
+            });
+        }
+        return sessions.OrderBy(session => session.StartsAt)
             .ThenBy(session => session.Title, StringComparer.Ordinal);
     }
 

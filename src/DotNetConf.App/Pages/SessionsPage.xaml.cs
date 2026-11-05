@@ -13,6 +13,7 @@ public partial class SessionsPage : AdaptiveConferencePage
     private bool rebuildQueued;
     private bool headerScrolls;
     private bool headerIsStacked;
+    private DayFilter[] renderedDays = [];
 
     public SessionsPage(ConferenceViewModel conference, DetailNavigationService navigation) : base(conference)
     {
@@ -74,6 +75,11 @@ public partial class SessionsPage : AdaptiveConferencePage
         rebuildingDays = true;
         try
         {
+            if (renderedDays.SequenceEqual(Conference.Days))
+            {
+                DayTabs.SelectedIndex = Conference.SelectedDayIndex;
+                return;
+            }
             DayTabs.Items.Clear();
             foreach (var day in Conference.Days)
             {
@@ -109,6 +115,7 @@ public partial class SessionsPage : AdaptiveConferencePage
                 header.SizeChanged += OnDayHeaderSizeChanged;
                 DayTabs.Items.Add(new SfTabItem { Header = day.Label, HeaderContent = header });
             }
+            renderedDays = Conference.Days.ToArray();
             DayTabs.SelectedIndex = Conference.SelectedDayIndex;
         }
         finally
