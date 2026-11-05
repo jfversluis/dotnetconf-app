@@ -13,12 +13,20 @@ public partial class SessionsPage : AdaptiveConferencePage
     private bool rebuildQueued;
     private bool headerScrolls;
     private bool headerIsStacked;
+    private bool headerTargetCollapsed;
+    private bool focusSearchAfterExpansion;
+    private double lastScrollOffset;
+    private const string HeaderAnimation = "SessionHeader";
+    private readonly SessionHeaderScrollState headerScroll = new();
 
     public SessionsPage(ConferenceViewModel conference, DetailNavigationService navigation) : base(conference)
     {
         InitializeComponent();
+        ToolbarItems.Remove(SearchToolbar);
         ConfigureDetails(DetailKind.Session, navigation);
         ConfigureSearchViewport(SearchField, SearchLayout, SearchResults);
+        SearchResults.SizeChanged += OnResultsSizeChanged;
+        SearchField.SearchFocusChanged += OnSearchFocusChanged;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
     }
@@ -33,16 +41,22 @@ public partial class SessionsPage : AdaptiveConferencePage
 
     private void OnUnloaded(object? sender, EventArgs e)
     {
+        SettleHeader();
         Conference.Days.CollectionChanged -= OnDaysChanged;
         Conference.PropertyChanged -= OnConferencePropertyChanged;
     }
 
+    protected override void OnDisappearing()
+    {
+        SettleHeader();
+        base.OnDisappearing();
+    }
+
     protected override void OnListLayoutChanged(bool scrollHeader, bool stacked)
     {
-        SessionHeading.IsVisible = !scrollHeader;
         if (headerIsStacked != stacked)
         {
-            SessionHeader.Spacing = stacked ? 8 : 16;
+            CollapsibleContent.Spacing = stacked ? 8 : 16;
             SessionHeader.Padding = new Thickness(24, stacked ? 8 : 16, 24, stacked ? 4 : 8);
             SessionStatus.Spacing = stacked ? 8 : 16;
             SessionStatus.Padding = new Thickness(24, stacked ? 8 : 16, 24, stacked ? 4 : 8);
@@ -55,6 +69,126 @@ public partial class SessionsPage : AdaptiveConferencePage
             MoveListHeader(PinnedHeader, ScrollingHeader, scrollHeader);
             headerScrolls = scrollHeader;
         }
+        if (scrollHeader)
+            headerScroll.Expand();
+        CollapsibleContent.Padding = new Thickness(0, 0, 0, scrollHeader ? 0 : stacked ? 8 : 16);
+        UpdateHeaderVisibility();
+    }
+
+    private void OnSessionsScrolled(object? sender, ItemsViewScrolledEventArgs e)
+    {
+        if (SearchResults.Height <= 0)
+            return;
+
+        lastScrollOffset = e.VerticalOffset;
+        headerScroll.Update(lastScrollOffset, SearchResults.Height, headerScrolls || SearchField.IsSearchFocused,
+            rebase: this.AnimationIsRunning(HeaderAnimation));
+        UpdateHeaderVisibility(animate: true);
+    }
+
+    private void OnResultsSizeChanged(object? sender, EventArgs e)
+    {
+        if (SearchResults.Height > 0)
+            headerScroll.Update(lastScrollOffset, SearchResults.Height, rebase: true);
+    }
+
+    private void OnSearchFocusChanged(object? sender, FocusEventArgs e)
+    {
+        if (e.IsFocused)
+        {
+            headerScroll.Expand();
+            UpdateHeaderVisibility();
+        }
+    }
+
+    private void UpdateHeaderVisibility(bool animate = false)
+    {
+        var collapsed = headerScroll.IsCollapsed;
+        if (collapsed)
+        {
+            if (!ToolbarItems.Contains(SearchToolbar))
+                ToolbarItems.Insert(0, SearchToolbar);
+        }
+        else
+            ToolbarItems.Remove(SearchToolbar);
+
+        if (animate && collapsed == headerTargetCollapsed)
+            return;
+
+        var startHeight = CollapsibleHeader.IsVisible
+            ? Math.Max(0, CollapsibleHeader.HeightRequest >= 0
+                ? CollapsibleHeader.HeightRequest : CollapsibleHeader.Height)
+            : 0;
+        var startOpacity = CollapsibleHeader.Opacity;
+        var startTranslation = CollapsibleContent.TranslationY;
+        headerTargetCollapsed = collapsed;
+        this.AbortAnimation(HeaderAnimation);
+#if IOS
+        animate &= !UIKit.UIAccessibility.IsReduceMotionEnabled;
+#endif
+        if (!animate || !IsLoaded || CollapsibleHeader.Width <= 0)
+        {
+            ApplyHeaderVisibility();
+            return;
+        }
+
+        SessionHeading.IsVisible = !headerScrolls;
+        SearchControls.IsVisible = true;
+        CollapsibleHeader.IsVisible = true;
+        CollapsibleHeader.InputTransparent = collapsed;
+        AutomationProperties.SetExcludedWithChildren(CollapsibleHeader, collapsed);
+        var endHeight = collapsed ? 0 :
+            CollapsibleContent.Measure(CollapsibleHeader.Width, double.PositiveInfinity).Height;
+        var endOpacity = collapsed ? 0 : 1;
+        var endTranslation = collapsed ? -12 : 0;
+        CollapsibleHeader.HeightRequest = startHeight;
+        new Animation(progress =>
+        {
+            CollapsibleHeader.HeightRequest = startHeight + (endHeight - startHeight) * progress;
+            CollapsibleHeader.Opacity = startOpacity + (endOpacity - startOpacity) * progress;
+            CollapsibleContent.TranslationY = startTranslation + (endTranslation - startTranslation) * progress;
+        }).Commit(this, HeaderAnimation, length: 200, easing: Easing.CubicInOut,
+            finished: (_, cancelled) =>
+            {
+                if (!cancelled)
+                    ApplyHeaderVisibility();
+            });
+    }
+
+    private void SettleHeader()
+    {
+        focusSearchAfterExpansion = false;
+        this.AbortAnimation(HeaderAnimation);
+        ApplyHeaderVisibility();
+    }
+
+    private void ApplyHeaderVisibility()
+    {
+        var collapsed = headerTargetCollapsed;
+        CollapsibleHeader.IsVisible = !collapsed;
+        CollapsibleHeader.HeightRequest = -1;
+        CollapsibleHeader.Opacity = collapsed ? 0 : 1;
+        CollapsibleHeader.InputTransparent = collapsed;
+        AutomationProperties.SetExcludedWithChildren(CollapsibleHeader, collapsed);
+        CollapsibleContent.TranslationY = collapsed ? -12 : 0;
+        SessionHeading.IsVisible = !headerScrolls && !collapsed;
+        SearchControls.IsVisible = !collapsed;
+        if (!collapsed && focusSearchAfterExpansion)
+        {
+            focusSearchAfterExpansion = false;
+            Dispatcher.Dispatch(() =>
+            {
+                if (IsLoaded && !headerTargetCollapsed)
+                    SearchField.FocusSearch();
+            });
+        }
+    }
+
+    private void OnRevealSearchClicked(object? sender, EventArgs e)
+    {
+        headerScroll.Expand();
+        focusSearchAfterExpansion = true;
+        UpdateHeaderVisibility(animate: true);
     }
 
     private void OnDaysChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -123,6 +257,12 @@ public partial class SessionsPage : AdaptiveConferencePage
             DayTabs.SelectedIndex = Conference.SelectedDayIndex;
         if (e.PropertyName == nameof(ConferenceViewModel.FilterBadgeText))
             Dispatcher.Dispatch(ClearNativeFilterBadge);
+        if (e.PropertyName is nameof(ConferenceViewModel.SelectedDayIndex) or
+            nameof(ConferenceViewModel.SessionQuery) or nameof(ConferenceViewModel.FilterSummary))
+        {
+            headerScroll.Expand();
+            UpdateHeaderVisibility(animate: true);
+        }
     }
 
     private void ClearNativeFilterBadge()
