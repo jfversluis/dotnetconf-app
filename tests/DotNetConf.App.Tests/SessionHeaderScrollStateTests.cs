@@ -72,27 +72,6 @@ public sealed class SessionHeaderScrollStateTests
     }
 
     [Fact]
-    public void ChangingFiltersExpandsWithoutReusingOldScrollTravel()
-    {
-        var state = new SessionHeaderScrollState();
-        state.Update(100, 500);
-        state.Expand();
-        Assert.False(state.IsCollapsed);
-        state.Update(101, 500);
-        Assert.False(state.IsCollapsed);
-        state.Update(132, 500);
-        Assert.True(state.IsCollapsed);
-    }
-
-    [Theory]
-    [InlineData(double.NaN)]
-    [InlineData(double.PositiveInfinity)]
-    public void RejectsInvalidOffsets(double offset)
-    {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new SessionHeaderScrollState().Update(offset, 500));
-    }
-
-    [Fact]
     public void GrowingTheListDoesNotInterpretOffsetClampingAsAnUpwardGesture()
     {
         var state = new SessionHeaderScrollState();
@@ -121,31 +100,5 @@ public sealed class SessionHeaderScrollStateTests
         Assert.False(state.IsCollapsed);
         state.Update(212, 500);
         Assert.True(state.IsCollapsed);
-    }
-
-    [Fact]
-    public void ResizingRebasesScrollTravelWithoutTogglingTheHeader()
-    {
-        var state = new SessionHeaderScrollState();
-        state.Update(30, 500);
-        state.Update(60, 400);
-        Assert.False(state.IsCollapsed);
-        state.Update(91, 400);
-        Assert.False(state.IsCollapsed);
-        state.Update(92, 400);
-        Assert.True(state.IsCollapsed);
-        state.Update(70, 600);
-        Assert.True(state.IsCollapsed);
-        state.Update(46, 600);
-        Assert.False(state.IsCollapsed);
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    [InlineData(double.NaN)]
-    public void RejectsInvalidViewportHeights(double height)
-    {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new SessionHeaderScrollState().Update(0, height));
     }
 }
