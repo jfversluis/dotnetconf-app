@@ -27,7 +27,7 @@
             </VerticalStackLayout>
             <VerticalStackLayout Spacing="12">
                 <Label Text="A community companion" Style="{StaticResource Subheading}" />
-                <Label Text="This app is unofficial and is not affiliated with or endorsed by Microsoft or the .NET Conf organizers."
+                <Label Text="Discover sessions, meet the speakers, and build your personal .NET Conf schedule."
                        Style="{StaticResource Secondary}" />
                 <Label Text="For confirmed dates, registration, and announcements, use the official website."
                        Style="{StaticResource Secondary}" />

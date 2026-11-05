@@ -16,7 +16,7 @@ Native .NET MAUI on .NET 11, with iOS and Android as the primary targets and exp
 
 ## Brand commitments
 
-An unofficial app, not an organizer product. Match the published dotnetconf.net identity while retaining native navigation, accessibility, and system-following appearance. App-owned icons use jfversluis/IconFont.Maui.FluentIcons. Bundled website artwork is redistributed with the project owner's confirmed permission; preserve its provenance and do not treat that permission as a general artwork or trademark license.
+A conference companion app. Describe the app without claiming official status or organizer endorsement. Match the published dotnetconf.net identity while retaining native navigation, accessibility, and system-following appearance. App-owned icons use jfversluis/IconFont.Maui.FluentIcons. Bundled website artwork is redistributed with the project owner's confirmed permission; preserve its provenance and do not treat that permission as a general artwork or trademark license.
 
 ## Evidence on hand
 

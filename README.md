@@ -2,7 +2,7 @@
 
 [![Save the date! .NET Conf 2026, November 10-13](https://www.dotnetconf.net/img/conf-og-metadata.png)](https://www.dotnetconf.net/)
 
-Your .NET Conf, in your pocket. An **unofficial companion app for iOS and Android**, built to help you discover talks, meet the speakers, and plan what you want to watch.
+Your .NET Conf, in your pocket. A **companion app for iOS and Android**, built to help you discover talks, meet the speakers, and plan what you want to watch.
 
 **Join us at [.NET Conf 2026](https://www.dotnetconf.net/), November 10-13!** Celebrate the launch of .NET 11, learn what's new, and connect with the community at this free virtual event. [Register now](https://aka.ms/dotnetconf2026) and save the date.
 
@@ -162,7 +162,7 @@ offline under Settings → About → Third-party dependencies.
 
 ## About the project
 
-Built with [.NET MAUI](https://dotnet.microsoft.com/apps/maui) and .NET 11 RC3 technology, with styling inspired by the .NET Conf website. Experimental Linux desktop and browser builds are drawn by [Avalonia.Controls.Maui](https://github.com/AvaloniaUI/Avalonia.Controls.Maui). The My Schedule timeline is an Avalonia control on every platform, embedded in the native app on iOS and Android. This is an unofficial project, not an official Microsoft conference app.
+Built with [.NET MAUI](https://dotnet.microsoft.com/apps/maui) and .NET 11 RC3 technology, with styling inspired by the .NET Conf website. Experimental Linux desktop and browser builds are drawn by [Avalonia.Controls.Maui](https://github.com/AvaloniaUI/Avalonia.Controls.Maui). The My Schedule timeline is an Avalonia control on every platform, embedded in the native app on iOS and Android.
 
 The rocket-bot artwork and website Bot placeholder are redistributed with the project owner's confirmed permission. That permission does not grant a general license to reuse Microsoft artwork or trademarks; bundled third-party notices include provenance and font licenses.
 

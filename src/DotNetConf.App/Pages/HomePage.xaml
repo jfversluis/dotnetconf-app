@@ -74,7 +74,7 @@
                        Style="{StaticResource Secondary}" />
                 <Button Text="Explore community events" Command="{Binding BrowseCommunityEventsCommand}"
                         Style="{StaticResource QuietButton}" ImageSource="{StaticResource CommunityIcon}" AutomationId="home-community" />
-                <Label Text="This is an unofficial companion. Visit the official website for confirmed event dates, registration, and announcements."
+                <Label Text="Visit the official website for confirmed event dates, registration, and announcements."
                        Style="{StaticResource Secondary}" />
                 <Button Text="Visit dotnetconf.net" Command="{Binding OpenWebsiteCommand}" Style="{StaticResource QuietButton}"
                         ImageSource="{StaticResource WebsiteIcon}" AutomationId="home-website" />
