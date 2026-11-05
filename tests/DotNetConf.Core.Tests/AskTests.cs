@@ -2784,6 +2784,7 @@ public sealed class AskTests
     }
 
     [Theory]
+    [Trait("Category", "AIAttributes")]
     [InlineData(false)]
     [InlineData(true)]
     public async Task GeminiRunnerUsesTheCapturedProfileAndPreservesContinuationAndApproval(bool removal)
@@ -2809,6 +2810,7 @@ public sealed class AskTests
     }
 
     [Fact]
+    [Trait("Category", "AIAttributes")]
     public async Task GeminiSchemaRejectsUnknownArgumentsAndInvalidatesAnEarlierStagedAction()
     {
         var tools = CreateTools(AgendaDocument(), "Save Blazor", []);
