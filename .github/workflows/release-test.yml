@@ -48,9 +48,13 @@ jobs:
           global-json-file: global.json
       - run: dotnet test tests/DotNetConf.Core.Tests/DotNetConf.Core.Tests.csproj -c Release
 
+  local-essentials-package:
+    needs: validate
+    uses: ./.github/workflows/local-essentials-package.yml
+
   android:
     name: Google Play internal testing
-    needs: validate
+    needs: [validate, local-essentials-package]
     if: inputs.platform == 'android' || inputs.platform == 'both'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -62,6 +66,10 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: local-essentials-ai
+          path: artifacts/essentials-ai-feed
       - name: Check Android configuration
         env:
           APP_ID: ${{ vars.ANDROID_APPLICATION_ID }}
@@ -127,7 +135,7 @@ jobs:
 
   ios:
     name: TestFlight upload
-    needs: validate
+    needs: [validate, local-essentials-package]
     if: inputs.platform == 'ios' || inputs.platform == 'both'
     runs-on: xcode-27
     timeout-minutes: 60
@@ -139,6 +147,10 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: local-essentials-ai
+          path: artifacts/essentials-ai-feed
       - name: Check iOS configuration
         env:
           APP_ID: ${{ vars.IOS_APPLICATION_ID }}

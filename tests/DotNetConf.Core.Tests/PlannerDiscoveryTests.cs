@@ -8,6 +8,42 @@ namespace DotNetConf.Core.Tests;
 [Trait("Category", "AIAttributes")]
 public sealed class PlannerDiscoveryTests
 {
+#if ANDROID
+    [Fact]
+    public async Task UnknownNativeArgumentsCanBeCorrectedBeforeAnyAgendaLookup()
+    {
+        var conference = await AgendaAsync();
+        using var services = Services();
+        using var scope = services.CreateScope();
+        var tools = scope.ServiceProvider.GetRequiredService<PlannerTools>();
+        tools.Initialize(conference, TimeZoneInfo.Utc, []);
+        tools.CapturePreferences([], []);
+        var calls = 0;
+        using var client = new ScriptedClient((messages, _, _) =>
+        {
+            if (++calls == 1)
+                return Task.FromResult(Call("search_sessions", new() { ["query"] = "", ["skip"] = 0, ["limit"] = 5 }));
+            var result = messages.SelectMany(m => m.Contents).OfType<FunctionResultContent>().Last();
+            Assert.Null(result.Exception);
+            if (calls == 2)
+            {
+                Assert.Contains("Invalid tool arguments:", result.Result!.ToString());
+                Assert.Contains("limit", result.Result!.ToString());
+                Assert.False(tools.DiscoveryComplete);
+                Assert.Equal(1, tools.CallCount);
+                return Task.FromResult(Call("search_sessions", new() { ["query"] = "", ["skip"] = 0 }));
+            }
+            Assert.Contains("Agenda lookup complete", result.Result!.ToString());
+            return Task.FromResult(Reply("Done."));
+        });
+
+        await PlannerDiscovery.RunAsync(client, tools, scope.ServiceProvider, "Browse",
+            NullLogger.Instance, default);
+        Assert.True(tools.DiscoveryComplete);
+        Assert.Equal(3, calls);
+    }
+#endif
+
     [Fact]
     public async Task ModelSelectsGeneratedToolsAndReceivesRealResultsThroughMiddleware()
     {
@@ -20,6 +56,7 @@ public sealed class PlannerDiscoveryTests
         var calls = 0;
         using var client = new ScriptedClient(async (messages, options, token) =>
         {
+            Assert.Equal("synthetic-profile", options.ModelId);
             Assert.Equal(["search_sessions", "speaker_sessions", "topic_sessions"],
                 options.Tools!.Select(t => t.Name).Order().ToArray());
             Assert.DoesNotContain(options.Tools!, t => t.Name == "submit_proposal");
@@ -41,7 +78,7 @@ public sealed class PlannerDiscoveryTests
         });
 
         await PlannerDiscovery.RunAsync(client, tools, scope.ServiceProvider, "Alex and Blazor",
-            NullLogger.Instance, default);
+            NullLogger.Instance, default, "synthetic-profile");
         Assert.True(tools.DiscoveryComplete);
         Assert.Contains("building-with-maui", tools.CandidateIds);
         Assert.Contains("blazor-web", tools.CandidateIds);

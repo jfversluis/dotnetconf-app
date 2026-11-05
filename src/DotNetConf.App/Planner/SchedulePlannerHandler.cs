@@ -1,4 +1,7 @@
 using Avalonia.Controls.Maui.Handlers;
+#if IOS
+using Avalonia.Controls.Maui.Platforms.iOS.Handlers;
+#endif
 
 namespace DotNetConf.App.Planner;
 
@@ -24,6 +27,46 @@ public sealed class SchedulePlannerHandler() : AvaloniaControlHandler<SchedulePl
             [nameof(SchedulePlanner.SelectedId)] = (handler, view) => handler.AvaloniaControl?.SetSelectedId(view.SelectedId),
             [nameof(SchedulePlanner.Theme)] = MapTheme,
         };
+
+#if IOS
+    static SchedulePlannerHandler()
+    {
+        PlannerMapper.AppendToMapping(nameof(IView.Visibility), (handler, _) => handler.RefreshIfVisible());
+    }
+
+    protected override AvaloniaControlHostView CreatePlatformView() => new PlannerHostView();
+
+    protected override void ConnectHandler(AvaloniaControlHostView platformView)
+    {
+        base.ConnectHandler(platformView);
+        ((PlannerHostView)platformView).AttachedToWindow = RefreshIfVisible;
+        RefreshIfVisible();
+    }
+
+    protected override void DisconnectHandler(AvaloniaControlHostView platformView)
+    {
+        ((PlannerHostView)platformView).AttachedToWindow = null;
+        base.DisconnectHandler(platformView);
+    }
+
+    private void RefreshIfVisible()
+    {
+        if (VirtualView is { IsVisible: true } && PlatformView?.Window is not null)
+            AvaloniaControl?.RefreshPresentation();
+    }
+
+    private sealed class PlannerHostView : AvaloniaControlHostView
+    {
+        public Action? AttachedToWindow { get; set; }
+
+        public override void MovedToWindow()
+        {
+            base.MovedToWindow();
+            if (Window is not null)
+                AttachedToWindow?.Invoke();
+        }
+    }
+#endif
 
 #if ANDROID || IOS
     protected override void OnAvaloniaControlCreated(PlannerView control)

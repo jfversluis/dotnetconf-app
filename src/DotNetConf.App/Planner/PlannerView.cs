@@ -222,6 +222,14 @@ public sealed class PlannerView : UserControl
     /// </summary>
     internal TimeProvider Clock { get; set; } = TimeProvider.System;
 
+#if IOS
+    internal void RefreshPresentation()
+    {
+        // The native host can retain an old frame while away; the painted root redraws the whole timeline.
+        root.InvalidateVisual();
+    }
+#endif
+
     /// <summary>
     /// Paints the planner in the app's colors. The timeline is built again in them.
     /// </summary>

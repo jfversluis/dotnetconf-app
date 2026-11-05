@@ -21,7 +21,7 @@ public sealed class OnDevicePlannerReadinessTests
         var client = new TestClient(_ => Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "READY"))));
         var planner = Create(client);
         Assert.Null(planner.UnsupportedReason);
-        await planner.CheckReadinessAsync(default);
+        Assert.True((await planner.CheckReadinessAsync(default)).Available);
         Assert.Null(client.Prompt);
         Assert.False(client.Disposed);
     }
@@ -30,7 +30,7 @@ public sealed class OnDevicePlannerReadinessTests
     public async Task RegistrationAloneDoesNotProveModelReadiness()
     {
         var client = new TestClient(_ => throw new NotSupportedException("Model is not downloaded."));
-        await Assert.ThrowsAsync<NotSupportedException>(() => Create(client, false).CheckReadinessAsync(default));
+        Assert.False((await Create(client, false).CheckReadinessAsync(default)).Available);
         Assert.Null(client.Prompt);
     }
 

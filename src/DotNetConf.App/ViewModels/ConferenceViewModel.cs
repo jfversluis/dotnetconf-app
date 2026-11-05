@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -18,24 +20,38 @@ public sealed record DayFilter(string Label, DateOnly? Day)
 public partial class ConferenceViewModel(
     IConferenceRepository repository, ScheduleService schedule, DetailNavigationService navigation,
     IBrowser browser, IConnectivity connectivity,
-    ILogger<ConferenceViewModel> logger, ISessionReminderUpdates reminders) : ObservableObject, IPlannerScheduleUpdates
+    ILogger<ConferenceViewModel> logger, ISessionReminderUpdates reminders) : ObservableObject, IPlannerScheduleUpdates, IAskApplication
 {
+    private const string AgendaPresentationLoadError = "We couldn't display the agenda. Your saved choices are kept. Try again.";
     private readonly SemaphoreSlim loadGate = new(1, 1);
+    private readonly object snapshotSync = new();
+    private int scheduleMutations;
+    private ConferenceSnapshot? deferredSnapshot;
+    private TaskCompletionSource? deferredPublication;
     private ConferenceDocument? document;
     private readonly List<SessionViewModel> allSessions = [];
     private readonly List<SpeakerViewModel> allSpeakers = [];
+    private readonly RepublishingCollection<DayFilter> dayFilters = [new("All days", null)];
+    private readonly RepublishingCollection<SessionViewModel> sessionResults = [];
     private TimeZoneInfo timeZone = TimeZoneInfo.Local;
     private bool refreshingDays;
     private bool clearingTopics;
+    private string? askSpeakerFilter;
+    private string? askSearchQuery;
+    private bool askExactTitle;
     private bool startedRefresh;
     private ConferenceSnapshot? snapshot;
     private string? refreshError;
     private string? scheduleError;
+    private string? schedulePresentationError;
+    private bool schedulePresentationDirty;
+    private bool localTimesDirty;
+    private bool hasPublishedSnapshot;
     private CancellationTokenSource? refreshCancellation;
     private bool isPaused;
     private bool refreshOnResume;
 
-    public ObservableCollection<SessionViewModel> Sessions { get; } = [];
+    public ObservableCollection<SessionViewModel> Sessions => sessionResults;
     public ObservableCollection<SessionViewModel> SavedSessions { get; } = [];
     public ObservableCollection<SpeakerViewModel> Speakers { get; } = [];
     [ObservableProperty] public partial IReadOnlyList<SessionViewModel> SavedTimelineSessions { get; set; } = [];
@@ -44,7 +60,7 @@ public partial class ConferenceViewModel(
     [NotifyPropertyChangedFor(nameof(HasCommunityEvents))]
     public partial IReadOnlyList<CommunityEvent> CommunityEvents { get; set; } = [];
     public bool HasCommunityEvents => CommunityEvents.Count > 0;
-    public ObservableCollection<DayFilter> Days { get; } = [new("All days", null)];
+    public ObservableCollection<DayFilter> Days => dayFilters;
     public ObservableCollection<TopicFilterViewModel> Topics { get; } = [];
 
     [ObservableProperty]
@@ -125,15 +141,18 @@ public partial class ConferenceViewModel(
     }
     public int AppliedFilterCount => Topics.Count(topic => topic.IsSelected);
     public bool HasTopicFilters => AppliedFilterCount > 0;
+    public bool HasAskSpeakerFilter => askSpeakerFilter is not null;
     public string? FilterBadgeText => AppliedFilterCount == 0 ? null : AppliedFilterCount.ToString();
     public string FilterToolbarLabel => AppliedFilterCount == 0
         ? "Filter topics" : $"Filter topics, {AppliedFilterCount} selected";
-    public string FilterSummary => AppliedFilterCount switch
+    private string TopicFilterSummary => AppliedFilterCount switch
     {
         0 => "All topics",
         <= 2 => string.Join(" · ", Topics.Where(topic => topic.IsSelected).Select(topic => topic.Name)),
         _ => $"{AppliedFilterCount} topics selected"
     };
+    public string FilterSummary => askSpeakerFilter is null ? TopicFilterSummary
+        : $"{TopicFilterSummary} · Speaker: {askSpeakerFilter}";
     public string FilterResultsContext => $"Results for {SelectedDay?.Label ?? Days[0].Label}. Your search still applies.";
     public string ShowFilteredSessionsLabel => Sessions.Count == 1
         ? "Show 1 session" : $"Show {Sessions.Count} sessions";
@@ -144,6 +163,232 @@ public partial class ConferenceViewModel(
             : "Explore watch parties and in-person talks, with venue details and links to the organizers.";
     public event EventHandler? ScheduleChanged;
     public event EventHandler? AgendaChanged;
+    public ConferenceDocument? AskDocument => document;
+    public TimeZoneInfo AskTimeZone => timeZone;
+
+    public async Task OpenAskSearchAsync(AskIntent intent)
+    {
+        ApplyAskSearch(intent);
+        await Shell.Current.GoToAsync("//sessions");
+    }
+
+    public void ApplyAskSearch(AskIntent intent)
+    {
+        if (document is null)
+            throw new InvalidDataException("Download the agenda before searching.");
+        var day = AskRequest.ResolveDay(document, intent, timeZone);
+        clearingTopics = true;
+        try
+        {
+            foreach (var topic in Topics)
+                topic.IsSelected = false;
+            SessionQuery = intent.Query;
+            askSearchQuery = intent.Query;
+            askExactTitle = intent.ExactTitle;
+            SetAskSpeakerFilter(intent.Speaker.Length == 0 ? null : intent.Speaker);
+            SelectedDay = Days.Single(d => d.Day == day);
+        }
+        finally { clearingTopics = false; }
+        OnTopicSelectionChanged();
+        FilterSessions();
+    }
+
+    private void SetAskSpeakerFilter(string? speaker)
+    {
+        askSpeakerFilter = speaker;
+        OnPropertyChanged(nameof(HasAskSpeakerFilter));
+        OnPropertyChanged(nameof(FilterSummary));
+    }
+
+    [RelayCommand]
+    private void ClearAskSpeakerFilter()
+    {
+        SetAskSpeakerFilter(null);
+        FilterSessions();
+    }
+
+    public async Task OpenAskScheduleAsync(bool remindersUpdated)
+    {
+        await Shell.Current.GoToAsync("//schedule");
+        if (!remindersUpdated)
+            await ShowErrorAsync("Schedule saved", "Your saved sessions are kept. Reminders need attention in Settings.");
+    }
+
+    public Task<bool> SaveAskSessionAsync(string id, CancellationToken token) => SaveAskSessionsAsync([id], token);
+
+    public async Task<bool> SaveAskSessionsAsync(string[] ids, CancellationToken token)
+    {
+        lock (snapshotSync)
+        {
+            if (ids.Length == 0 || document is null || ids.Any(id => !document.Sessions.Any(session => session.Id == id)))
+                throw new InvalidDataException("These sessions aren't in the current agenda. Ask again.");
+            scheduleMutations++;
+        }
+        await CompleteScheduleMutationAsync(async () =>
+        {
+            await schedule.AddAsync(ids, token);
+            return true;
+        }, _ => "Your sessions were saved.");
+        return await RefreshRemindersAfterScheduleMutationAsync();
+    }
+
+    public async Task<PlannerSaveResult?> AddPlannerProposalAsync(ConferenceDocument agenda, ScheduleProposal proposal,
+        TimeZoneInfo zone, CancellationToken cancellationToken = default)
+    {
+        lock (snapshotSync)
+        {
+            if (document is null || !SchedulePlanner.HasSameAgenda(document, agenda))
+                return null;
+            scheduleMutations++;
+        }
+        ProposalReview? review = null;
+        var mutationFinished = false;
+        try
+        {
+            try
+            {
+                review = await schedule.AddProposalAsync(agenda, proposal, zone, cancellationToken)
+                    ?? throw new InvalidOperationException("The schedule proposal could not be reviewed.");
+                mutationFinished = true;
+                if (review.CanApply)
+                    RefreshSavedState();
+            }
+            finally { FinishScheduleMutation(mutationFinished); }
+        }
+        catch (Exception exception) when (review is { CanApply: true } && IsNonFatalCallbackFailure(exception))
+        {
+            ReportSchedulePresentationFailure(exception);
+            return new(review, false);
+        }
+        return new(review, true);
+    }
+
+    private async Task<bool> SetSavedWithUpdatesAsync(string id, bool saved, CancellationToken token)
+    {
+        BeginScheduleMutation();
+        await CompleteScheduleMutationAsync(() => schedule.SetSavedAsync(id, saved, token),
+            result => result ? "The session was saved." : "The session was removed.");
+        return await RefreshRemindersAfterScheduleMutationAsync();
+    }
+
+    public async Task<bool?> RemoveAskSessionsAsync(string[] ids, string[] expectedSavedIds,
+        ConferenceDocument expectedDocument, CancellationToken token)
+    {
+        BeginScheduleMutation();
+        var removed = await CompleteScheduleMutationAsync(
+            () => schedule.RemoveReviewedAsync(ids, expectedSavedIds,
+                () => ReferenceEquals(document, expectedDocument), token),
+            result => result ? "Your reviewed sessions were removed." : "No sessions were removed.");
+        return removed ? await RefreshRemindersAfterScheduleMutationAsync() : null;
+    }
+
+    private async Task<T> CompleteScheduleMutationAsync<T>(Func<Task<T>> mutation, Func<T, string> outcome)
+    {
+        var completed = false;
+        var message = "";
+        try
+        {
+            try
+            {
+                var result = await mutation();
+                completed = true;
+                message = outcome(result);
+                RefreshSavedState();
+                return result;
+            }
+            finally { FinishScheduleMutation(completed); }
+        }
+        catch (Exception exception) when (completed && IsNonFatalCallbackFailure(exception))
+        {
+            ReportSchedulePresentationFailure(exception);
+            var remindersUpdated = await RefreshRemindersAfterScheduleMutationAsync();
+            throw new SchedulePresentationException(message +
+                " The schedule display couldn't refresh. Reopen My Schedule or tap Retry." +
+                (remindersUpdated ? "" : " Reminders need attention in Settings."), exception);
+        }
+    }
+
+    private void BeginScheduleMutation()
+    {
+        lock (snapshotSync)
+            scheduleMutations++;
+    }
+
+    private void FinishScheduleMutation(bool mutationFinished)
+    {
+        if (mutationFinished)
+        {
+            FinishScheduleMutation();
+            return;
+        }
+        try { FinishScheduleMutation(); }
+        catch (Exception exception) when (IsNonFatalCallbackFailure(exception))
+        {
+            ReportSchedulePresentationFailure(exception);
+        }
+    }
+
+    private void FinishScheduleMutation()
+    {
+        TaskCompletionSource? completion;
+        lock (snapshotSync)
+        {
+            scheduleMutations--;
+            if (scheduleMutations != 0 || deferredSnapshot is not { } latest)
+                return;
+            completion = deferredPublication;
+            deferredPublication = null;
+            try
+            {
+                ApplySnapshot(latest);
+                deferredSnapshot = null;
+                if (schedulePresentationDirty)
+                    RefreshSavedState();
+            }
+            catch (Exception exception)
+            {
+                deferredSnapshot = latest;
+                schedulePresentationDirty = true;
+                completion?.TrySetException(IsNonFatalCallbackFailure(exception)
+                    ? new SnapshotPublicationException(exception) : exception);
+                throw;
+            }
+        }
+        completion?.TrySetResult();
+    }
+
+    private Task PublishSnapshotAsync(ConferenceSnapshot value, bool waitForPublication = true)
+    {
+        lock (snapshotSync)
+        {
+            // A confirmed removal and an agenda update must have a single, consistent ordering.
+            if (scheduleMutations > 0)
+            {
+                deferredSnapshot = value;
+                return waitForPublication
+                    ? (deferredPublication ??= new(TaskCreationOptions.RunContinuationsAsynchronously)).Task
+                    : Task.CompletedTask;
+            }
+            if (deferredSnapshot is not null)
+                deferredSnapshot = value;
+            try
+            {
+                ApplySnapshot(value);
+                deferredSnapshot = null;
+                if (schedulePresentationDirty)
+                    RefreshSavedState();
+            }
+            catch (Exception exception)
+            {
+                deferredSnapshot = value;
+                schedulePresentationDirty = true;
+                if (IsNonFatalCallbackFailure(exception))
+                    throw new SnapshotPublicationException(exception);
+                throw;
+            }
+            return Task.CompletedTask;
+        }
+    }
 
     public async Task InitializeAsync()
     {
@@ -169,14 +414,30 @@ public partial class ConferenceViewModel(
         {
             if (document is not null)
             {
-                RefreshLocalTimes();
+                try { RefreshLocalTimes(); }
+                catch (Exception exception) when (IsNonFatalCallbackFailure(exception))
+                {
+                    ReportSchedulePresentationFailure(exception);
+                    return hasPublishedSnapshot ? null : AgendaPresentationLoadError;
+                }
+                if (schedulePresentationDirty)
+                {
+                    TryRefreshSavedState();
+                    if (!hasPublishedSnapshot && schedulePresentationError is not null)
+                        return AgendaPresentationLoadError;
+                }
                 return null;
             }
             IsBusy = true;
             var loaded = await repository.LoadAsync();
             await InitializeScheduleAsync();
-            ApplySnapshot(loaded);
+            await PublishSnapshotAsync(loaded);
             return null;
+        }
+        catch (SnapshotPublicationException exception)
+        {
+            ReportSchedulePresentationFailure(exception);
+            return AgendaPresentationLoadError;
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or JsonException)
         {
@@ -220,23 +481,35 @@ public partial class ConferenceViewModel(
                 new Progress<ConferenceSnapshot>(value =>
                 {
                     if (acceptingProgress)
-                        ApplySnapshot(value);
+                    {
+                        try { _ = PublishSnapshotAsync(value, waitForPublication: false); }
+                        catch (SnapshotPublicationException exception) { ReportSchedulePresentationFailure(exception); }
+                    }
                 }));
             acceptingProgress = false;
-            ApplySnapshot(refreshed);
+            await PublishSnapshotAsync(refreshed);
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {
             logger.LogDebug("Agenda refresh canceled; keeping the last available agenda.");
             acceptingProgress = false;
             var retained = await repository.LoadAsync();
-            ApplySnapshot(retained);
+            try { await PublishSnapshotAsync(retained); }
+            catch (SnapshotPublicationException exception) { ReportSchedulePresentationFailure(exception); }
+        }
+        catch (SnapshotPublicationException exception)
+        {
+            ReportSchedulePresentationFailure(exception);
         }
         catch (Exception exception) when (exception is HttpRequestException or IOException or
             UnauthorizedAccessException or JsonException or OperationCanceledException)
         {
             logger.LogError(exception, "Could not refresh the conference agenda.");
             refreshError = "Couldn't check for updates. Try again when your connection is ready.";
+        }
+        catch (Exception exception) when (IsSchedulePresentationException(exception))
+        {
+            ReportSchedulePresentationFailure(exception);
         }
         finally
         {
@@ -329,12 +602,13 @@ public partial class ConferenceViewModel(
         RefreshSchedule();
         UpdateRefreshStatus();
         AgendaChanged?.Invoke(this, EventArgs.Empty);
+        hasPublishedSnapshot = true;
     }
 
     private void UpdateRefreshStatus()
     {
         var offline = connectivity.NetworkAccess == NetworkAccess.None;
-        RefreshMessage = scheduleError ?? (offline
+        RefreshMessage = scheduleError ?? schedulePresentationError ?? (offline
             ? HasAgenda ? "You're offline. Your downloaded agenda is still available."
                 : "You're offline. Connect to download the agenda."
             : refreshError ?? "");
@@ -385,23 +659,28 @@ public partial class ConferenceViewModel(
         try
         {
             await schedule.InitializeAsync(cancellationToken);
-            var recovered = !IsScheduleAvailable;
-            IsScheduleAvailable = true;
-            scheduleError = null;
-            if (recovered && snapshot is { } retained)
-                ApplySnapshot(retained);
-            else
-            {
-                foreach (var session in allSessions)
-                    session.IsSaved = schedule.IsSaved(session.Id);
-                RefreshSchedule();
-            }
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or JsonException)
         {
             logger.LogError(exception, "Could not read the saved schedule; agenda browsing remains available.");
             IsScheduleAvailable = false;
             scheduleError = "Your saved file couldn't be read and hasn't been changed. Agenda browsing still works.";
+            foreach (var session in allSessions)
+                session.ToggleSaveCommand.NotifyCanExecuteChanged();
+            return;
+        }
+        var recovered = !IsScheduleAvailable;
+        IsScheduleAvailable = true;
+        scheduleError = null;
+        try
+        {
+            if (recovered && snapshot is { } retained)
+                await PublishSnapshotAsync(retained);
+            TryRefreshSavedState();
+        }
+        catch (Exception exception) when (IsNonFatalCallbackFailure(exception))
+        {
+            ReportSchedulePresentationFailure(exception);
         }
         foreach (var session in allSessions)
             session.ToggleSaveCommand.NotifyCanExecuteChanged();
@@ -526,13 +805,15 @@ public partial class ConferenceViewModel(
 
     public async Task ToggleSavedAsync(SessionViewModel session)
     {
+        bool remindersUpdated;
         try
         {
-            session.IsSaved = await schedule.SetSavedAsync(session.Id, !session.IsSaved);
-            // Also shows sessions saved in another browser tab.
-            foreach (var other in allSessions)
-                other.IsSaved = schedule.IsSaved(other.Id);
-            RefreshSchedule();
+            remindersUpdated = await SetSavedWithUpdatesAsync(session.Id, !session.IsSaved, CancellationToken.None);
+        }
+        catch (SchedulePresentationException exception)
+        {
+            await ShowErrorAsync("Schedule updated", exception.Message);
+            return;
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or JsonException)
         {
@@ -542,7 +823,6 @@ public partial class ConferenceViewModel(
             return;
         }
 
-        var remindersUpdated = await reminders.RefreshAsync();
         try
         {
             await Shell.Current.Dispatcher.DispatchAsync(() =>
@@ -563,11 +843,15 @@ public partial class ConferenceViewModel(
 
     public void RefreshLocalTimes()
     {
+        var republish = localTimesDirty;
+        localTimesDirty = true;
         TimeZoneInfo.ClearCachedData();
         timeZone = TimeZoneInfo.Local;
         TimeZoneLabel = $"Times shown in {timeZone.DisplayName}";
+        if (republish)
+            OnPropertyChanged(nameof(TimeZoneLabel));
         foreach (var session in allSessions)
-            session.RefreshTime(timeZone);
+            session.RefreshTime(timeZone, republish);
         var selectedDay = SelectedDay?.Day;
         refreshingDays = true;
         try
@@ -577,24 +861,124 @@ public partial class ConferenceViewModel(
                     .Select(session => Agenda.LocalDay(session.Model.StartsAt, timeZone)).Distinct().Order()
                     .Select(day => new DayFilter($"{day:ddd}, {Agenda.MonthDay(day)}", day)));
             CollectionUpdates.Apply(Days, days);
+            if (republish)
+                dayFilters.Republish();
             SelectedDay = Days.FirstOrDefault(day => day.Day == selectedDay) ?? Days[0];
         }
         finally
         {
             refreshingDays = false;
         }
+        if (republish)
+        {
+            OnPropertyChanged(nameof(SelectedDay));
+            OnPropertyChanged(nameof(FilterResultsContext));
+        }
         OnPropertyChanged(nameof(SelectedDayIndex));
         FilterSessions();
+        if (republish)
+        {
+            sessionResults.Republish();
+            OnPropertyChanged(nameof(ShowFilteredSessionsLabel));
+        }
+        localTimesDirty = false;
+    }
+
+    private sealed class RepublishingCollection<T> : ObservableCollection<T>
+    {
+        public void Republish()
+        {
+            // A failed collection callback may have left some observers unaware of an applied change.
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(Count)));
+            OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+        }
     }
 
     public void RefreshSavedState()
     {
+        schedulePresentationDirty = true;
         foreach (var session in allSessions)
             session.IsSaved = schedule.IsSaved(session.Id);
         RefreshSchedule();
+        if (deferredSnapshot is null && !localTimesDirty)
+        {
+            schedulePresentationDirty = false;
+            if (schedulePresentationError is not null)
+            {
+                schedulePresentationError = null;
+                UpdateRefreshStatus();
+            }
+        }
     }
 
-    public Task<bool> RefreshRemindersAsync() => reminders.RefreshAsync();
+    private void TryRefreshSavedState()
+    {
+        try
+        {
+            lock (snapshotSync)
+            {
+                if (scheduleMutations > 0)
+                    return;
+                if (deferredSnapshot is { } latest)
+                {
+                    ApplySnapshot(latest);
+                    deferredSnapshot = null;
+                }
+                if (localTimesDirty)
+                    RefreshLocalTimes();
+                RefreshSavedState();
+            }
+        }
+        catch (Exception exception) when (IsNonFatalCallbackFailure(exception))
+        {
+            ReportSchedulePresentationFailure(exception);
+        }
+    }
+
+    private void ReportSchedulePresentationFailure(Exception exception)
+    {
+        schedulePresentationDirty = true;
+        schedulePresentationError = "Your saved choices are kept, but the schedule display couldn't refresh. Reopen My Schedule or tap Retry.";
+        logger.LogError(exception, "Could not refresh the saved schedule presentation.");
+        try { UpdateRefreshStatus(); }
+        catch (Exception notificationException) when (IsNonFatalCallbackFailure(notificationException))
+        {
+            logger.LogError(notificationException, "Could not notify the schedule presentation error.");
+            try { HasRefreshError = true; }
+            catch (Exception visibilityException) when (IsNonFatalCallbackFailure(visibilityException))
+            {
+                logger.LogError(visibilityException, "Could not notify the schedule error visibility.");
+            }
+        }
+    }
+
+    private static bool IsSchedulePresentationException(Exception exception) =>
+        exception is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or
+            InvalidOperationException or NotSupportedException or ArgumentException or NullReferenceException
+#if IOS
+            or Foundation.NSErrorException
+#endif
+            ;
+
+    private sealed class SnapshotPublicationException(Exception innerException)
+        : Exception("Could not publish the schedule presentation.", innerException);
+
+    // UI and reminder callbacks can throw arbitrary exceptions after the schedule is already durable.
+    private static bool IsNonFatalCallbackFailure(Exception exception) =>
+        exception is not (OutOfMemoryException or StackOverflowException or AccessViolationException);
+
+    private async Task<bool> RefreshRemindersAfterScheduleMutationAsync()
+    {
+        try { return await reminders.RefreshAsync(); }
+        catch (Exception exception) when (IsNonFatalCallbackFailure(exception))
+        {
+            logger.LogError(exception, "Could not refresh session reminders after a schedule change.");
+            return false;
+        }
+    }
+
+    public Task<bool> RefreshRemindersAsync() => RefreshRemindersAfterScheduleMutationAsync();
 
     private void RefreshSchedule()
     {
@@ -609,11 +993,20 @@ public partial class ConferenceViewModel(
 
     private void FilterSessions()
     {
-        if (document is null)
+        if (document is null || clearingTopics)
             return;
-        var ids = Agenda.Search(document, SessionQuery, SelectedDay?.Day,
-            Topics.Where(topic => topic.IsSelected).Select(topic => topic.Name).ToArray(),
-            timeZone).Select(session => session.Id).ToHashSet();
+        var speakers = askSpeakerFilter is null ? null
+            : AskRequest.FindSpeakers(document, askSpeakerFilter).Select(speaker => speaker.Id).ToHashSet(StringComparer.Ordinal);
+        var topics = Topics.Where(topic => topic.IsSelected).Select(topic => topic.Name).ToArray();
+        var usingAskSearch = askSearchQuery is not null && SessionQuery.Equals(askSearchQuery, StringComparison.Ordinal);
+        var matches = usingAskSearch
+            ? AskRequest.Search(document, SessionQuery, SelectedDay?.Day, topics, timeZone,
+                includeSpeakerNames: askSpeakerFilter is null)
+            : Agenda.Search(document, SessionQuery, SelectedDay?.Day, topics, timeZone);
+        if (usingAskSearch && askExactTitle)
+            matches = matches.Where(session => session.Title.Equals(SessionQuery, StringComparison.OrdinalIgnoreCase));
+        var ids = matches.Where(session => speakers is null || session.SpeakerIds.Any(speakers.Contains))
+            .Select(session => session.Id).ToHashSet();
         var results = allSessions.Where(session => ids.Contains(session.Id)).ToArray();
         if (!Sessions.SequenceEqual(results))
         {
@@ -636,6 +1029,14 @@ public partial class ConferenceViewModel(
 
     [RelayCommand]
     private void SearchSessions() => FilterSessions();
+    partial void OnSessionQueryChanged(string value)
+    {
+        if (askSearchQuery is not null && !value.Equals(askSearchQuery, StringComparison.Ordinal))
+        {
+            askSearchQuery = null;
+            askExactTitle = false;
+        }
+    }
 
     [RelayCommand]
     private void SearchSpeakers() => FilterSpeakers();

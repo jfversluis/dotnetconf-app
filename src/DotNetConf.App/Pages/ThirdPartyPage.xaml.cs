@@ -16,7 +16,7 @@ public partial class ThirdPartyPage : ContentPage
 #elif AVALONIA
         new(".NET MAUI Foldable", "11.0.0-rc.2.26505.5 · MIT", "LICENSE-DotNetFoundation.txt"),
 #endif
-        new("MAUI Essentials AI", "11.0.0-preview.8.26531.2 · MIT", "LICENSE-DotNetFoundation.txt"),
+        new("MAUI Essentials AI", "Local build from maui-labs e616af94 · MIT", "LICENSE-DotNetFoundation.txt"),
         new("MAUI AI Attributes", "0.1.0-preview.14.26531.2 · MIT", "LICENSE-DotNetFoundation.txt"),
         new("Microsoft.Extensions.AI", "10.4.1 · MIT", "LICENSE-DotNetFoundation.txt"),
         new("Plugin.LocalNotification", "14.0.0 · MIT", "LICENSE-LocalNotification.txt"),
@@ -28,6 +28,13 @@ public partial class ThirdPartyPage : ContentPage
         new("Open Sans", "Regular and Semibold · Apache 2.0", "LICENSE-OpenSans.txt"),
         new("Space Grotesk", "Bold · SIL Open Font License 1.1", "LICENSE-SpaceGrotesk.txt"),
 #if ANDROID
+        new("Google ML Kit GenAI Prompt", "1.0.0-beta5 · upstream third-party licenses", "NOTICE-MLKitPrompt.txt"),
+        new("Google ML Kit GenAI Common", "1.0.0-beta5 · upstream third-party licenses", "NOTICE-MLKitCommon.txt"),
+        new("Google ML Kit GenAI Schema", "1.0.0-alpha2 · upstream third-party licenses", "NOTICE-MLKitSchema.txt"),
+        new("Google ML Kit & Data Transport .NET bindings", "MIT", "LICENSE-AndroidXBindings.txt"),
+        new("Google ML Kit terms", "ML Kit Terms of Service", "NOTICE-MLKitTerms.txt"),
+        new("Google ML Kit Common", "18.11.0 · upstream third-party licenses", "NOTICE-MLKitCore.txt"),
+        new("Google Data Transport", "4.0.0 · upstream third-party licenses", "NOTICE-DataTransport.txt"),
         new("AndroidX Window .NET bindings", "Window, WindowJava & WindowCore · 1.5.1.3 · MIT", "LICENSE-AndroidXBindings.txt"),
         new("AndroidX Window native components", "Window, window-java, window-core & window-core-jvm · 1.5.1 · Apache 2.0", "NOTICE-AndroidXWindow.txt"),
         new("Google Maps SDK & Google Play services native components", "Maps 20.0.0 · Base/Basement 18.10.0 · Tasks 18.4.1 · upstream third-party licenses", "NOTICE-GooglePlayServices.txt"),

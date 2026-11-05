@@ -9,13 +9,59 @@ namespace DotNetConf.Core.Tests;
 [Trait("Category", "AIAttributes")]
 public sealed class OnDeviceGapPlannerTests
 {
+    [Fact]
+    public async Task ReadinessModelIsUsedForInterpretationAndToolDiscovery()
+    {
+        var client = Substitute.For<IChatClient>();
+        var jsonCalls = 0;
+        var toolCalls = 0;
+        client.GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var options = call.Arg<ChatOptions>();
+                Assert.Equal("synthetic-profile", options.ModelId);
+                if (options.Tools is null)
+                {
+                    jsonCalls++;
+                    var schema = call.Arg<IEnumerable<ChatMessage>>().First().Text;
+                    var json = jsonCalls == 1
+                        ? """{"speakerNames":"none","availabilityText":"none","quantity":"some","searchQuery":"none"}"""
+                        : schema.Contains("\"speakerScope\"", StringComparison.Ordinal)
+                            ? """{"quantity":"some","speakerScope":"independent"}"""
+                            : """{"topic":"AI"}""";
+                    return new ChatResponse(new ChatMessage(ChatRole.Assistant, json));
+                }
+
+                toolCalls++;
+                if (call.Arg<IEnumerable<ChatMessage>>().SelectMany(message => message.Contents)
+                    .OfType<FunctionResultContent>().Any())
+                    return new ChatResponse(new ChatMessage(ChatRole.Assistant, "Synthetic completion"));
+                return new ChatResponse(new ChatMessage(ChatRole.Assistant,
+                    [new FunctionCallContent("call", "search_sessions", new Dictionary<string, object?>
+                    {
+                        ["query"] = "", ["skip"] = 0
+                    })]));
+            });
+        using var services = new TestServices(client);
+        var planner = new OnDevicePlanner(services, NullLoggerFactory.Instance, services,
+            new TestPlannerModelStatus(toolCalling: true, modelId: "synthetic-profile"));
+
+        Assert.Equal("synthetic-profile", (await planner.CheckReadinessAsync(default)).ModelId);
+        var result = await planner.ProposeAsync(Agenda(), "I'm interested in AI",
+            TimeZoneInfo.Utc, [], default);
+
+        Assert.True(result.Proposal is not null, result.Message);
+        Assert.True(jsonCalls >= 1);
+        Assert.Equal(2, toolCalls);
+    }
+
     [Theory]
     [InlineData("I see gaps in my schedule. What sessions fit in here?", "none", false)]
     [InlineData("Fill my free slots with AI", "none", true)]
     [InlineData("What fits around my saved talks by Real Speaker?", "Real Speaker", false)]
     public async Task GroundedGapFlowWorksWithStructuredAndTextOnlyProviders(string request, string speaker, bool topic)
     {
-        foreach (var structured in new[] { true, false })
+        foreach (var (structured, fenced) in new[] { (true, false), (false, false), (false, true) })
         {
             var client = Substitute.For<IChatClient>();
             var responses = new Queue<string>([
@@ -29,13 +75,15 @@ public sealed class OnDeviceGapPlannerTests
                     var messages = call.Arg<IEnumerable<ChatMessage>>().ToArray();
                     Assert.Contains("JSON object", messages[0].Text);
                     Assert.NotNull(options.ResponseFormat);
+                    Assert.Equal("synthetic-profile", options.ModelId);
                     Assert.Equal(!structured, ReferenceEquals(ChatResponseFormat.Text, options.ResponseFormat));
-                    return new ChatResponse(new ChatMessage(ChatRole.Assistant, responses.Dequeue()));
+                    var json = responses.Dequeue();
+                    return new ChatResponse(new ChatMessage(ChatRole.Assistant, fenced ? $"```json\n{json}\n```" : json));
                 });
             using var services = new TestServices(client);
             var planner = new OnDevicePlanner(services,
                 NullLoggerFactory.Instance, services,
-                new TestPlannerModelStatus(structuredOutput: structured));
+                new TestPlannerModelStatus(structuredOutput: structured, modelId: "synthetic-profile"));
             var agenda = Agenda();
             var result = await planner.ProposeAsync(agenda, request, TimeZoneInfo.Utc, ["saved"], default, true);
             Assert.NotNull(result.Proposal);
@@ -44,6 +92,97 @@ public sealed class OnDeviceGapPlannerTests
             Assert.DoesNotContain("saved", result.Proposal.MatchedSessionIds);
             Assert.True(SchedulePlanner.Review(agenda, result.Proposal, TimeZoneInfo.Utc, ["saved"]).CanApply);
         }
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task StartingPointsUseTheSameTypedParserForStructuredAndFencedResponses(bool structured, bool fenced)
+    {
+        var client = Substitute.For<IChatClient>();
+        const string json = """{"topics":["Synthetic AI","Synthetic Web","Synthetic Mobile"]}""";
+        client.GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                Assert.Equal("synthetic-profile", call.Arg<ChatOptions>().ModelId);
+                return new ChatResponse(new ChatMessage(ChatRole.Assistant, fenced ? $"```json\n{json}\n```" : json));
+            });
+        using var services = new TestServices(client);
+        var planner = new OnDevicePlanner(services, NullLoggerFactory.Instance, services,
+            new TestPlannerModelStatus(structuredOutput: structured, modelId: "synthetic-profile"));
+        var agenda = new ConferenceDocument
+        {
+            Sessions = [new() { Id = "synthetic-session", Topics = ["Synthetic AI", "Synthetic Web", "Synthetic Mobile"] }]
+        };
+        var suggestions = await planner.SuggestStartingPointsAsync(agenda, default);
+        Assert.Equal(3, suggestions.Count);
+        Assert.All(suggestions, suggestion => Assert.Contains(suggestion.Request,
+            new[] { "I'm interested in Synthetic AI.", "I'm interested in Synthetic Web.", "I'm interested in Synthetic Mobile." }));
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task DailyAvailabilityAndSemanticClassificationKeepTheirConstraintsAcrossProviders(bool structured, bool fenced)
+    {
+        var client = Substitute.For<IChatClient>();
+        var responses = new Queue<string>([
+            """{"speakerNames":"none","availabilityText":"before 10am","quantity":"some","searchQuery":"none"}""",
+            """{"dailyStart":"none","dailyEnd":"10:00","zone":"UTC"}""",
+            """{"quantity":"some","speakerScope":"independent"}""",
+            """{"topic":"AI"}"""
+        ]);
+        client.GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var options = call.Arg<ChatOptions>();
+                Assert.Equal(!structured, ReferenceEquals(ChatResponseFormat.Text, options.ResponseFormat));
+                var json = responses.Dequeue();
+                return new ChatResponse(new ChatMessage(ChatRole.Assistant, fenced ? $"```json\n{json}\n```" : json));
+            });
+        using var services = new TestServices(client);
+        var planner = new OnDevicePlanner(services, NullLoggerFactory.Instance, services,
+            new TestPlannerModelStatus(structuredOutput: structured));
+        var agenda = Agenda();
+        const string request = "I want to learn machine learning, before 10am UTC.";
+        Assert.NotEmpty(PlannerCatalog.SemanticInterests(agenda, request));
+        var result = await planner.ProposeAsync(agenda, request, TimeZoneInfo.Utc, ["saved"], default, true);
+        Assert.Empty(responses);
+        Assert.NotNull(result.Proposal);
+        Assert.Equal(["ai"], result.Proposal.SessionIds);
+        Assert.Equal(["AI"], result.Proposal.TopicFilter!.Topics);
+        Assert.NotEmpty(result.Proposal.Availability);
+        Assert.True(SchedulePlanner.Review(agenda, result.Proposal, TimeZoneInfo.Utc, ["saved"]).CanApply);
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task DatedAvailabilityKeepsTheSameWindowAcrossProviders(bool structured, bool fenced)
+    {
+        var client = Substitute.For<IChatClient>();
+        var responses = new Queue<string>([
+            """{"speakerNames":"none","availabilityText":"November 10","quantity":"some","searchQuery":"none"}""",
+            """{"quantity":"some","speakerScope":"independent"}"""
+        ]);
+        client.GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                var json = responses.Dequeue();
+                return new ChatResponse(new ChatMessage(ChatRole.Assistant, fenced ? $"```json\n{json}\n```" : json));
+            });
+        using var services = new TestServices(client);
+        var planner = new OnDevicePlanner(services, NullLoggerFactory.Instance, services,
+            new TestPlannerModelStatus(structuredOutput: structured));
+        var agenda = Agenda();
+        var result = await planner.ProposeAsync(agenda, "Fill gaps with AI on November 10 UTC.",
+            TimeZoneInfo.Utc, ["saved"], default, true);
+        Assert.Empty(responses);
+        Assert.NotNull(result.Proposal);
+        Assert.Equal(["ai"], result.Proposal.SessionIds);
+        Assert.Equal(new AvailabilityWindow("2026-11-10T00:00", "2026-11-11T00:00", "UTC"),
+            Assert.Single(result.Proposal.Availability));
+        Assert.True(SchedulePlanner.Review(agenda, result.Proposal, TimeZoneInfo.Utc, ["saved"]).CanApply);
     }
 
     [Theory]
@@ -89,23 +228,40 @@ public sealed class OnDeviceGapPlannerTests
     [InlineData("November 10th from 8pm to 11pm UTC", "2026-11-10T20:00", "2026-11-10T23:00")]
     public void ExactDatedWindowsUseTheLiteralSourceNotGeneratedPadding(string request, string start, string end)
     {
-        Assert.True(PlannerInterpretation.TryDatedWindow(request, 2026, "UTC", out var window));
+        Assert.True(PlannerInterpretation.TryCalendarDates(request, 2026, "UTC", out var dates, out _));
+        var limits = new PlannerDailyAvailability("none", "none", "UTC").Ground(request, sourceOnly: true);
+        var window = Assert.Single(limits.ToWindows(TimeZoneInfo.Utc, Agenda()),
+            value => value.Start.StartsWith(dates[0].Start[..10], StringComparison.Ordinal));
         Assert.Equal(new AvailabilityWindow(start, end, "UTC"), window);
     }
 
-    [Theory]
-    [InlineData("November 31, 2026 from 20:00 to 23:00")]
-    [InlineData("November 10, 2026 from 25:00 to 26:00")]
-    [InlineData("November 10, 2026 from 23:00 to 01:00")]
-    public void InvalidOrImplicitOvernightDatesDoNotBecomeSuccess(string request) =>
-        Assert.Throws<InvalidDataException>(() => PlannerInterpretation.TryDatedWindow(request, 2026, "UTC", out _));
+    [Fact]
+    public void InvalidDatesAndTimesDoNotBecomeSuccess()
+    {
+        Assert.Throws<InvalidDataException>(() =>
+            PlannerInterpretation.TryCalendarDates("November 31, 2026 from 20:00 to 23:00", 2026, "UTC", out _, out _));
+        Assert.Throws<InvalidDataException>(() =>
+            new PlannerDailyAvailability("none", "none", "UTC").Ground("November 10, 2026 from 25:00 to 26:00", sourceOnly: true));
+        Assert.Throws<InvalidDataException>(() =>
+            new PlannerDailyAvailability("none", "none", "UTC").Ground("November 10 from 9am to 9am", sourceOnly: true));
+    }
+
+    [Fact]
+    public void ExplicitOvernightHoursStayAnchoredToTheirRequestedDate()
+    {
+        var limits = new PlannerDailyAvailability("none", "none", "UTC")
+            .Ground("November 10, 2026 from 23:00 to 01:00", sourceOnly: true);
+        var window = Assert.Single(limits.ToWindows(TimeZoneInfo.Utc, Agenda()),
+            value => value.Start.StartsWith("2026-11-10", StringComparison.Ordinal));
+        Assert.Equal(new AvailabilityWindow("2026-11-10T23:00", "2026-11-11T01:00", "UTC"), window);
+    }
 
     [Theory]
     [InlineData("November 10 from 9 to 11pm")]
     [InlineData("November 10 from 9am to 11")]
     [InlineData("November 10 from 9 to 11")]
     public void AmbiguousDatedClockRangesRequireExplicitPeriodsOrClockMinutes(string request) =>
-        Assert.Throws<InvalidDataException>(() => PlannerInterpretation.TryDatedWindow(request, 2026, "UTC", out _));
+        Assert.Throws<InvalidDataException>(() => new PlannerDailyAvailability("none", "none", "UTC").Ground(request, sourceOnly: true));
 
     [Theory]
     [InlineData("November 10 from 9pm to 11pm", "21:00", "23:00")]
@@ -113,9 +269,9 @@ public sealed class OnDeviceGapPlannerTests
     [InlineData("November 10 from 20 to 23", "20:00", "23:00")]
     public void UnambiguousDatedClockRangesKeepTheirRequestedTimes(string request, string start, string end)
     {
-        Assert.True(PlannerInterpretation.TryDatedWindow(request, 2026, "UTC", out var window));
-        Assert.Equal($"2026-11-10T{start}", window.Start);
-        Assert.Equal($"2026-11-10T{end}", window.End);
+        var limits = new PlannerDailyAvailability("none", "none", "UTC").Ground(request, sourceOnly: true);
+        Assert.Equal(start, limits.DailyStart);
+        Assert.Equal(end, limits.DailyEnd);
     }
 
     [Fact]

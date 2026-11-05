@@ -6,6 +6,43 @@ namespace DotNetConf.Core.Tests;
 
 public sealed class PlannerJsonTests
 {
+    [Theory]
+    [InlineData("{\"topics\":[\"Synthetic topic\"]}")]
+    [InlineData(" \r\n{\"topics\":[\"Synthetic topic\"]}\r\n ")]
+    [InlineData("```json\n{\"topics\":[\"Synthetic topic\"]}\n```")]
+    [InlineData("```\n{\"topics\":[\"Synthetic topic\"]}\n```")]
+    [InlineData(" \r\n```JSON\r\n{\"topics\":[\"Synthetic topic\"]}\r\n```\r\n ")]
+    public void ModelJsonAcceptsPlainStructuredOutputOrOneCompleteJsonFence(string response)
+    {
+        var result = PlannerJson.DeserializeResponse(response, PlannerJsonContext.Default.PlannerStartingPointTopics);
+        Assert.Equal(["Synthetic topic"], result!.Topics);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("```json")]
+    [InlineData("```json\n{\"topics\":[]}")]
+    [InlineData("```json\n{\"topics\":[]}```")]
+    [InlineData("```javascript\n{\"topics\":[]}\n```")]
+    [InlineData("Here is your JSON:\n```json\n{\"topics\":[]}\n```")]
+    [InlineData("```json\n{\"topics\":[]}\n```\nExtra instructions")]
+    [InlineData("```json\n{\"topics\":[]}\n```\n```json\n{\"topics\":[]}\n```")]
+    [InlineData("```json\n{\"topics\":[]\n```")]
+    [InlineData("```json\n{\"topics\":[]} {\"topics\":[]}\n```")]
+    [InlineData("```json\n{\"topics\":[],}\n```")]
+    [InlineData("```json\n{\"topics\":\"Synthetic wrong type\"}\n```")]
+    public void ModelJsonNeverExtractsFragmentsOrRepairsInvalidResponses(string response) =>
+        Assert.Throws<JsonException>(() => PlannerJson.DeserializeResponse(response,
+            PlannerJsonContext.Default.PlannerStartingPointTopics));
+
+    [Fact]
+    public void ModelJsonPreservesBackticksAndBracesInsideStringValues()
+    {
+        const string response = "```json\n{\"topics\":[\"Synthetic ```json { text }\"]}\n```";
+        var result = PlannerJson.DeserializeResponse(response, PlannerJsonContext.Default.PlannerStartingPointTopics);
+        Assert.Equal(["Synthetic ```json { text }"], result!.Topics);
+    }
+
     [Fact]
     public void SpeakerAndTopicQuantitiesFollowTheirOwnLiteralClauses()
     {
@@ -35,6 +72,7 @@ public sealed class PlannerJsonTests
     [InlineData("Everything from Gerald, no matter the time", false)]
     [InlineData("All of Alex's talks, regardless of time", false)]
     [InlineData("All Alex talks anytime", false)]
+    [InlineData("AI talks any time, including the evening", false)]
     [InlineData("Alex on November 11, no matter the time", true)]
     [InlineData("Alex anytime after 10:00", true)]
     [InlineData("Alex anytime before noon", true)]
@@ -440,10 +478,16 @@ public sealed class PlannerJsonTests
     [InlineData("Exclude sessions if they are after 10pm for me", "none", "22:00")]
     [InlineData("All C# sessions must finish by 22:00 UTC", "none", "22:00")]
     [InlineData("No talks after 10pm local time", "none", "22:00")]
+    [InlineData("Without sessions after 10pm", "none", "22:00")]
+    [InlineData("Don't show talks after 10pm", "none", "22:00")]
+    [InlineData("Avoiding sessions that end after 10pm", "none", "22:00")]
+    [InlineData("Except after 10pm", "none", "22:00")]
+    [InlineData("No sessions before 9am", "09:00", "none")]
     [InlineData("I can watch after 9pm", "21:00", "none")]
     [InlineData("Finish before 12am", "none", "00:00")]
     public void ASingleExplicitClockCannotAcquireAnInventedStartOrChangedCutoff(string request, string start, string end)
     {
+        Agenda.ValidatePlannerRequest(request);
         var grounded = new PlannerDailyAvailability("09:00", "20:00", "local").Ground(request);
         Assert.Equal(start, grounded.DailyStart);
         Assert.Equal(end, grounded.DailyEnd);
@@ -479,7 +523,17 @@ public sealed class PlannerJsonTests
                 .InZone(sourceZone, local));
         Assert.Equal("local", PlannerInterpretation.RequestedZone("Finish by 10pm for me"));
         Assert.Equal("America/New_York", PlannerInterpretation.RequestedZone("Finish by 22:00 America/New_York"));
+        Assert.Equal("Etc/GMT+2", PlannerInterpretation.RequestedZone("Finish by 22:00 Etc/GMT+2"));
+        Assert.Equal("Etc/GMT-2", PlannerInterpretation.RequestedZone("Finish by 22:00 Etc/GMT-2"));
+        Assert.Equal("Etc/GMT+", PlannerInterpretation.RequestedZone("Finish by 22:00 Etc/GMT+"));
+        Assert.Equal("Europe/Prague", PlannerInterpretation.RequestedZone("Finish by 22:00 Europe/Prague."));
+        Assert.Equal("local", PlannerInterpretation.RequestedZone("Show HTTP/2 sessions before 11pm."));
+        Assert.Equal("UTC", PlannerInterpretation.RequestedZone("Show HTTP/1.1 sessions before 11pm UTC."));
+        Assert.Equal("America/Port-au-Prince", PlannerInterpretation.RequestedZone("Finish by 22:00 America/Port-au-Prince"));
         Assert.Throws<InvalidDataException>(() => PlannerInterpretation.RequestedZone("One window UTC and one Europe/Amsterdam"));
+        var invalid = new PlannerWindow("2026-11-10T08:00+00:00", "2026-11-10T09:00+00:00", "Etc/GMT+");
+        Assert.Equal(SchedulePlanner.UnrecognizedTimeZoneMessage,
+            Assert.Throws<InvalidDataException>(() => invalid.ToWindow(local)).Message);
     }
 
     [Fact]
@@ -503,6 +557,27 @@ public sealed class PlannerJsonTests
         Assert.Throws<InvalidDataException>(() =>
             new PlannerAvailability([new("2026-11-10T10:00", "2026-11-10T11:00", "local")], DailyEnd: "22:00")
                 .ToWindows(zone, conference));
+        var endOfDay = new PlannerDailyAvailability("07:00", "24:00", "UTC");
+        Assert.Equal("00:00", endOfDay.Complete(PlannerWatchingHours.Default).DailyEnd);
+        Assert.Equal(new PlannerAvailability([], "07:00", "24:00", "UTC").ToWindows(zone, conference),
+            endOfDay.ToWindows(zone, conference));
+    }
+
+    [Theory]
+    [InlineData("25:00", true)]
+    [InlineData("9am", false)]
+    [InlineData("", true)]
+    [InlineData("23:60", false)]
+    [InlineData("NONE", true)]
+    public void InvalidDailyLimitsHaveTheSameErrorInBothAvailabilityPaths(string invalid, bool isStart)
+    {
+        var (start, end) = isStart ? (invalid, "22:00") : ("07:00", invalid);
+        var daily = new PlannerDailyAvailability(start, end, "UTC");
+        var availability = new PlannerAvailability([], start, end, "UTC");
+        var dailyError = Assert.Throws<InvalidDataException>(() => daily.Complete(PlannerWatchingHours.Default));
+        var windowError = Assert.Throws<InvalidDataException>(() => availability.ToWindows(TimeZoneInfo.Utc, new ConferenceDocument()));
+        Assert.Equal("Use HH:mm for daily clock limits.", dailyError.Message);
+        Assert.Equal(dailyError.Message, windowError.Message);
     }
 
     [Fact]

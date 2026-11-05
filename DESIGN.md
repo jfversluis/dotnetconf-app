@@ -56,6 +56,27 @@ Five Shell destinations: Home, Sessions, Speakers, My Schedule, Community. Andro
 
 ## Content and states
 
+Home's Ask launcher appears only for a ready, tool-capable on-device model,
+replacing Explore sessions; without that capability, Explore sessions remains.
+It expands the existing Syncfusion Toolkit bottom sheet, not a chat transcript.
+A native editor retains text selection and accessibility; a decorative
+purple-magenta GraphicsView halo is static at rest and under reduced motion.
+The sheet scrolls its input, controls, and results when space is tight, and is
+capped at 720 units on wide windows; close and backgrounding cancel pending
+work. Outcomes are announced while the sheet is open.
+
+Each request stages one grounded action against the actual agenda. Navigation
+uses the existing detail service and shared search state. Saving reuses the
+normal saved-state/reminder update path and never toggles an existing save.
+Tool invocations are serialized per request, including native provider callbacks;
+identical proposals are idempotent, while conflicting proposals invalidate the request.
+Saving opens My Schedule after one atomic update. Explicit all/every requests
+save the full grounded set, not just a page of model lookup results; other
+ambiguous targets require a choice. Removal lists exact saved talks and
+device-local times, with explicit confirm/cancel controls. Confirmation is
+consumed once and rejects changed agenda/saved snapshots; the model never
+approves persistence. Debug-only trace UI contains no argument values.
+
 First-run onboarding is a separate full-screen modal carousel without a
 navigation bar: welcome, personal schedule introduction, and optional session
 reminders. Space Grotesk headings, typed Fluent icons and short explanatory
@@ -66,8 +87,12 @@ readiness before showing either discovery path. A ready model opens the AI edito
 without mix/shuffle controls. Otherwise it offers up to six compatible, varied random
 sessions from the downloaded agenda, without AI controls. A failed readiness retry
 preserves the reviewed random preview; a successful retry switches to AI only.
-No cached agenda means an
-honest download state, never bundled session examples. Continue does not save:
+Status feedback stays visible above the scrolling planner; long messages scroll independently,
+with a compact scroll cue beside them. The status area gives the request editor more room while editing.
+Review and AI setup shortcuts lead to the shortlist and optional model setup without switching models,
+including while an existing model download is being checked.
+Shuffle guidance appears only alongside a preview. No cached agenda means an honest
+download state, never bundled session examples. Continue does not save:
 advancing prompts if nothing was added or checked suggestions remain unsaved.
 All three steps share a 34-unit heading, 48-unit Fluent icon, and the
 incumbent hero wash, with 24-unit gutters aligned to the builder.
@@ -113,7 +138,13 @@ and Add N action explain that checking is not saving; no redundant confirmation
 checkbox is required. Matching details are collapsed behind a text action, not an
 AI-debug section ahead of the sessions. Warnings and blocking validation stay
 visible; successful validation and idle-ready boilerplate do not compete with
-the task. Users review the selected sessions and times before confirming.
+the task. Shortlist rows keep title and speaker prominent, followed by one
+compact line of local start date/time and duration, without per-talk matching
+explanations. The accessible checkbox description retains the end date/time.
+Watching hours sit in a single summary row with a Change action; native clock
+pickers and guidance expand only when needed. Any assumed time boundary stays
+visible above the shortlist as a short factual note. Users review the selected
+sessions and times before confirming.
 After saving, View My Schedule provides the next step. The same semantic theme
 tokens, scalable text, 48-unit actions, and typed Fluent icons apply throughout.
 The planner editor has an explicit iOS accessibility label; Android uses matching

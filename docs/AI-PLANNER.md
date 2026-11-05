@@ -34,6 +34,45 @@ Times use your device's time zone, or you can name UTC or a time-zone ID such as
 `America/New_York`. For time ranges, use explicit times such as "9am to 11am"
 or "09:00 to 11:00".
 
+For one-sided time requests, **Watching hours** supplies the missing
+boundary. The initial defaults are 07:00–23:00: "before 10pm" means
+07:00–22:00, and "after 6pm" means 18:00–23:00. Choose **Change** beside
+the hours to edit either clock before searching, or state both times in your request.
+The assumed boundary appears above your shortlist, with the time zone if you
+specified one. Defaults use the requested time zone and never restrict a request
+with no time limits.
+
+Explicit early or late limits still work: "before 6am" means midnight–06:00,
+not 07:00 through the following morning. "After 11:30pm" means
+23:30–midnight. Explicit ranges such as "from 10pm to 2am" and "anytime before
+11pm" override the defaults. The whole session must fit within your availability,
+not just its start time. Changing the defaults clears the old preview so you
+can review a fresh one. Talks outside your availability aren't offered as
+alternative choices in the shortlist. If an overnight default conflicts with a
+single cutoff, or you want to exclude a block of time, state the hours you can
+watch explicitly instead. For phrases such as "afternoon" or "after work,"
+the model estimates the hours and shows them above the shortlist. Review them;
+if the estimate isn't right or can't be determined, use explicit times instead.
+Write dates with a month name or as `yyyy-MM-dd` to avoid ambiguity, and put date
+ranges in chronological order. If a number after a date could be another day or
+a session count, repeat the month for each date or remove the count. For different
+hours on different days, or to exclude a date, make separate requests listing when
+you can watch. The agenda doesn't label session difficulty, so requests that
+filter by difficulty need to use a topic or speaker instead.
+
+## Why a session matches
+
+Focused topic requests prefer sessions whose published title or description
+mentions the topic, including sessions missing topic tags. When a topic has
+no such matches in the requested speaker scope, the planner falls back to
+Microsoft's topic tags. These tags can be broad. This is keyword-based grounding,
+not a claim that AI has judged the session's quality or depth.
+
+Ask for **all** sessions about a topic to include tag-only matches as well as
+title/description matches. Requests for a speaker's sessions remain independent
+unless you specifically ask for that person's talks about a topic. Topic filters
+in the normal agenda continue to use Microsoft's tags unchanged.
+
 ## Make room for discovery
 
 Already saved a few talks? In **My Schedule**, choose **Find talks for my gaps**
@@ -47,13 +86,16 @@ those days' published agenda. Your existing choices stay in place.
 Try discovery in the welcome experience or open
 **My Schedule** and choose **Discover sessions for my schedule**. If you've already
 saved sessions, choose **Find talks for my gaps** instead. Find sessions, then
-review the shortlist, session times, and any warnings. Open **Show matching
+review the shortlist and any warnings. Each talk shows its local start date
+and time, plus its duration, without repeating the end timestamp.
+Open **Show matching
 details** to see how the planner understood your request.
 
 AI can misunderstand, so edit your request and try again if something is
 wrong. Checked sessions are the proposed additions, not already-saved talks.
 Unchecked alternatives also match; their overlap warnings explain tradeoffs.
-Select the talks you want and choose **Add N to My Schedule**. Nothing is added until that action, and your
+Select the talks you want. For AI suggestions, confirm you've reviewed the sessions
+and times, then choose **Add N to My Schedule**. Nothing is added until that action, and your
 previously saved sessions aren't removed.
 There is no 12-session saving limit. Selecting nothing asks you to select at
 least one session. If an "all" request has incompatible requirements, edit it
@@ -66,20 +108,71 @@ move between setup steps.
 
 ## Ready when you are
 
-The planner runs on your device; it doesn't need an account or a cloud AI
-service. You'll need a downloaded agenda and a ready local model:
+The planner runs on your device without cloud AI. The app doesn't require an
+account, but Gemini Nano 4 Fast on Android requires a Google account enrolled in
+the AICore Developer Preview. You'll need a downloaded agenda and a ready local
+model:
 
 - **iOS:** Apple Intelligence on a supported device with iOS 26 or later.
-- **Android:** Gemini Nano on a compatible device with Android 8 or later and
-  the model available through AICore.
+- **Android:** Gemini Nano 4 Fast on a supported device, with a Google account
+  enrolled in the AICore Developer Preview.
 
-Device, language, region, and model settings affect availability. The app
-doesn't start a model download. Linux desktop and browser builds don't support
-the on-device AI option. If the model isn't available, you can still explore a
+Device, language, region, enrollment, and model settings affect availability.
+Checking availability never starts a download.
+
+On Android, the planner always uses Gemini Nano 4 Fast because native function
+calling is required for grounded agenda searches. There is no model picker or
+automatic model switching. If the device or account cannot access this profile,
+the planner explains the limitation and keeps agenda-based discovery available.
+
+When Android reports the model can be downloaded, choose **Download on-device
+model** in the planner. This is a one-time setup using internet access and
+device storage, potentially several GB. Wi-Fi is recommended; mobile data
+charges may apply. The planner shows progress when Android provides it and
+checks readiness again before enabling planning. If setup fails, check your
+connection and available storage, then choose **Check again** to retry. You
+can choose **Stop waiting** or leave the screen; Android may continue the
+download in the background. Return to the planner and choose **Check again**
+to see whether it's ready. The app does not remove system-managed model assets.
+On iOS, enable Apple Intelligence and manage model setup in device settings.
+
+Linux desktop and browser builds don't support
+the on-device planner. If the model isn't available, you can still explore a
 random mix or browse the agenda and save sessions with hearts. A previously downloaded agenda can be
 used offline; a first download needs an internet connection.
 
 ## Powered by MAUI Labs
+
+For a quick app action rather than a shortlist, use **Ask about the conference**
+on Home when a ready tool-capable local model is available. Ask opens filtered
+sessions or details, favorites talks, or previews removal of saved talks.
+Try “favorite all Aspire sessions” or “add all MAUI sessions to my schedule”
+to save every matching talk and open My Schedule. Without an explicit all/every,
+ambiguous matches need a choice; removal always needs a separate confirmation.
+Use separate requests for ambiguous topic combinations; Ask doesn't infer topic
+unions for bulk saves.
+Try "by" and a full speaker name when a name could also be a topic, title, or
+a request for "my" saved sessions; if it remains ambiguous, use normal search
+and hearts.
+Multi-word names must match the agenda, and a single name must match a complete
+name part. Ask matches whole search terms, not fragments of other words, and
+rejects actions whose requested scope cannot be preserved. Keep punctuation in
+technical names such as `ASP.NET`. Schedule changes match topic and title
+terms against session content; use "by" for a speaker. Use "on" before a
+weekday that might also be a speaker's name. Unambiguous full titles stay exact
+when opening or saving/removing a specific session; searches and bulk or
+plural topic requests retain every match. If a title could also be a day,
+speaker, or schedule phrase, use normal search and hearts instead. When opening
+a title, enclosing its full name in quotes can distinguish it from a separate
+speaker or day. If a quoted topic phrase could also be such a title, Ask may
+ask you to use normal search and hearts rather than narrowing a plural request.
+Ask cannot
+restrict searches, opening, or saves to sessions already in your schedule,
+including requests for "my", "saved", or "bookmarked" sessions; use My Schedule to
+review those.
+There is no chat history or cloud fallback. See [Ask for one app action](../README.md#ask-for-one-app-action).
+The planner below remains separate: its tools are read-only and its proposed
+schedule still requires confirmation before saving.
 
 The planner brings together
 [Microsoft.Maui.Essentials.AI](https://github.com/dotnet/maui-labs/blob/main/src/AI/README.md)
@@ -88,9 +181,11 @@ for on-device models and
 to connect the planner with the agenda. Learn more about how your information
 is handled in our [privacy policy](../PRIVACY.md).
 
-On a model that supports tools, the AI requests read-only agenda searches and
-receives their results. The app checks your constraints, arranges the sessions,
-and asks you to confirm before saving. Models without tool support use structured
-request interpretation instead; your existing schedule remains protected.
+With a tool-capable on-device model, the AI can request read-only agenda
+searches and receive their results. The app checks your constraints, arranges
+the sessions, and asks you to confirm before saving. Models without tool
+support use structured request interpretation instead; your existing schedule
+remains protected. Android planning requires function calling and uses the
+fixed Gemini Nano 4 Fast profile described above.
 
 For short code examples, see [the planner's presentation examples](AI-PLANNER-DEMO.md).

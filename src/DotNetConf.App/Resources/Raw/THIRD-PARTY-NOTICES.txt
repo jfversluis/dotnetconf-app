@@ -15,9 +15,9 @@ Copyright (c) .NET Foundation Contributors
 https://github.com/dotnet/macios
 MIT license: LICENSE-MaciOS.txt
 
-Microsoft.Maui.Essentials.AI 11.0.0-preview.8.26531.2
+Microsoft.Maui.Essentials.AI 11.0.0-local.e616af94 (Linux: 11.0.0-local.e616af94.linux)
 Copyright (c) Microsoft Corporation
-https://github.com/dotnet/maui-labs
+Unofficial local build from https://github.com/dotnet/maui-labs/tree/e616af94cc1642e782b1deac433eb6a582cdce92
 MIT license: LICENSE-DotNetFoundation.txt
 
 Microsoft.Maui.AI.Attributes 0.1.0-preview.14.26531.2
@@ -78,6 +78,30 @@ Space Grotesk Bold
 Copyright 2020 The Space Grotesk Project Authors
 https://github.com/floriankarsten/space-grotesk
 SIL Open Font License 1.1: LICENSE-SpaceGrotesk.txt
+
+Google ML Kit GenAI native components (Android only)
+The local Essentials.AI package includes Google's genai-prompt and genai-common
+1.0.0-beta5 AARs and genai-schema 1.0.0-alpha2 JAR. These native components
+are not covered by the Essentials.AI MIT license. Their unmodified embedded
+third-party license texts are preserved in NOTICE-MLKitPrompt.txt,
+NOTICE-MLKitCommon.txt, and NOTICE-MLKitSchema.txt respectively.
+SHA-256, in the same order:
+96da9e804fb5693915613ead2d7c03d4a02864bb6de22bf8336b206f7ae8d613
+6118fa1c2f4c71489f777f4797edbc1e2daeda8e9fccb4cba066428663ce7634
+46d18bc7651d0e81991d3f918ed47a10a18f19c9a92de66dbefcfe49cdfac6a0
+
+Google ML Kit Common and Data Transport dependencies (Android only)
+The Xamarin.Google.MLKit.Common 118.11.0.3 and
+Xamarin.Google.Android.DataTransport.TransportRuntime 4.0.0.3 .NET bindings
+are MIT licensed: LICENSE-AndroidXBindings.txt matches both packages' license texts.
+The ML Kit Common package includes Google's ML Kit Terms of Service notice:
+NOTICE-MLKitTerms.txt and https://developers.google.com/ml-kit/terms.
+NOTICE-MLKitCore.txt and NOTICE-DataTransport.txt preserve the unmodified
+third_party_licenses.txt from common.aar and transport-runtime.aar.
+SHA-256, in the same order:
+86ed829b6e5a860ae586e8aef21f14c95fa5f5255f85f6a9388e9c7b3ee48e14
+00bdeca73c2a7724261eb7443713e3b4b913ba0907dfe5c4d67d87f3920c1e6e
+Recheck these native notices when upgrading the ML Kit dependencies.
 
 AndroidX Window bindings and native components (Android only)
 Xamarin.AndroidX.Window.WindowJava resolves Xamarin.AndroidX.Window,

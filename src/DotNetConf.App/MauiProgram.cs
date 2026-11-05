@@ -99,6 +99,10 @@ public static class MauiProgram
         builder.Services.AddSingleton<DetailNavigationService>();
         builder.Services.TryAddSingleton(Browser.Default);
         builder.Services.AddSingleton<ConferenceViewModel>();
+        builder.Services.AddSingleton<IAskApplication>(services => services.GetRequiredService<ConferenceViewModel>());
+        builder.Services.AddTransient<IOnDeviceAsk, OnDeviceAsk>();
+        builder.Services.AddScoped<AskTools>();
+        builder.Services.AddTransient<AskViewModel>();
 #if IOS
         if (OperatingSystem.IsIOSVersionAtLeast(26))
         {
@@ -120,6 +124,7 @@ public static class MauiProgram
 #pragma warning restore MAUIAI0001
         }
 #endif
+        builder.Services.AddSingleton<IPlannerModelSelection, PlannerModelSelection>();
         builder.Services.AddSingleton<IPlannerModelStatus, OnDeviceModelStatus>();
         // Inactive cloud-provider example; setup and privacy requirements: docs/AI-PLANNER-DEMO.md.
         // builder.Services.AddTransient<IChatClient>(_ =>

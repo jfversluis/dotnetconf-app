@@ -6,9 +6,27 @@ namespace DotNetConf.Core;
 public static class Agenda
 {
     private const string UnsupportedExclusion = "Excluding speakers or topics isn't supported yet. Request only the speakers and topics you want; nothing has been saved.";
+    private const string PlannerExclusions = @"\b(?:except|exclud(?:e|es|ing)|avoid(?:ing)?)\b|\b(?:don['’]?t|do not|not)\s+(?!want\s+(?:to\s+)?miss\b)(?:want|include|show|suggest|recommend|see|watch|attend|like|interested)\b|\b(?:no|not|without)\s+(?:any\s+)?(?:sessions?|talks?)\b|\b(?:but|and)\s+not\b";
+    private const string TemporalExclusionSubject = @"(?:(?:any\s+)?(?:sessions?|talks?)\s+)?(?:(?:if|that|which)\s+(?:(?:they\s+)?(?:are|start|end|finish)\s+)?|(?:starting|ending|finishing)\s+)?(?:(?:available|free)\s+)?";
     public static bool MatchesTopics(Session session, PlannerTopicFilter filter) => filter.MatchAll
         ? filter.Topics.All(t => session.Topics.Contains(t, StringComparer.OrdinalIgnoreCase))
         : filter.Topics.Any(t => session.Topics.Contains(t, StringComparer.OrdinalIgnoreCase));
+
+    public static bool HasTopicContent(ConferenceDocument conference, Session session, string topic) =>
+        TopicContentPattern(conference, topic).IsMatch($"{session.Title}\n{session.Description}");
+
+    public static IEnumerable<Session> TopicContentMatches(ConferenceDocument conference, string topic)
+    {
+        var pattern = TopicContentPattern(conference, topic);
+        return conference.Sessions.Where(s => pattern.IsMatch($"{s.Title}\n{s.Description}"));
+    }
+
+    private static Regex TopicContentPattern(ConferenceDocument conference, string topic)
+    {
+        var topics = conference.Sessions.SelectMany(s => s.Topics).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        return new($$"""(?<![\p{L}\p{N}])(?:{{TopicPattern(topic, topics)}})(?![\p{L}\p{N}])""",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+    }
 
     public static string[] MentionedTopics(ConferenceDocument conference, string request)
     {
@@ -106,19 +124,50 @@ public static class Agenda
 
     public static void ValidatePlannerRequest(string request)
     {
-        var exclusions = Regex.Matches(request,
-            @"\b(?:except|exclud(?:e|es|ing)|avoid(?:ing)?)\b|\b(?:don['’]?t|do not|not)\s+(?!want\s+(?:to\s+)?miss\b)(?:want|include|show|suggest|recommend|see|watch|attend|like|interested)\b|\b(?:no|not|without)\s+(?:any\s+)?(?:sessions?|talks?)\b|\b(?:but|and)\s+not\b",
+        if (Regex.IsMatch(request, @"\b\d{1,2}/\d{1,2}(?:/\d{2,4})?\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
+            throw new InvalidDataException("Use a named month or yyyy-MM-dd for dates so they aren't ambiguous.");
+        if (Regex.IsMatch(request,
+            @"\b(?:nothing|no|not)\s+(?:too\s+)?(?:advanced|basic|complicated|beginner|intermediate)\b|" +
+            @"\b(?:beginner|intermediate|advanced)[ -](?:friendly|level)\b|" +
+            @"\b(?:beginner|intermediate|advanced|basic)\s+(?:[\p{L}+#.-]+\s+){0,3}(?:sessions?|talks?|workshops?)\b|" +
+            @"\b(?:sessions?|talks?|workshops?)\s+(?:(?:suitable|appropriate|designed)\s+)?for\s+(?:complete\s+)?beginners?\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
+            throw new InvalidDataException("The agenda doesn't label session difficulty. Try a topic or speaker instead.");
+        const string clock = @"(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)?|noon|midnight)";
+        var ranges = Regex.Matches(request, $@"\b(?:between|from)\s+{clock}(?:\s+(?:and|to|until|through)\s+|\s*[-–—]\s*){clock}\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        if (ranges.Any(range => IsNegatedTimeConstraint(request[..range.Index])))
+            throw new InvalidDataException("Excluding a time range isn't supported yet. Request the hours you can watch.");
+        var exclusions = Regex.Matches(request, PlannerExclusions,
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
         foreach (Match exclusion in exclusions)
         {
             // A clock cutoff is already supported by availability validation, not a negative entity filter.
             var temporal = Regex.IsMatch(request[(exclusion.Index + exclusion.Length)..],
-                @"^\s+(?:(?:any\s+)?(?:sessions?|talks?)\s+)?(?:(?:if|that|which)\s+(?:(?:they\s+)?(?:are|start|end|finish)\s+)?|(?:starting|ending|finishing)\s+)?(?:after|before|outside|later\s+than|earlier\s+than)\s+(?:\d|noon\b|midnight\b)",
+                $@"^\s+{TemporalExclusionSubject}(?:after|before|outside|later\s+than|earlier\s+than)\s+(?:\d|noon\b|midnight\b)",
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
             if (!temporal)
                 throw new InvalidDataException(UnsupportedExclusion);
         }
     }
+
+    public static bool IsNegatedTimeConstraint(string beforeOperator)
+    {
+        var clause = Regex.Split(beforeOperator,
+            @"[;!?]|\.(?:\s|$)|\b(?:but|however|although|yet)\b|\bcan(?:not|['’]t)\s+wait\s+(?:to|for)\b|" +
+            @"(?:\b(?:and|or|so|then)\s+|,\s*)(?=(?:I|we|you|they)\b|(?:please\s+)?(?:show|find|list|give|suggest|recommend)\b)",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100))[^1];
+        return Regex.Matches(clause, PlannerExclusions + @"|\b(?:nothing|no|not|without)\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100))
+        .Any(exclusion => Regex.IsMatch(clause[(exclusion.Index + exclusion.Length)..],
+            $@"^\s+{TemporalExclusionSubject}$",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
+        || Regex.IsMatch(clause,
+            @"\b(?:can(?:not|['’]t)|can\s+not|won['’]t|will\s+not|not\s+able\s+to|unable(?:\s+to)?|unavailable)\b(?:[\s,]+[\p{L}\p{N}+#.-]+)*[\s,]*$",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+    }
+
     public static IReadOnlyList<Speaker> FindSpeakers(ConferenceDocument conference, string? name)
     {
         var terms = (name ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

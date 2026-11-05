@@ -47,22 +47,42 @@ destination's privacy policy and your browser's settings.
 The experimental browser app also makes ordinary requests to the website that
 hosts the app, which can retain server logs under its own policy.
 
-## On-device planning and reminders
+## On-device Ask, planning, and reminders
 
 Random session discovery uses only the downloaded public agenda and your locally
 saved choices. It does not use an AI model or send a request to an AI service.
 Shuffling changes only the unsaved preview; additions require your explicit Add action.
 
-If you use the optional planner, your request and relevant public agenda
+If you use optional Ask or the planner, your request and relevant public agenda
 information are processed by a local model through Apple Intelligence on iOS
-or Gemini Nano on supported Android devices. The app does not send planner
+or Gemini Nano on supported Android devices. The app does not send Ask or planner
 requests or responses to an app-operated AI service or use a cloud-model
-fallback. It does not save planner requests, proposals, or chat history;
-confirmed session choices are stored locally. The app checks whether a local
-model is ready but does not start a model download.
-On tool-capable models, the model can request read-only agenda searches in the
-app. Their results stay within this on-device planning flow; the model cannot
-save sessions without your confirmation.
+fallback. It does not save these requests, proposals, or chat history;
+confirmed session choices are stored locally. Checking model readiness does not
+start a download. On compatible Android devices, choosing **Download on-device
+model** explicitly requests Gemini Nano model assets through Android AICore.
+This uses internet access and device storage; mobile data charges may apply.
+Google and its delivery providers receive the network/device metadata needed to
+provide those assets, under their own policies. Planner requests and agenda
+content are not included in the model-download request. Android manages the
+model's storage and may continue a download after you leave the planner or stop
+waiting. Stopping waiting is not a guarantee of cancelling or deleting the
+system-managed model. On iOS, model setup remains in device settings.
+On Android, the app uses Gemini Nano 4 Fast for readiness checks, explicit
+downloads, and on-device requests; it does not save a model choice in app
+preferences. Function calling requires a supported device and a Google account
+enrolled in the AICore Developer Preview program. The model can request
+read-only agenda searches in the app. Their results stay within this on-device
+flow. The planner requires your confirmation before saving a proposed schedule.
+
+Ask is shown only when a ready local model supports tools. A request can open
+filtered sessions or a session/speaker page, or save matching sessions
+without another confirmation and open My Schedule. Explicit all/every requests
+save the full matching set; otherwise ambiguous matches require your selection.
+Removing saved sessions always requires an exact preview and a separate
+confirmation in the app; model output cannot approve it. Ask reuses the normal
+local saved schedule and reminder settings. Closing Ask clears the current
+request and pending action. Unsupported requests do not change app data.
 
 Session reminders are optional. If you enable them, the app requests
 notification permission and gives your device's notification service the
@@ -74,8 +94,8 @@ delivery.
 ## Data kept on your device
 
 - Your saved session IDs are stored locally so your schedule survives restarts.
-- Your appearance preference, whether you completed the welcome, and whether
-  reminders are enabled are stored in the platform's preferences store.
+- Your appearance preference, whether you completed the
+  welcome, and whether reminders are enabled are stored in the platform's preferences store.
 - The last successfully downloaded agenda, public profiles, source URLs, and
   refresh/cache metadata are stored locally. The agenda cache is limited to
   16 MiB. It has no fixed expiry: older successfully downloaded data can remain
@@ -100,7 +120,7 @@ providers and your settings, not by an app-operated service.
 
 ## Retention and your choices
 
-Remove a saved session by toggling its save control, and change your appearance
+Remove a saved session by toggling its save control, change your appearance
 preference in Settings. Device app-data controls or uninstalling the app remove
 local app data subject to platform behavior; clear this site's storage for
 the browser app. Platform backups may retain or restore data separately.
@@ -109,7 +129,9 @@ There is no developer-held account or saved-schedule database to delete.
 
 ## Development builds and support
 
-Debug builds can include MAUI DevFlow inspection/automation and debug logging
+Debug builds can include MAUI DevFlow inspection/automation, a local Ask
+tool-call trace (names, timing, outcome, and argument counts, not argument
+values), and debug logging
 for development. These facilities can expose the running app's UI/state and
 diagnostic information to a developer-connected tool. They are excluded from
 Release builds and are not an end-user analytics service. Do not share device

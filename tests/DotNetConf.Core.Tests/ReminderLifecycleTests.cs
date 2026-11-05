@@ -2,6 +2,7 @@ using DotNetConf.App.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Maui.Storage;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Plugin.LocalNotification;
 using Plugin.LocalNotification.Core.Models;
 
@@ -50,6 +51,21 @@ public sealed class ReminderLifecycleTests
         Assert.Contains("Couldn't update", service.Status);
         Assert.True(await service.RefreshAsync().WaitAsync(TimeSpan.FromSeconds(2)));
         Assert.Contains("1 saved session", service.Status);
+    }
+
+    [Fact]
+    public async Task NotificationTimeoutIsVisibleAndCanBeRetried()
+    {
+        var (service, notifications, _, store) = Create();
+        notifications.GetPendingNotificationList().ThrowsAsync(new TimeoutException("Synthetic notification timeout"));
+
+        Assert.False(await service.RefreshAsync());
+        Assert.Contains("Couldn't update", service.Status);
+        Assert.Equal(["future"], await store.ReadAsync());
+
+        notifications.GetPendingNotificationList().Returns([]);
+        Assert.True(await service.RefreshAsync().WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.Equal("Session reminders are off.", service.Status);
     }
 
     [Fact]

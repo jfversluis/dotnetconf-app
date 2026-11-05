@@ -7,6 +7,8 @@ namespace DotNetConf.Core.Tests;
 
 public sealed class PlannerDiscoveryLifecycleTests
 {
+    private static PlannerModelState Ready => new(true, false, "");
+
     private static readonly ConferenceDocument Agenda = new()
     {
         IsMock = true,
@@ -25,14 +27,26 @@ public sealed class PlannerDiscoveryLifecycleTests
         source.LoadAsync(Arg.Any<CancellationToken>()).Returns(Agenda);
         var planner = Substitute.For<IOnDevicePlanner>();
         planner.UnsupportedReason.Returns(supported ? null : "No local model on this device.");
-        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(Ready);
         planner.SuggestStartingPointsAsync(Arg.Any<ConferenceDocument>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<PlannerStartingPoint>>([]));
         var updates = Substitute.For<IPlannerScheduleUpdates>();
         updates.RefreshRemindersAsync().Returns(true);
         var store = new MemoryStore();
-        return (new(source, new ScheduleService(store), planner, updates,
-            NullLogger<PlannerViewModel>.Instance), planner, store);
+        var schedule = new ScheduleService(store);
+        async Task<PlannerSaveResult?> SaveProposal(ConferenceDocument agenda, ScheduleProposal proposal,
+            TimeZoneInfo zone, CancellationToken cancellationToken)
+        {
+            var review = await schedule.AddProposalAsync(agenda, proposal, zone, cancellationToken)
+                ?? throw new InvalidOperationException("The synthetic proposal was not reviewed.");
+            return new(review, true);
+        }
+        updates.AddPlannerProposalAsync(Arg.Any<ConferenceDocument>(), Arg.Any<ScheduleProposal>(),
+                Arg.Any<TimeZoneInfo>(), Arg.Any<CancellationToken>())
+            .Returns(call => SaveProposal(call.Arg<ConferenceDocument>(), call.Arg<ScheduleProposal>(),
+                call.Arg<TimeZoneInfo>(), call.Arg<CancellationToken>()));
+        return (new(source, schedule, planner, updates,
+            NullLogger<PlannerViewModel>.Instance, new TestPlannerModelSelection()), planner, store);
     }
 
     [Fact]
@@ -43,6 +57,8 @@ public sealed class PlannerDiscoveryLifecycleTests
         Assert.False(vm.IsReady);
         Assert.False(vm.IsAiMode);
         Assert.True(vm.CanExplore);
+        Assert.False(vm.ShowModelSetup);
+        Assert.True(vm.ShowAvailabilityStatus);
         Assert.Contains("explore the agenda", vm.ModelStatus, StringComparison.OrdinalIgnoreCase);
         Assert.InRange(vm.SelectedCount, 1, 6);
         Assert.True(vm.CanApply);
@@ -52,8 +68,11 @@ public sealed class PlannerDiscoveryLifecycleTests
         await vm.ApplyCommand.ExecuteAsync(null);
         Assert.Equal(selected, store.Saved.Order().ToArray());
         Assert.True(vm.HasAddedSessions);
+        Assert.True(selected.Length > 1);
+        Assert.Equal($"{selected.Length} selected sessions added to My Schedule. Your previous likes were kept.", vm.Status);
         await planner.DidNotReceive().ProposeAsync(Arg.Any<ConferenceDocument>(), Arg.Any<string>(),
-            Arg.Any<TimeZoneInfo>(), Arg.Any<string[]>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
+            Arg.Any<TimeZoneInfo>(), Arg.Any<string[]>(), Arg.Any<CancellationToken>(), Arg.Any<bool>(),
+            Arg.Any<PlannerWatchingHours>());
     }
 
     [Fact]
@@ -61,7 +80,7 @@ public sealed class PlannerDiscoveryLifecycleTests
     {
         var (vm, planner, _) = Create(true);
         planner.CheckReadinessAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new NotSupportedException("Unknown: UNAVAILABLE (0): model is not ready.")));
+            .Returns(Task.FromException<PlannerModelState>(new NotSupportedException("Unknown: UNAVAILABLE (0): model is not ready.")));
 
         await vm.InitializeAsync();
 
@@ -75,7 +94,7 @@ public sealed class PlannerDiscoveryLifecycleTests
     public async Task ReadinessChoosesAiWithoutCreatingARandomPreview()
     {
         var (vm, planner, _) = Create(true);
-        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var ready = new TaskCompletionSource<PlannerModelState>(TaskCreationOptions.RunContinuationsAsynchronously);
         planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(ready.Task);
         var initialization = vm.InitializeAsync();
         Assert.True(vm.IsCheckingModel);
@@ -83,7 +102,7 @@ public sealed class PlannerDiscoveryLifecycleTests
         Assert.False(vm.CanExplore);
         Assert.False(vm.IsAiMode);
         Assert.Empty(vm.Sessions);
-        ready.SetResult();
+        ready.SetResult(Ready);
         await initialization;
         Assert.True(vm.IsReady);
         Assert.True(vm.IsAiMode);
@@ -109,12 +128,12 @@ public sealed class PlannerDiscoveryLifecycleTests
     {
         var (vm, planner, store) = Create(true);
         planner.CheckReadinessAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new NotSupportedException("Synthetic unavailable model")));
+            .Returns(Task.FromException<PlannerModelState>(new NotSupportedException("Synthetic unavailable model")));
         await vm.InitializeAsync();
         Assert.True(vm.CanExplore);
         Assert.NotEmpty(vm.Sessions);
 
-        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(Ready);
         await vm.CheckModelCommand.ExecuteAsync(null);
 
         Assert.True(vm.IsAiMode);
@@ -129,12 +148,12 @@ public sealed class PlannerDiscoveryLifecycleTests
     {
         var (vm, planner, store) = Create(true);
         planner.CheckReadinessAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new NotSupportedException("Synthetic unavailable model")));
+            .Returns(Task.FromException<PlannerModelState>(new NotSupportedException("Synthetic unavailable model")));
         await vm.InitializeAsync();
         var ids = vm.Sessions.Select(session => session.Id).ToArray();
         vm.Sessions[0].IsSelected = false;
 
-        var pending = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var pending = new TaskCompletionSource<PlannerModelState>(TaskCreationOptions.RunContinuationsAsynchronously);
         planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(pending.Task);
         var retry = vm.CheckModelCommand.ExecuteAsync(null);
         Assert.False(vm.CanApply);
@@ -157,7 +176,7 @@ public sealed class PlannerDiscoveryLifecycleTests
     {
         var (vm, planner, store) = Create(true);
         planner.CheckReadinessAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new OperationCanceledException()));
+            .Returns(Task.FromException<PlannerModelState>(new OperationCanceledException()));
 
         await vm.InitializeAsync();
 
@@ -174,7 +193,7 @@ public sealed class PlannerDiscoveryLifecycleTests
     {
         var (vm, planner, store) = Create(true);
         planner.ProposeAsync(Arg.Any<ConferenceDocument>(), Arg.Any<string>(), Arg.Any<TimeZoneInfo>(),
-            Arg.Any<string[]>(), Arg.Any<CancellationToken>(), Arg.Any<bool>())
+            Arg.Any<string[]>(), Arg.Any<CancellationToken>(), Arg.Any<bool>(), Arg.Any<PlannerWatchingHours>())
             .Returns(new PlannerResult(new(["synthetic-0"], [], []), ""));
         await vm.InitializeAsync();
         vm.Request = "Synthetic request";
@@ -182,7 +201,7 @@ public sealed class PlannerDiscoveryLifecycleTests
         Assert.True(vm.IsAiMode);
         Assert.Single(vm.Sessions);
         planner.CheckReadinessAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new NotSupportedException("Synthetic model no longer available")));
+            .Returns(Task.FromException<PlannerModelState>(new NotSupportedException("Synthetic model no longer available")));
 
         await vm.CheckModelCommand.ExecuteAsync(null);
 
@@ -197,11 +216,11 @@ public sealed class PlannerDiscoveryLifecycleTests
     public async Task LeavingDuringReadinessDoesNotStartDiscovery()
     {
         var (vm, planner, store) = Create(true);
-        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var ready = new TaskCompletionSource<PlannerModelState>(TaskCreationOptions.RunContinuationsAsynchronously);
         planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(ready.Task);
         var initialization = vm.InitializeAsync();
         vm.Cancel();
-        ready.SetResult();
+        ready.SetResult(Ready);
         await initialization;
         Assert.False(vm.IsReady);
         Assert.Empty(vm.Sessions);
@@ -213,13 +232,13 @@ public sealed class PlannerDiscoveryLifecycleTests
     public async Task CancelledReadinessCanBeRetried()
     {
         var (vm, planner, _) = Create(true);
-        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var ready = new TaskCompletionSource<PlannerModelState>(TaskCreationOptions.RunContinuationsAsynchronously);
         planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(ready.Task);
         var initialization = vm.InitializeAsync();
         vm.Cancel();
-        ready.SetResult();
+        ready.SetResult(Ready);
         await initialization;
-        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(Ready);
 
         await vm.CheckModelCommand.ExecuteAsync(null);
 
@@ -247,19 +266,20 @@ public sealed class PlannerDiscoveryLifecycleTests
     }
 
     [Fact]
-    public async Task APreviewLargerThanTwelveCanBeSavedWithoutExtraConfirmation()
+    public async Task APreviewLargerThanTwelveCanBeSavedAfterReview()
     {
         var (vm, planner, store) = Create(true);
         planner.ProposeAsync(Arg.Any<ConferenceDocument>(), Arg.Any<string>(), Arg.Any<TimeZoneInfo>(),
-            Arg.Any<string[]>(), Arg.Any<CancellationToken>(), Arg.Any<bool>())
-            .Returns(new PlannerResult(new(Agenda.Sessions.Select(session => session.Id).ToArray(), [], [])
-            {
-                TopicFilter = new(["Synthetic topic 0"], false, false, false)
-            }, ""));
+            Arg.Any<string[]>(), Arg.Any<CancellationToken>(), Arg.Any<bool>(), Arg.Any<PlannerWatchingHours>())
+            .Returns(new PlannerResult(new(Agenda.Sessions.Select(session => session.Id).ToArray(), [], []), ""));
         await vm.InitializeAsync();
         vm.Request = "Synthetic test request";
         await vm.GenerateCommand.ExecuteAsync(null);
         Assert.Equal(18, vm.SelectedCount);
+        Assert.False(vm.CanApply);
+        await vm.ApplyCommand.ExecuteAsync(null);
+        Assert.Empty(store.Saved);
+        vm.ConstraintsConfirmed = true;
         Assert.True(vm.CanApply);
         await vm.ApplyCommand.ExecuteAsync(null);
         Assert.Equal(18, store.Saved.Length);

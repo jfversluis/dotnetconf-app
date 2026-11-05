@@ -1,0 +1,75 @@
+<ContentView x:Class="DotNetConf.App.Controls.AskSheetView"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:DotNetConf.App.Controls"
+             xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
+             xmlns:core="clr-namespace:DotNetConf.Core;assembly=DotNetConf.Core"
+             x:DataType="vm:AskViewModel"
+             BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}">
+    <ScrollView AutomationId="ask-content">
+        <ScrollView.SafeAreaEdges>
+            <OnPlatform x:TypeArguments="SafeAreaEdges" Default="Container,Container,Container,All">
+                <On Platform="Android" Value="Container,Container,Container,None" />
+            </OnPlatform>
+        </ScrollView.SafeAreaEdges>
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto" Padding="12,4,12,16" MaximumWidthRequest="720" SafeAreaEdges="None"
+              HorizontalOptions="Fill">
+            <Grid ColumnDefinitions="*,Auto" Padding="12,0">
+                <Label Text="Ask" Style="{StaticResource Heading}" VerticalOptions="Center"
+                       SemanticProperties.HeadingLevel="Level1" />
+                <Button Grid.Column="1" Text="Close" Style="{StaticResource QuietButton}"
+                        Clicked="CloseClicked" AutomationId="ask-close" />
+            </Grid>
+            <Grid Grid.Row="1" MinimumHeightRequest="112">
+                <controls:AskGlow x:Name="Glow" IsWorking="{Binding IsBusy}" />
+                <Editor x:Name="Input" Margin="26,24" MinimumHeightRequest="64" MaximumHeightRequest="140"
+                        AutoSize="TextChanges" MaxLength="500" Text="{Binding Request, Mode=TwoWay}"
+                        Placeholder="What would you like to do?" IsEnabled="{Binding CanSubmit}"
+                        TextColor="{AppThemeBinding Light={StaticResource LightText}, Dark={StaticResource DarkText}}"
+                        PlaceholderColor="{AppThemeBinding Light={StaticResource LightSecondary}, Dark={StaticResource DarkSecondary}}"
+                        BackgroundColor="Transparent" AutomationId="ask-input"
+                        SemanticProperties.Description="Ask about conference sessions and your schedule"
+                        Focused="InputFocused" Unfocused="InputUnfocused" Completed="InputCompleted" />
+            </Grid>
+            <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="12" Padding="12,0">
+                <Label Text="On-device · One action at a time" Style="{StaticResource Secondary}"
+                       FontSize="12" VerticalOptions="Center" />
+                <ActivityIndicator Grid.Column="1" IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" WidthRequest="24" />
+                <Button Grid.Column="2" Text="Stop" Command="{Binding StopCommand}" Style="{StaticResource QuietButton}"
+                        IsVisible="{Binding IsBusy}" AutomationId="ask-stop" />
+                <Button Grid.Column="3" Text="Ask" Command="{Binding SubmitCommand}" AutomationId="ask-submit" />
+            </Grid>
+            <VerticalStackLayout Grid.Row="3" Spacing="16" Padding="12,16">
+                <Label Text="{Binding Message}" AutomationId="ask-message" />
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding Choices}" Spacing="8">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="core:AskChoice">
+                            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" Padding="0,8">
+                                <Label Text="{Binding Title}" FontFamily="OpenSansSemibold" />
+                                <Label Grid.Row="1" Text="{Binding Detail}" Style="{StaticResource Secondary}" />
+                                <Button Grid.Column="1" Grid.RowSpan="2" Text="Choose"
+                                        Style="{StaticResource QuietButton}" CommandParameter="{Binding .}"
+                                        Clicked="ChoiceClicked" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:AskViewModel}}, Path=NeedsChoice}"
+                                        AutomationId="ask-choice" />
+                            </Grid>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+                <VerticalStackLayout Spacing="8" IsVisible="{Binding NeedsApproval}">
+                    <Label Text="Only these saved choices will be removed. You can save them again using hearts."
+                           Style="{StaticResource Secondary}" />
+                    <Button Text="Remove sessions" Command="{Binding ConfirmRemovalCommand}"
+                            SemanticProperties.Description="Remove these saved sessions"
+                            AutomationId="ask-confirm-removal" />
+                    <Button Text="Keep my schedule" Command="{Binding DeclineCommand}"
+                            Style="{StaticResource QuietButton}" AutomationId="ask-decline-removal" />
+                </VerticalStackLayout>
+                <Button Text="View My Schedule" IsVisible="{Binding CanViewSchedule}" Clicked="ViewScheduleClicked"
+                        Style="{StaticResource QuietButton}" AutomationId="ask-view-schedule" />
+                <VerticalStackLayout x:Name="DebugSlot" />
+                <Label Text="Check the result. Removals always need your confirmation."
+                       Style="{StaticResource Secondary}" FontSize="12" />
+            </VerticalStackLayout>
+        </Grid>
+    </ScrollView>
+</ContentView>

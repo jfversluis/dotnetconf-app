@@ -17,11 +17,11 @@ public sealed class PlannerStartingPointLoadingTests
         ILogger<PlannerViewModel>? logger = null)
     {
         planner.UnsupportedReason.Returns((string?)null);
-        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(new PlannerModelState(true, false, ""));
         var store = Substitute.For<IScheduleStore>();
         store.ReadAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<string>());
         return new(data, new ScheduleService(store), planner, Substitute.For<IPlannerScheduleUpdates>(),
-            logger ?? NullLogger<PlannerViewModel>.Instance);
+            logger ?? NullLogger<PlannerViewModel>.Instance, new TestPlannerModelSelection());
     }
 
     private static Task RefreshFinished(PlannerViewModel vm)

@@ -31,6 +31,7 @@ Install the SDK selected by `global.json`, then:
 ```sh
 dotnet workload install maui-android maui-ios wasm-tools --version 11.0.100-rc.3.26524.4
 dotnet tool restore
+bash eng/build-local-essentials-ai.sh
 dotnet test tests/DotNetConf.Core.Tests
 dotnet test tests/DotNetConf.App.Tests -c Release -p:MobileTargetFramework=net11.0
 ```
@@ -38,6 +39,36 @@ dotnet test tests/DotNetConf.App.Tests -c Release -p:MobileTargetFramework=net11
 On Linux, omit `maui-ios`; the project drops the iOS target there.
 
 iOS builds require a Mac and Xcode 27.0, as required by the RC2 iOS 27 bindings retained in the pinned RC3 workload set. Android requires the workload's Android SDK dependencies, including API 37.0 tooling, and JDK 21. Deployment minimums are iOS 15 and Android API 26. These are different from the build SDK versions. See [MAUI release requirements](https://github.com/dotnet/maui/wiki/Release-Versions).
+
+### Temporary Essentials.AI source package
+
+Until the next official release is published, the app uses an **unofficial,
+locally built** `Microsoft.Maui.Essentials.AI` package from
+[dotnet/maui-labs@e616af94cc1642e782b1deac433eb6a582cdce92](https://github.com/dotnet/maui-labs/tree/e616af94cc1642e782b1deac433eb6a582cdce92).
+The script above fetches that exact, unmodified source and builds it with this
+repository's pinned SDK and workloads. It requires JDK 21 and Android SDK
+platform 36; on macOS it also builds the iOS native framework with Xcode.
+The output is an unsigned local package in `artifacts/essentials-ai-feed`,
+not a published NuGet.org version. Linux builds a separate version containing
+only the portable and Android assets. The source checkout and package are
+ignored by Git. CI builds the full package once and shares it between jobs.
+
+Run the script again after a clean checkout before restoring the app. It
+requires access to GitHub and the upstream project's NuGet and Gradle feeds.
+NuGet can reuse an older package with the same local version from its cache.
+The app build checks that the restored package matches the feed. If it does
+not, choose a new, empty package folder and restore without fallback folders:
+
+```sh
+export NUGET_PACKAGES="$PWD/artifacts/nuget-packages"
+dotnet restore src/DotNetConf.App --configfile NuGet.Config \
+  -p:RestoreFallbackFolders= -p:RestoreAdditionalProjectFallbackFolders=
+```
+
+Use a different path if that folder already exists. This may re-download other
+packages. Keep `NUGET_PACKAGES` set for subsequent builds.
+The local package, feed mapping, build script, and CI packaging job are
+temporary and should be removed when switching to the official release.
 
 The iOS head uses the scene lifecycle: `Info.plist` registers the single-window `SceneDelegate`, which inherits `MauiUISceneDelegate`. MAUI owns window creation through `App.CreateWindow`; `AppDelegate` only builds the app. Window sizing and safe areas use MAUI and platform controls, not fixed offsets.
 
@@ -430,6 +461,37 @@ the in-app list aligned. Preserve upstream notices verbatim.
 
 ## Schedule planner
 
+Planner topic discovery lives in `DotNetConf.Core`: focused requests prefer
+whole topic/alias mentions in published titles/descriptions, falling back per
+topic to source tags only when no content matches exist in the requested speaker
+scope. Explicit all-topic requests use the union. Normal agenda tag filtering is
+unchanged. Discovery, recommendation, completeness checks and final selection
+validation must agree on this scope; generic search tools cannot bypass it.
+Do not silently backfill tag-only talks when direct matches fail availability.
+
+For one-sided clock limits, `PlannerWatchingHours` supplies the
+unstated edge deterministically. Keep the explicit source clock authoritative,
+preserve explicit early/late and overnight requests, show any assumed edge
+outside collapsed matching details, and invalidate previews when defaults
+change. Defaults are local to the planner view, not persisted or sent to a cloud
+service. Validate requested dates before clipping them to conference days.
+For qualitative time preferences, extract an independent bounded estimate,
+intersect explicit clock limits, and show the interpreted hours for review.
+
+Shortlist rows show a local start date/time and `Agenda.Duration`, not repeated
+end timestamps or per-row matching explanations. Preserve the full end date/time
+in the checkbox's accessible description. Watching-hours controls expand from
+a compact summary; invalid defaults reopen them with a visible error. Merely
+opening or closing the editor must not invalidate a reviewed proposal.
+
+AI planning preserves each provider's output capabilities: schema-constrained
+responses where supported, otherwise JSON requested as text. Every model JSON
+response passes through the same source-generated, typed deserializer. It accepts
+plain JSON or one complete Markdown code block with a `json` or empty language
+tag; it does not extract fragments from commentary, repair malformed JSON, or
+relax agenda and constraint validation. Provider regression tests cover both
+structured and fenced-text responses, including availability and topic matching.
+
 My Schedule opens on a timeline of saved sessions only, drawn by Avalonia. Pages use `Planner/SchedulePlanner`, an ordinary MAUI view, and `SchedulePlannerHandler` (an `AvaloniaControlHandler`) passes its properties to the Avalonia control, `Planner/PlannerView`. Android and iOS embed that control in the native app through `UseAvaloniaEmbedding<PlannerApplication>()`, and the Linux desktop and browser draw it like everything else, so Avalonia.Controls.Maui is referenced on every target. The List button shows the same saved sessions in a native list. `SavedTimelineSessions` is the planner's single membership input, an immutable snapshot published by `RefreshSchedule`; the layout, counts, overlap bands, route, and overview all use that snapshot. Days come from the published session timestamps rather than a fixed conference date or day count. With no available saved sessions, both modes show the shared loading/download/empty state and Find a session action. Withdrawn favorites remain available, as in the list.
 
 The layout comes from `DotNetConf.Core.TimelineLayout`: each local day to scale, overlapping sessions side by side, and long gaps shortened to a break. Cards retain their topic-colored dot, time text, and subtle surface tint to match the filter chips; a filled accent-colored heart indicates a saved session, without replacing the topic colors. Only what's on screen gets controls, so it stays smooth even with very large agendas. It zooms with pinch, trackpad, Ctrl + wheel, the keyboard or its zoom buttons, and supports keyboard navigation, screen readers and both themes. On the phones it also follows the system text size and reduce motion.
@@ -480,7 +542,7 @@ Use an unused host port and the actual agent port reported by the app. Remove on
 
 The preview's Android theme command also ignores device selection when multiple emulators are connected. For theme checks, target the test device explicitly with `adb -s SERIAL shell cmd uimode night yes` (dark) or `no` (light).
 
-Stable AutomationIds include `home-sessions`, `session-search`, `session-filters`, `session-filters-clear`, `filter-topics`, `filter-check-{topic}`, `filter-reset`, `filter-show-sessions`, `save-{sessionId}`, `detail-save`, `speaker-search`, `schedule-timeline-mode`, `schedule-list-mode`, `schedule-planner`, and `saved-count` (in My Schedule's List view). DevFlow sees the planner as one element; what's inside it is drawn by Avalonia. Reusable status controls should be scoped to their page. To avoid mutation lease conflicts between short-lived CLI processes, use one batch for a sequence:
+Stable AutomationIds include `home-sessions`, `home-ask`, `ask-input`, `ask-submit`, `ask-confirm-removal`, `session-search`, `session-speaker-clear`, `session-filters`, `session-filters-clear`, `filter-topics`, `filter-check-{topic}`, `filter-reset`, `filter-show-sessions`, `save-{sessionId}`, `detail-save`, `speaker-search`, `schedule-timeline-mode`, `schedule-list-mode`, `schedule-planner`, and `saved-count` (in My Schedule's List view). DevFlow sees the planner as one element; what's inside it is drawn by Avalonia. Reusable status controls should be scoped to their page. To avoid mutation lease conflicts between short-lived CLI processes, use one batch for a sequence:
 
 ```sh
 printf 'MAUI tap Tab_IMPL_sessions\nMAUI fill session-search ".NET"\nMAUI tree --depth 14\n' \
