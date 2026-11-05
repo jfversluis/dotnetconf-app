@@ -12,34 +12,60 @@
                 <On Platform="Android" Value="Container,Container,Container,None" />
             </OnPlatform>
         </ScrollView.SafeAreaEdges>
-        <Grid RowDefinitions="Auto,Auto,Auto,Auto" Padding="12,4,12,16" MaximumWidthRequest="720" SafeAreaEdges="None"
+        <Grid RowDefinitions="Auto,Auto,Auto" Padding="12,4,12,16" MaximumWidthRequest="720" SafeAreaEdges="None"
               HorizontalOptions="Fill">
             <Grid ColumnDefinitions="*,Auto" Padding="12,0">
                 <Label Text="Ask" Style="{StaticResource Heading}" VerticalOptions="Center"
                        SemanticProperties.HeadingLevel="Level1" />
-                <Button Grid.Column="1" Text="Close" Style="{StaticResource QuietButton}"
-                        Clicked="CloseClicked" AutomationId="ask-close" />
+                <ImageButton Grid.Column="1" Source="{StaticResource ClearIcon}" Style="{StaticResource IconButton}"
+                             Clicked="CloseClicked" AutomationId="ask-close" SemanticProperties.Description="Close Ask" />
             </Grid>
             <Grid Grid.Row="1" MinimumHeightRequest="112">
                 <controls:AskGlow x:Name="Glow" IsWorking="{Binding IsBusy}" />
-                <Editor x:Name="Input" Margin="26,24" MinimumHeightRequest="64" MaximumHeightRequest="140"
-                        AutoSize="TextChanges" MaxLength="500" Text="{Binding Request, Mode=TwoWay}"
-                        Placeholder="What would you like to do?" IsEnabled="{Binding CanSubmit}"
-                        TextColor="{AppThemeBinding Light={StaticResource LightText}, Dark={StaticResource DarkText}}"
-                        PlaceholderColor="{AppThemeBinding Light={StaticResource LightSecondary}, Dark={StaticResource DarkSecondary}}"
-                        BackgroundColor="Transparent" AutomationId="ask-input"
-                        SemanticProperties.Description="Ask about conference sessions and your schedule"
-                        Focused="InputFocused" Unfocused="InputUnfocused" Completed="InputCompleted" />
+                <Grid Margin="26,20" RowDefinitions="Auto,Auto" RowSpacing="4">
+                    <controls:AskEditor x:Name="Input" MinimumHeightRequest="48" MaximumHeightRequest="140"
+                            AutoSize="TextChanges" MaxLength="500" Text="{Binding Request, Mode=TwoWay}"
+                            Placeholder="What would you like to do?" IsEnabled="{Binding CanSubmit}"
+                            TextColor="{AppThemeBinding Light={StaticResource LightText}, Dark={StaticResource DarkText}}"
+                            PlaceholderColor="{AppThemeBinding Light={StaticResource LightSecondary}, Dark={StaticResource DarkSecondary}}"
+                            BackgroundColor="Transparent" AutomationId="ask-input"
+                            SemanticProperties.Description="Ask about conference sessions and your schedule"
+                            Focused="InputFocused" Unfocused="InputUnfocused" Completed="InputCompleted" />
+                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                        <Label Text="On-device · One action at a time" Style="{StaticResource Secondary}"
+                               FontSize="12" VerticalOptions="Center" />
+                        <ActivityIndicator Grid.Column="1" IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}"
+                                           WidthRequest="20" HeightRequest="20" VerticalOptions="Center" AutomationId="ask-progress" />
+                        <Grid Grid.Column="2" WidthRequest="48" HeightRequest="48" AutomationId="ask-send-target">
+                            <Grid.Triggers>
+                                <DataTrigger TargetType="Grid"
+                                             Binding="{Binding Source={x:Reference SendButton}, Path=IsEnabled, x:DataType=ImageButton}" Value="False">
+                                    <Setter Property="Opacity" Value="0.5" />
+                                </DataTrigger>
+                            </Grid.Triggers>
+                            <Border WidthRequest="36" HeightRequest="36" StrokeThickness="0" StrokeShape="RoundRectangle 18"
+                                    HorizontalOptions="Center" VerticalOptions="Center" InputTransparent="True"
+                                    AutomationProperties.IsInAccessibleTree="False" AutomationId="ask-send-disc"
+                                    BackgroundColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+                            <ImageButton x:Name="SendButton" Command="{Binding SubmitCommand}" Source="{StaticResource AskSendIcon}"
+                                         Style="{StaticResource IconButton}" Padding="14"
+                                         AutomationId="ask-submit" SemanticProperties.Description="Send request"
+                                         SemanticProperties.Hint="Asks the on-device model to find an app action">
+                                <ImageButton.Triggers>
+                                    <DataTrigger TargetType="ImageButton" Binding="{Binding IsBusy}" Value="True">
+                                        <Setter Property="Command" Value="{Binding StopCommand}" />
+                                        <Setter Property="Source" Value="{StaticResource AskStopIcon}" />
+                                        <Setter Property="AutomationId" Value="ask-stop" />
+                                        <Setter Property="SemanticProperties.Description" Value="Stop request" />
+                                        <Setter Property="SemanticProperties.Hint" Value="Cancels the current on-device request" />
+                                    </DataTrigger>
+                                </ImageButton.Triggers>
+                            </ImageButton>
+                        </Grid>
+                    </Grid>
+                </Grid>
             </Grid>
-            <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="12" Padding="12,0">
-                <Label Text="On-device · One action at a time" Style="{StaticResource Secondary}"
-                       FontSize="12" VerticalOptions="Center" />
-                <ActivityIndicator Grid.Column="1" IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" WidthRequest="24" />
-                <Button Grid.Column="2" Text="Stop" Command="{Binding StopCommand}" Style="{StaticResource QuietButton}"
-                        IsVisible="{Binding IsBusy}" AutomationId="ask-stop" />
-                <Button Grid.Column="3" Text="Ask" Command="{Binding SubmitCommand}" AutomationId="ask-submit" />
-            </Grid>
-            <VerticalStackLayout Grid.Row="3" Spacing="16" Padding="12,16">
+            <VerticalStackLayout Grid.Row="2" Spacing="16" Padding="12,16">
                 <Label Text="{Binding Message}" AutomationId="ask-message" />
                 <VerticalStackLayout BindableLayout.ItemsSource="{Binding Choices}" Spacing="8">
                     <BindableLayout.ItemTemplate>
@@ -66,7 +92,8 @@
                 </VerticalStackLayout>
                 <Button Text="View My Schedule" IsVisible="{Binding CanViewSchedule}" Clicked="ViewScheduleClicked"
                         Style="{StaticResource QuietButton}" AutomationId="ask-view-schedule" />
-                <VerticalStackLayout x:Name="DebugSlot" />
+                <VerticalStackLayout x:Name="DebugSlot" IsVisible="False"
+                                     AutomationProperties.ExcludedWithChildren="True" />
                 <Label Text="Check the result. Removals always need your confirmation."
                        Style="{StaticResource Secondary}" FontSize="12" />
             </VerticalStackLayout>
