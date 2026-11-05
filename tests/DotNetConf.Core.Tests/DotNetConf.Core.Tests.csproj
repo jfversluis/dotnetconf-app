@@ -39,7 +39,6 @@
     <Compile Include="../../src/DotNetConf.App/Services/PlannerCatalog.cs" Link="PlannerCatalog.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerStartingPoints.cs" Link="PlannerStartingPoints.cs" />
     <ProjectReference Include="../../src/DotNetConf.Core/DotNetConf.Core.csproj" />
-    <Compile Include="../../src/DotNetConf.App/Services/SpeakerImageCache.cs" Link="AppHelpers/SpeakerImageCache.cs" />
     <Compile Include="../../src/DotNetConf.App/Platforms/Avalonia/BrowserCache.cs" Link="AppHelpers/BrowserCache.cs" />
     <Compile Include="../../src/DotNetConf.App/ViewModels/CollectionUpdates.cs" Link="AppHelpers/CollectionUpdates.cs" />
     <None Update="Fixtures/*.json" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />

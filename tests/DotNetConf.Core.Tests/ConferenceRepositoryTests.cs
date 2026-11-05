@@ -111,7 +111,7 @@ public sealed class ConferenceRepositoryTests : IDisposable
         Assert.Single(handler.Requests);
         AssertOnlyMicrosoftRequests();
         var cache = await ReadCacheAsync();
-        Assert.Equal(8, cache.SchemaVersion);
+        Assert.Equal(9, cache.SchemaVersion);
         Assert.Equal(70, cache.Microsoft.Sessions.Count);
         Assert.Equal(64, cache.Microsoft.PayloadHash.Length);
         Assert.Equal(["schemaVersion", "metadata", "microsoft"],
@@ -901,7 +901,68 @@ public sealed class ConferenceRepositoryTests : IDisposable
         Assert.Equal("{ not json", await File.ReadAllTextAsync(CachePath));
         var refreshed = await Repository().RefreshAsync();
         Assert.Empty(refreshed.Issues);
-        Assert.Equal(8, (await ReadCacheAsync()).SchemaVersion);
+        Assert.Equal(9, (await ReadCacheAsync()).SchemaVersion);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("https://example.com/previous.jpg")]
+    public async Task VersionEightCacheRetainsOfflineAgendaAndRestoresFeedPortraitsOnUnchangedPayload(string oldPhoto)
+    {
+        const string avatar = "https://avatars.githubusercontent.com/u/123";
+        var data = RemoteAgendaTests.Microsoft;
+        data = data with { Speakers = [data.Speakers[0] with { Avatar = avatar }] };
+        Serve(data);
+        var original = await Repository().RefreshAsync();
+        var cache = await ReadCacheAsync();
+        await WriteCacheAsync(cache with
+        {
+            SchemaVersion = 8,
+            Microsoft = cache.Microsoft with
+            {
+                Speakers = [cache.Microsoft.Speakers[0] with { ProfilePicture = oldPhoto }]
+            }
+        });
+        handler.Requests.Clear();
+        handler.Respond = (_, _) => throw new HttpRequestException("offline");
+        var repository = Repository();
+
+        var loaded = await repository.LoadAsync();
+
+        Assert.Empty(loaded.Issues);
+        Assert.True(loaded.IsCached);
+        Assert.Equal(Ids(original.Document.Sessions), Ids(loaded.Document.Sessions));
+        Assert.Equal(oldPhoto, Assert.Single(loaded.Document.Speakers).ProfilePicture);
+        Assert.Empty(handler.Requests);
+        var migrated = await ReadCacheAsync();
+        Assert.Equal(9, migrated.SchemaVersion);
+        Assert.True(migrated.Microsoft.RequiresRevalidation);
+        Assert.Equal(cache.Microsoft.PayloadHash, migrated.Microsoft.PayloadHash);
+        var offline = await repository.RefreshAsync();
+        Assert.Equal(ConferenceRepository.MicrosoftSource, Assert.Single(offline.Issues).Source);
+        Assert.Equal(Ids(original.Document.Sessions), Ids(offline.Document.Sessions));
+
+        handler.Respond = (request, _) =>
+        {
+            Assert.Empty(request.Headers.IfNoneMatch);
+            Assert.Null(request.Headers.IfModifiedSince);
+            return Task.FromResult(Ok(Json(data)));
+        };
+        var refreshed = await Repository().RefreshAsync();
+
+        Assert.Empty(refreshed.Issues);
+        Assert.Equal(avatar, Assert.Single(refreshed.Document.Speakers).ProfilePicture);
+        var updated = await ReadCacheAsync();
+        Assert.False(updated.Microsoft.RequiresRevalidation);
+        Assert.Equal(cache.Microsoft.PayloadHash, updated.Microsoft.PayloadHash);
+        Assert.Equal(avatar, Assert.Single((await Repository().LoadAsync()).Document.Speakers).ProfilePicture);
+
+        handler.Respond = (request, _) =>
+        {
+            Assert.NotEmpty(request.Headers.IfNoneMatch);
+            return Task.FromResult(NotModified());
+        };
+        Assert.Empty((await Repository().RefreshAsync()).Issues);
     }
 
     [Fact]
@@ -963,7 +1024,7 @@ public sealed class ConferenceRepositoryTests : IDisposable
     [InlineData(5)]
     [InlineData(6)]
     [InlineData(7)]
-    [InlineData(9)]
+    [InlineData(10)]
     public async Task UnsupportedCacheIsRejectedUntilMicrosoftRefreshSucceedsWithoutChangingBookmarks(int schema)
     {
         var original = await Repository().RefreshAsync();
@@ -1003,7 +1064,7 @@ public sealed class ConferenceRepositoryTests : IDisposable
         Assert.Empty(refreshed.Issues);
         Assert.Equal(70, refreshed.Document.Sessions.Count);
         Assert.Empty(refreshed.Document.WithdrawnSessions);
-        Assert.Equal(8, (await ReadCacheAsync()).SchemaVersion);
+        Assert.Equal(9, (await ReadCacheAsync()).SchemaVersion);
         Assert.Equal(scheduleBytes, await File.ReadAllBytesAsync(schedulePath));
         AssertOnlyMicrosoftRequests();
         var restarted = await Repository().LoadAsync();
