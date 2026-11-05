@@ -325,6 +325,13 @@ dotnet build src/DotNetConf.App.Browser
 
 The app uses source-generated XAML with compiled bindings and Debug-only incremental XAML Hot Reload. Runtime selection is left to the SDK, with `PublishAot=true` in the project and no configuration-specific overrides. MAUI 11 RC2's Android Material 3 controls are explicitly enabled with `UseMaterial3=true`; scoped search and picker customizations use `EntryHandler2` and `PickerHandler2`, while iOS keeps its existing handlers. The pinned MAUI Controls package is updated with the workload. `dotnet watch --project src/DotNetConf.App -f net11.0-ios` uses the Debug-only no-linking setting; release linking is not disabled.
 
+Agenda projections are built when a snapshot is applied, not every time a cached
+tab appears. Resume invalidates the timezone cache and rebuilds local labels and
+day filters even when no network update is needed. When changing this path,
+verify returning from device timezone settings, active search/day/topic filters,
+and session date changes from a refreshed feed. Sessions keeps its day-tab
+controls while the rendered days are unchanged, including across detail navigation.
+
 If incremental XAML generation retains stale resource styles or reports `Style.Setters` as read-only after a style edit, use a targeted `dotnet clean src/DotNetConf.App -f net11.0-android -p:RuntimeIdentifier=android-arm64` (or the corresponding iOS target/RID), followed by the normal build. Do not disable incremental Hot Reload or edit generated sources to work around preview-tooling state.
 
 The pinned Android Material 3 handler skips applying explicit toolbar backgrounds.

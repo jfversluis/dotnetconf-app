@@ -168,10 +168,7 @@ public partial class ConferenceViewModel(
         try
         {
             if (document is not null)
-            {
-                RefreshLocalTimes();
                 return null;
-            }
             IsBusy = true;
             var loaded = await repository.LoadAsync();
             await InitializeScheduleAsync();
@@ -391,6 +388,9 @@ public partial class ConferenceViewModel(
     public async Task ResumeAsync()
     {
         isPaused = false;
+        TimeZoneInfo.ClearCachedData();
+        if (document is not null)
+            RefreshLocalTimes();
         if (IsRefreshing)
         {
             refreshOnResume = refreshCancellation?.IsCancellationRequested == true;
@@ -597,7 +597,6 @@ public partial class ConferenceViewModel(
 
     public void RefreshLocalTimes()
     {
-        TimeZoneInfo.ClearCachedData();
         timeZone = TimeZoneInfo.Local;
         TimeZoneLabel = $"Times shown in {timeZone.DisplayName}";
         foreach (var session in allSessions)

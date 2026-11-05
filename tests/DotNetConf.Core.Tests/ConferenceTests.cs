@@ -106,6 +106,28 @@ public sealed class ConferenceTests
         Assert.Equal(sessions.OrderBy(session => session.StartsAt), sessions);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t ")]
+    public async Task EmptySearchPreservesLocalDayTopicFiltersAndTitleTieBreak(string? query)
+    {
+        var document = await LoadAsync();
+        var example = document.Sessions.First(session => session.Topics.Count > 0);
+        var first = example with { Id = "synthetic-first", Title = "Synthetic A" };
+        var second = example with { Id = "synthetic-second", Title = "Synthetic Z" };
+        document = document with { Sessions = [second, first, example with
+        {
+            Id = "synthetic-next-day", StartsAt = example.StartsAt.AddDays(1), EndsAt = example.EndsAt.AddDays(1)
+        }, example with { Id = "synthetic-other-topic", Topics = ["Synthetic unrelated topic"] }] };
+        var zone = TimeZoneInfo.CreateCustomTimeZone("UTC+02", TimeSpan.FromHours(2), "UTC+02", "UTC+02");
+
+        var results = Agenda.Search(document, query, Agenda.LocalDay(example.StartsAt, zone),
+            [example.Topics[0].ToUpperInvariant()], zone).ToArray();
+
+        Assert.Equal([first, second], results);
+    }
+
     [Fact]
     public async Task DayFilterUsesLocalDateNotUtcDate()
     {
