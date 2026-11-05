@@ -8,7 +8,7 @@ Your .NET Conf, in your pocket. An **unofficial companion app for iOS and Androi
 
 ## Explore the conference
 
-- **Find your next idea.** Browse sessions and search by title, topic, or speaker. Scroll down to tuck away the headline and search, leaving more room for talks with day tabs still at hand; scroll back up to reveal them, or use the toolbar search button. Search stays open while you're typing. Switch between local days with scrolling day tabs, or narrow the agenda by topic.
+- **Find your next idea.** Browse sessions and search by title, topic, or speaker. On Android, scroll down to tuck away the headline and search, leaving more room for talks with day tabs still at hand; scroll back up to reveal them, or use the toolbar search button. Search stays open while you're typing. Switch between local days with scrolling day tabs, or narrow the agenda by topic.
 - **Meet the speakers.** Read their biographies and explore their talks, with easy navigation between speakers and sessions.
 - **Make room for details.** On wide windows, Sessions and Speakers keep the list on the left and details on the right. On supported foldables, an active division separates the panes; a horizontal division stacks them. Narrow windows or very large text retain native navigation, and resizing carries your selected details with you.
 - **Find your community.** Discover ways to watch together, meet local presenters, or organize a gathering. No community events ship with the app, and an official event feed is not connected yet. The empty event list links to the official website; the map stays hidden without events.

@@ -93,7 +93,7 @@ and unscaled line heights without platform-specific APIs, including on native
 details so changing text size can restore the pane. When height is constrained,
 the list headings are hidden and the Sessions day/topic controls move into the
 collection header. Search remains pinned outside the virtualized collection so
-filtering does not dismiss the keyboard. In unconstrained Sessions layouts,
+filtering does not dismiss the keyboard. In unconstrained Android Sessions layouts,
 32 units of downward list travel hide the headline and search without moving
 the day/topic controls; 24 units upward, returning to the top, or changing filters
 reveals them again. Focused search and height-constrained layouts keep search
