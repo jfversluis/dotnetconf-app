@@ -116,12 +116,6 @@ public partial class SessionsPage : AdaptiveConferencePage
         if (animate && collapsed == headerTargetCollapsed)
             return;
 
-        var startHeight = CollapsibleHeader.IsVisible
-            ? Math.Max(0, CollapsibleHeader.HeightRequest >= 0
-                ? CollapsibleHeader.HeightRequest : CollapsibleHeader.Height)
-            : 0;
-        var startOpacity = CollapsibleHeader.Opacity;
-        var startTranslation = CollapsibleContent.TranslationY;
         headerTargetCollapsed = collapsed;
         this.AbortAnimation(HeaderAnimation);
 #if IOS
@@ -133,8 +127,13 @@ public partial class SessionsPage : AdaptiveConferencePage
             return;
         }
 
+        var startHeight = CollapsibleHeader.IsVisible
+            ? Math.Max(0, CollapsibleHeader.HeightRequest >= 0
+                ? CollapsibleHeader.HeightRequest : CollapsibleHeader.Height)
+            : 0;
+        var startOpacity = CollapsibleHeader.Opacity;
+        var startTranslation = CollapsibleContent.TranslationY;
         SessionHeading.IsVisible = !headerScrolls;
-        SearchControls.IsVisible = true;
         CollapsibleHeader.IsVisible = true;
         CollapsibleHeader.InputTransparent = collapsed;
         AutomationProperties.SetExcludedWithChildren(CollapsibleHeader, collapsed);
@@ -172,8 +171,7 @@ public partial class SessionsPage : AdaptiveConferencePage
         CollapsibleHeader.InputTransparent = collapsed;
         AutomationProperties.SetExcludedWithChildren(CollapsibleHeader, collapsed);
         CollapsibleContent.TranslationY = collapsed ? -12 : 0;
-        SessionHeading.IsVisible = !headerScrolls && !collapsed;
-        SearchControls.IsVisible = !collapsed;
+        SessionHeading.IsVisible = !headerScrolls;
         if (!collapsed && focusSearchAfterExpansion)
         {
             focusSearchAfterExpansion = false;
