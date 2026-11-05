@@ -11,9 +11,7 @@ public sealed class DetailRowTests
     [Fact]
     public void SelectionTracksTheIdAndRecycledBindingContext()
     {
-        using var http = new HttpClient();
-        var images = new SpeakerImageCache(http, Path.GetTempPath(), NullLogger<SpeakerImageCache>.Instance);
-        var owner = new ConferenceViewModel(null!, null!, null!, null!, null!, images,
+        var owner = new ConferenceViewModel(null!, null!, null!, null!, null!,
             NullLogger<ConferenceViewModel>.Instance, new TestReminders());
         var session = new SessionViewModel(new Session { Id = "synthetic-session" }, [], false, owner);
         var speaker = new SpeakerViewModel(new Speaker { Id = "synthetic-speaker" }, owner);

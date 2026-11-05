@@ -28,7 +28,6 @@ internal static class AvaloniaHost
             builder.Services.AddSingleton(CreateBrowserScheduleStore());
             var cache = BrowserStorage.CreateCache();
             builder.Services.AddSingleton<IConferenceCacheStore>(cache);
-            builder.Services.AddSingleton<ISpeakerImagePersistence>(cache);
         }
         builder.UseAvaloniaSyncfusion();
 

@@ -197,11 +197,11 @@ orientation, launcher safe-zone sizing, monochrome silhouette.
 This permission is not a general open-source license for the artwork.
 
 .NET Conf speaker photographs
-Speaker photographs are downloaded from public HTTPS profile URLs and cached
-on the device for offline use; none are bundled. Source URLs arrive only in
-remote agenda feeds and are retained in the downloaded agenda cache. Provenance is the
-public Microsoft conference JSON and public Sessionize feed. Private organizer
-enrichment and GitHub-hosted portraits are not used. Rights remain with their
+Speaker photographs load on demand from public HTTPS profile URLs through
+framework image services and their cache; none are bundled. Source URLs arrive only in
+the Microsoft conference feed and are retained in the downloaded agenda cache.
+Image hosts can include Sessionize, GitHub, and Gravatar; no host is blocked.
+Private organizer enrichment is not used. Rights remain with their
 respective owners; verify reuse permission
 before public release.
 

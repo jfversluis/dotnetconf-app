@@ -30,10 +30,11 @@ public sealed partial class SpeakerViewModel : ObservableObject
 
     public void Update(Speaker model)
     {
+        if (Model.ProfilePicture != model.ProfilePicture ||
+            (ProfilePicture is FileImageSource && !string.IsNullOrWhiteSpace(model.ProfilePicture)))
+            ProfilePicture = CreateProfilePicture(model);
         if (Model == model)
             return;
-        if (Model.ProfilePicture != model.ProfilePicture)
-            ProfilePicture = CreateProfilePicture(model);
         Model = model;
         OnPropertyChanged(string.Empty);
     }
@@ -44,12 +45,6 @@ public sealed partial class SpeakerViewModel : ObservableObject
         CollectionUpdates.Apply(Sessions, next);
     }
 
-    public void SetProfilePicture(string expectedUrl, string path)
-    {
-        if (Model.ProfilePicture == expectedUrl)
-            ProfilePicture = ImageSource.FromFile(path);
-    }
-
     public void UseFallbackPicture(Exception exception)
     {
         owner.ReportPhotoFailure(Id, exception);
@@ -57,6 +52,23 @@ public sealed partial class SpeakerViewModel : ObservableObject
             ProfilePicture = ImageSource.FromFile(PlaceholderPicture);
     }
 
-    private ImageSource CreateProfilePicture(Speaker model) =>
-        ImageSource.FromFile(owner.FindCachedPhoto(model.ProfilePicture) ?? PlaceholderPicture);
+    private ImageSource CreateProfilePicture(Speaker model)
+    {
+        if (!string.IsNullOrWhiteSpace(model.ProfilePicture))
+        {
+            try
+            {
+                var uri = new Uri(model.ProfilePicture, UriKind.Absolute);
+                // The feed includes an HTTP photo; use HTTPS without native cleartext exceptions.
+                if (uri.Scheme == Uri.UriSchemeHttp)
+                    uri = new UriBuilder(uri) { Scheme = Uri.UriSchemeHttps, Port = uri.IsDefaultPort ? -1 : uri.Port }.Uri;
+                return ImageSource.FromUri(uri);
+            }
+            catch (UriFormatException exception)
+            {
+                owner.ReportPhotoFailure(model.Id, exception);
+            }
+        }
+        return ImageSource.FromFile(PlaceholderPicture);
+    }
 }
