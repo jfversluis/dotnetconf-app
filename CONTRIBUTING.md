@@ -93,18 +93,12 @@ and unscaled line heights without platform-specific APIs, including on native
 details so changing text size can restore the pane. When height is constrained,
 the list headings are hidden and the Sessions day/topic controls move into the
 collection header. Search remains pinned outside the virtualized collection so
-filtering does not dismiss the keyboard. On iOS, in unconstrained Sessions layouts,
-32 units of downward list travel hide the headline and search without moving
-the day/topic controls; 24 units upward, returning to the top, or changing filters
-reveals them again. Focused search and height-constrained layouts keep search
-visible. A toolbar search button also reveals and focuses search when collapsed,
-including when a short filtered list fits its newly expanded viewport. Viewport
-resizing rebases scroll travel rather than treating offset clamping as a gesture.
-Scroll-driven transitions ease the header height, opacity, and position over
-200 ms, respecting disabled system animations. Navigation and adaptive-layout
-changes cancel pending motion and settle the header at its current target.
-The existing compact-search and scrolling-filter-header policies take
-precedence over scroll-driven collapse. `SessionDetailView` and
+filtering does not dismiss the keyboard. On iOS, the Sessions heading and search
+collapse after 32 units of downward travel and expand after 24 units upward.
+Day/topic controls stay pinned; focused search and constrained layouts stay
+expanded. The toolbar search button reveals and focuses search. Header animations
+respect Reduce Motion and rebase scroll tracking during viewport changes.
+`SessionDetailView` and
 `SpeakerDetailView` supply the same content in either host.
 
 Android uses MAUI's resize input mode and page-level `SoftInput` safe area so
