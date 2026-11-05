@@ -180,7 +180,7 @@ public partial class PlannerViewModel(
         PlannerModelSetup.Downloading => "Getting your phone ready",
         _ => "Plan with on-device AI"
     };
-    public string ModelDownloadDisclosure => "Gemini Nano can use several GB of internet data and device storage. " +
+    public string ModelDownloadDisclosure => "Gemini Nano 4 Fast can use several GB of internet data and device storage. " +
         "Android AICore manages the download. Wi-Fi is recommended; mobile data charges may apply. Your planning requests stay on this device.";
     public bool ShowModelSelection => modelSelection.IsSupported && planner.UnsupportedReason is null;
     public bool CanChangeModel => ShowModelSelection && HasCheckedModel && !IsBusy && !IsCheckingModel;
@@ -483,8 +483,8 @@ public partial class PlannerViewModel(
                 logger.LogWarning(exception, "On-device planner readiness check failed.");
                 if (revision == modelRevision)
                 {
-                    ModelStatus = ShowModelSelection
-                        ? "Couldn't check this model. It may not be available on your phone. Choose another model or check Android's AI settings, then try again."
+                    ModelStatus = OperatingSystem.IsAndroid()
+                        ? "Couldn't check Gemini Nano 4 Fast. Confirm your device supports it and your Google account is enrolled in AICore Developer Preview, then try again. No model download starts automatically."
                         : "On-device AI isn't ready on this device. Explore a mix from the downloaded agenda, or check your device's AI settings and retry. No model download starts automatically.";
                     if (IsDownloadingModel && savedStatus is null)
                         Status = ModelStatus;
@@ -562,7 +562,7 @@ public partial class PlannerViewModel(
         ModelStatus = state.Available
             ? ShowModelSelection && !state.ToolCalling
                 ? "On-device AI is available. This model doesn't support advanced tools."
-                : "On-device AI is available. No account or cloud fallback."
+                : "On-device AI is available. No app account or cloud fallback."
             : state.Reason;
         if (!preserveStatus)
             Status = state.Available ? "" : state.Reason;

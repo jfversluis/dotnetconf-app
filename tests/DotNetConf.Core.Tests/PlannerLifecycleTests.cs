@@ -202,7 +202,7 @@ public sealed class PlannerLifecycleTests
         await recheck.WaitAsync(TimeSpan.FromSeconds(5));
 
         Assert.Equal(savedStatus, vm.Status);
-        Assert.Contains(cancel ? "Stopped waiting" : "Couldn't check", vm.ModelStatus);
+        Assert.Contains(cancel ? "Stopped waiting" : "isn't ready", vm.ModelStatus);
         Assert.Contains("building-with-maui", store.Saved);
     }
 
@@ -348,24 +348,6 @@ public sealed class PlannerLifecycleTests
         Assert.True(vm.IsReady);
         Assert.Contains("added to My Schedule", vm.Status);
         Assert.Empty(vm.Sessions);
-    }
-
-    [Fact]
-    public async Task RealWeakSelectionNotifiesALivePlannerAfterCollection()
-    {
-        var selection = new PlannerModelSelection(Substitute.For<IPreferences>(),
-            NullLogger<PlannerModelSelection>.Instance);
-        var (vm, _, _, _, _) = await CreateAsync(selection);
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
-
-        selection.Select("gemini-nano-preview-fast");
-
-        Assert.False(vm.IsReady);
-        Assert.False(vm.HasProposal);
-        Assert.Contains("model changed", vm.ModelStatus, StringComparison.OrdinalIgnoreCase);
-        GC.KeepAlive(vm);
     }
 
     [Fact]

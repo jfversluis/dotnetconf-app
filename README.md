@@ -52,7 +52,7 @@ all topic sessions also includes tag-only matches. **Watching hours**
 requests, with the assumption shown in the preview. Explicit ranges override
 those defaults, and requests without time limits remain unrestricted.
 
-Planning runs on your device with no account or cloud AI fallback. It requires a
+Planning runs on your device with no app account or cloud AI fallback. It requires a
 downloaded agenda and a ready local model: Apple Intelligence on supported
 iOS 26+ devices, or Gemini Nano on compatible Android 8+ devices. Availability
 depends on the device and its model settings. If a compatible Android phone needs
@@ -60,10 +60,10 @@ the model, the planner offers **Download on-device model**, with download progre
 when Android provides it. Downloads only start when you choose that action and
 can use several GB of internet data and device storage; Wi-Fi is recommended. You can stop
 waiting or leave the planner, though Android may continue in the background.
-On Android, **Change** beside the AI model lets you choose a standard or
-experimental preview model. Preview availability and tool support depend on
-the phone and may require Google's developer preview. The app checks your
-choice without switching models or downloading one automatically.
+Android automatically uses Gemini Nano 4 Fast for function calling; no model
+picker is shown. This model is in Google's AICore Developer Preview, so it
+requires a supported device and an enrolled Google account. If it is unavailable,
+the planner explains the limitation and keeps agenda-based discovery available.
 On iOS, enable Apple Intelligence in device settings. Random discovery and saving
 sessions with hearts remain available without a local model.
 

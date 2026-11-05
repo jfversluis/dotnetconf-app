@@ -49,6 +49,7 @@ public sealed class OnDeviceModelStatus : IPlannerModelStatus
     internal static PlannerModelState MapStatus(ChatModelAvailability availability,
         IReadOnlyCollection<ChatModelCapability>? capabilities, bool isAndroid, string? modelId)
     {
+        var toolCalling = capabilities?.Contains(ChatModelCapability.ToolCalling) == true;
         var setup = availability switch
         {
             ChatModelAvailability.Available => PlannerModelSetup.Ready,
@@ -56,12 +57,14 @@ public sealed class OnDeviceModelStatus : IPlannerModelStatus
             ChatModelAvailability.Downloading when isAndroid => PlannerModelSetup.Downloading,
             _ => PlannerModelSetup.Unavailable
         };
+        if (isAndroid && setup == PlannerModelSetup.Ready && !toolCalling)
+            setup = PlannerModelSetup.Unavailable;
         var reason = isAndroid
             ? setup switch
             {
-                PlannerModelSetup.DownloadRequired => "Download the selected Gemini Nano model once to get started.",
-                PlannerModelSetup.Downloading => "Android is downloading the selected model. We'll check when it's ready.",
-                _ => "This Gemini Nano model isn't available right now. Choose another model or check Android AICore and your device's AI settings. You can still save talks with hearts in Sessions."
+                PlannerModelSetup.DownloadRequired => "Download Gemini Nano 4 Fast once to get started.",
+                PlannerModelSetup.Downloading => "Android is downloading Gemini Nano 4 Fast. We'll check when it's ready.",
+                _ => "Gemini Nano 4 Fast with function calling isn't available. It requires a supported device enrolled in Google's AICore Developer Preview. You can still save talks with hearts in Sessions."
             }
             : "On-device planning isn't available right now. Check that your device supports a local model and that it is enabled. You can always save talks with hearts in Sessions.";
         return new(setup == PlannerModelSetup.Ready,
@@ -69,7 +72,7 @@ public sealed class OnDeviceModelStatus : IPlannerModelStatus
             setup == PlannerModelSetup.Ready ? "" : reason)
         {
             Setup = setup,
-            ToolCalling = capabilities?.Contains(ChatModelCapability.ToolCalling) == true,
+            ToolCalling = toolCalling,
             ModelId = isAndroid ? modelId : null
         };
     }

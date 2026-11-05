@@ -37,7 +37,7 @@
                     <VerticalStackLayout Padding="24,28,24,24" Spacing="24" MaximumWidthRequest="600"
                                          HorizontalOptions="Fill">
                         <Label Text="Discover talks that interest you and keep your favorites together in My Schedule." />
-                        <Label Text="No account. No cloud AI. Just you and the agenda."
+                        <Label Text="No app account. No cloud AI. Just you and the agenda."
                                FontFamily="OpenSansSemibold" FontSize="14" />
                         <Label Text="Sessions come from the public Microsoft conference agenda. Download once, then browse offline."
                                Style="{StaticResource Secondary}" FontSize="13" />
@@ -76,7 +76,7 @@
                                AutomationId="onboarding-manual-explanation" />
                         <Label Text="Your saved talks stay together in My Schedule. You can change your mind any time."
                                Style="{StaticResource Secondary}" FontSize="14" />
-                        <Label Text="No account needed. Your schedule stays on this device."
+                        <Label Text="No app account needed. Your schedule stays on this device."
                                Style="{StaticResource Secondary}" FontSize="14" />
                     </VerticalStackLayout>
                 </VerticalStackLayout>

@@ -67,12 +67,12 @@ content are not included in the model-download request. Android manages the
 model's storage and may continue a download after you leave the planner or stop
 waiting. Stopping waiting is not a guarantee of cancelling or deleting the
 system-managed model. On iOS, model setup remains in device settings.
-On Android, your selected model profile is stored in app preferences and used
-for readiness checks, explicit downloads, and on-device requests. Choosing a
-profile does not itself download a model or change your device's AI settings.
-On tool-capable models, the model can request read-only agenda searches in the
-app. Their results stay within this on-device planning flow; the model cannot
-save sessions without your confirmation.
+On Android, the app uses Gemini Nano 4 Fast for readiness checks, explicit
+downloads, and on-device requests; it does not save a model choice in app
+preferences. Function calling requires a supported device and a Google account
+enrolled in the AICore Developer Preview program. The model can request
+read-only agenda searches in the app. Their results stay within this on-device
+planning flow; the model cannot save sessions without your confirmation.
 
 Session reminders are optional. If you enable them, the app requests
 notification permission and gives your device's notification service the

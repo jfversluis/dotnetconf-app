@@ -351,12 +351,12 @@ public sealed class PlannerModelSetupTests
         await vm.UseSelectedModelCommand.ExecuteAsync(null);
 
         Assert.Equal("gemini-nano-preview-fast", selection.SelectedModelId);
-        Assert.Contains("Preview fast", vm.CurrentModelText);
+        Assert.Contains("Gemini Nano 4 Fast", vm.CurrentModelText);
         Assert.True(vm.CanDownloadModel);
         Assert.Equal("Synthetic request", vm.Request);
         Assert.Equal(0, planner.Downloads);
         Assert.False(vm.ShowModelChoices);
-        Assert.Contains(outcomes, message => message.Contains("Preview fast") && message.Contains("Download"));
+        Assert.Contains(outcomes, message => message.Contains("Gemini Nano 4 Fast") && message.Contains("Download"));
     }
 
     [Fact]
@@ -416,7 +416,7 @@ public sealed class PlannerModelSetupTests
         Assert.False(second.IsReady);
         Assert.False(second.CanGenerate);
         Assert.True(second.CanRetryModel);
-        Assert.Contains("Preview fast", second.CurrentModelText);
+        Assert.Contains("Gemini Nano 4 Fast", second.CurrentModelText);
         Assert.True(modelChanged);
     }
 

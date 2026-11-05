@@ -108,32 +108,30 @@ move between setup steps.
 
 ## Ready when you are
 
-The planner runs on your device; it doesn't need an account or a cloud AI
-service. You'll need a downloaded agenda and a ready local model:
+The planner runs on your device without cloud AI. The app doesn't require an
+account, but Gemini Nano 4 Fast on Android requires a Google account enrolled in
+the AICore Developer Preview. You'll need a downloaded agenda and a ready local
+model:
 
 - **iOS:** Apple Intelligence on a supported device with iOS 26 or later.
-- **Android:** Gemini Nano on a compatible device with Android 8 or later and
-  the model available through AICore.
+- **Android:** Gemini Nano 4 Fast on a supported device, with a Google account
+  enrolled in the AICore Developer Preview.
 
-Device, language, region, and model settings affect availability. Checking
-availability never starts a download.
+Device, language, region, enrollment, and model settings affect availability.
+Checking availability never starts a download.
 
-On Android, choose **Change** beside **AI model** in the planner to select a
-standard or preview model. The selection is saved on this device and shared
-with on-device AI features. The standard model is the default; preview models
-are experimental, may require Google's developer preview, and aren't available
-on every phone. The app checks the selected model and its tool support; it
-doesn't switch models or start a download automatically. Changing models clears
-an unsaved preview, not your saved schedule. If a model cannot be checked or
-isn't available, choose another or check Android's AI settings.
+On Android, the planner always uses Gemini Nano 4 Fast because native function
+calling is required for grounded agenda searches. There is no model picker or
+automatic model switching. If the device or account cannot access this profile,
+the planner explains the limitation and keeps agenda-based discovery available.
 
-On compatible Android phones that need Gemini Nano, choose **Download on-device
-model** in the planner or welcome experience. This is a one-time setup using
-internet access and device storage, potentially several GB. Wi-Fi is recommended; mobile data charges
-may apply. The planner shows progress when Android provides it and checks
-readiness again before enabling planning. If setup fails, check your connection
-and available storage, then choose **Check again** to retry. You can choose
-**Stop waiting**, skip setup, or leave the screen; Android may continue the
+When Android reports the model can be downloaded, choose **Download on-device
+model** in the planner. This is a one-time setup using internet access and
+device storage, potentially several GB. Wi-Fi is recommended; mobile data
+charges may apply. The planner shows progress when Android provides it and
+checks readiness again before enabling planning. If setup fails, check your
+connection and available storage, then choose **Check again** to retry. You
+can choose **Stop waiting** or leave the screen; Android may continue the
 download in the background. Return to the planner and choose **Check again**
 to see whether it's ready. The app does not remove system-managed model assets.
 On iOS, enable Apple Intelligence and manage model setup in device settings.
@@ -152,9 +150,11 @@ for on-device models and
 to connect the planner with the agenda. Learn more about how your information
 is handled in our [privacy policy](../PRIVACY.md).
 
-On a selected model that supports tools, the AI requests read-only agenda searches and
-receives their results. The app checks your constraints, arranges the sessions,
-and asks you to confirm before saving. Models without tool support use structured
-request interpretation instead; your existing schedule remains protected.
+With a tool-capable on-device model, the AI can request read-only agenda
+searches and receive their results. The app checks your constraints, arranges
+the sessions, and asks you to confirm before saving. Models without tool
+support use structured request interpretation instead; your existing schedule
+remains protected. Android planning requires function calling and uses the
+fixed Gemini Nano 4 Fast profile described above.
 
 For short code examples, see [the planner's presentation examples](AI-PLANNER-DEMO.md).

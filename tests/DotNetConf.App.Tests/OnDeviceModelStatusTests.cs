@@ -26,6 +26,30 @@ public sealed class OnDeviceModelStatusTests
         Assert.Equal(setup == PlannerModelSetup.Ready, state.Reason.Length == 0);
     }
 
+    [Fact]
+    public void AndroidModelWithoutFunctionCallingIsNotReadyForPlanning()
+    {
+        var state = OnDeviceModelStatus.MapStatus(ChatModelAvailability.Available,
+            [ChatModelCapability.Text], true, PlannerModelSelection.ToolCallingModelId);
+
+        Assert.False(state.Available);
+        Assert.False(state.ToolCalling);
+        Assert.Equal(PlannerModelSetup.Unavailable, state.Setup);
+        Assert.Contains("AICore Developer Preview", state.Reason);
+        Assert.Equal(PlannerModelSelection.ToolCallingModelId, state.ModelId);
+    }
+
+    [Fact]
+    public void AndroidDownloadableModelRemainsExplicitlyDownloadableUntilCapabilitiesCanBeChecked()
+    {
+        var state = OnDeviceModelStatus.MapStatus(ChatModelAvailability.NotReady,
+            null, true, PlannerModelSelection.ToolCallingModelId);
+
+        Assert.False(state.Available);
+        Assert.Equal(PlannerModelSetup.DownloadRequired, state.Setup);
+        Assert.Contains("Gemini Nano 4 Fast", state.Reason);
+    }
+
     [Theory]
     [InlineData(ChatModelAvailability.NotReady)]
     [InlineData(ChatModelAvailability.Disabled)]
