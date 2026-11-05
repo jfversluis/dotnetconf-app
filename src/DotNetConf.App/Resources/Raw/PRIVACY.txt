@@ -1,6 +1,6 @@
 # .NET Conf companion privacy policy
 
-Last updated: November 3, 2026.
+Last updated: November 5, 2026.
 
 This policy describes the .NET Conf companion app maintained by Gerald
 Versluis. The app is in development and has not been released. This policy is
@@ -20,12 +20,13 @@ The app downloads the published conference agenda and speaker profiles from:
 
 - Microsoft: https://dotnet.microsoft.com/blob-assets/json/conf/conference-2026.json
 
-Speaker photographs are downloaded from approved public HTTPS image URLs
-supplied by the Microsoft feed. The image hosts and approved redirect destinations
-can differ by speaker, including Sessionize's public image CDN and Gravatar.
-Photographs and agenda content are cached
-locally for offline use, not bundled with the app. Private organizer data and
-GitHub-hosted portraits are not used.
+Speaker photographs are downloaded only from public image URLs supplied by
+the Microsoft feed, following the image host's redirects. No image hosts are
+blocked; these can include Sessionize's public image CDN, GitHub, GitHub's image
+CDN, and Gravatar. HTTP photo URLs are upgraded to HTTPS. Photographs load on
+demand through the UI framework and its image cache; they are not bundled with
+the app. Agenda content is cached locally for offline use. Private organizer
+data is not used.
 
 To deliver these requests, Microsoft, image hosts, and their
 hosting/CDN providers receive ordinary network metadata, including your public
@@ -99,23 +100,18 @@ delivery.
   refresh/cache metadata are stored locally. The agenda cache is limited to
   16 MiB. It has no fixed expiry: older successfully downloaded data can remain
   available offline until replaced or removed.
-- Downloaded speaker portraits use the platform cache directory. Individual
-  downloads are limited to 4 MiB. Cache maintenance removes unreferenced
-  portraits and trims retained files toward a 64 MiB total; these are
-  maintenance limits, not an absolute instantaneous disk quota. A cached image
-  on native devices is eligible for a new download after one day, but this is not a deletion
-  deadline. The operating system may clear cached images sooner.
+- Speaker photographs use the UI framework's image loading and caching.
+  The framework and operating system control cache retention and may evict
+  images. Offline photographs are not guaranteed; missing or failed images
+  show the bundled .NET Bot placeholder.
 - Searches and active filter selections are used to display results locally.
 
 On native and desktop targets this data uses app-local storage. The
 experimental browser target uses browser storage, including local storage for
 saved session choices, scoped to the hosting site's origin. Its durable agenda
-cache has a smaller 1 MiB limit. Browser portrait persistence limits each image
-to 256 KiB and the encoded portrait entries together to 700 KiB of base64
-characters (approximately 525 KiB of image bytes); older entries can be
-evicted to make room. Browser portraits are eligible for revalidation after a
-page reload; the last successfully cached image remains available offline.
-Browser storage quotas or settings can prevent caching.
+cache has a smaller 1 MiB limit. Photographs are not stored in the app's local
+storage cache; framework/browser image caching and cross-origin access rules
+apply. Browser storage quotas or settings can prevent agenda caching.
 The app does not provide an account-based backup or cloud synchronization service. Operating
 system/device backups may nevertheless include preferences, saved choices,
 and app data, depending on platform and backup settings. Android backup is
@@ -154,5 +150,6 @@ app versions. Review this policy after updating.
 - Microsoft privacy statement: https://privacy.microsoft.com/privacystatement
 - Sessionize privacy policy (public speaker image hosting): https://sessionize.com/privacy-policy/
 - Automattic privacy policy (Gravatar speaker image hosting): https://automattic.com/privacy/
+- GitHub privacy statement (public speaker image hosting): https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement
 - Google privacy policy: https://policies.google.com/privacy
 - Apple privacy policy: https://www.apple.com/legal/privacy/

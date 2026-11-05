@@ -19,7 +19,7 @@ public sealed record DayFilter(string Label, DateOnly? Day)
 
 public partial class ConferenceViewModel(
     IConferenceRepository repository, ScheduleService schedule, DetailNavigationService navigation,
-    IBrowser browser, IConnectivity connectivity, SpeakerImageCache images,
+    IBrowser browser, IConnectivity connectivity,
     ILogger<ConferenceViewModel> logger, ISessionReminderUpdates reminders) : ObservableObject, IPlannerScheduleUpdates, IAskApplication
 {
     private const string AgendaPresentationLoadError = "We couldn't display the agenda. Your saved choices are kept. Try again.";
@@ -432,8 +432,6 @@ public partial class ConferenceViewModel(
             var loaded = await repository.LoadAsync();
             await InitializeScheduleAsync();
             await PublishSnapshotAsync(loaded);
-            if (HasAgenda)
-                await Task.Run(() => images.Trim(loaded.Document.Speakers.Select(speaker => speaker.ProfilePicture)));
             return null;
         }
         catch (SnapshotPublicationException exception)
@@ -490,7 +488,6 @@ public partial class ConferenceViewModel(
                 }));
             acceptingProgress = false;
             await PublishSnapshotAsync(refreshed);
-            await RefreshPicturesAsync(cancellation.Token);
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {
@@ -608,36 +605,6 @@ public partial class ConferenceViewModel(
         hasPublishedSnapshot = true;
     }
 
-    private async Task RefreshPicturesAsync(CancellationToken cancellationToken)
-    {
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(TimeSpan.FromSeconds(30));
-        var speakers = allSpeakers.ToArray();
-        try
-        {
-            await Parallel.ForEachAsync(speakers, new ParallelOptions
-            {
-                MaxDegreeOfParallelism = 3,
-                CancellationToken = timeout.Token
-            }, async (speaker, token) =>
-            {
-                var url = speaker.Model.ProfilePicture;
-                var path = await images.GetAsync(url, token);
-                if (path is not null)
-                    await MainThread.InvokeOnMainThreadAsync(() => speaker.SetProfilePicture(url, path));
-            });
-        }
-        catch (OperationCanceledException) when (timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
-        {
-            logger.LogInformation("Speaker photo refresh timed out; existing photos remain available.");
-        }
-        finally
-        {
-            if (HasAgenda)
-                await Task.Run(() => images.Trim(speakers.Select(speaker => speaker.Model.ProfilePicture)));
-        }
-    }
-
     private void UpdateRefreshStatus()
     {
         var offline = connectivity.NetworkAccess == NetworkAccess.None;
@@ -678,7 +645,6 @@ public partial class ConferenceViewModel(
             await RefreshAsync();
     }
 
-    internal string? FindCachedPhoto(string url) => images.FindCached(url);
     internal void ReportPhotoFailure(string id, Exception exception) =>
         logger.LogWarning(exception, "Could not display speaker portrait for {SpeakerId}; using the fallback.", id);
     public void PauseRefresh()

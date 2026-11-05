@@ -8,10 +8,8 @@ const storage = () => {
     return durableStorage;
 };
 globalThis.dotnetConfCache = {
-    key: index => storage().key(index),
     getItem: key => storage().getItem(key),
     setItem: (key, value) => storage().setItem(key, value),
-    removeItem: key => storage().removeItem(key),
 };
 globalThis.dotnetConfConnectivity = {
     isOnline: () => navigator.onLine,

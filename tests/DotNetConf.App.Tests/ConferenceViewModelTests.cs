@@ -1371,8 +1371,6 @@ public sealed class ConferenceViewModelTests
     private static ConferenceViewModel Create(TestRepository repository, TestScheduleStore store, TestConnectivity connectivity,
         ScheduleService? schedule = null, ISessionReminderUpdates? reminders = null) =>
         new(repository, schedule ?? new ScheduleService(store), new DetailNavigationService(), null!, connectivity,
-            new SpeakerImageCache(new HttpClient(), Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()),
-                NullLogger<SpeakerImageCache>.Instance),
             NullLogger<ConferenceViewModel>.Instance, reminders ?? new TestReminders());
 
     private static async Task<ConferenceViewModel> CreateInitializedAsync(

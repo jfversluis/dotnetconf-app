@@ -35,7 +35,7 @@ public sealed class ConferenceRepository(
     public const string CacheSource = "Cache";
     public const string MetadataSource = "Conference metadata";
     public const string MicrosoftUrl = "https://dotnet.microsoft.com/blob-assets/json/conf/conference-2026.json";
-    private const int CacheSchemaVersion = 8;
+    private const int CacheSchemaVersion = 9;
     private const int MaximumFeedBytes = 4 * 1024 * 1024;
     private const int MaximumCacheBytes = 16 * 1024 * 1024;
     private readonly TimeProvider clock = timeProvider ?? TimeProvider.System;
@@ -91,6 +91,17 @@ public sealed class ConferenceRepository(
             var cached = await JsonSerializer.DeserializeAsync(content,
                 ConferenceCacheJsonContext.Default.ConferenceCache, token).ConfigureAwait(false)
                 ?? throw new InvalidDataException("The agenda cache is null.");
+            // Version 8 removed some feed-provided portraits. Retain the offline agenda and reparse the feed once.
+            var migrated = false;
+            if (cached is { SchemaVersion: 8, Microsoft: { } legacyAgenda })
+            {
+                cached = cached with
+                {
+                    SchemaVersion = CacheSchemaVersion,
+                    Microsoft = legacyAgenda with { RequiresRevalidation = true }
+                };
+                migrated = true;
+            }
             ValidateCache(cached);
             try
             {
@@ -99,7 +110,7 @@ public sealed class ConferenceRepository(
                 var updated = ApplyMetadata(cached, metadata);
                 ValidateCache(updated);
                 cached = updated;
-                if (changed)
+                if (changed || migrated)
                 {
                     try { await SaveAsync(cached, token).ConfigureAwait(false); }
                     catch (Exception exception) when (IsDataFailure(exception))
@@ -437,14 +448,6 @@ public sealed class ConferenceRepository(
         if (agenda.LastUpdatedAt > agenda.LastCheckedAt)
             throw new InvalidDataException(
                 $"{source} cache LastUpdatedAt ({agenda.LastUpdatedAt:O}) exceeds LastCheckedAt ({agenda.LastCheckedAt:O}).");
-        ValidatePhotos(AllSpeakers(agenda));
-    }
-
-    private static void ValidatePhotos(IEnumerable<Speaker> speakers)
-    {
-        if (speakers.Any(speaker => !string.IsNullOrEmpty(speaker.ProfilePicture) &&
-            SpeakerPhotoUrl.Normalize(speaker.ProfilePicture).Length == 0))
-            throw new InvalidDataException("The agenda cache contains a prohibited speaker portrait URL.");
     }
 
     private static ConferenceSnapshot Snapshot(ConferenceCache cache, bool isCached, IReadOnlyList<ConferenceDataIssue> issues) =>
