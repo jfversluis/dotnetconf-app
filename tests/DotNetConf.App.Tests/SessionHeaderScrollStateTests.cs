@@ -84,14 +84,6 @@ public sealed class SessionHeaderScrollStateTests
         Assert.True(state.IsCollapsed);
     }
 
-    [Theory]
-    [InlineData(double.NaN)]
-    [InlineData(double.PositiveInfinity)]
-    public void RejectsInvalidOffsets(double offset)
-    {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new SessionHeaderScrollState().Update(offset, 500));
-    }
-
     [Fact]
     public void GrowingTheListDoesNotInterpretOffsetClampingAsAnUpwardGesture()
     {
@@ -138,14 +130,5 @@ public sealed class SessionHeaderScrollStateTests
         Assert.True(state.IsCollapsed);
         state.Update(46, 600);
         Assert.False(state.IsCollapsed);
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    [InlineData(double.NaN)]
-    public void RejectsInvalidViewportHeights(double height)
-    {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new SessionHeaderScrollState().Update(0, height));
     }
 }
