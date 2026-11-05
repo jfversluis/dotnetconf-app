@@ -33,7 +33,7 @@ public static class MicrosoftAgendaJson
                 Name = source.Name!,
                 Bio = string.Join("\n\n", new[] { source.PrimaryBio, source.AdditionalBio }
                     .Where(IsUseful)),
-                ProfilePicture = SpeakerPhotoUrl.Normalize(source.Avatar)
+                ProfilePicture = source.Avatar ?? ""
             });
         }
         var sessions = new List<Session>();
@@ -106,11 +106,9 @@ public static class MicrosoftAgendaJson
             Speakers = current.Speakers.Select(speaker =>
             {
                 prior.TryGetValue(speaker.Id, out var old);
-                var photo = SpeakerPhotoUrl.Normalize(speaker.ProfilePicture);
                 return speaker with
                 {
-                    Bio = IsUseful(speaker.Bio) ? speaker.Bio : old?.Bio ?? "",
-                    ProfilePicture = photo.Length > 0 ? photo : SpeakerPhotoUrl.Normalize(old?.ProfilePicture)
+                    Bio = IsUseful(speaker.Bio) ? speaker.Bio : old?.Bio ?? ""
                 };
             }).ToList(),
             Sessions = current.Sessions.Select(session => session with

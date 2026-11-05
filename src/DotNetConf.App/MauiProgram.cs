@@ -85,10 +85,6 @@ public static class MauiProgram
         builder.Services.AddTransient<OnboardingPage>();
         builder.Services.AddSingleton<IConferenceDataSource, ConferenceMetadataDataSource>();
         builder.Services.AddSingleton(_ => new HttpClient { Timeout = TimeSpan.FromSeconds(20) });
-        builder.Services.AddKeyedSingleton<HttpClient>("speaker-portraits", (_, _) =>
-            OperatingSystem.IsBrowser()
-                ? new HttpClient { Timeout = TimeSpan.FromSeconds(20) }
-                : new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(20) });
         builder.Services.AddSingleton<IConferenceRepository>(services => new ConferenceRepository(
             services.GetRequiredService<IConferenceDataSource>(), services.GetRequiredService<HttpClient>(),
             services.GetService<IConferenceCacheStore>() ??
@@ -97,9 +93,6 @@ public static class MauiProgram
 #if !AVALONIA
         builder.Services.AddSingleton<IConnectivity>(_ => Connectivity.Current);
 #endif
-        builder.Services.AddSingleton(services => new SpeakerImageCache(
-            services.GetRequiredKeyedService<HttpClient>("speaker-portraits"), Path.Combine(FileSystem.CacheDirectory, "speaker-portraits"),
-            services.GetRequiredService<ILogger<SpeakerImageCache>>(), services.GetService<ISpeakerImagePersistence>()));
         builder.Services.TryAddSingleton<IScheduleStore>(_ =>
             new JsonScheduleStore(Path.Combine(FileSystem.AppDataDirectory, "schedule.json")));
         builder.Services.AddSingleton<ScheduleService>();

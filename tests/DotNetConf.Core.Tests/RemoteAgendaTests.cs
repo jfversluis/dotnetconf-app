@@ -103,7 +103,7 @@ public sealed class RemoteAgendaTests
         Assert.Equal(DateTimeOffset.Parse("2026-11-10T19:30:00Z"), session.StartsAt);
         Assert.Equal(TimeSpan.FromHours(-8), session.StartsAt.Offset);
         Assert.Equal("Published biography", speaker.Bio);
-        Assert.Equal("https://example.com/gerald.jpg", speaker.ProfilePicture);
+        Assert.Equal("https://github.com/user-attachments/assets/390e288c-b2e5-4958-ab04-7c5b006777ec", speaker.ProfilePicture);
         Assert.Equal([".NET MAUI", ".NET AI"], session.Topics);
     }
 
@@ -243,7 +243,7 @@ public sealed class RemoteAgendaTests
     }
 
     [Fact]
-    public async Task GithubHttpProfilePhotoIsNotRetainedFromEitherFeedOrPreviousProfile()
+    public async Task FeedPhotoReplacesThePreviousPhotoWithoutRewritingItsUrl()
     {
         var data = Microsoft;
         var result = await ReadAsync(data with
@@ -253,18 +253,20 @@ public sealed class RemoteAgendaTests
         {
             Speakers = [Previous.Speakers[0] with { ProfilePicture = "https://avatars.githubusercontent.com/u/123" }]
         });
-        Assert.Empty(Assert.Single(result.Speakers).ProfilePicture);
+        Assert.Equal("http://github.com/elbruno.png", Assert.Single(result.Speakers).ProfilePicture);
     }
 
     [Theory]
-    [InlineData("http://example.com/photo.jpg")]
     [InlineData("not a url")]
-    [InlineData("https://github.com/user-attachments/assets/private")]
-    public async Task UnusablePhotosRetainPreviousPortrait(string avatar)
+    [InlineData("file:///photo.jpg")]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData(null)]
+    public async Task FeedPhotoIsPassedThroughForTheUiToHandle(string? avatar)
     {
         var data = Microsoft;
         var result = await ReadAsync(data with { Speakers = [data.Speakers[0] with { Avatar = avatar }] });
-        Assert.Equal("https://example.com/gerald.jpg", Assert.Single(result.Speakers).ProfilePicture);
+        Assert.Equal(avatar ?? "", Assert.Single(result.Speakers).ProfilePicture);
     }
 
     [Theory]
