@@ -2784,6 +2784,27 @@ public sealed class AskTests
     }
 
     [Theory]
+    [InlineData("Find Blazor sessions", "find_sessions")]
+    [InlineData("Open Blazor", "open_session")]
+    [InlineData("Who's giving Blazor", "open_speaker")]
+    [InlineData("Save Blazor", "save_sessions")]
+    [InlineData("Remove everything on Thursday", "request_removal")]
+    public async Task PromptAdvertisesOnlyOfferedToolsAndStopsAfterStaging(string request, string action)
+    {
+        var client = new ActionClient(action == "request_removal", action: action);
+        using var services = new ServiceCollection().AddScoped<AskTools>()
+            .AddTransient<IChatClient>(_ => client).BuildServiceProvider();
+        var status = Substitute.For<IPlannerModelStatus>();
+        status.ReadAsync(Arg.Any<CancellationToken>()).Returns(
+            new PlannerModelState(true, true, "") { ToolCalling = true });
+        var runner = new OnDeviceAsk(services.GetRequiredService<IServiceScopeFactory>(),
+            services.GetRequiredService<IServiceProviderIsService>(), status);
+
+        Assert.NotNull(await runner.InterpretAsync(AgendaDocument(), TimeZoneInfo.Utc, request, ["one"], default));
+        Assert.Equal(action == "request_removal" ? 1 : 2, client.Calls);
+    }
+
+    [Theory]
     [Trait("Category", "AIAttributes")]
     [InlineData(false)]
     [InlineData(true)]
@@ -2985,7 +3006,7 @@ public sealed class AskTests
         }
     }
 
-    private sealed class ActionClient(bool removal, string? expectedModelId = null) : IChatClient
+    private sealed class ActionClient(bool removal, string? expectedModelId = null, string? action = null) : IChatClient
     {
         private int calls;
         public int Calls => calls;
@@ -2993,6 +3014,14 @@ public sealed class AskTests
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            var prompt = Assert.Single(messages.Where(message => message.Role == ChatRole.System)).Text;
+            var offered = options!.Tools!.Select(tool => tool.Name).ToHashSet(StringComparer.Ordinal);
+            foreach (var name in new[] { "lookup_sessions", "find_sessions", "open_session", "open_speaker", "save_sessions", "request_removal" })
+                Assert.Equal(offered.Contains(name), prompt.Contains(name, StringComparison.Ordinal));
+            Assert.Contains("After any tool returns \"Action staged:\", make no further tool calls.", prompt);
+            if (calls > 0)
+                Assert.Contains("Action staged", Assert.IsType<string>(
+                    Assert.Single(messages.SelectMany(message => message.Contents).OfType<FunctionResultContent>()).Result));
             if (expectedModelId is not null)
             {
                 Assert.NotNull(options);
@@ -3009,7 +3038,7 @@ public sealed class AskTests
             }
             if (++calls == 1)
                 return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant,
-                    [new FunctionCallContent("action", removal ? "request_removal" : "save_sessions",
+                    [new FunctionCallContent("action", action ?? (removal ? "request_removal" : "save_sessions"),
                         removal ? new Dictionary<string, object?> { ["day"] = "Thursday" }
                         : new Dictionary<string, object?> { ["query"] = "Blazor" })])));
             return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "Not a trusted success message.")));
