@@ -56,6 +56,8 @@ public sealed class PlannerDiscoveryLifecycleTests
         await vm.ApplyCommand.ExecuteAsync(null);
         Assert.Equal(selected, store.Saved.Order().ToArray());
         Assert.True(vm.HasAddedSessions);
+        Assert.True(selected.Length > 1);
+        Assert.Equal($"{selected.Length} selected sessions added to My Schedule. Your previous likes were kept.", vm.Status);
         await planner.DidNotReceive().ProposeAsync(Arg.Any<ConferenceDocument>(), Arg.Any<string>(),
             Arg.Any<TimeZoneInfo>(), Arg.Any<string[]>(), Arg.Any<CancellationToken>(), Arg.Any<bool>(),
             Arg.Any<PlannerWatchingHours>());

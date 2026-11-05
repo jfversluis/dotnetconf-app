@@ -49,6 +49,7 @@ public sealed class PlannerModelSetupTests
         Assert.True(vm.CanDownloadModel);
         Assert.True(vm.CanOfferModelSetup);
         Assert.True(vm.ShowModelSetup);
+        Assert.True(vm.ShowDiscoveryActions);
         Assert.True(vm.CanEdit);
         Assert.False(vm.CanGenerate);
         Assert.Contains("Download", vm.ModelStatus);
@@ -67,6 +68,8 @@ public sealed class PlannerModelSetupTests
         var download = vm.DownloadModelCommand.ExecuteAsync(null);
         Assert.True(vm.IsBusy);
         Assert.True(vm.IsDownloadingModel);
+        Assert.True(vm.CanExplore);
+        Assert.True(vm.ShowModelSetup);
         Assert.False(vm.CanDownloadModel);
         Assert.False(vm.CanGenerate);
         Assert.False(vm.HasDownloadProgress);
@@ -82,6 +85,7 @@ public sealed class PlannerModelSetupTests
         Assert.True(vm.IsReady);
         Assert.True(vm.CanGenerate);
         Assert.False(vm.ShowModelSetup);
+        Assert.False(vm.ShowDiscoveryActions);
         Assert.False(vm.IsBusy);
         Assert.False(vm.IsDownloadingModel);
         Assert.Equal(1, planner.Downloads);
@@ -185,6 +189,34 @@ public sealed class PlannerModelSetupTests
         var rows = vm.Sessions.ToArray();
         Assert.Equal(2, rows.Length);
         rows[0].IsSelected = false;
+        var changes = new List<string?>();
+        vm.PropertyChanged += (_, args) => changes.Add(args.PropertyName);
+        var recheck = vm.CheckModelCommand.ExecuteAsync(null);
+        Assert.True(vm.IsCheckingModel);
+        Assert.True(vm.IsDownloadingModel);
+        Assert.False(vm.CanExplore);
+        Assert.True(vm.ShowModelSetup);
+        Assert.True(vm.ShowDiscoveryActions);
+        Assert.Contains(nameof(PlannerViewModel.ShowDiscoveryActions), changes);
+        vm.Cancel();
+        await recheck;
+        Assert.True(vm.CanExplore);
+        Assert.Equal(vm.ModelStatus, vm.Status);
+        Assert.Contains("Stopped waiting", vm.Status);
+        Assert.Equal(rows, vm.Sessions);
+        Assert.False(rows[0].IsSelected);
+
+        var failingCheck = vm.CheckModelCommand.ExecuteAsync(null);
+        Assert.True(vm.IsDownloadingModel);
+        planner.PendingCheck = Task.FromException<PlannerModelState>(new InvalidOperationException("Synthetic readiness failure."));
+        await failingCheck.WaitAsync(TimeSpan.FromSeconds(5));
+        planner.PendingCheck = null;
+        Assert.False(vm.IsDownloadingModel);
+        Assert.Contains("isn't ready", vm.ModelStatus);
+        Assert.Equal(vm.ModelStatus, vm.Status);
+        Assert.Equal(rows, vm.Sessions);
+        Assert.False(rows[0].IsSelected);
+
         planner.State = Ready;
 
         await vm.InitializeAsync();

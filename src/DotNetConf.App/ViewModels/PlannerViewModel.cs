@@ -82,6 +82,7 @@ public partial class PlannerViewModel(
     public partial bool IsAiMode { get; set; }
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanExplore))]
+    [NotifyPropertyChangedFor(nameof(ShowDiscoveryActions))]
     [NotifyPropertyChangedFor(nameof(Introduction))]
     [NotifyPropertyChangedFor(nameof(CanRetryModel))]
     [NotifyPropertyChangedFor(nameof(CanEdit))]
@@ -94,6 +95,7 @@ public partial class PlannerViewModel(
     public partial bool IsCheckingModel { get; set; }
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanExplore))]
+    [NotifyPropertyChangedFor(nameof(ShowDiscoveryActions))]
     [NotifyPropertyChangedFor(nameof(Introduction))]
     [NotifyPropertyChangedFor(nameof(ShowModelSetup))]
     [NotifyPropertyChangedFor(nameof(ShowAvailabilityStatus))]
@@ -103,6 +105,7 @@ public partial class PlannerViewModel(
     [ObservableProperty]
     public partial string ModelStatus { get; set; } = "Checking whether on-device AI is available.";
     public bool CanExplore => HasCheckedModel && !IsReady && !IsCheckingModel;
+    public bool ShowDiscoveryActions => CanExplore || ShowModelSetup;
     public string DiscoverySource => IsAiMode
         ? "On-device AI interpreted your request. Review its matches before adding."
         : "A varied random mix from the downloaded agenda. Not personalized; no AI is used.";
@@ -148,6 +151,7 @@ public partial class PlannerViewModel(
     [NotifyPropertyChangedFor(nameof(CanEdit))]
     [NotifyPropertyChangedFor(nameof(CanRetryModel))]
     [NotifyPropertyChangedFor(nameof(CanExplore))]
+    [NotifyPropertyChangedFor(nameof(ShowDiscoveryActions))]
     [NotifyPropertyChangedFor(nameof(ShowModelSetup))]
     [NotifyPropertyChangedFor(nameof(ShowAvailabilityStatus))]
     [NotifyPropertyChangedFor(nameof(CanOfferModelSetup))]
@@ -437,6 +441,16 @@ public partial class PlannerViewModel(
         if (!preserveSaveOutcome)
             pendingSaveOutcome = null;
         var revision = modelRevision;
+        void SetCancelledModelStatus()
+        {
+            if (revision != modelRevision)
+                return;
+            ModelStatus = IsDownloadingModel ? StoppedDownloadMessage
+                : "Model check cancelled or timed out. Explore a mix, or retry AI.";
+            if (IsDownloadingModel && savedStatus is null)
+                Status = ModelStatus;
+        }
+
         stopped = false;
         IsReady = false;
         ModelSetup = PlannerModelSetup.Unavailable;
@@ -456,25 +470,25 @@ public partial class PlannerViewModel(
         }
         catch (OperationCanceledException)
         {
-            if (revision == modelRevision)
-                ModelStatus = IsDownloadingModel ? StoppedDownloadMessage
-                    : "Model check cancelled or timed out. Explore a mix, or retry AI.";
+            SetCancelledModelStatus();
         }
         catch (Exception exception) when (IsExpectedFailure(exception))
         {
             if (cancellation.IsCancellationRequested)
             {
-                if (revision == modelRevision)
-                    ModelStatus = IsDownloadingModel ? StoppedDownloadMessage
-                        : "Model check cancelled or timed out. Explore a mix, or retry AI.";
+                SetCancelledModelStatus();
             }
             else
             {
                 logger.LogWarning(exception, "On-device planner readiness check failed.");
                 if (revision == modelRevision)
+                {
                     ModelStatus = ShowModelSelection
                         ? "Couldn't check this model. It may not be available on your phone. Choose another model or check Android's AI settings, then try again."
                         : "On-device AI isn't ready on this device. Explore a mix from the downloaded agenda, or check your device's AI settings and retry. No model download starts automatically.";
+                    if (IsDownloadingModel && savedStatus is null)
+                        Status = ModelStatus;
+                }
             }
         }
         finally
@@ -487,6 +501,7 @@ public partial class PlannerViewModel(
             IsCheckingModel = false;
             OnPropertyChanged(nameof(CanRetryModel));
             OnPropertyChanged(nameof(ShowModelSetup));
+            OnPropertyChanged(nameof(ShowDiscoveryActions));
             OnPropertyChanged(nameof(ShowAvailabilityStatus));
             if (!IsReady)
                 IsLoadingStartingPoints = false;
@@ -877,7 +892,7 @@ public partial class PlannerViewModel(
             scheduleUpdates.RefreshSavedState();
             ClearProposal();
             HasAddedSessions = true;
-            Status = $"{selected.SessionIds.Length} selected sessions added to My Schedule. Your previous likes were kept.";
+            Status = $"{selected.SessionIds.Length} selected {(selected.SessionIds.Length == 1 ? "session" : "sessions")} added to My Schedule. Your previous likes were kept.";
             if (!await scheduleUpdates.RefreshRemindersAsync())
                 Status += " Reminders couldn't be updated; check Settings.";
         }

@@ -66,8 +66,12 @@ readiness before showing either discovery path. A ready model opens the AI edito
 without mix/shuffle controls. Otherwise it offers up to six compatible, varied random
 sessions from the downloaded agenda, without AI controls. A failed readiness retry
 preserves the reviewed random preview; a successful retry switches to AI only.
-No cached agenda means an
-honest download state, never bundled session examples. Continue does not save:
+Status feedback stays visible above the scrolling planner; long messages scroll independently,
+with a compact scroll cue beside them. The status area gives the request editor more room while editing.
+Review and AI setup shortcuts lead to the shortlist and optional model setup without changing the model choice,
+including while an existing model download is being checked.
+Shuffle guidance appears only alongside a preview. No cached agenda means an honest
+download state, never bundled session examples. Continue does not save:
 advancing prompts if nothing was added or checked suggestions remain unsaved.
 All three steps share a 34-unit heading, 48-unit Fluent icon, and the
 incumbent hero wash, with 24-unit gutters aligned to the builder.
