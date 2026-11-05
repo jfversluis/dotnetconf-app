@@ -81,6 +81,12 @@
     <FontImageSource x:Key="ClearIcon" Glyph="{x:Static icons:FluentIconsRegular.Dismiss24}"
                      FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="20"
                      Color="{AppThemeBinding Light={StaticResource LightSecondary}, Dark={StaticResource DarkSecondary}}" />
+    <FontImageSource x:Key="AskSendIcon" Glyph="{x:Static icons:FluentIconsRegular.ArrowUp24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="20"
+                     Color="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Midnight}}" />
+    <FontImageSource x:Key="AskStopIcon" Glyph="{x:Static icons:FluentIconsFilled.Stop24}"
+                     FontFamily="{x:Static icons:FluentIconsFilled.FontFamily}" Size="20"
+                     Color="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Midnight}}" />
     <FontImageSource x:Key="ChevronIcon" Glyph="{x:Static icons:FluentIconsRegular.ChevronRight24}"
                      FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="16"
                      Color="{AppThemeBinding Light={StaticResource LightSecondary}, Dark={StaticResource DarkSecondary}}" />

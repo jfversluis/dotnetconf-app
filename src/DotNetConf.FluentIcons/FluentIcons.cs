@@ -8,6 +8,7 @@ public static class FluentIconsRegular
     public const string FontFamily = "FluentIcons";
     public const string Alert24 = "\uf115";
     public const string ArrowExpand24 = "\uf154";
+    public const string ArrowUp24 = "\uf19c";
     public const string CalendarAgenda24 = "\uf214";
     public const string ChevronRight24 = "\uf2b1";
     public const string Dismiss24 = "\uf36a";
@@ -30,6 +31,7 @@ public static class FluentIconsFilled
 {
     public const string FontFamily = "FluentIconsFilled";
     public const string Heart24 = "\uf47e";
+    public const string Stop24 = "\uf743";
 }
 
 public static class IconFontBuilderExtensions

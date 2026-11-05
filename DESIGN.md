@@ -61,6 +61,14 @@ replacing Explore sessions; without that capability, Explore sessions remains.
 It expands the existing Syncfusion Toolkit bottom sheet, not a chat transcript.
 A native editor retains text selection and accessibility; a decorative
 purple-magenta GraphicsView halo is static at rest and under reduced motion.
+The composer reserves a footer inside the halo for its on-device caption and
+a compact 36-unit purple/lavender send disc inside a 48-unit touch target,
+with a 20-unit up-arrow glyph. While working, that same action becomes
+a stop square with a nearby progress indicator; it restores send when work ends.
+Android's `AskEditor` removes only its native Material underline so the shared
+composer halo remains the single input outline; other editors are unchanged.
+The header uses a small X icon with a 48-unit close target. All icon-only actions
+have descriptive accessibility labels and follow the current light/dark theme.
 The sheet scrolls its input, controls, and results when space is tight, and is
 capped at 720 units on wide windows; close and backgrounding cancel pending
 work. Outcomes are announced while the sheet is open.
@@ -75,7 +83,8 @@ save the full grounded set, not just a page of model lookup results; other
 ambiguous targets require a choice. Removal lists exact saved talks and
 device-local times, with explicit confirm/cancel controls. Confirmation is
 consumed once and rejects changed agenda/saved snapshots; the model never
-approves persistence. Debug-only trace UI contains no argument values.
+approves persistence. The developer trace setting stays hidden, including in
+Debug builds; retained Debug-only diagnostics contain no argument values.
 
 First-run onboarding is a separate full-screen modal carousel without a
 navigation bar: welcome, personal schedule introduction, and optional session
