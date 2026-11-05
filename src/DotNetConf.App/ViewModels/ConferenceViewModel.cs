@@ -481,13 +481,7 @@ public partial class ConferenceViewModel(
         {
             if (document is not null)
             {
-                try { RefreshLocalTimes(); }
-                catch (Exception exception) when (IsNonFatalCallbackFailure(exception))
-                {
-                    ReportSchedulePresentationFailure(exception);
-                    return hasPublishedSnapshot ? null : AgendaPresentationLoadError;
-                }
-                if (schedulePresentationDirty)
+                if (schedulePresentationDirty || localTimesDirty)
                 {
                     TryRefreshSavedState();
                     if (!hasPublishedSnapshot && schedulePresentationError is not null)
@@ -707,6 +701,15 @@ public partial class ConferenceViewModel(
     public async Task ResumeAsync()
     {
         isPaused = false;
+        TimeZoneInfo.ClearCachedData();
+        if (document is not null)
+        {
+            try { RefreshLocalTimes(); }
+            catch (Exception exception) when (IsNonFatalCallbackFailure(exception))
+            {
+                ReportSchedulePresentationFailure(exception);
+            }
+        }
         if (IsRefreshing)
         {
             refreshOnResume = refreshCancellation?.IsCancellationRequested == true;
@@ -1027,7 +1030,6 @@ public partial class ConferenceViewModel(
     {
         var republish = localTimesDirty;
         localTimesDirty = true;
-        TimeZoneInfo.ClearCachedData();
         timeZone = TimeZoneInfo.Local;
         TimeZoneLabel = $"Times shown in {timeZone.DisplayName}";
         if (republish)
