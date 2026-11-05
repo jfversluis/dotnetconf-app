@@ -77,7 +77,7 @@ public partial class SessionsPage : AdaptiveConferencePage
 
     private void OnSessionsScrolled(object? sender, ItemsViewScrolledEventArgs e)
     {
-        if (SearchResults.Height <= 0)
+        if (!OperatingSystem.IsIOS() || SearchResults.Height <= 0)
             return;
 
         lastScrollOffset = e.VerticalOffset;
