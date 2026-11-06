@@ -6,6 +6,10 @@
                       xmlns:tabs="clr-namespace:Syncfusion.Maui.Toolkit.TabView;assembly=Syncfusion.Maui.Toolkit"
                       x:DataType="vm:ConferenceViewModel" Title="Sessions">
     <ContentPage.ToolbarItems>
+        <ToolbarItem x:Name="SearchToolbar" Text="Search sessions" IconImageSource="{StaticResource SearchIcon}"
+                     Clicked="OnRevealSearchClicked" Order="Primary"
+                     SemanticProperties.Description="Show session search"
+                     AutomationId="session-search-reveal" />
         <ToolbarItem x:Name="FilterToolbar" Text="{Binding FilterToolbarLabel}" IconImageSource="{StaticResource FilterIcon}"
                      Command="{Binding BrowseSessionFiltersCommand}" Order="Primary"
                      BadgeText="{Binding FilterBadgeText}"
@@ -16,15 +20,23 @@
                      AutomationId="session-filters" />
     </ContentPage.ToolbarItems>
     <Grid x:Name="SearchLayout" RowDefinitions="Auto,*" SafeAreaEdges="Container,None,Container,None">
-        <VerticalStackLayout x:Name="SessionHeader" Padding="24,16,24,8" Spacing="16">
-            <Label x:Name="SessionHeading" Text="Find your next idea" Style="{StaticResource Heading}" />
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+        <VerticalStackLayout x:Name="SessionHeader" Padding="24,16,24,8" Spacing="0">
+            <Grid x:Name="CollapsibleHeader" IsClippedToBounds="True"
+                  AutomationId="sessions-collapsible-header">
+            <VerticalStackLayout x:Name="CollapsibleContent" Spacing="16" Padding="0,0,0,16"
+                                 VerticalOptions="Start">
+            <Label x:Name="SessionHeading" Text="Find your next idea" Style="{StaticResource Heading}"
+                   AutomationId="sessions-heading" />
+            <Grid x:Name="SearchControls" ColumnDefinitions="*,Auto" ColumnSpacing="8"
+                  AutomationId="sessions-search-controls">
                 <controls:AgendaSearchField x:Name="SearchField" Text="{Binding SessionQuery}" ApplyQueryCommand="{Binding SearchSessionsCommand}"
                                             Placeholder="Talks, topics, or speakers"
                                             SearchDescription="Search sessions by talk, topic, or speaker"
                                             SearchAutomationId="session-search" ClearAutomationId="session-search-clear" />
                 <controls:CompactSearchStatus Grid.Column="1"
                                               IsVisible="{Binding Source={x:Reference Page}, Path=IsCompactSearchActive, x:DataType=pages:AdaptiveConferencePage}" />
+            </Grid>
+            </VerticalStackLayout>
             </Grid>
             <ContentView x:Name="PinnedHeader">
                 <VerticalStackLayout x:Name="FilterHeader" Spacing="16">
@@ -68,7 +80,7 @@
                  RefreshColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
                  AutomationId="sessions-refresh">
     <CollectionView x:Name="SearchResults" ItemsSource="{Binding Sessions}" SelectionMode="None"
-                    ItemsUpdatingScrollMode="KeepScrollOffset" AutomationId="session-list">
+                    ItemsUpdatingScrollMode="KeepScrollOffset" Scrolled="OnSessionsScrolled" AutomationId="session-list">
         <CollectionView.Footer>
             <controls:SafeAreaFooter Page="{x:Reference Page}" AutomationId="session-safe-area-footer" />
         </CollectionView.Footer>
