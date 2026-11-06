@@ -14,6 +14,34 @@ public sealed class ConferenceTests
     }
 
     [Fact]
+    public async Task BundledMetadataUsesTheCanonicalConferenceLinkWithoutBundlingAgendaData()
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.json"));
+        var document = await ConferenceJson.ReadAsync(stream);
+
+        Assert.Equal("https://dot.net/conf", document.WebsiteUrl);
+        Assert.Equal(new DateOnly(2026, 11, 10), document.StartDate);
+        Assert.Equal(new DateOnly(2026, 11, 13), document.EndDate);
+        Assert.Contains(ConferenceRepository.MicrosoftUrl, document.AgendaNotice);
+        Assert.Empty(document.Sessions);
+        Assert.Empty(document.Speakers);
+        Assert.Empty(document.CommunityEvents);
+        Assert.False(document.IsMock);
+    }
+
+    [Fact]
+    public async Task ConferenceEndDateRequiresAnOrderedStartDate()
+    {
+        var document = await LoadAsync();
+        ConferenceJson.Validate(document with { StartDate = new(2026, 11, 10), EndDate = new(2026, 11, 13) });
+        ConferenceJson.Validate(document with { StartDate = new(2026, 11, 10), EndDate = null });
+        Assert.Throws<InvalidDataException>(() =>
+            ConferenceJson.Validate(document with { StartDate = null, EndDate = new(2026, 11, 13) }));
+        Assert.Throws<InvalidDataException>(() =>
+            ConferenceJson.Validate(document with { StartDate = new(2026, 11, 10), EndDate = new(2026, 11, 9) }));
+    }
+
+    [Fact]
     public async Task FictionalTestFixtureIsValidAndClearlyMarked()
     {
         var document = await LoadAsync();

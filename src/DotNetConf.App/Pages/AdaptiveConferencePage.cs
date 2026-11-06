@@ -132,7 +132,7 @@ public class AdaptiveConferencePage : ConferencePage
 
         if (current.Kind == DetailKind.Session)
         {
-            sessionDetail ??= new SessionDetailView();
+            sessionDetail ??= new SessionDetailView { ShowInlineShare = true };
             sessionDetail.Show(Conference, current.Id);
             detailContent.Content = sessionDetail;
         }

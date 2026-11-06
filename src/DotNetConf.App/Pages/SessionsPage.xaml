@@ -12,7 +12,7 @@
                      BadgeColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
                      BadgeTextColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Midnight}}"
                      SemanticProperties.Description="{Binding FilterToolbarLabel}"
-                     SemanticProperties.Hint="Choose topics for every day. Current selections are shown below the day tabs."
+                     SemanticProperties.Hint="Choose topics and video options. Current selections are shown below the day tabs."
                      AutomationId="session-filters" />
     </ContentPage.ToolbarItems>
     <Grid x:Name="SearchLayout" RowDefinitions="Auto,*" SafeAreaEdges="Container,None,Container,None">
@@ -39,10 +39,10 @@
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                         <Label Text="{Binding FilterSummary}" Style="{StaticResource Secondary}" FontSize="12"
                                VerticalOptions="Center" AutomationId="session-filter-summary" />
-                        <Button Grid.Column="1" Text="Clear" Command="{Binding ClearTopicFiltersCommand}"
+                        <Button Grid.Column="1" Text="Clear" Command="{Binding ClearSessionFiltersCommand}"
                                 Style="{StaticResource QuietButton}" BorderWidth="0" Padding="8,0" FontSize="12"
-                                IsVisible="{Binding HasTopicFilters}" AutomationId="session-filters-clear"
-                                SemanticProperties.Description="Clear all topic filters"
+                                IsVisible="{Binding HasSessionFilters}" AutomationId="session-filters-clear"
+                                SemanticProperties.Description="Clear topic, video, and watched filters"
                                 SemanticProperties.Hint="Keep your selected day and search" />
                     </Grid>
                     <Button Text="Clear speaker" Command="{Binding ClearAskSpeakerFilterCommand}"

@@ -11,8 +11,8 @@ public sealed class DetailRowTests
     [Fact]
     public void SelectionTracksTheIdAndRecycledBindingContext()
     {
-        var owner = new ConferenceViewModel(null!, null!, null!, null!, null!,
-            NullLogger<ConferenceViewModel>.Instance, new TestReminders());
+        var owner = new ConferenceViewModel(null!, null!, null!, null!, null!, null!, null!,
+            NullLogger<ConferenceViewModel>.Instance, new TestReminders(), null!);
         var session = new SessionViewModel(new Session { Id = "synthetic-session" }, [], false, owner);
         var speaker = new SpeakerViewModel(new Speaker { Id = "synthetic-speaker" }, owner);
         var row = new DetailRow();

@@ -33,7 +33,9 @@ public static class MicrosoftAgendaJson
                 Name = source.Name!,
                 Bio = string.Join("\n\n", new[] { source.PrimaryBio, source.AdditionalBio }
                     .Where(IsUseful)),
-                ProfilePicture = source.Avatar ?? ""
+                ProfilePicture = source.Avatar ?? "",
+                SocialLinks = ConferenceLinks.ReadPublished(source.PrimarySocials)
+                    .Concat(ConferenceLinks.ReadPublished(source.AdditionalSocials)).DistinctBy(link => link.Url).ToList()
             });
         }
         var sessions = new List<Session>();
@@ -51,7 +53,9 @@ public static class MicrosoftAgendaJson
                 EndsAt = Time(source.EndTime, source.Day, firstDay, source.Id, pacific),
                 // This sentinel represents an unanswered optional co-speaker, not a person.
                 SpeakerIds = source.SpeakerIds.Where(id => id != "speaker-no-response").ToList(),
-                Topics = source.Topics
+                Topics = source.Topics,
+                RecordingUrl = ConferenceLinks.ReadRecording(source.YoutubeLink),
+                ResourceLinks = ConferenceLinks.ReadPublished(source.SessionLinks)
             });
         }
         var document = previous with { Sessions = sessions, WithdrawnSessions = [], Speakers = speakers };
@@ -138,6 +142,10 @@ public sealed record MicrosoftSession
     public required List<string> SpeakerIds { get; init; }
     public required List<string> Topics { get; init; }
     public string? Abstract { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public JsonElement YoutubeLink { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public JsonElement SessionLinks { get; init; }
 }
 
 public sealed record MicrosoftSpeaker
@@ -147,6 +155,10 @@ public sealed record MicrosoftSpeaker
     public string? Avatar { get; init; }
     public string? PrimaryBio { get; init; }
     public string? AdditionalBio { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public JsonElement PrimarySocials { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public JsonElement AdditionalSocials { get; init; }
 }
 
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]

@@ -1,5 +1,12 @@
 <ContentPage x:Class="DotNetConf.App.Pages.SessionDetailPage"
              xmlns:controls="clr-namespace:DotNetConf.App.Controls"
+             xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
              Title="Session">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem x:Name="ShareToolbar" Text="Share session" IconImageSource="{StaticResource ShareIcon}"
+                     Command="{Binding ShareCommand, x:DataType=vm:SessionViewModel}"
+                     AutomationId="session-share" SemanticProperties.Description="{Binding ShareLabel, x:DataType=vm:SessionViewModel}"
+                     SemanticProperties.Hint="{Binding ShareHint, x:DataType=vm:SessionViewModel}" />
+    </ContentPage.ToolbarItems>
     <controls:SessionDetailView x:Name="Detail" />
 </ContentPage>

@@ -33,6 +33,11 @@
                        TextColor="{AppThemeBinding Light={StaticResource Midnight}, Dark={StaticResource White}}" />
                 <Label Text="{Binding SpeakerNames}" Style="{StaticResource Secondary}" FontSize="14" />
                 <Label Text="{Binding TopicLabel}" Style="{StaticResource Secondary}" FontSize="13" />
+                <Grid ColumnDefinitions="18,*" ColumnSpacing="6" IsVisible="{Binding HasVideoStatus}">
+                    <Image Source="{StaticResource WatchPartyIcon}" WidthRequest="16" HeightRequest="16" VerticalOptions="Center" />
+                    <Label Grid.Column="1" Text="{Binding VideoStatusLabel}" FontSize="13" FontFamily="OpenSansSemibold"
+                           TextColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+                </Grid>
                 <Label Text="No longer in the published agenda" IsVisible="{Binding IsWithdrawn}" FontSize="13"
                        TextColor="{AppThemeBinding Light={StaticResource LightError}, Dark={StaticResource DarkError}}" />
                 <Label Text="Overlaps another saved session" IsVisible="{Binding HasConflict}" FontSize="13"

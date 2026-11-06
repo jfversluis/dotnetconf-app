@@ -1,6 +1,6 @@
 # .NET Conf companion privacy policy
 
-Last updated: November 5, 2026.
+Last updated: November 6, 2026.
 
 This policy describes the .NET Conf companion app maintained by Gerald
 Versluis. The app is in development and has not been released. This policy is
@@ -10,8 +10,8 @@ policy.
 ## No accounts, analytics, or tracking
 
 The app has no account sign-in, advertising, analytics SDK, or app-operated
-tracking service. It does not upload your saved schedule, appearance preference,
-or searches to the developer. It does not request device location, contacts,
+tracking service. It does not upload your saved schedule, watched status, appearance
+preference, or searches to the developer. It does not request device location, contacts,
 camera, microphone, or photo-library access. It does not sell personal data.
 
 ## Public conference content and network requests
@@ -43,6 +43,20 @@ map area to that provider. The app does not enable user-location tracking or
 send your saved schedule to the map provider. Maps are not needed to read the
 event list. Links you choose to open in your browser are subject to the
 destination's privacy policy and your browser's settings.
+
+Watching videos, registration, and social links open external websites or apps.
+Session videos use your device's link handler, which may open a video app or
+browser depending on your settings. No video player or social tracking widget is
+embedded. When you choose to share
+a conference invitation or session, its public title, available speaker names,
+website link, hashtag, and (for the invitation) event dates are passed to your device's share
+sheet. Only the destination you choose receives that content, under its own
+privacy policy. On experimental desktop/browser targets, the equivalent action
+copies the text to your clipboard instead. If opening or sharing fails, you
+can also choose to copy the link or shared details. Other apps or operating-system
+clipboard sync may be able to access copied content. Sharing never uploads your saved schedule,
+watched status, searches, or planner requests to an app-operated service and does not
+automatically post, follow an account, or register you for an event.
 
 The experimental browser app also makes ordinary requests to the website that
 hosts the app, which can retain server logs under its own policy.
@@ -94,6 +108,8 @@ delivery.
 ## Data kept on your device
 
 - Your saved session IDs are stored locally so your schedule survives restarts.
+- Session IDs you explicitly mark as watched are stored locally, separately from
+  your schedule. Opening a video does not mark it as watched.
 - Your appearance preference, whether you completed the
   welcome, and whether reminders are enabled are stored in the platform's preferences store.
 - The last successfully downloaded agenda, public profiles, source URLs, and
@@ -108,7 +124,7 @@ delivery.
 
 On native and desktop targets this data uses app-local storage. The
 experimental browser target uses browser storage, including local storage for
-saved session choices, scoped to the hosting site's origin. Its durable agenda
+saved and watched session choices, scoped to the hosting site's origin. Its durable agenda
 cache has a smaller 1 MiB limit. Photographs are not stored in the app's local
 storage cache; framework/browser image caching and cross-origin access rules
 apply. Browser storage quotas or settings can prevent agenda caching.
@@ -120,8 +136,9 @@ providers and your settings, not by an app-operated service.
 
 ## Retention and your choices
 
-Remove a saved session by toggling its save control, change your appearance
-preference in Settings. Device app-data controls or uninstalling the app remove
+Remove a saved session by toggling its save control, mark a watched session as
+not watched from its details, or change your appearance preference in Settings.
+Device app-data controls or uninstalling the app remove
 local app data subject to platform behavior; clear this site's storage for
 the browser app. Platform backups may retain or restore data separately.
 Clearing data also removes the offline agenda, which must be downloaded again.

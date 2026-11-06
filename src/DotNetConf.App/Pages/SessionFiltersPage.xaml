@@ -1,10 +1,11 @@
 <pages:ConferencePage x:Class="DotNetConf.App.Pages.SessionFiltersPage"
                       xmlns:pages="clr-namespace:DotNetConf.App.Pages"
+                      xmlns:controls="clr-namespace:DotNetConf.App.Controls"
                       xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
                       x:DataType="vm:ConferenceViewModel" Title="Filters"
                       Shell.TabBarIsVisible="False">
     <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Clear" Command="{Binding ClearTopicFiltersCommand}"
+        <ToolbarItem Text="Clear" Command="{Binding ClearSessionFiltersCommand}"
                      AutomationId="filter-reset" />
     </ContentPage.ToolbarItems>
     <Grid RowDefinitions="*,Auto" SafeAreaEdges="All">
@@ -12,12 +13,29 @@
                         SelectionMode="None" AutomationId="filter-topics">
             <CollectionView.Header>
                 <VerticalStackLayout Padding="24,24,24,12" Spacing="24">
+                    <controls:StatusBanner />
                     <VerticalStackLayout Spacing="8">
                         <Label Text="Follow your interests" Style="{StaticResource Heading}" />
                         <Label Text="Choose any topics. Sessions matching at least one appear across every day. Changes apply immediately."
                                Style="{StaticResource Secondary}" />
                     </VerticalStackLayout>
                     <Label Text="No selection shows all topics." Style="{StaticResource Secondary}" FontSize="14" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <Label Text="Video available" FontFamily="OpenSansSemibold" VerticalOptions="Center" />
+                        <Switch Grid.Column="1" IsToggled="{Binding RecordingsOnly, Mode=TwoWay}"
+                                OnColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
+                                MinimumHeightRequest="48" AutomationId="filter-recordings"
+                                SemanticProperties.Description="Only show sessions with an available video" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <Label Text="Hide watched" FontFamily="OpenSansSemibold" VerticalOptions="Center" />
+                        <Switch Grid.Column="1" IsToggled="{Binding HideWatched, Mode=TwoWay}"
+                                OnColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
+                                IsEnabled="{Binding CanUseWatchedFilter}" MinimumHeightRequest="48"
+                                AutomationId="filter-hide-watched"
+                                SemanticProperties.Description="Hide sessions marked as watched"
+                                SemanticProperties.Hint="Does not change your saved schedule" />
+                    </Grid>
                 </VerticalStackLayout>
             </CollectionView.Header>
             <CollectionView.EmptyView>

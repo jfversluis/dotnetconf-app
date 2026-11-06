@@ -18,9 +18,9 @@ public sealed record DayFilter(string Label, DateOnly? Day)
 }
 
 public partial class ConferenceViewModel(
-    IConferenceRepository repository, ScheduleService schedule, DetailNavigationService navigation,
-    IBrowser browser, IConnectivity connectivity,
-    ILogger<ConferenceViewModel> logger, ISessionReminderUpdates reminders) : ObservableObject, IPlannerScheduleUpdates, IAskApplication
+    IConferenceRepository repository, ScheduleService schedule, WatchedSessionService watched, DetailNavigationService navigation,
+    IBrowser browser, ISessionVideoLauncher videoLauncher, IConnectivity connectivity,
+    ILogger<ConferenceViewModel> logger, ISessionReminderUpdates reminders, IConferenceSharing sharing) : ObservableObject, IPlannerScheduleUpdates, IAskApplication
 {
     private const string AgendaPresentationLoadError = "We couldn't display the agenda. Your saved choices are kept. Try again.";
     private readonly SemaphoreSlim loadGate = new(1, 1);
@@ -44,7 +44,9 @@ public partial class ConferenceViewModel(
     private string? refreshError;
     private string? scheduleError;
     private string? schedulePresentationError;
+    private string? watchedError;
     private bool schedulePresentationDirty;
+    private bool watchedPresentationDirty;
     private bool localTimesDirty;
     private bool hasPublishedSnapshot;
     private CancellationTokenSource? refreshCancellation;
@@ -58,8 +60,13 @@ public partial class ConferenceViewModel(
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CommunityEventSummary))]
     [NotifyPropertyChangedFor(nameof(HasCommunityEvents))]
+    [NotifyPropertyChangedFor(nameof(IsCommunityEventsEmpty))]
+    [NotifyPropertyChangedFor(nameof(HasMockCommunityEvents))]
     public partial IReadOnlyList<CommunityEvent> CommunityEvents { get; set; } = [];
     public bool HasCommunityEvents => CommunityEvents.Count > 0;
+    public bool HasMockCommunityEvents => HasCommunityEvents && CommunityEventsAreMock;
+    public bool IsCommunityEventsEmpty => document is not null && !HasCommunityEvents;
+    public bool IsCommunityEventsLoading => document is null && (IsBusy || IsRefreshing);
     public ObservableCollection<DayFilter> Days => dayFilters;
     public ObservableCollection<TopicFilterViewModel> Topics { get; } = [];
 
@@ -81,7 +88,10 @@ public partial class ConferenceViewModel(
         : "Connect to the internet, then pull down to refresh and download sessions and speakers. Once downloaded, they are available offline.";
     public string SessionsEmptyTitle => HasAgenda ? "No sessions to show" : AgendaEmptyTitle;
     public string SessionsEmptyMessage => HasAgenda
-        ? "Try a different search, day, or topic." : AgendaEmptyMessage;
+        ? RecordingsOnly && HideWatched ? "No unwatched videos match these filters. Try changing your filters, search, or day."
+            : RecordingsOnly ? "No videos match these filters. Clear the video filter or try a different search, day, or topic."
+            : HideWatched ? "No unwatched sessions match these filters. Try changing your filters, search, or day."
+            : "Try a different search, day, or topic." : AgendaEmptyMessage;
     public string SpeakersEmptyTitle => !HasAgenda ? AgendaEmptyTitle
         : document!.Speakers.Count == 0 ? "Speakers to be announced" : "No speakers to show";
     public string SpeakersEmptyMessage => !HasAgenda ? AgendaEmptyMessage
@@ -100,6 +110,7 @@ public partial class ConferenceViewModel(
     public partial bool IsMock { get; set; } = true;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CommunityEventSummary))]
+    [NotifyPropertyChangedFor(nameof(HasMockCommunityEvents))]
     public partial bool CommunityEventsAreMock { get; set; } = true;
     [ObservableProperty] public partial string AgendaNotice { get; set; } = "";
     [ObservableProperty] public partial string ConferenceName { get; set; } = ".NET Conf 2026";
@@ -108,6 +119,21 @@ public partial class ConferenceViewModel(
     [ObservableProperty]
     public partial string SessionQuery { get; set; } = "";
     [ObservableProperty] public partial string SpeakerQuery { get; set; } = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FilterSummary))]
+    [NotifyPropertyChangedFor(nameof(FilterBadgeText))]
+    [NotifyPropertyChangedFor(nameof(FilterToolbarLabel))]
+    [NotifyPropertyChangedFor(nameof(SessionsEmptyMessage))]
+    [NotifyPropertyChangedFor(nameof(HasSessionFilters))]
+    public partial bool RecordingsOnly { get; set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FilterSummary))]
+    [NotifyPropertyChangedFor(nameof(FilterBadgeText))]
+    [NotifyPropertyChangedFor(nameof(FilterToolbarLabel))]
+    [NotifyPropertyChangedFor(nameof(SessionsEmptyMessage))]
+    [NotifyPropertyChangedFor(nameof(HasSessionFilters))]
+    [NotifyPropertyChangedFor(nameof(CanUseWatchedFilter))]
+    public partial bool HideWatched { get; set; }
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectedDayIndex))]
     [NotifyPropertyChangedFor(nameof(FilterResultsContext))]
@@ -123,6 +149,10 @@ public partial class ConferenceViewModel(
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ScheduleSummary))]
     public partial bool IsScheduleAvailable { get; set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanUseWatchedFilter))]
+    public partial bool IsWatchedAvailable { get; set; }
+    public bool CanUseWatchedFilter => IsWatchedAvailable || HideWatched;
 
     public string ScheduleSummary => !IsScheduleAvailable ? "Saved schedule unavailable"
         : SavedCount == 1 ? "1 saved session" : $"{SavedCount} saved sessions";
@@ -142,22 +172,30 @@ public partial class ConferenceViewModel(
     public int AppliedFilterCount => Topics.Count(topic => topic.IsSelected);
     public bool HasTopicFilters => AppliedFilterCount > 0;
     public bool HasAskSpeakerFilter => askSpeakerFilter is not null;
-    public string? FilterBadgeText => AppliedFilterCount == 0 ? null : AppliedFilterCount.ToString();
-    public string FilterToolbarLabel => AppliedFilterCount == 0
-        ? "Filter topics" : $"Filter topics, {AppliedFilterCount} selected";
+    public bool HasSessionFilters => HasTopicFilters || RecordingsOnly || HideWatched;
+    public string? FilterBadgeText
+    {
+        get
+        {
+            var count = AppliedFilterCount + (RecordingsOnly ? 1 : 0) + (HideWatched ? 1 : 0);
+            return count > 0 ? count.ToString() : null;
+        }
+    }
+    public string FilterToolbarLabel => $"Filter sessions. {FilterSummary}";
     private string TopicFilterSummary => AppliedFilterCount switch
     {
         0 => "All topics",
         <= 2 => string.Join(" · ", Topics.Where(topic => topic.IsSelected).Select(topic => topic.Name)),
         _ => $"{AppliedFilterCount} topics selected"
     };
-    public string FilterSummary => askSpeakerFilter is null ? TopicFilterSummary
-        : $"{TopicFilterSummary} · Speaker: {askSpeakerFilter}";
+    public string FilterSummary => (askSpeakerFilter is null ? TopicFilterSummary
+        : $"{TopicFilterSummary} · Speaker: {askSpeakerFilter}") + (RecordingsOnly ? " · Video available" : "") +
+        (HideWatched ? " · Hide watched" : "");
     public string FilterResultsContext => $"Results for {SelectedDay?.Label ?? Days[0].Label}. Your search still applies.";
     public string ShowFilteredSessionsLabel => Sessions.Count == 1
         ? "Show 1 session" : $"Show {Sessions.Count} sessions";
     public string CommunityEventSummary => CommunityEvents.Count == 0
-        ? "Community events will appear here when they're available."
+        ? "No community events are listed in the app."
         : CommunityEventsAreMock
             ? $"Explore {CommunityEvents.Count} fictional gatherings across {CommunityEvents.Select(e => e.City).Distinct().Count()} cities. These are examples, not events you can attend."
             : "Explore watch parties and in-person talks, with venue details and links to the organizers.";
@@ -182,6 +220,8 @@ public partial class ConferenceViewModel(
         {
             foreach (var topic in Topics)
                 topic.IsSelected = false;
+            RecordingsOnly = false;
+            HideWatched = false;
             SessionQuery = intent.Query;
             askSearchQuery = intent.Query;
             askExactTitle = intent.ExactTitle;
@@ -431,6 +471,7 @@ public partial class ConferenceViewModel(
             IsBusy = true;
             var loaded = await repository.LoadAsync();
             await InitializeScheduleAsync();
+            await InitializeWatchedAsync();
             await PublishSnapshotAsync(loaded);
             return null;
         }
@@ -472,6 +513,7 @@ public partial class ConferenceViewModel(
         try
         {
             await InitializeScheduleAsync(cancellation.Token);
+            await InitializeWatchedAsync(cancellation.Token);
             if (connectivity.NetworkAccess == NetworkAccess.None)
             {
                 refreshError = "Connect to the internet, then try again.";
@@ -554,6 +596,10 @@ public partial class ConferenceViewModel(
         NotifyAgendaState();
         ConferenceName = loaded.Name;
         ConferenceDescription = loaded.Description;
+        OnPropertyChanged(nameof(HasConferenceDates));
+        OnPropertyChanged(nameof(ConferenceDates));
+        OnPropertyChanged(nameof(ConferenceDateContext));
+        OnPropertyChanged(nameof(ConferenceShareText));
         IsMock = loaded.IsMock;
         CommunityEventsAreMock = loaded.CommunityEventsAreMock;
         AgendaNotice = loaded.AgendaNotice;
@@ -585,6 +631,7 @@ public partial class ConferenceViewModel(
             else
                 session.Update(model, allSpeakers);
             session.IsSaved = schedule.IsSaved(model.Id);
+            session.IsWatched = watched.IsWatched(model.Id);
             session.IsWithdrawn = !sessionIds.Contains(model.Id);
         }
         allSessions.Sort((left, right) => left.Model.StartsAt.CompareTo(right.Model.StartsAt));
@@ -608,7 +655,7 @@ public partial class ConferenceViewModel(
     private void UpdateRefreshStatus()
     {
         var offline = connectivity.NetworkAccess == NetworkAccess.None;
-        RefreshMessage = scheduleError ?? schedulePresentationError ?? (offline
+        RefreshMessage = scheduleError ?? schedulePresentationError ?? watchedError ?? (offline
             ? HasAgenda ? "You're offline. Your downloaded agenda is still available."
                 : "You're offline. Connect to download the agenda."
             : refreshError ?? "");
@@ -621,7 +668,8 @@ public partial class ConferenceViewModel(
         {
             nameof(HasAgenda), nameof(IsInitialAgendaLoading), nameof(AgendaEmptyTitle), nameof(AgendaEmptyMessage),
             nameof(SessionsEmptyTitle), nameof(SessionsEmptyMessage), nameof(SpeakersEmptyTitle),
-            nameof(SpeakersEmptyMessage), nameof(ScheduleEmptyTitle), nameof(ScheduleEmptyMessage)
+            nameof(SpeakersEmptyMessage), nameof(ScheduleEmptyTitle), nameof(ScheduleEmptyMessage),
+            nameof(IsCommunityEventsEmpty), nameof(IsCommunityEventsLoading)
         })
             OnPropertyChanged(name);
     }
@@ -686,6 +734,36 @@ public partial class ConferenceViewModel(
             session.ToggleSaveCommand.NotifyCanExecuteChanged();
     }
 
+    private async Task InitializeWatchedAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await watched.ReloadAsync(cancellationToken);
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or JsonException)
+        {
+            logger.LogError(exception, "Could not read watched sessions; agenda browsing remains available.");
+            IsWatchedAvailable = false;
+            watchedError = "Your watched status couldn't be read and hasn't been changed. Check storage and tap Retry.";
+            foreach (var session in allSessions)
+                session.ToggleWatchedCommand.NotifyCanExecuteChanged();
+            UpdateRefreshStatus();
+            return;
+        }
+
+        IsWatchedAvailable = true;
+        try
+        {
+            RefreshWatchedState();
+            watchedError = null;
+            UpdateRefreshStatus();
+        }
+        catch (Exception exception) when (IsNonFatalCallbackFailure(exception))
+        {
+            ReportWatchedPresentationFailure(exception);
+        }
+    }
+
     private async void OnConnectivityChanged(object? sender, ConnectivityChangedEventArgs args)
     {
         await MainThread.InvokeOnMainThreadAsync(async () =>
@@ -718,6 +796,7 @@ public partial class ConferenceViewModel(
             return;
         OnPropertyChanged(nameof(AppliedFilterCount));
         OnPropertyChanged(nameof(HasTopicFilters));
+        OnPropertyChanged(nameof(HasSessionFilters));
         OnPropertyChanged(nameof(FilterBadgeText));
         OnPropertyChanged(nameof(FilterSummary));
         OnPropertyChanged(nameof(FilterToolbarLabel));
@@ -729,6 +808,26 @@ public partial class ConferenceViewModel(
 
     [RelayCommand]
     private Task BrowseSessionsAsync() => Shell.Current.GoToAsync("//sessions");
+
+    [RelayCommand]
+    private void ClearSessionFilters()
+    {
+        RecordingsOnly = false;
+        HideWatched = false;
+        ClearTopicFilters();
+    }
+
+    partial void OnRecordingsOnlyChanged(bool value)
+    {
+        if (!clearingTopics)
+            FilterSessions();
+    }
+
+    partial void OnHideWatchedChanged(bool value)
+    {
+        if (!clearingTopics)
+            FilterSessions();
+    }
 
     [RelayCommand]
     private Task BrowseSpeakersAsync() => Shell.Current.GoToAsync("//speakers");
@@ -782,18 +881,7 @@ public partial class ConferenceViewModel(
     [RelayCommand]
     private async Task OpenWebsiteAsync()
     {
-        try
-        {
-            if (!await browser.OpenAsync(document?.WebsiteUrl ?? "https://www.dotnetconf.net/", BrowserLaunchMode.SystemPreferred))
-                await ShowErrorAsync("Couldn't open the website",
-                    "Please visit https://www.dotnetconf.net/ in your browser.");
-        }
-        catch (Exception exception) when (exception is FeatureNotSupportedException or UriFormatException)
-        {
-            logger.LogError(exception, "Could not open the conference website.");
-            await ShowErrorAsync("Couldn't open the website",
-                "Please visit https://www.dotnetconf.net/ in your browser.");
-        }
+        await OpenLinkAsync(new(".NET Conf", ConferenceLinks.Website));
     }
 
     public SessionViewModel? FindSession(string? id) => allSessions.Find(session => session.Id == id);
@@ -835,6 +923,35 @@ public partial class ConferenceViewModel(
             logger.LogError(exception, "Schedule updated, but the confirmation toast could not be shown.");
             await ShowErrorAsync("Schedule updated",
                 "Your schedule was updated, but the confirmation couldn't be displayed.");
+        }
+    }
+
+    public async Task ToggleWatchedAsync(SessionViewModel session)
+    {
+        if (!IsWatchedAvailable || !session.HasWatchActions)
+            return;
+
+        try
+        {
+            await watched.SetWatchedAsync(session.Id, !session.IsWatched);
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or JsonException)
+        {
+            logger.LogError(exception, "Could not update watched status for {SessionId}.", session.Id);
+            watchedError = "Couldn't update your watched status. Check storage and try the action again.";
+            UpdateRefreshStatus();
+            return;
+        }
+
+        try
+        {
+            RefreshWatchedState();
+            watchedError = null;
+            UpdateRefreshStatus();
+        }
+        catch (Exception exception) when (IsNonFatalCallbackFailure(exception))
+        {
+            ReportWatchedPresentationFailure(exception);
         }
     }
 
@@ -908,6 +1025,43 @@ public partial class ConferenceViewModel(
             {
                 schedulePresentationError = null;
                 UpdateRefreshStatus();
+            }
+        }
+    }
+
+    private void RefreshWatchedState()
+    {
+        var republish = watchedPresentationDirty;
+        watchedPresentationDirty = true;
+        foreach (var session in allSessions)
+        {
+            session.IsWatched = watched.IsWatched(session.Id);
+            session.ToggleWatchedCommand.NotifyCanExecuteChanged();
+            if (republish)
+                session.RepublishWatchedState();
+        }
+        FilterSessions();
+        if (republish)
+        {
+            sessionResults.Republish();
+            OnPropertyChanged(nameof(ShowFilteredSessionsLabel));
+        }
+        watchedPresentationDirty = false;
+    }
+
+    private void ReportWatchedPresentationFailure(Exception exception)
+    {
+        watchedPresentationDirty = true;
+        watchedError = "Your watched status is kept, but the display couldn't refresh. Tap Retry.";
+        logger.LogError(exception, "Could not refresh the watched-session presentation.");
+        try { UpdateRefreshStatus(); }
+        catch (Exception notificationException) when (IsNonFatalCallbackFailure(notificationException))
+        {
+            logger.LogError(notificationException, "Could not notify the watched-session presentation error.");
+            try { HasRefreshError = true; }
+            catch (Exception visibilityException) when (IsNonFatalCallbackFailure(visibilityException))
+            {
+                logger.LogError(visibilityException, "Could not notify the watched-session error visibility.");
             }
         }
     }
@@ -1005,7 +1159,9 @@ public partial class ConferenceViewModel(
             : Agenda.Search(document, SessionQuery, SelectedDay?.Day, topics, timeZone);
         if (usingAskSearch && askExactTitle)
             matches = matches.Where(session => session.Title.Equals(SessionQuery, StringComparison.OrdinalIgnoreCase));
-        var ids = matches.Where(session => speakers is null || session.SpeakerIds.Any(speakers.Contains))
+        var ids = matches.Where(session => (!RecordingsOnly || session.RecordingUrl.Length > 0) &&
+                (!HideWatched || !watched.IsWatched(session.Id)) &&
+                (speakers is null || session.SpeakerIds.Any(speakers.Contains)))
             .Select(session => session.Id).ToHashSet();
         var results = allSessions.Where(session => ids.Contains(session.Id)).ToArray();
         if (!Sessions.SequenceEqual(results))

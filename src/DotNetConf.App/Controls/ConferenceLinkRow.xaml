@@ -1,0 +1,14 @@
+<ContentView x:Class="DotNetConf.App.Controls.ConferenceLinkRow"
+             xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
+             x:DataType="vm:ConferenceLinkViewModel">
+    <Grid ColumnDefinitions="*,24" ColumnSpacing="16" MinimumHeightRequest="56">
+        <Label Text="{Binding Title}" FontFamily="OpenSansSemibold" Margin="0,14"
+               TextColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
+               VerticalOptions="Center" InputTransparent="True" AutomationProperties.IsInAccessibleTree="False" />
+        <Image Grid.Column="1" Source="{StaticResource WebsiteIcon}" WidthRequest="20" HeightRequest="20"
+               VerticalOptions="Center" InputTransparent="True" AutomationProperties.IsInAccessibleTree="False" />
+        <Button Grid.ColumnSpan="2" Command="{Binding OpenCommand}" AutomationId="{Binding AutomationId}"
+                BackgroundColor="Transparent" BorderWidth="0"
+                SemanticProperties.Description="{Binding Description}" />
+    </Grid>
+</ContentView>
