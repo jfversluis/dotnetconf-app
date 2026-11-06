@@ -26,6 +26,7 @@ internal static class AvaloniaHost
         if (OperatingSystem.IsBrowser())
         {
             builder.Services.AddSingleton(CreateBrowserScheduleStore());
+            builder.Services.AddSingleton(new WatchedSessionService(CreateBrowserWatchedStore()));
             var cache = BrowserStorage.CreateCache();
             builder.Services.AddSingleton<IConferenceCacheStore>(cache);
         }
@@ -82,5 +83,13 @@ internal static class AvaloniaHost
             id => BrowserStorage.Set(SavedSessionPrefix + id, "1"),
             id => BrowserStorage.Remove(SavedSessionPrefix + id));
 
+    [System.Runtime.Versioning.SupportedOSPlatform("browser")]
+    private static IScheduleStore CreateBrowserWatchedStore()
+        => new KeyedScheduleStore(
+            () => BrowserStorage.Keys(WatchedSessionPrefix),
+            id => BrowserStorage.Set(WatchedSessionPrefix + id, "1"),
+            id => BrowserStorage.Remove(WatchedSessionPrefix + id));
+
     private const string SavedSessionPrefix = "dotnetconf.saved.";
+    private const string WatchedSessionPrefix = "dotnetconf.watched.";
 }

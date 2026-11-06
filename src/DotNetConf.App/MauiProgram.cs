@@ -96,8 +96,15 @@ public static class MauiProgram
         builder.Services.TryAddSingleton<IScheduleStore>(_ =>
             new JsonScheduleStore(Path.Combine(FileSystem.AppDataDirectory, "schedule.json")));
         builder.Services.AddSingleton<ScheduleService>();
+        builder.Services.TryAddSingleton(_ => new WatchedSessionService(
+            new JsonScheduleStore(Path.Combine(FileSystem.AppDataDirectory, "watched.json"))));
         builder.Services.AddSingleton<DetailNavigationService>();
         builder.Services.TryAddSingleton(Browser.Default);
+#if !AVALONIA
+        builder.Services.TryAddSingleton(Launcher.Default);
+#endif
+        builder.Services.AddSingleton<ISessionVideoLauncher, SessionVideoLauncher>();
+        builder.Services.AddSingleton<IConferenceSharing, ConferenceSharing>();
         builder.Services.AddSingleton<ConferenceViewModel>();
         builder.Services.AddSingleton<IAskApplication>(services => services.GetRequiredService<ConferenceViewModel>());
         builder.Services.AddTransient<IOnDeviceAsk, OnDeviceAsk>();

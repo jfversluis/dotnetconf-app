@@ -55,6 +55,22 @@
                 <Label Text="Loading the agenda" Style="{StaticResource Secondary}" VerticalOptions="Center" />
             </HorizontalStackLayout>
             <VerticalStackLayout Spacing="12">
+                <Label Text="Your front row to .NET" Style="{StaticResource Subheading}" />
+                <Label Text="{Binding ConferenceDateContext}" IsVisible="{Binding HasConferenceDates}"
+                       FontFamily="OpenSansSemibold"
+                       TextColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
+                       AutomationId="home-conference-dates" />
+                <Label Text="Join the .NET community online for the conference."
+                       Style="{StaticResource Secondary}" />
+                <Button Text="Register for .NET Conf" Command="{Binding OpenRegistrationCommand}"
+                        Style="{StaticResource ConferenceAction}" AutomationId="home-register"
+                        SemanticProperties.Hint="Opens Microsoft Reactor registration in your browser" />
+                <Button Text="Visit .NET Conf" Command="{Binding OpenWebsiteCommand}"
+                        ImageSource="{StaticResource WebsiteIcon}" Style="{StaticResource ConferenceSecondaryAction}"
+                        AutomationId="home-website" SemanticProperties.Hint="Opens the official conference site in your browser" />
+            </VerticalStackLayout>
+            <BoxView HeightRequest="1" />
+            <VerticalStackLayout Spacing="12">
                 <Label Text="Find your next idea" Style="{StaticResource Subheading}" />
                 <Label Text="{Binding ConferenceDescription}" Style="{StaticResource Secondary}" />
             </VerticalStackLayout>
@@ -70,14 +86,10 @@
             </VerticalStackLayout>
             <VerticalStackLayout Spacing="8">
                 <Label Text="From the community, for the community" Style="{StaticResource Subheading}" />
-                <Label Text="Find ways to connect through watch parties and in-person community talks. Visit the official website for current gatherings."
+                <Label Text="Join the conversation, share the conference, or find a way to watch together."
                        Style="{StaticResource Secondary}" />
-                <Button Text="Explore community events" Command="{Binding BrowseCommunityEventsCommand}"
+                <Button Text="Connect with the community" Command="{Binding BrowseCommunityEventsCommand}"
                         Style="{StaticResource QuietButton}" ImageSource="{StaticResource CommunityIcon}" AutomationId="home-community" />
-                <Label Text="Visit the official website for confirmed event dates, registration, and announcements."
-                       Style="{StaticResource Secondary}" />
-                <Button Text="Visit dotnetconf.net" Command="{Binding OpenWebsiteCommand}" Style="{StaticResource QuietButton}"
-                        ImageSource="{StaticResource WebsiteIcon}" AutomationId="home-website" />
             </VerticalStackLayout>
             </VerticalStackLayout>
         </VerticalStackLayout>

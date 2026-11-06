@@ -35,7 +35,7 @@ public sealed class ConferenceRepository(
     public const string CacheSource = "Cache";
     public const string MetadataSource = "Conference metadata";
     public const string MicrosoftUrl = "https://dotnet.microsoft.com/blob-assets/json/conf/conference-2026.json";
-    private const int CacheSchemaVersion = 9;
+    private const int CacheSchemaVersion = 10;
     private const int MaximumFeedBytes = 4 * 1024 * 1024;
     private const int MaximumCacheBytes = 16 * 1024 * 1024;
     private readonly TimeProvider clock = timeProvider ?? TimeProvider.System;
@@ -91,9 +91,9 @@ public sealed class ConferenceRepository(
             var cached = await JsonSerializer.DeserializeAsync(content,
                 ConferenceCacheJsonContext.Default.ConferenceCache, token).ConfigureAwait(false)
                 ?? throw new InvalidDataException("The agenda cache is null.");
-            // Version 8 removed some feed-provided portraits. Retain the offline agenda and reparse the feed once.
+            // Reparse once to discover recording/resource/profile links omitted by earlier adapters.
             var migrated = false;
-            if (cached is { SchemaVersion: 8, Microsoft: { } legacyAgenda })
+            if (cached is { SchemaVersion: 8 or 9, Microsoft: { } legacyAgenda })
             {
                 cached = cached with
                 {
@@ -106,7 +106,8 @@ public sealed class ConferenceRepository(
             try
             {
                 var metadata = await LoadMetadataAsync(token).ConfigureAwait(false);
-                var changed = metadata.StartDate != cached.Metadata.StartDate;
+                var changed = metadata.StartDate != cached.Metadata.StartDate ||
+                    metadata.EndDate != cached.Metadata.EndDate;
                 var updated = ApplyMetadata(cached, metadata);
                 ValidateCache(updated);
                 cached = updated;

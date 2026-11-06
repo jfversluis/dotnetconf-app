@@ -9,6 +9,14 @@ public partial class SessionDetailView : ContentView
     private string? sessionId;
     internal TextScaleMonitor TextScaleMonitor => ScaleMonitor;
 
+    public static readonly BindableProperty ShowInlineShareProperty = BindableProperty.Create(
+        nameof(ShowInlineShare), typeof(bool), typeof(SessionDetailView), false);
+    public bool ShowInlineShare
+    {
+        get => (bool)GetValue(ShowInlineShareProperty);
+        set => SetValue(ShowInlineShareProperty, value);
+    }
+
     public SessionDetailView()
     {
         InitializeComponent();

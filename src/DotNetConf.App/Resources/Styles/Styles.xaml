@@ -63,6 +63,20 @@
         <Setter Property="BorderWidth" Value="1" />
         <Setter Property="BorderColor" Value="{AppThemeBinding Light={StaticResource LightOutline}, Dark={StaticResource DarkOutline}}" />
     </Style>
+    <Style x:Key="ConferenceAction" TargetType="Button" BasedOn="{StaticResource BaseButton}">
+        <Setter Property="LineBreakMode" Value="WordWrap" />
+        <Setter Property="Padding" Value="20,16" />
+    </Style>
+    <Style x:Key="ConferenceSecondaryAction" TargetType="Button" BasedOn="{StaticResource QuietButton}">
+        <Setter Property="LineBreakMode" Value="WordWrap" />
+        <Setter Property="Padding" Value="16,14" />
+    </Style>
+    <Style x:Key="ConferenceTextAction" TargetType="Button" BasedOn="{StaticResource QuietButton}">
+        <Setter Property="BorderWidth" Value="0" />
+        <Setter Property="LineBreakMode" Value="WordWrap" />
+        <Setter Property="HorizontalOptions" Value="Start" />
+        <Setter Property="Padding" Value="0,12" />
+    </Style>
     <Style x:Key="IconButton" TargetType="ImageButton">
         <Setter Property="BackgroundColor" Value="Transparent" />
         <Setter Property="MinimumHeightRequest" Value="48" />

@@ -111,7 +111,7 @@ public sealed class ConferenceRepositoryTests : IDisposable
         Assert.Single(handler.Requests);
         AssertOnlyMicrosoftRequests();
         var cache = await ReadCacheAsync();
-        Assert.Equal(9, cache.SchemaVersion);
+        Assert.Equal(10, cache.SchemaVersion);
         Assert.Equal(70, cache.Microsoft.Sessions.Count);
         Assert.Equal(64, cache.Microsoft.PayloadHash.Length);
         Assert.Equal(["schemaVersion", "metadata", "microsoft"],
@@ -231,6 +231,25 @@ public sealed class ConferenceRepositoryTests : IDisposable
         snapshot.Document.Sessions.Select(session => DateOnly.FromDateTime(session.StartsAt.Date)).Min();
 
     private void CorrectStartDate(DateOnly date) => metadata.Document = metadata.Document with { StartDate = date };
+
+    [Fact]
+    public async Task AddingEndDateUpdatesCachedMetadataWithoutMovingAgendaTimes()
+    {
+        var original = await Repository().RefreshAsync();
+        var starts = original.Document.Sessions.Select(session => session.StartsAt).ToArray();
+        handler.Requests.Clear();
+        metadata.Document = metadata.Document with { EndDate = new(2026, 11, 13) };
+
+        var result = await Repository().LoadAsync();
+
+        Assert.Empty(handler.Requests);
+        Assert.Empty(result.Issues);
+        Assert.Equal(new DateOnly(2026, 11, 13), result.Document.EndDate);
+        Assert.Equal(starts, result.Document.Sessions.Select(session => session.StartsAt));
+        var cache = await ReadCacheAsync();
+        Assert.Equal(result.Document.EndDate, cache.Metadata.EndDate);
+        Assert.False(cache.Microsoft.RequiresRevalidation);
+    }
 
     [Fact]
     public async Task CorrectedStartDateRebasesCachedTimesOfflineAndPersistsWithoutNetwork()
@@ -901,7 +920,64 @@ public sealed class ConferenceRepositoryTests : IDisposable
         Assert.Equal("{ not json", await File.ReadAllTextAsync(CachePath));
         var refreshed = await Repository().RefreshAsync();
         Assert.Empty(refreshed.Issues);
-        Assert.Equal(9, (await ReadCacheAsync()).SchemaVersion);
+        Assert.Equal(10, (await ReadCacheAsync()).SchemaVersion);
+    }
+
+    [Fact]
+    public async Task RecordingUpdatesAreCachedRemovedByFreshDataAndRetainedAfterFailedUpdates()
+    {
+        var source = RemoteAgendaTests.Microsoft;
+        Serve(source);
+        var repository = Repository();
+        await repository.RefreshAsync();
+        var published = source with { Sessions = [source.Sessions[0] with
+        {
+            YoutubeLink = JsonSerializer.SerializeToElement("https://youtu.be/synthetic01", ConferenceJsonContext.Default.String)
+        }] };
+        Serve(published);
+
+        var updated = await repository.RefreshAsync();
+        Assert.Equal("https://youtu.be/synthetic01", Assert.Single(updated.Document.Sessions).RecordingUrl);
+        var restarted = await Repository().LoadAsync();
+        Assert.Equal(updated.Document.Sessions[0].RecordingUrl, restarted.Document.Sessions[0].RecordingUrl);
+
+        handler.Respond = (_, _) => throw new HttpRequestException("Synthetic offline failure");
+        var failed = await repository.RefreshAsync();
+        Assert.NotEmpty(failed.Issues);
+        Assert.Equal(updated.Document.Sessions[0].RecordingUrl, failed.Document.Sessions[0].RecordingUrl);
+
+        Serve(source);
+        var removed = await repository.RefreshAsync();
+        Assert.Empty(removed.Issues);
+        Assert.Empty(removed.Document.Sessions[0].RecordingUrl);
+        Assert.Empty((await Repository().LoadAsync()).Document.Sessions[0].RecordingUrl);
+    }
+
+    [Fact]
+    public async Task VersionNineCacheReparsesUnchangedFeedToDiscoverPreviouslyOmittedRecording()
+    {
+        var source = RemoteAgendaTests.Microsoft;
+        Serve(source with { Sessions = [source.Sessions[0] with
+        {
+            YoutubeLink = JsonSerializer.SerializeToElement("https://youtu.be/synthetic01", ConferenceJsonContext.Default.String)
+        }] });
+        await Repository().RefreshAsync();
+        var cached = await ReadCacheAsync();
+        await WriteCacheAsync(cached with
+        {
+            SchemaVersion = 9,
+            Microsoft = cached.Microsoft with { Sessions = [cached.Microsoft.Sessions[0] with { RecordingUrl = "" }] }
+        });
+        var repository = Repository();
+        var loaded = await repository.LoadAsync();
+        Assert.Empty(loaded.Document.Sessions[0].RecordingUrl);
+        Assert.True((await ReadCacheAsync()).Microsoft.RequiresRevalidation);
+
+        var refreshed = await repository.RefreshAsync();
+
+        Assert.Empty(refreshed.Issues);
+        Assert.Equal("https://youtu.be/synthetic01", refreshed.Document.Sessions[0].RecordingUrl);
+        Assert.Equal(cached.Microsoft.PayloadHash, (await ReadCacheAsync()).Microsoft.PayloadHash);
     }
 
     [Theory]
@@ -935,7 +1011,7 @@ public sealed class ConferenceRepositoryTests : IDisposable
         Assert.Equal(oldPhoto, Assert.Single(loaded.Document.Speakers).ProfilePicture);
         Assert.Empty(handler.Requests);
         var migrated = await ReadCacheAsync();
-        Assert.Equal(9, migrated.SchemaVersion);
+        Assert.Equal(10, migrated.SchemaVersion);
         Assert.True(migrated.Microsoft.RequiresRevalidation);
         Assert.Equal(cache.Microsoft.PayloadHash, migrated.Microsoft.PayloadHash);
         var offline = await repository.RefreshAsync();
@@ -1024,7 +1100,7 @@ public sealed class ConferenceRepositoryTests : IDisposable
     [InlineData(5)]
     [InlineData(6)]
     [InlineData(7)]
-    [InlineData(10)]
+    [InlineData(11)]
     public async Task UnsupportedCacheIsRejectedUntilMicrosoftRefreshSucceedsWithoutChangingBookmarks(int schema)
     {
         var original = await Repository().RefreshAsync();
@@ -1064,7 +1140,7 @@ public sealed class ConferenceRepositoryTests : IDisposable
         Assert.Empty(refreshed.Issues);
         Assert.Equal(70, refreshed.Document.Sessions.Count);
         Assert.Empty(refreshed.Document.WithdrawnSessions);
-        Assert.Equal(9, (await ReadCacheAsync()).SchemaVersion);
+        Assert.Equal(10, (await ReadCacheAsync()).SchemaVersion);
         Assert.Equal(scheduleBytes, await File.ReadAllBytesAsync(schedulePath));
         AssertOnlyMicrosoftRequests();
         var restarted = await Repository().LoadAsync();

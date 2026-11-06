@@ -9,15 +9,23 @@ public partial class SessionViewModel : ObservableObject
 {
     public SessionViewModel(Session model, IEnumerable<SpeakerViewModel> speakers, bool isSaved, ConferenceViewModel owner)
     {
+        this.owner = owner;
         Model = model;
         Speakers = speakers.Where(speaker => model.SpeakerIds.Contains(speaker.Id)).ToArray();
         IsSaved = isSaved;
         ToggleSaveCommand = new AsyncRelayCommand(() => owner.ToggleSavedAsync(this), () => owner.IsScheduleAvailable);
         OpenCommand = new AsyncRelayCommand(() => owner.OpenSessionAsync(Id));
+        WatchRecordingCommand = new AsyncRelayCommand(() => owner.OpenSessionVideoAsync(Model.RecordingUrl),
+            () => HasRecording);
+        ToggleWatchedCommand = new AsyncRelayCommand(() => owner.ToggleWatchedAsync(this),
+            () => owner.IsWatchedAvailable && HasWatchActions);
+        ShareCommand = new AsyncRelayCommand(() => owner.ShareTextAsync(Title, ShareText), () => !IsWithdrawn);
+        UpdateResources();
         RefreshTime(TimeZoneInfo.Local);
     }
 
     public Session Model { get; private set; }
+    private readonly ConferenceViewModel owner;
     public string Id => Model.Id;
     public string AutomationId => $"session-{Id}";
     public string SaveAutomationId => $"save-{Id}";
@@ -27,23 +35,59 @@ public partial class SessionViewModel : ObservableObject
     public string TopicLabel => string.Join(" / ", Model.Topics);
     public string NavigationDescription => $"{Title}. {DateLabel}, {TimeLabel}. {SpeakerNames}. {TopicLabel}"
         + (IsWithdrawn ? ". No longer in the published agenda." : "")
+        + (HasRecording ? ". Video available." : "")
+        + (IsWatched ? " Marked as watched." : "")
         + (HasConflict ? ". Overlaps another saved session." : ".");
     public IReadOnlyList<SpeakerViewModel> Speakers { get; private set; }
     public IAsyncRelayCommand OpenCommand { get; }
     public IAsyncRelayCommand ToggleSaveCommand { get; }
+    public IAsyncRelayCommand WatchRecordingCommand { get; }
+    public IAsyncRelayCommand ToggleWatchedCommand { get; }
+    public IAsyncRelayCommand ShareCommand { get; }
+    public string ShareLabel => owner.ShareSessionLabel;
+    public string ShareHint => owner.ShareSessionHint;
+    public bool CanShare => !IsWithdrawn;
+    public bool HasRecording => !IsWithdrawn && Model.RecordingUrl.Length > 0;
+    public bool HasWatchActions => HasRecording || IsWatched;
+    public bool HasVideoStatus => HasRecording || IsWatched;
+    public string VideoStatusLabel => IsWatched ? "Watched" : "Video available";
+    public string WatchedActionLabel => IsWatched ? "Mark as not watched" : "Mark as watched";
+    public IReadOnlyList<ConferenceLinkViewModel> Resources { get; private set; } = [];
+    public bool HasResources => Resources.Count > 0 && !IsWithdrawn;
+    public string ShareText => $"Check out this .NET Conf session:\n{Title}" +
+        (Speakers.Count > 0 ? $"\n{SpeakerNames}" : "") +
+        $"\n\n{ConferenceLinks.SessionUrl(Id)}\n{ConferenceLinks.Hashtag}";
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NavigationDescription))]
     [NotifyPropertyChangedFor(nameof(SaveHint))]
     public partial bool IsWithdrawn { get; set; }
 
+    partial void OnIsWithdrawnChanged(bool value)
+    {
+        OnPropertyChanged(nameof(HasRecording));
+        OnPropertyChanged(nameof(HasWatchActions));
+        OnPropertyChanged(nameof(HasVideoStatus));
+        OnPropertyChanged(nameof(HasResources));
+        OnPropertyChanged(nameof(CanShare));
+        WatchRecordingCommand.NotifyCanExecuteChanged();
+        ToggleWatchedCommand.NotifyCanExecuteChanged();
+        ShareCommand.NotifyCanExecuteChanged();
+    }
+
     public void Update(Session model, IEnumerable<SpeakerViewModel> speakers)
     {
         Model = model;
         Speakers = speakers.Where(speaker => model.SpeakerIds.Contains(speaker.Id)).ToArray();
+        UpdateResources();
         IsWithdrawn = false;
+        WatchRecordingCommand.NotifyCanExecuteChanged();
+        ToggleWatchedCommand.NotifyCanExecuteChanged();
         RefreshTime(TimeZoneInfo.Local);
         OnPropertyChanged(string.Empty);
     }
+
+    private void UpdateResources() =>
+        Resources = Model.ResourceLinks.Select(link => new ConferenceLinkViewModel(link, owner)).ToArray();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SaveLabel))]
@@ -51,6 +95,22 @@ public partial class SessionViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(SaveGlyph))]
     [NotifyPropertyChangedFor(nameof(SaveFontFamily))]
     public partial bool IsSaved { get; set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NavigationDescription))]
+    [NotifyPropertyChangedFor(nameof(HasWatchActions))]
+    [NotifyPropertyChangedFor(nameof(HasVideoStatus))]
+    [NotifyPropertyChangedFor(nameof(VideoStatusLabel))]
+    [NotifyPropertyChangedFor(nameof(WatchedActionLabel))]
+    public partial bool IsWatched { get; set; }
+
+    partial void OnIsWatchedChanged(bool value) => ToggleWatchedCommand.NotifyCanExecuteChanged();
+
+    internal void RepublishWatchedState()
+    {
+        OnPropertyChanged(string.Empty);
+        ToggleWatchedCommand.NotifyCanExecuteChanged();
+    }
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NavigationDescription))]
     public partial bool HasConflict { get; set; }

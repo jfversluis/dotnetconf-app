@@ -3,7 +3,7 @@
   "isMock": true,
   "name": ".NET Conf 2026",
   "description": "A free, virtual celebration of .NET 11, bringing developers and the .NET community together to learn and build what is next.",
-  "websiteUrl": "https://www.dotnetconf.net/",
+  "websiteUrl": "https://dot.net/conf",
   "communityEvents": [
     { "id": "amsterdam-watch", "name": "Canal-side .NET viewing party", "kind": "watch-party", "venue": "Sample Canal Hub", "city": "Amsterdam", "country": "Netherlands", "latitude": 52.3702, "longitude": 4.8952, "websiteUrl": "https://example.com/#amsterdam-watch" },
     { "id": "amsterdam-talks", "name": "Amsterdam community talks", "kind": "community-conference", "venue": "Sample Makers Hall", "city": "Amsterdam", "country": "Netherlands", "latitude": 52.3745, "longitude": 4.9001, "websiteUrl": "https://example.com/#amsterdam-talks" },

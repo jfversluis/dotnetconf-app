@@ -30,16 +30,17 @@ Sessions' native Fluent filter toolbar item opens a pushed Filters page, outside
 the result list. Topic choices are full-width, multi-select rows with native
 checkboxes and a subtle selected surface. Sessions matching any chosen topic
 appear on every day, including All days; day selection lives only in the tabs.
-No topic selection means all topics. Changes apply immediately,
+No topic selection means all topics. Video available and Hide watched combine
+with topics and other search criteria. Changes apply immediately,
 and Show N sessions returns to the same Sessions page. Native back keeps the
-chosen filters too. Clear removes all topic choices without changing the selected
+chosen filters too. Clear removes topic, video, and watched filters without changing the selected
 day or search. A small, borderless Clear action beside the persistent compact
 summary beneath the day tabs exposes a one-tap reset without reopening Filters.
 The summary exposes current
 choices without repeating a picker in the scrolling agenda.
 
 The toolbar uses MAUI 11's native `ToolbarItem.BadgeText`, counting selected
-topics, not days, search terms, or results. Zero hides the badge. Its semantic
+topics and active video/watched filters, not days, search terms, or results. Zero hides the badge. Its semantic
 hint identifies the filter action; the visible summary is also available on
 pre-iOS-26 devices where native toolbar badges are unsupported. Badge colors
 use purple/white in light appearance and lavender/midnight in dark appearance.
@@ -195,12 +196,16 @@ tabs and the toolbar filter action return after a constrained compact search.
 Community is a Shell tab; Home's Fluent settings gear opens Settings.
 Settings includes appearance, device-time-zone information, and an About action
 preserving access to disclosure and app information through native back navigation.
-Community's overview leads with a restrained branded introduction, gathering
-formats, and an official-website link. No community events or venues are bundled,
-and no official event feed is connected yet. The primary action says Browse
-community events and opens an honest empty list with an official-website action,
-not an empty map. Editorial sections explain how to start a local
-gathering; there are no invented community statistics or organizer workflows.
+Home shows the published date range, a primary registration action, and a
+quieter link to the official website. It does not imply a live stream is available
+before a destination is published.
+Community's overview leads with a restrained branded introduction, sharing and
+registration, then YouTube and social channels. Meet locally states when no
+events are listed; a single Browse community events action appears only when
+there are listings and opens the list first. No community events or venues are
+bundled, and no official event feed is connected yet. An official-website link
+and short guidance for starting a gathering remain available; there are no
+invented community statistics or organizer workflows.
 The map/list implementation remains available for a future official event source.
 The pushed explorer hides tabs with MAUI Shell, retains native back navigation,
 and gives the map the full available width. A content-sized opaque legend
@@ -227,9 +232,16 @@ a non-map selection path, also directly reachable from the overview.
 Unconfigured Android builds omit the map switch and show an honest availability
 statement alongside the usable list, not API-key setup instructions.
 
-About discloses the Microsoft agenda source and lack of an official community-event feed through `AgendaNotice`. Both mock flags are false; no session, profile or community-event dataset ships in the app. Startup immediately displays a validated local cache, when available, then refreshes Microsoft's agenda without announcing success. A fresh install shows small first-download progress; without a connection it explains how to download the agenda and preserves saved choices. Inline notices appear only when connectivity, updates or local storage need attention; unrelated About and Community screens carry no agenda status. Saved sessions withdrawn from the feed remain in My Schedule with an explicit explanation. Corrupt bookmarks are preserved, saving is disabled, and agenda browsing remains available.
+About discloses the Microsoft agenda source and lack of an official community-event feed through `AgendaNotice`. Both mock flags are false; no session, profile or community-event dataset ships in the app. Startup immediately displays a validated local cache, when available, then refreshes Microsoft's agenda without announcing success. A fresh install shows small first-download progress; without a connection it explains how to download the agenda and preserves saved choices. Inline notices appear when connectivity, updates or local storage need attention, including on Community and the filter page. Saved sessions withdrawn from the feed remain in My Schedule with an explicit explanation. Corrupt bookmarks are preserved, saving is disabled, and agenda browsing remains available.
 
-Speaker rows and detail pages show an approved downloaded cached portrait or the exact bundled .NET Bot placeholder from the website. Speaker photographs are not packaged with the app; GitHub-hosted photos are rejected, including redirects and cached references. Bounded background downloads replace portraits in place; unavailable or invalid images retain the placeholder, including on a first offline launch. Agenda and biographies come only from the public Microsoft feed, never private organizer enrichment. Unpublished bios retain the "Biography to be announced." state. Topic filters explain when no topics have been published. Loading, empty results, no bookmarks, and invalid IDs retain their content states. Overlaps are persistent session attributes, not notification banners or restrictions. Optional showcases must not replace these core affordances.
+Speaker rows and detail pages show a feed-provided downloaded portrait or the exact bundled .NET Bot placeholder from the website. Speaker photographs are not packaged with the app; public URLs may include GitHub-hosted images. Unavailable or invalid images retain the placeholder, including on a first offline launch. Agenda and biographies come only from the public Microsoft feed, never private organizer enrichment. Unpublished bios retain the "Biography to be announced." state. Topic filters explain when no topics have been published. Loading, empty results, no bookmarks, and invalid IDs retain their content states. Overlaps are persistent session attributes, not notification banners or restrictions. Optional showcases must not replace these core affordances.
+
+Session details show Watch session only for a published video link, followed by
+an explicit Mark as watched action. The device handles video links, so a supported
+video app may open; otherwise the link opens in a browser. Opening the link does
+not change watched status. Watched rows say Watched, and the action remains available to undo that
+choice if a video link disappears. Watched state is local and separate from the
+heart; storage failures remain visible without blocking agenda browsing.
 
 About's Third-party dependencies page uses simple, full-width reading rows with
 names and license/version details. Tapping a row opens a bundled, offline license;

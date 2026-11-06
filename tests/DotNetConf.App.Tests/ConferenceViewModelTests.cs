@@ -2,6 +2,7 @@ using DotNetConf.App.Services;
 using DotNetConf.App.ViewModels;
 using DotNetConf.Core;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Networking;
 
 namespace DotNetConf.App.Tests;
@@ -1368,16 +1369,492 @@ public sealed class ConferenceViewModelTests
         Assert.Equal("future", Assert.Single(viewModel.Speakers).Id);
     }
 
+    [Fact]
+    public async Task RecordingRefreshUpdatesOpenDetailsDiscoveryAndFilteredListWithoutAnAppRestart()
+    {
+        var original = Snapshot();
+        var repository = new TestRepository(original);
+        var viewModel = await CreateInitializedAsync(repository, new(), new());
+        var openDetail = Assert.Single(viewModel.Sessions);
+        Assert.False(openDetail.HasRecording);
+        viewModel.RecordingsOnly = true;
+        Assert.Empty(viewModel.Sessions);
+
+        repository.Snapshot = original with { Document = original.Document with
+        {
+            Sessions = [original.Document.Sessions[0] with
+            {
+                RecordingUrl = "https://youtu.be/synthetic01",
+                ResourceLinks = [new("Synthetic resource", "https://example.com/resource")]
+            }]
+        }};
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+
+        Assert.Same(openDetail, Assert.Single(viewModel.Sessions));
+        Assert.True(openDetail.HasRecording);
+        Assert.True(openDetail.WatchRecordingCommand.CanExecute(null));
+        Assert.True(openDetail.HasResources);
+        Assert.Contains("Video available", openDetail.NavigationDescription);
+        Assert.Contains("Video available", viewModel.FilterSummary);
+        Assert.Equal("1", viewModel.FilterBadgeText);
+
+        repository.Snapshot = original;
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+        Assert.False(openDetail.HasRecording);
+        Assert.False(openDetail.WatchRecordingCommand.CanExecute(null));
+        Assert.Empty(openDetail.Resources);
+        Assert.Empty(viewModel.Sessions);
+        viewModel.ClearSessionFiltersCommand.Execute(null);
+        Assert.Same(openDetail, Assert.Single(viewModel.Sessions));
+    }
+
+    [Fact]
+    public async Task SharingAStaleOrWithdrawnSessionIsNotOfferedAndDoesNotMutateTheSchedule()
+    {
+        var original = Snapshot();
+        var sharing = new TestConferenceSharing();
+        var viewModel = Create(new(original), new(), new(), sharing: sharing);
+        await viewModel.InitializeAsync();
+        var session = Assert.Single(viewModel.Sessions);
+
+        await session.ShareCommand.ExecuteAsync(null);
+
+        Assert.Contains(session.Title, sharing.Text);
+        Assert.StartsWith("Check out this .NET Conf session:", sharing.Text);
+        Assert.Contains("Test speaker", sharing.Text);
+        Assert.DoesNotContain("UTC", sharing.Text);
+        Assert.DoesNotContain("planning to watch", sharing.Text);
+        Assert.Contains(ConferenceLinks.Website, sharing.Text);
+        Assert.Contains(ConferenceLinks.Hashtag, sharing.Text);
+        Assert.True(session.IsSaved);
+        session.IsWithdrawn = true;
+        Assert.False(session.CanShare);
+        Assert.False(session.ShareCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task ConferenceDatesAndInvitationFollowUpdatedMetadata()
+    {
+        var original = Snapshot();
+        var repository = new TestRepository(original with { Document = original.Document with
+        {
+            StartDate = new(2026, 11, 10), EndDate = new(2026, 11, 13)
+        } });
+        var sharing = new TestConferenceSharing();
+        var viewModel = Create(repository, new(), new(), sharing: sharing);
+        await viewModel.InitializeAsync();
+        await (viewModel.RefreshCommand.ExecutionTask ?? Task.CompletedTask);
+
+        Assert.Equal("November 10–13 · Online", viewModel.ConferenceDateContext);
+        await viewModel.ShareConferenceCommand.ExecuteAsync(null);
+        Assert.Contains("Test conference, November 10–13.", sharing.Text);
+
+        repository.Snapshot = original with { Document = original.Document with
+        {
+            StartDate = new(2027, 12, 31), EndDate = new(2028, 1, 2)
+        } };
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+        Assert.Equal("December 31, 2027–January 2, 2028 · Online", viewModel.ConferenceDateContext);
+        Assert.Contains("December 31, 2027–January 2, 2028", viewModel.ConferenceShareText);
+
+        repository.Snapshot = original;
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+        Assert.False(viewModel.HasConferenceDates);
+        Assert.Equal("", viewModel.ConferenceDateContext);
+        Assert.DoesNotContain("November", viewModel.ConferenceShareText);
+    }
+
+    [Fact]
+    public async Task CommunityOverviewDistinguishesUnloadedEmptyAndPopulatedEvents()
+    {
+        var original = Snapshot();
+        var repository = new TestRepository(original with { Document = original.Document with
+        {
+            CommunityEventsAreMock = false
+        } });
+        var viewModel = Create(repository, new(), new());
+        Assert.False(viewModel.IsCommunityEventsEmpty);
+        Assert.False(viewModel.HasCommunityEvents);
+
+        await viewModel.InitializeAsync();
+        await (viewModel.RefreshCommand.ExecutionTask ?? Task.CompletedTask);
+        Assert.True(viewModel.IsCommunityEventsEmpty);
+        Assert.Equal("No community events are listed in the app.", viewModel.CommunityEventSummary);
+        Assert.False(viewModel.HasMockCommunityEvents);
+
+        repository.Snapshot = repository.Snapshot with { Document = repository.Snapshot.Document with
+        {
+            CommunityEventsAreMock = true,
+            CommunityEvents = [new CommunityEvent
+            {
+                Id = "synthetic", Name = "Synthetic event", Kind = "watch-party", Venue = "Test venue",
+                City = "Test city", Country = "Test country", Latitude = 0, Longitude = 0,
+                WebsiteUrl = "https://example.com"
+            }]
+        } };
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+        Assert.False(viewModel.IsCommunityEventsEmpty);
+        Assert.True(viewModel.HasCommunityEvents);
+        Assert.True(viewModel.HasMockCommunityEvents);
+        Assert.Contains("fictional", viewModel.CommunityEventSummary);
+    }
+
+    [Fact]
+    public async Task WatchingIsExplicitSeparateFromSavingAndPersistsAcrossViewModels()
+    {
+        var original = Snapshot();
+        var repository = new TestRepository(original with { Document = original.Document with
+        {
+            Sessions = [original.Document.Sessions[0] with { RecordingUrl = "https://youtu.be/synthetic01" }]
+        } });
+        var savedStore = new TestScheduleStore();
+        var watchedStore = new TestScheduleStore();
+        watchedStore.SavedIds.Clear();
+        var browser = new TestBrowser();
+        var videoLauncher = new TestSessionVideoLauncher();
+        var viewModel = await CreateInitializedAsync(repository, savedStore, new(),
+            watched: new(watchedStore), browser: browser, videoLauncher: videoLauncher);
+        var session = Assert.Single(viewModel.Sessions);
+        Assert.True(session.IsSaved);
+        Assert.False(session.IsWatched);
+        Assert.Equal("Mark as watched", session.WatchedActionLabel);
+
+        await session.WatchRecordingCommand.ExecuteAsync(null);
+        Assert.Equal("https://youtu.be/synthetic01", videoLauncher.OpenedUri?.ToString());
+        Assert.Null(browser.OpenedUri);
+        Assert.False(session.IsWatched);
+        Assert.Equal(0, watchedStore.Writes);
+
+        await session.ToggleWatchedCommand.ExecuteAsync(null);
+        Assert.True(session.IsWatched);
+        Assert.True(session.IsSaved);
+        Assert.Equal("Watched", session.VideoStatusLabel);
+        Assert.Equal("Mark as not watched", session.WatchedActionLabel);
+        Assert.Contains("Marked as watched", session.NavigationDescription);
+        Assert.Equal("id", Assert.Single(watchedStore.SavedIds));
+        Assert.Equal("id", Assert.Single(savedStore.SavedIds));
+
+        var restarted = await CreateInitializedAsync(repository, savedStore, new(), watched: new(watchedStore));
+        var restored = Assert.Single(restarted.Sessions);
+        Assert.True(restored.IsWatched);
+        Assert.True(restored.IsSaved);
+        await restored.ToggleWatchedCommand.ExecuteAsync(null);
+        Assert.False(restored.IsWatched);
+        Assert.True(restored.IsSaved);
+        Assert.Empty(watchedStore.SavedIds);
+        Assert.Equal("id", Assert.Single(savedStore.SavedIds));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SessionVideoFallsBackToBrowserWhenSystemLauncherFails(bool throwOnLaunch)
+    {
+        var browser = new TestBrowser();
+        var videoLauncher = new TestSessionVideoLauncher
+        {
+            Result = false,
+            Failure = throwOnLaunch ? new FeatureNotSupportedException("No video handler.") : null
+        };
+        var original = Snapshot();
+        var repository = new TestRepository(original with { Document = original.Document with
+        {
+            Sessions = [original.Document.Sessions[0] with { RecordingUrl = "https://youtu.be/synthetic01" }]
+        } });
+        var viewModel = await CreateInitializedAsync(repository, new(), new(), browser: browser, videoLauncher: videoLauncher);
+        var session = Assert.Single(viewModel.Sessions);
+
+        await session.WatchRecordingCommand.ExecuteAsync(null);
+
+        Assert.Equal("https://youtu.be/synthetic01", videoLauncher.OpenedUri?.ToString());
+        Assert.Equal(videoLauncher.OpenedUri, browser.OpenedUri);
+        Assert.Equal(BrowserLaunchMode.SystemPreferred, browser.LaunchMode);
+        Assert.False(session.IsWatched);
+    }
+
+    [Fact]
+    public async Task SessionVideoReportsWhenNeitherSystemLauncherNorBrowserCanOpen()
+    {
+        var browser = new TestBrowser { Result = false };
+        var launcher = new TestSessionVideoLauncher { Result = false };
+        var viewModel = Create(new(Snapshot()), new(), new(), browser: browser, videoLauncher: launcher);
+
+        var opened = await viewModel.TryOpenSessionVideoAsync(new Uri("https://youtu.be/synthetic01"));
+
+        Assert.False(opened);
+        Assert.Equal(launcher.OpenedUri, browser.OpenedUri);
+    }
+
+    [Fact]
+    public async Task SessionVideoPropagatesBrowserFailureForVisibleRecovery()
+    {
+        var browser = new TestBrowser { Failure = new FeatureNotSupportedException("No browser.") };
+        var launcher = new TestSessionVideoLauncher { Result = false };
+        var viewModel = Create(new(Snapshot()), new(), new(), browser: browser, videoLauncher: launcher);
+
+        await Assert.ThrowsAsync<FeatureNotSupportedException>(() =>
+            viewModel.TryOpenSessionVideoAsync(new Uri("https://youtu.be/synthetic01")));
+    }
+
+    [Theory]
+    [InlineData("https://example.com/watch?v=synthetic01")]
+    [InlineData("https://youtube.com.example.com/watch?v=synthetic01")]
+    [InlineData("http://www.youtube.com/watch?v=synthetic01")]
+    public async Task SessionVideoRejectsUnvalidatedUrlsBeforeOpening(string url)
+    {
+        var browser = new TestBrowser();
+        var launcher = new TestSessionVideoLauncher();
+        var viewModel = Create(new(Snapshot()), new(), new(), browser: browser, videoLauncher: launcher);
+
+        await Assert.ThrowsAsync<UriFormatException>(() => viewModel.TryOpenSessionVideoAsync(new Uri(url)));
+
+        Assert.Null(launcher.OpenedUri);
+        Assert.Null(browser.OpenedUri);
+    }
+
+    [Fact]
+    public async Task ConferenceWebsiteAndRegistrationKeepUsingTheBrowser()
+    {
+        var browser = new TestBrowser();
+        var launcher = new TestSessionVideoLauncher();
+        var viewModel = Create(new(Snapshot()), new(), new(), browser: browser, videoLauncher: launcher);
+
+        await viewModel.OpenWebsiteCommand.ExecuteAsync(null);
+        Assert.Equal(ConferenceLinks.Website, browser.OpenedUri?.ToString());
+        Assert.Equal(BrowserLaunchMode.SystemPreferred, browser.LaunchMode);
+        await viewModel.OpenRegistrationCommand.ExecuteAsync(null);
+        Assert.Equal(ConferenceLinks.Registration, browser.OpenedUri?.ToString());
+        Assert.Equal(BrowserLaunchMode.SystemPreferred, browser.LaunchMode);
+        Assert.Null(launcher.OpenedUri);
+    }
+
+    [Fact]
+    public async Task AvaloniaVideoLauncherUsesThePlatformBrowser()
+    {
+        var browser = new TestBrowser();
+        var launcher = new SessionVideoLauncher(browser);
+        var uri = new Uri("https://youtu.be/synthetic01");
+
+        Assert.True(await launcher.OpenAsync(uri));
+
+        Assert.Equal(uri, browser.OpenedUri);
+        Assert.Equal(BrowserLaunchMode.SystemPreferred, browser.LaunchMode);
+    }
+
+    [Fact]
+    public async Task HideWatchedComposesWithVideoTopicDayAndSearchAndCanBeCleared()
+    {
+        var original = Snapshot();
+        var first = original.Document.Sessions[0] with
+        {
+            Title = "Synthetic watched", Topics = ["Cloud"], RecordingUrl = "https://youtu.be/synthetic01"
+        };
+        var second = first with { Id = "second", Title = "Synthetic unwatched" };
+        var noVideo = first with { Id = "third", Title = "Synthetic no video", RecordingUrl = "" };
+        var otherTopic = first with { Id = "fourth", Title = "Synthetic other", Topics = ["Desktop"] };
+        var repository = new TestRepository(original with { Document = original.Document with
+        {
+            Sessions = [first, second, noVideo, otherTopic]
+        } });
+        var watchedStore = new TestScheduleStore();
+        var viewModel = await CreateInitializedAsync(repository, new(), new(), watched: new(watchedStore));
+        viewModel.SessionQuery = "Synthetic";
+        viewModel.SearchSessionsCommand.Execute(null);
+        viewModel.SelectedDay = Assert.Single(viewModel.Days, day => day.Day is not null);
+        viewModel.RecordingsOnly = true;
+        viewModel.HideWatched = true;
+        Assert.Single(viewModel.Topics, topic => topic.Name == "Cloud").IsSelected = true;
+        var filtered = Assert.Single(viewModel.Sessions);
+        Assert.Equal("second", filtered.Id);
+        Assert.Equal("3", viewModel.FilterBadgeText);
+        Assert.Contains("Cloud", viewModel.FilterSummary);
+        Assert.Contains("Video available", viewModel.FilterSummary);
+        Assert.Contains("Hide watched", viewModel.FilterSummary);
+
+        await filtered.ToggleWatchedCommand.ExecuteAsync(null);
+        Assert.Empty(viewModel.Sessions);
+        Assert.Equal("Show 0 sessions", viewModel.ShowFilteredSessionsLabel);
+        Assert.Contains("unwatched videos", viewModel.SessionsEmptyMessage);
+        await filtered.ToggleWatchedCommand.ExecuteAsync(null);
+        Assert.Same(filtered, Assert.Single(viewModel.Sessions));
+
+        var selectedDay = viewModel.SelectedDay;
+        viewModel.ClearSessionFiltersCommand.Execute(null);
+        Assert.False(viewModel.RecordingsOnly);
+        Assert.False(viewModel.HideWatched);
+        Assert.False(viewModel.HasSessionFilters);
+        Assert.Null(viewModel.FilterBadgeText);
+        Assert.Equal("Synthetic", viewModel.SessionQuery);
+        Assert.Same(selectedDay, viewModel.SelectedDay);
+        Assert.Equal(4, viewModel.Sessions.Count);
+        Assert.True(viewModel.FindSession("id")!.IsSaved);
+    }
+
+    [Fact]
+    public async Task WatchedStatusSurvivesVideoRemovalAndCanStillBeReversed()
+    {
+        var original = Snapshot();
+        var repository = new TestRepository(original);
+        var viewModel = await CreateInitializedAsync(repository, new(), new());
+        var session = Assert.Single(viewModel.Sessions);
+        Assert.False(session.HasWatchActions);
+        Assert.False(session.ToggleWatchedCommand.CanExecute(null));
+
+        repository.Snapshot = original with { Document = original.Document with
+        {
+            Sessions = [original.Document.Sessions[0] with { RecordingUrl = "https://youtu.be/synthetic01" }]
+        } };
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+        Assert.True(session.HasWatchActions);
+        await session.ToggleWatchedCommand.ExecuteAsync(null);
+        Assert.True(session.IsWatched);
+
+        repository.Snapshot = original;
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+        Assert.False(session.HasRecording);
+        Assert.True(session.IsWatched);
+        Assert.True(session.HasWatchActions);
+        Assert.True(session.ToggleWatchedCommand.CanExecute(null));
+        Assert.Equal("Watched", session.VideoStatusLabel);
+        await session.ToggleWatchedCommand.ExecuteAsync(null);
+        Assert.False(session.IsWatched);
+        Assert.False(session.HasWatchActions);
+    }
+
+    [Fact]
+    public async Task WatchedStorageFailuresAreVisibleAndRetryPreservesTheSchedule()
+    {
+        var original = Snapshot();
+        var repository = new TestRepository(original with { Document = original.Document with
+        {
+            Sessions = [original.Document.Sessions[0] with { RecordingUrl = "https://youtu.be/synthetic01" }]
+        } });
+        var watchedStore = new TestScheduleStore { FailReads = true };
+        watchedStore.SavedIds.Clear();
+        var scheduleStore = new TestScheduleStore();
+        var viewModel = await CreateInitializedAsync(repository, scheduleStore, new(), watched: new(watchedStore));
+        var session = Assert.Single(viewModel.Sessions);
+        Assert.False(viewModel.IsWatchedAvailable);
+        Assert.False(viewModel.CanUseWatchedFilter);
+        Assert.False(session.ToggleWatchedCommand.CanExecute(null));
+        Assert.Contains("watched status couldn't be read", viewModel.RefreshMessage);
+        Assert.True(session.IsSaved);
+
+        watchedStore.FailReads = false;
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+        Assert.True(viewModel.IsWatchedAvailable);
+        Assert.True(session.ToggleWatchedCommand.CanExecute(null));
+        Assert.False(viewModel.HasRefreshError);
+        watchedStore.WriteFailure = new IOException("Synthetic write failure");
+        await session.ToggleWatchedCommand.ExecuteAsync(null);
+        Assert.False(session.IsWatched);
+        Assert.Contains("Couldn't update your watched status", viewModel.RefreshMessage);
+        Assert.Empty(watchedStore.SavedIds);
+        Assert.Equal("id", Assert.Single(scheduleStore.SavedIds));
+
+        watchedStore.WriteFailure = null;
+        await session.ToggleWatchedCommand.ExecuteAsync(null);
+        Assert.True(session.IsWatched);
+        Assert.False(viewModel.HasRefreshError);
+        Assert.True(session.IsSaved);
+
+        viewModel.HideWatched = true;
+        watchedStore.FailReads = true;
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+        Assert.False(viewModel.IsWatchedAvailable);
+        Assert.True(viewModel.CanUseWatchedFilter);
+        viewModel.HideWatched = false;
+        Assert.False(viewModel.CanUseWatchedFilter);
+        Assert.Same(session, Assert.Single(viewModel.Sessions));
+        Assert.True(session.IsWatched);
+    }
+
+    [Fact]
+    public async Task WatchedPresentationFailureReportsSavedStateAndRetryRepublishesIt()
+    {
+        var original = Snapshot();
+        var repository = new TestRepository(original with { Document = original.Document with
+        {
+            Sessions = [original.Document.Sessions[0] with { RecordingUrl = "https://youtu.be/synthetic01" }]
+        } });
+        var watchedStore = new TestScheduleStore();
+        watchedStore.SavedIds.Clear();
+        var viewModel = await CreateInitializedAsync(repository, new(), new(), watched: new(watchedStore));
+        var session = Assert.Single(viewModel.Sessions);
+        System.ComponentModel.PropertyChangedEventHandler failure = (_, args) =>
+        {
+            if (args.PropertyName == nameof(SessionViewModel.IsWatched))
+                throw new InvalidOperationException("Synthetic UI notification failure");
+        };
+        session.PropertyChanged += failure;
+
+        await session.ToggleWatchedCommand.ExecuteAsync(null);
+        Assert.Equal("id", Assert.Single(watchedStore.SavedIds));
+        Assert.Contains("watched status is kept", viewModel.RefreshMessage);
+        session.PropertyChanged -= failure;
+        var republished = false;
+        session.PropertyChanged += (_, args) => republished |= args.PropertyName == "";
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+        Assert.True(republished);
+        Assert.True(session.IsWatched);
+        Assert.False(viewModel.HasRefreshError);
+    }
+
+    private sealed class TestBrowser : IBrowser
+    {
+        public Uri? OpenedUri { get; private set; }
+        public BrowserLaunchMode? LaunchMode { get; private set; }
+        public bool Result { get; set; } = true;
+        public Exception? Failure { get; set; }
+        public Task<bool> OpenAsync(Uri uri, BrowserLaunchOptions options)
+        {
+            OpenedUri = uri;
+            LaunchMode = options.LaunchMode;
+            return Failure is null ? Task.FromResult(Result) : Task.FromException<bool>(Failure);
+        }
+    }
+
+    private sealed class TestSessionVideoLauncher : ISessionVideoLauncher
+    {
+        public Uri? OpenedUri { get; private set; }
+        public bool Result { get; set; } = true;
+        public Exception? Failure { get; set; }
+        public Task<bool> OpenAsync(Uri uri)
+        {
+            OpenedUri = uri;
+            return Failure is null ? Task.FromResult(Result) : Task.FromException<bool>(Failure);
+        }
+    }
+
+    private sealed class TestConferenceSharing : IConferenceSharing
+    {
+        public bool CanShare => true;
+        public string Text { get; private set; } = "";
+        public Task ShareAsync(string title, string text) { Text = text; return Task.CompletedTask; }
+        public Task CopyAsync(string text) { Text = text; return Task.CompletedTask; }
+    }
+
     private static ConferenceViewModel Create(TestRepository repository, TestScheduleStore store, TestConnectivity connectivity,
-        ScheduleService? schedule = null, ISessionReminderUpdates? reminders = null) =>
-        new(repository, schedule ?? new ScheduleService(store), new DetailNavigationService(), null!, connectivity,
-            NullLogger<ConferenceViewModel>.Instance, reminders ?? new TestReminders());
+        ScheduleService? schedule = null, ISessionReminderUpdates? reminders = null, IConferenceSharing? sharing = null,
+        WatchedSessionService? watched = null, IBrowser? browser = null, ISessionVideoLauncher? videoLauncher = null) =>
+        new(repository, schedule ?? new ScheduleService(store), watched ?? EmptyWatchedService(), new DetailNavigationService(),
+            browser!, videoLauncher ?? new TestSessionVideoLauncher(), connectivity,
+            NullLogger<ConferenceViewModel>.Instance, reminders ?? new TestReminders(), sharing ?? new TestConferenceSharing());
+
+    private static WatchedSessionService EmptyWatchedService()
+    {
+        var store = new TestScheduleStore();
+        store.SavedIds.Clear();
+        return new(store);
+    }
 
     private static async Task<ConferenceViewModel> CreateInitializedAsync(
         TestRepository repository, TestScheduleStore store, TestConnectivity connectivity,
-        ScheduleService? schedule = null, ISessionReminderUpdates? reminders = null)
+        ScheduleService? schedule = null, ISessionReminderUpdates? reminders = null,
+        WatchedSessionService? watched = null, IBrowser? browser = null, ISessionVideoLauncher? videoLauncher = null)
     {
-        var viewModel = Create(repository, store, connectivity, schedule, reminders);
+        var viewModel = Create(repository, store, connectivity, schedule, reminders, watched: watched, browser: browser,
+            videoLauncher: videoLauncher);
         await viewModel.InitializeAsync();
         await (viewModel.RefreshCommand.ExecutionTask ?? Task.CompletedTask);
         return viewModel;

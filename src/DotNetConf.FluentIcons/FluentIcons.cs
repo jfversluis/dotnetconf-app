@@ -23,6 +23,7 @@ public static class FluentIconsRegular
     public const string Presenter24 = "\uf622";
     public const string Search24 = "\uf690";
     public const string Settings24 = "\uf6aa";
+    public const string ShareIos24 = "\uf6b6";
     public const string Sparkle24 = "\ueb34";
     public const string VideoClip24 = "\uf850";
 }

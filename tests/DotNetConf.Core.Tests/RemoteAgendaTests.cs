@@ -9,7 +9,7 @@ public sealed class RemoteAgendaTests
     internal const string GeraldId = "speaker-gerald-versluis";
     internal static readonly ConferenceDocument Previous = new()
     {
-        SchemaVersion = 1, Name = ".NET Conf", Description = "Conference", WebsiteUrl = "https://dotnetconf.net",
+        SchemaVersion = 1, Name = ".NET Conf", Description = "Conference", WebsiteUrl = "https://dot.net/conf",
         StartDate = new DateOnly(2026, 11, 10),
         Speakers =
         [

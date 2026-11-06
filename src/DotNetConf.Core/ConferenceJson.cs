@@ -22,6 +22,8 @@ public static class ConferenceJson
             throw new InvalidDataException("Conference name and description are required.");
         if (!Uri.TryCreate(document.WebsiteUrl, UriKind.Absolute, out var website) || website.Scheme != Uri.UriSchemeHttps)
             throw new InvalidDataException("The conference website must be an absolute HTTPS URL.");
+        if (document.EndDate is { } end && (document.StartDate is not { } start || end < start))
+            throw new InvalidDataException("The conference end date requires a start date and cannot precede it.");
         if (document.Speakers is null || document.WithdrawnSpeakers is null ||
             document.Sessions is null || document.WithdrawnSessions is null ||
             document.CommunityEvents is null)
@@ -50,6 +52,7 @@ public static class ConferenceJson
             if (speaker is null || string.IsNullOrWhiteSpace(speaker.Id) || string.IsNullOrWhiteSpace(speaker.Name) ||
                 !speakerIds.Add(speaker.Id))
                 throw new InvalidDataException("Speakers require unique IDs and non-empty names.");
+            ValidateLinks(speaker.SocialLinks);
         }
 
         var currentSpeakerIds = document.Speakers.Select(speaker => speaker.Id).ToHashSet(StringComparer.Ordinal);
@@ -70,8 +73,18 @@ public static class ConferenceJson
                     session.SpeakerIds.Distinct(StringComparer.Ordinal).Count() != session.SpeakerIds.Count ||
                     session.Topics.Any(string.IsNullOrWhiteSpace))
                     throw new InvalidDataException($"Session '{session.Id}' has invalid speaker references or topics.");
+                if (session.RecordingUrl is null || (session.RecordingUrl.Length > 0 && !ConferenceLinks.IsYouTubeUrl(session.RecordingUrl)))
+                    throw new InvalidDataException($"Session '{session.Id}' has an invalid recording URL.");
+                ValidateLinks(session.ResourceLinks);
             }
 
+    }
+
+    private static void ValidateLinks(List<ConferenceLink>? links)
+    {
+        if (links is null || links.Any(link => link is null || string.IsNullOrWhiteSpace(link.Title) ||
+                !ConferenceLinks.IsSafeUrl(link.Url)))
+            throw new InvalidDataException("Published links require a title and an absolute HTTPS URL without credentials.");
     }
 }
 

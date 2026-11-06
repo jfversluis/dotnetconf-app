@@ -24,6 +24,9 @@
     <FontImageSource x:Key="WatchPartyIcon" Glyph="{x:Static icons:FluentIconsRegular.VideoClip24}"
                      FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
                      Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+    <FontImageSource x:Key="PrimaryVideoIcon" Glyph="{x:Static icons:FluentIconsRegular.VideoClip24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
+                     Color="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource Midnight}}" />
     <FontImageSource x:Key="InPersonIcon" Glyph="{x:Static icons:FluentIconsRegular.Presenter24}"
                      FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
                      Color="{AppThemeBinding Light={StaticResource Magenta}, Dark={StaticResource Lavender}}" />
@@ -61,6 +64,9 @@
                      FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
                      Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
     <FontImageSource x:Key="SettingsIcon" Glyph="{x:Static icons:FluentIconsRegular.Settings24}"
+                     FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
+                     Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+    <FontImageSource x:Key="ShareIcon" Glyph="{x:Static icons:FluentIconsRegular.ShareIos24}"
                      FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
                      Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
     <FontImageSource x:Key="WebsiteIcon" Glyph="{x:Static icons:FluentIconsRegular.Open24}"
