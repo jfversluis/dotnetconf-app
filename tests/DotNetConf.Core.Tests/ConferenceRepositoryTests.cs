@@ -932,7 +932,7 @@ public sealed class ConferenceRepositoryTests : IDisposable
         await repository.RefreshAsync();
         var published = source with { Sessions = [source.Sessions[0] with
         {
-            YoutubeLink = JsonSerializer.SerializeToElement("https://youtu.be/synthetic01")
+            YoutubeLink = JsonSerializer.SerializeToElement("https://youtu.be/synthetic01", ConferenceJsonContext.Default.String)
         }] };
         Serve(published);
 
@@ -959,7 +959,7 @@ public sealed class ConferenceRepositoryTests : IDisposable
         var source = RemoteAgendaTests.Microsoft;
         Serve(source with { Sessions = [source.Sessions[0] with
         {
-            YoutubeLink = JsonSerializer.SerializeToElement("https://youtu.be/synthetic01")
+            YoutubeLink = JsonSerializer.SerializeToElement("https://youtu.be/synthetic01", ConferenceJsonContext.Default.String)
         }] });
         await Repository().RefreshAsync();
         var cached = await ReadCacheAsync();

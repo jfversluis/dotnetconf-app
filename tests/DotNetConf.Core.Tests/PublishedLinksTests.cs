@@ -8,7 +8,11 @@ namespace DotNetConf.Core.Tests;
 // All recording URLs and link labels in these tests are synthetic.
 public sealed class PublishedLinksTests
 {
-    private static JsonElement Value<T>(T value) => JsonSerializer.SerializeToElement(value);
+    private static JsonElement Value(string value) =>
+        JsonSerializer.SerializeToElement(value, ConferenceJsonContext.Default.String);
+
+    private static JsonElement Value(string[] value) =>
+        JsonSerializer.SerializeToElement(value, ConferenceJsonContext.Default.StringArray);
 
     private static async Task<ConferenceDocument> Read(MicrosoftAgenda data, ConferenceDocument? previous = null)
     {
