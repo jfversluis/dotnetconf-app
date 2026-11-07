@@ -15,9 +15,9 @@ Copyright (c) .NET Foundation Contributors
 https://github.com/dotnet/macios
 MIT license: LICENSE-MaciOS.txt
 
-Microsoft.Maui.Essentials.AI 11.0.0-local.e616af94 (Linux: 11.0.0-local.e616af94.linux)
+Microsoft.Maui.Essentials.AI 11.0.0-preview.8.26555.2
 Copyright (c) Microsoft Corporation
-Unofficial local build from https://github.com/dotnet/maui-labs/tree/e616af94cc1642e782b1deac433eb6a582cdce92
+https://www.nuget.org/packages/Microsoft.Maui.Essentials.AI/11.0.0-preview.8.26555.2
 MIT license: LICENSE-DotNetFoundation.txt
 
 Microsoft.Maui.AI.Attributes 0.1.0-preview.14.26531.2
@@ -80,7 +80,7 @@ https://github.com/floriankarsten/space-grotesk
 SIL Open Font License 1.1: LICENSE-SpaceGrotesk.txt
 
 Google ML Kit GenAI native components (Android only)
-The local Essentials.AI package includes Google's genai-prompt and genai-common
+The published Essentials.AI package includes Google's genai-prompt and genai-common
 1.0.0-beta5 AARs and genai-schema 1.0.0-alpha2 JAR. These native components
 are not covered by the Essentials.AI MIT license. Their unmodified embedded
 third-party license texts are preserved in NOTICE-MLKitPrompt.txt,

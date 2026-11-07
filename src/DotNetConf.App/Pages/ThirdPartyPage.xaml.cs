@@ -16,7 +16,7 @@ public partial class ThirdPartyPage : ContentPage
 #elif AVALONIA
         new(".NET MAUI Foldable", "11.0.0-rc.2.26505.5 · MIT", "LICENSE-DotNetFoundation.txt"),
 #endif
-        new("MAUI Essentials AI", "Local build from maui-labs e616af94 · MIT", "LICENSE-DotNetFoundation.txt"),
+        new("MAUI Essentials AI", "11.0.0-preview.8.26555.2 · MIT", "LICENSE-DotNetFoundation.txt"),
         new("MAUI AI Attributes", "0.1.0-preview.14.26531.2 · MIT", "LICENSE-DotNetFoundation.txt"),
         new("Microsoft.Extensions.AI", "10.4.1 · MIT", "LICENSE-DotNetFoundation.txt"),
         new("Plugin.LocalNotification", "14.0.0 · MIT", "LICENSE-LocalNotification.txt"),

@@ -35,11 +35,8 @@ CI sets `MobileTargetFramework` to narrow the app's restore to the platform on
 that runner without overriding the Core project's `net11.0` target. Local builds
 still default to both mobile targets.
 
-Until the next official Essentials.AI release is available, both CI and the
-test-track workflow build the pinned public-source package in the shared
-`local-essentials-package.yml` workflow. Its artifacts populate the temporary
-local NuGet feed before either mobile job restores. This package is unofficial;
-see [CONTRIBUTING.md](../CONTRIBUTING.md) for its source and replacement steps.
+The app and CI restore the pinned `Microsoft.Maui.Essentials.AI`
+`11.0.0-preview.8.26555.2` package directly from NuGet.org.
 
 The repository's active `main` ruleset requires pull requests, resolved review
 threads, and an up-to-date branch with passing `Core tests`, `android build`,
