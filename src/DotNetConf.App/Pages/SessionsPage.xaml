@@ -18,14 +18,12 @@
     <Grid x:Name="SearchLayout" RowDefinitions="Auto,*" SafeAreaEdges="Container,None,Container,None">
         <VerticalStackLayout x:Name="SessionHeader" Padding="24,16,24,8" Spacing="16">
             <Label x:Name="SessionHeading" Text="Find your next idea" Style="{StaticResource Heading}" />
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                <controls:AgendaSearchField x:Name="SearchField" Text="{Binding SessionQuery}" ApplyQueryCommand="{Binding SearchSessionsCommand}"
-                                            Placeholder="Talks, topics, or speakers"
-                                            SearchDescription="Search sessions by talk, topic, or speaker"
-                                            SearchAutomationId="session-search" ClearAutomationId="session-search-clear" />
-                <controls:CompactSearchStatus Grid.Column="1"
-                                              IsVisible="{Binding Source={x:Reference Page}, Path=IsCompactSearchActive, x:DataType=pages:AdaptiveConferencePage}" />
-            </Grid>
+            <controls:AgendaSearchField x:Name="SearchField" Text="{Binding SessionQuery}" ApplyQueryCommand="{Binding SearchSessionsCommand}"
+                                        Placeholder="Talks, topics, or speakers"
+                                        SearchDescription="Search sessions by talk, topic, or speaker"
+                                        SearchAutomationId="session-search" ClearAutomationId="session-search-clear" />
+            <controls:CompactSearchStatus
+                IsVisible="{Binding Source={x:Reference Page}, Path=IsCompactSearchActive, x:DataType=pages:AdaptiveConferencePage}" />
             <ContentView x:Name="PinnedHeader">
                 <VerticalStackLayout x:Name="FilterHeader" Spacing="16">
                     <tabs:SfTabView x:Name="DayTabs" SelectionChanged="OnDaySelectionChanged"
@@ -100,6 +98,9 @@
                                    HorizontalOptions="Start" AutomationId="sessions-initial-loading" />
                 <Label Text="{Binding SessionsEmptyTitle}" Style="{StaticResource Subheading}" AutomationId="sessions-empty-title" />
                 <Label Text="{Binding SessionsEmptyMessage}" Style="{StaticResource Secondary}" AutomationId="sessions-empty-message" />
+                <Button Text="Clear all filters and search" Command="{Binding ClearAllSessionCriteriaCommand}"
+                        IsVisible="{Binding HasActiveSessionCriteria}" Style="{StaticResource QuietButton}"
+                        LineBreakMode="WordWrap" AutomationId="sessions-clear-all" />
             </VerticalStackLayout>
         </CollectionView.EmptyView>
     </CollectionView>
@@ -135,6 +136,9 @@
                                        HorizontalOptions="Start" AutomationId="sessions-compact-loading" />
                     <Label Text="{Binding SessionsEmptyTitle}" Style="{StaticResource Subheading}" AutomationId="sessions-compact-empty-title" />
                     <Label Text="{Binding SessionsEmptyMessage}" Style="{StaticResource Secondary}" AutomationId="sessions-compact-empty-message" />
+                    <Button Text="Clear all filters and search" Command="{Binding ClearAllSessionCriteriaCommand}"
+                            IsVisible="{Binding HasActiveSessionCriteria}" Style="{StaticResource QuietButton}"
+                            LineBreakMode="WordWrap" AutomationId="sessions-compact-clear-all" />
                 </VerticalStackLayout>
             </CollectionView.EmptyView>
         </CollectionView>

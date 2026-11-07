@@ -13,6 +13,20 @@ public sealed class ConferenceTests
         return await ConferenceJson.ReadAsync(stream);
     }
 
+    [Theory]
+    [InlineData(-1, false)]
+    [InlineData(0, true)]
+    [InlineData(1799, true)]
+    [InlineData(1800, false)]
+    public async Task InProgressUsesStartInclusiveAndEndExclusiveInstants(int seconds, bool expected)
+    {
+        var original = (await LoadAsync()).Sessions[0];
+        var start = new DateTimeOffset(2026, 11, 10, 17, 0, 0, TimeSpan.FromHours(1));
+        var session = original with { StartsAt = start, EndsAt = start.AddMinutes(30) };
+
+        Assert.Equal(expected, Agenda.IsInProgress(session, start.ToUniversalTime().AddSeconds(seconds)));
+    }
+
     [Fact]
     public async Task BundledMetadataUsesTheCanonicalConferenceLinkWithoutBundlingAgendaData()
     {

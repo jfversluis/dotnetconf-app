@@ -39,6 +39,7 @@ public partial class HomePage : ConferencePage
             window.Activated += WindowActivated;
             window.Stopped += WindowStopped;
         }
+        conference.RefreshSessionStatuses(DateTimeOffset.UtcNow);
         await CheckReadinessAsync();
     }
 
@@ -65,7 +66,7 @@ public partial class HomePage : ConferencePage
         {
             await ask.CheckAvailabilityAsync(readiness.Token);
             AskLauncher.IsVisible = ask.IsAvailable;
-            ExploreSessions.IsVisible = !ask.IsAvailable;
+            BrowseSessions.IsVisible = !ask.IsAvailable;
         }
         catch (OperationCanceledException) { }
     }

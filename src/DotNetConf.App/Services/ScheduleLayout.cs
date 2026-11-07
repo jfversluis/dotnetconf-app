@@ -7,6 +7,13 @@ public static class ScheduleLayout
     public const double TimelineLabelsWidth = 340;
     public const double MinimumTimelinePaneWidth = 340;
     public const double MinimumDetailPaneWidth = 300;
+    public const double MinimumTimelineContentWidth = 320;
+    public const double MinimumReadableTimelineCardHeight = 48;
+
+    public static double TimelineContentWidth(double viewportWidth) =>
+        double.IsFinite(viewportWidth) && viewportWidth > 0
+            ? Math.Max(MinimumTimelineContentWidth, viewportWidth)
+            : throw new ArgumentOutOfRangeException(nameof(viewportWidth));
 
     public static DetailLayout ForDetails(DetailLayout layout, double width, double textScale = 1)
     {
@@ -26,6 +33,15 @@ public static class ScheduleLayout
     }
 
     public static bool ShouldStackTimelineLabels(double width) => width < TimelineLabelsWidth;
+
+    public static bool ShouldPinTimelineDayHeader(double viewportHeight, double headerHeight, double bottomInset) =>
+        viewportHeight - bottomInset >= headerHeight + MinimumReadableTimelineCardHeight;
+
+    public static bool ShouldUseCompactHeader(double width, double height, double textScale = 1)
+    {
+        var scale = Scale(textScale);
+        return width < 260 * scale || height < ComfortableHeight * scale;
+    }
 
     public static bool ShouldWrapTopics(double width, double height, double textScale = 1) =>
         width >= WrappedTopicsWidth * Scale(textScale) && height >= ComfortableHeight * Scale(textScale);

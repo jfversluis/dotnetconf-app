@@ -72,7 +72,7 @@ public sealed class PlannerLifecycleTests
         Assert.Equal(["already-liked", "building-with-maui"], store.Saved.Order().ToArray());
         Assert.True(vm.HasAddedSessions);
         Assert.Empty(vm.Sessions);
-        Assert.Equal("1 selected session added to My Schedule. Your previous likes were kept.", Assert.Single(outcomes));
+        Assert.Equal("1 session added to My Schedule. Your other saved sessions are unchanged.", Assert.Single(outcomes));
         await updates.Received(1).AddPlannerProposalAsync(Arg.Any<ConferenceDocument>(), Arg.Any<ScheduleProposal>(),
             Arg.Any<TimeZoneInfo>(), Arg.Any<CancellationToken>());
     }
@@ -87,12 +87,15 @@ public sealed class PlannerLifecycleTests
             .Returns(new PlannerResult(null, message));
         var outcomes = new List<string>();
         vm.OutcomeAvailable += (_, outcome) => outcomes.Add(outcome);
+        var existing = Assert.Single(vm.Sessions);
 
         await vm.GenerateCommand.ExecuteAsync(null);
 
         Assert.Equal(message[..1600], vm.Status);
         Assert.Equal(vm.Status, Assert.Single(outcomes));
-        Assert.False(vm.HasProposal);
+        Assert.True(vm.HasProposal);
+        Assert.Same(existing, Assert.Single(vm.Sessions));
+        Assert.True(existing.IsSelected);
         Assert.Equal(["already-liked"], store.Saved);
     }
 
@@ -151,7 +154,7 @@ public sealed class PlannerLifecycleTests
         Assert.Same(row, Assert.Single(vm.Sessions));
         Assert.True(row.IsSelected);
         Assert.False(vm.ConstraintsConfirmed);
-        Assert.Contains("Couldn't save", vm.Status);
+        Assert.Contains("Couldn't add", vm.Status);
         Assert.Equal(["already-liked"], store.Saved);
         await planner.DidNotReceive().CheckReadinessAsync(Arg.Any<CancellationToken>());
     }
@@ -275,7 +278,7 @@ public sealed class PlannerLifecycleTests
 
         if (fail)
         {
-            Assert.Contains("Couldn't save", vm.Status);
+            Assert.Contains("Couldn't add", vm.Status);
             Assert.Same(row, Assert.Single(vm.Sessions));
             Assert.True(vm.IsAiMode);
             Assert.Equal(["already-liked"], store.Saved);
@@ -399,7 +402,7 @@ public sealed class PlannerLifecycleTests
         Assert.True(Assert.Single(vm.Sessions).CanSelect);
         Assert.Equal(["already-liked"], store.Saved);
         Assert.False(vm.HasAddedSessions);
-        Assert.Contains("Couldn't save", Assert.Single(outcomes));
+        Assert.Contains("Couldn't add", Assert.Single(outcomes));
         Assert.False(vm.ConstraintsConfirmed);
     }
 
@@ -430,14 +433,16 @@ public sealed class PlannerLifecycleTests
             });
         var outcomes = new List<string>();
         vm.OutcomeAvailable += (_, message) => outcomes.Add(message);
+        var existing = Assert.Single(vm.Sessions);
         var generate = vm.GenerateCommand.ExecuteAsync(null);
         Assert.True(vm.IsBusy);
         vm.Cancel();
         Assert.True(token.IsCancellationRequested);
         pending.SetResult(new(new(["building-with-maui"], [], []), ""));
         await generate;
-        Assert.Empty(vm.Sessions);
-        Assert.False(vm.HasProposal);
+        Assert.Same(existing, Assert.Single(vm.Sessions));
+        Assert.True(vm.HasProposal);
+        Assert.True(existing.IsSelected);
         Assert.Contains("cancelled", Assert.Single(outcomes));
     }
 
@@ -478,7 +483,8 @@ public sealed class PlannerLifecycleTests
     [Fact]
     public async Task ChangedSessionTimesRequireAUserToReviewANewProposal()
     {
-        var (vm, _, _, store, data) = await CreateAsync();
+        var (vm, planner, _, store, data) = await CreateAsync();
+        var selection = Assert.Single(vm.Sessions);
         var original = await data.LoadAsync();
         data.LoadAsync(Arg.Any<CancellationToken>()).Returns(original with
         {
@@ -491,6 +497,40 @@ public sealed class PlannerLifecycleTests
         Assert.False(vm.HasAddedSessions);
         Assert.Equal(["already-liked"], store.Saved);
         Assert.Contains("latest session times", vm.Status);
+        Assert.Same(selection, Assert.Single(vm.Sessions));
+        Assert.True(selection.IsSelected);
+        Assert.True(vm.PreviewNeedsRefresh);
+        Assert.False(vm.CanConfirm);
+        Assert.False(vm.CanApply);
+
+        planner.ProposeAsync(Arg.Any<ConferenceDocument>(), Arg.Any<string>(), Arg.Any<TimeZoneInfo>(),
+                Arg.Any<string[]>(), Arg.Any<CancellationToken>(), Arg.Any<bool>(), Arg.Any<PlannerWatchingHours>())
+            .Returns(new PlannerResult(new(["building-with-maui"], [], []), ""));
+        await vm.GenerateCommand.ExecuteAsync(null);
+        Assert.False(vm.PreviewNeedsRefresh);
+        Assert.True(vm.CanConfirm);
+        vm.ConstraintsConfirmed = true;
+        Assert.True(vm.CanApply);
+    }
+
+    [Fact]
+    public async Task AgendaChangedDuringSaveKeepsTheCheckedPreview()
+    {
+        var (vm, _, updates, store, _) = await CreateAsync();
+        var selection = Assert.Single(vm.Sessions);
+        updates.AddPlannerProposalAsync(Arg.Any<ConferenceDocument>(), Arg.Any<ScheduleProposal>(),
+                Arg.Any<TimeZoneInfo>(), Arg.Any<CancellationToken>())
+            .Returns((PlannerSaveResult?)null);
+        vm.ConstraintsConfirmed = true;
+
+        await vm.ApplyCommand.ExecuteAsync(null);
+
+        Assert.Same(selection, Assert.Single(vm.Sessions));
+        Assert.True(selection.IsSelected);
+        Assert.True(vm.PreviewNeedsRefresh);
+        Assert.False(vm.CanConfirm);
+        Assert.False(vm.CanApply);
+        Assert.Equal(["already-liked"], store.Saved);
     }
 
     [Fact]
@@ -511,26 +551,72 @@ public sealed class PlannerLifecycleTests
     }
 
     [Fact]
-    public async Task WatchingHourChangesInvalidateAnAlreadyConfirmedShortlist()
+    public async Task WatchingHourChangesPreserveTheShortlistUntilItIsReplaced()
     {
         var (vm, planner, _, store, _) = await CreateAsync();
         vm.ToggleWatchingHoursCommand.Execute(null);
         vm.ConstraintsConfirmed = true;
         var changed = new List<string?>();
         vm.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
+        var existing = Assert.Single(vm.Sessions);
         vm.WatchingStart = TimeSpan.FromHours(8);
         Assert.Equal("Watching hours: 08:00\u201323:00", vm.WatchingHoursSummary);
         Assert.Contains(nameof(vm.WatchingHoursSummary), changed);
         Assert.Contains(nameof(vm.WatchingHoursActionDescription), changed);
-        Assert.False(vm.HasProposal);
+        Assert.True(vm.HasProposal);
+        Assert.True(vm.HasChangedCriteria);
         Assert.False(vm.CanApply);
         Assert.False(vm.ConstraintsConfirmed);
-        Assert.Empty(vm.Sessions);
+        Assert.Same(existing, Assert.Single(vm.Sessions));
+        Assert.True(existing.IsSelected);
         await vm.GenerateCommand.ExecuteAsync(null);
         Assert.False(vm.ShowWatchingHours);
+        Assert.False(vm.HasChangedCriteria);
         await planner.Received().ProposeAsync(Arg.Any<ConferenceDocument>(), Arg.Any<string>(), Arg.Any<TimeZoneInfo>(),
             Arg.Any<string[]>(), Arg.Any<CancellationToken>(), false,
             new PlannerWatchingHours(new(8, 0), new(23, 0)));
+        Assert.Equal(["already-liked"], store.Saved);
+    }
+
+    [Fact]
+    public async Task EditingAndRestoringTheRequestKeepsCheckedSuggestions()
+    {
+        var (vm, _, _, store, _) = await CreateAsync();
+        var existing = Assert.Single(vm.Sessions);
+        vm.ConstraintsConfirmed = true;
+
+        vm.Request = "A different synthetic request";
+        vm.WatchingEnd = TimeSpan.FromHours(20);
+
+        Assert.True(vm.HasChangedCriteria);
+        Assert.False(vm.CanApply);
+        Assert.False(vm.CanConfirm);
+        Assert.Same(existing, Assert.Single(vm.Sessions));
+        Assert.True(existing.IsSelected);
+        vm.RestoreReviewedRequestCommand.Execute(null);
+        Assert.Equal("Mobile", vm.Request);
+        Assert.Equal(TimeSpan.FromHours(23), vm.WatchingEnd);
+        Assert.False(vm.HasChangedCriteria);
+        Assert.False(vm.ConstraintsConfirmed);
+        vm.ConstraintsConfirmed = true;
+        Assert.True(vm.CanApply);
+        Assert.Equal(["already-liked"], store.Saved);
+    }
+
+    [Fact]
+    public async Task FailedRandomDiscoveryKeepsThePreviousAiPreview()
+    {
+        var (vm, _, _, store, data) = await CreateAsync();
+        var existing = Assert.Single(vm.Sessions);
+        data.LoadAsync(Arg.Any<CancellationToken>()).Returns(new ConferenceDocument());
+
+        await vm.ExploreCommand.ExecuteAsync(null);
+
+        Assert.True(vm.IsAiMode);
+        Assert.True(vm.HasProposal);
+        Assert.Same(existing, Assert.Single(vm.Sessions));
+        Assert.True(existing.IsSelected);
+        Assert.Contains("Download the agenda", vm.Status);
         Assert.Equal(["already-liked"], store.Saved);
     }
 
@@ -569,7 +655,8 @@ public sealed class PlannerLifecycleTests
         Assert.True(vm.HasStatus);
         Assert.Contains("Choose different", vm.Status);
         Assert.False(vm.CanApply);
-        Assert.Empty(vm.Sessions);
+        Assert.True(vm.HasChangedCriteria);
+        Assert.True(Assert.Single(vm.Sessions).IsSelected);
         Assert.Equal(["already-liked"], store.Saved);
     }
 
@@ -582,7 +669,8 @@ public sealed class PlannerLifecycleTests
         await vm.GenerateCommand.ExecuteAsync(null);
         Assert.Contains("Choose different", vm.Status);
         Assert.True(vm.ShowWatchingHours);
-        Assert.False(vm.HasProposal);
+        Assert.True(vm.HasProposal);
+        Assert.True(Assert.Single(vm.Sessions).IsSelected);
         await planner.DidNotReceive().ProposeAsync(Arg.Any<ConferenceDocument>(), Arg.Any<string>(), Arg.Any<TimeZoneInfo>(),
             Arg.Any<string[]>(), Arg.Any<CancellationToken>(), Arg.Any<bool>(), Arg.Any<PlannerWatchingHours>());
     }

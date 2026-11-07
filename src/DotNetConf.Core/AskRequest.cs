@@ -282,10 +282,10 @@ public static class AskRequest
                 .Select(s => Agenda.LocalDay(s.StartsAt, zone)).Distinct().Order().ToArray();
             var matchingDays = days.Where(d => MatchesDay(d, intent.Day)).ToArray();
             if (matchingDays.Length == 0)
-                return new(intent, [], "That day isn't in the downloaded agenda. Try a conference weekday or yyyy-MM-dd date.");
+                return new(intent, [], "That day isn't in the downloaded agenda. Try a conference weekday or a full date.");
             if (matchingDays.Length > 1)
                 return new(intent, matchingDays.Select(d => new AskChoice(
-                    d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), d.ToString("dddd, MMMM d"), "Device-local date")).ToArray(),
+                    d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), d.ToString("dddd, MMMM d"), "Your local date")).ToArray(),
                     "Which conference date?", true);
             day = matchingDays[0];
         }

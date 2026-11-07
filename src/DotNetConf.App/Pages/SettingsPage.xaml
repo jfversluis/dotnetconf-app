@@ -36,13 +36,18 @@
                 <Label Text="Get a local notification when a saved session begins. Your device controls delivery."
                        Style="{StaticResource Secondary}" />
                 <Label Text="{Binding Reminders.Status}" AutomationId="settings-reminder-status" />
-                <Button Text="Enable or retry reminders" Clicked="EnableRemindersClicked" LineBreakMode="WordWrap"
+                <Button Text="Enable reminders" Clicked="EnableRemindersClicked" LineBreakMode="WordWrap"
+                        IsVisible="{Binding Reminders.CanEnable}" IsEnabled="{Binding CanChangeReminders}"
                         Style="{StaticResource QuietButton}" AutomationId="settings-enable-reminders" />
+                <Button Text="Retry reminders" Clicked="RetryRemindersClicked" LineBreakMode="WordWrap"
+                        IsVisible="{Binding Reminders.CanRetry}" IsEnabled="{Binding CanChangeReminders}"
+                        Style="{StaticResource QuietButton}" AutomationId="settings-retry-reminders" />
                 <Button Text="Turn off reminders" Clicked="DisableRemindersClicked" LineBreakMode="WordWrap"
-                        IsVisible="{Binding Reminders.Enabled}" Style="{StaticResource QuietButton}"
+                        IsVisible="{Binding Reminders.Enabled}" IsEnabled="{Binding CanChangeReminders}" Style="{StaticResource QuietButton}"
                         AutomationId="settings-disable-reminders" />
-                <Button Text="Open notification settings" Clicked="NotificationSettingsClicked" LineBreakMode="WordWrap"
-                        Style="{StaticResource QuietButton}" AutomationId="settings-notification-settings" />
+                <Button Text="Open device settings" Clicked="NotificationSettingsClicked" LineBreakMode="WordWrap"
+                        IsVisible="{Binding Reminders.PermissionBlocked}" Style="{StaticResource QuietButton}"
+                        AutomationId="settings-notification-settings" />
             </VerticalStackLayout>
             <BoxView HeightRequest="1" />
             <VerticalStackLayout Spacing="12">

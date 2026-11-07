@@ -212,7 +212,7 @@ internal sealed class SessionCard : Button
         var compact = height < 28;
         // In narrow lanes the start is enough: the card's height already shows how long it runs.
         time.Text = narrow ? startLabel : Session?.TimeLabel;
-        Heart.IsVisible = height >= 44 && width >= 96;
+        Heart.IsVisible = height >= 48 && width >= 96;
         speakers.IsVisible = height >= 92 && !narrow;
         header.IsVisible = height >= 56 && roomy;
         title.IsVisible = height >= 15 && width >= 48;
@@ -220,7 +220,7 @@ internal sealed class SessionCard : Button
         title.Margin = new Thickness(0, compact ? 0 : 2, 0, 0);
         title.MaxLines = height >= 96 && narrow ? 3 : height >= 72 ? 2 : 1;
         textPanel.VerticalAlignment = compact ? VerticalAlignment.Center : VerticalAlignment.Top;
-        textPanel.Margin = new Thickness(width >= 64 ? 14 : 8, height >= 56 ? 10 : compact ? 0 : 4, Heart.IsVisible ? 44 : 8, compact ? 0 : 4);
+        textPanel.Margin = new Thickness(width >= 64 ? 14 : 8, height >= 56 ? 10 : compact ? 0 : 4, Heart.IsVisible ? 48 : 8, compact ? 0 : 4);
         var radius = Math.Min(14, Math.Min(width, height) / 2);
         surface.CornerRadius = new CornerRadius(radius);
         glow.CornerRadius = new CornerRadius(radius + 3);
@@ -254,7 +254,7 @@ internal sealed class SessionCard : Button
         glow.Classes.Set("conflict", session.HasConflict);
 
         var (label, color, showDot) = session.IsWithdrawn ? ("WITHDRAWN", theme.Conflict, false)
-            : live ? ("LIVE", theme.Magenta, true)
+            : live ? ("LIVE", theme.Live, true)
             : session.HasConflict ? ("OVERLAPS", theme.Conflict, false)
             : ended ? ("ENDED", theme.Secondary, false)
             : ("", theme.Secondary, false);

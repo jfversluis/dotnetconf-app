@@ -33,20 +33,34 @@
                         </ImageButton>
                     </Grid>
                     <Label Text="{Binding TopicLabel}" Style="{StaticResource Secondary}" />
-                    <Label Text="{Binding DateLabel}" FontFamily="OpenSansSemibold" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <Label Text="{Binding DateLabel}" FontFamily="OpenSansSemibold" />
+                        <controls:LiveIndicator Grid.Column="1" IsVisible="{Binding IsLive}" AutomationId="session-live" />
+                    </Grid>
                     <Label Text="{Binding TimeLabel}" />
                     <Label x:Name="TimeZone" Style="{StaticResource Secondary}" FontSize="12" />
                     <Label Text="Overlaps another saved session" IsVisible="{Binding HasConflict}"
                            TextColor="{AppThemeBinding Light={StaticResource LightError}, Dark={StaticResource DarkError}}" />
                 </VerticalStackLayout>
                 <VerticalStackLayout Spacing="8" IsVisible="{Binding HasWatchActions}">
+                    <Label Text="Watch this session" Style="{StaticResource Subheading}" />
                     <Button Text="Watch session" Command="{Binding WatchRecordingCommand}"
                             Style="{StaticResource ConferenceAction}" ImageSource="{StaticResource PrimaryVideoIcon}"
                             IsVisible="{Binding HasRecording}" AutomationId="session-watch-recording"
                             SemanticProperties.Hint="Opens the published video in an app or browser" />
-                    <Button Text="{Binding WatchedActionLabel}" Command="{Binding ToggleWatchedCommand}"
-                            Style="{StaticResource ConferenceSecondaryAction}" AutomationId="session-toggle-watched"
-                            SemanticProperties.Hint="Updates your watched status on this device" />
+                    <Label Text="A video hasn't been linked for this session yet."
+                           IsVisible="{Binding HasViewingGuidance}" Style="{StaticResource Secondary}"
+                           AutomationId="session-viewing-guidance" />
+                    <Button Text="{Binding WatchedButtonLabel}" Command="{Binding ToggleWatchedCommand}"
+                            Style="{StaticResource ConferenceSecondaryAction}" HorizontalOptions="Fill"
+                            AutomationId="session-toggle-watched"
+                            SemanticProperties.Description="{Binding WatchedDescription}"
+                            SemanticProperties.Hint="Updates your watched status on this device">
+                        <Button.ImageSource>
+                            <FontImageSource Glyph="{Binding WatchedGlyph}" FontFamily="{Binding WatchedFontFamily}" Size="20"
+                                             Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+                        </Button.ImageSource>
+                    </Button>
                 </VerticalStackLayout>
                 <VerticalStackLayout Spacing="12">
                     <Label Text="About this session" Style="{StaticResource Subheading}" />

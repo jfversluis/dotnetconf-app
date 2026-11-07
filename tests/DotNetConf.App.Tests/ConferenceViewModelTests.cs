@@ -1,6 +1,7 @@
 using DotNetConf.App.Services;
 using DotNetConf.App.ViewModels;
 using DotNetConf.Core;
+using IconFont.Maui.FluentIcons;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Networking;
@@ -432,7 +433,7 @@ public sealed class ConferenceViewModelTests
         Assert.False(planner.HasAddedSessions);
         Assert.Empty(store.SavedIds);
         Assert.Equal(0, store.Writes);
-        Assert.Contains("agenda was refreshed", planner.Status);
+        Assert.Contains("agenda changed", planner.Status);
     }
 
     [Fact]
@@ -881,10 +882,13 @@ public sealed class ConferenceViewModelTests
                 throw new KeyNotFoundException("Synthetic interrupted timezone display");
         }
         var observed = 0;
+        var compactObserved = 0;
         void ObserveLabel(object? _, System.ComponentModel.PropertyChangedEventArgs args)
         {
             if (args.PropertyName == nameof(conference.TimeZoneLabel))
                 observed++;
+            if (args.PropertyName == nameof(conference.CompactTimeZoneLabel))
+                compactObserved++;
         }
         conference.PropertyChanged += FailLabel;
         conference.PropertyChanged += ObserveLabel;
@@ -900,6 +904,8 @@ public sealed class ConferenceViewModelTests
         conference.PropertyChanged -= FailLabel;
         await conference.RefreshCommand.ExecuteAsync(null);
         Assert.True(observed > 0);
+        Assert.True(compactObserved > 0);
+        Assert.Equal($"Local: {TimeZoneInfo.Local.Id}", conference.CompactTimeZoneLabel);
         Assert.DoesNotContain("schedule display couldn't refresh", conference.RefreshMessage);
     }
 
@@ -1379,6 +1385,8 @@ public sealed class ConferenceViewModelTests
         Assert.False(openDetail.HasRecording);
         viewModel.RecordingsOnly = true;
         Assert.Empty(viewModel.Sessions);
+        Assert.Equal("No session videos linked yet", viewModel.SessionsEmptyTitle);
+        Assert.Contains("doesn't have any session video links", viewModel.SessionsEmptyMessage);
 
         repository.Snapshot = original with { Document = original.Document with
         {
@@ -1392,6 +1400,7 @@ public sealed class ConferenceViewModelTests
 
         Assert.Same(openDetail, Assert.Single(viewModel.Sessions));
         Assert.True(openDetail.HasRecording);
+        Assert.False(openDetail.HasViewingGuidance);
         Assert.True(openDetail.WatchRecordingCommand.CanExecute(null));
         Assert.True(openDetail.HasResources);
         Assert.Contains("Video available", openDetail.NavigationDescription);
@@ -1401,11 +1410,180 @@ public sealed class ConferenceViewModelTests
         repository.Snapshot = original;
         await viewModel.RefreshCommand.ExecuteAsync(null);
         Assert.False(openDetail.HasRecording);
+        Assert.True(openDetail.HasViewingGuidance);
         Assert.False(openDetail.WatchRecordingCommand.CanExecute(null));
         Assert.Empty(openDetail.Resources);
         Assert.Empty(viewModel.Sessions);
         viewModel.ClearSessionFiltersCommand.Execute(null);
         Assert.Same(openDetail, Assert.Single(viewModel.Sessions));
+    }
+
+    [Fact]
+    public async Task EmptyResultsCanClearEverySearchConstraintWithoutChangingSavedSessions()
+    {
+        var original = Snapshot();
+        var document = original.Document with
+        {
+            Sessions = [original.Document.Sessions[0] with { Topics = ["Synthetic topic"] }]
+        };
+        var viewModel = await CreateInitializedAsync(new TestRepository(original with { Document = document }),
+            new TestScheduleStore(), new TestConnectivity());
+        viewModel.ApplyAskSearch(new(AskAction.FindSessions, "missing", "", "Test speaker"));
+        viewModel.SelectedDay = Assert.Single(viewModel.Days, day => day.Day is not null);
+        Assert.Single(viewModel.Topics).IsSelected = true;
+        viewModel.RecordingsOnly = true;
+        viewModel.HideWatched = true;
+
+        Assert.Empty(viewModel.Sessions);
+        Assert.True(viewModel.HasActiveSessionCriteria);
+        viewModel.ClearAllSessionCriteriaCommand.Execute(null);
+
+        Assert.False(viewModel.HasActiveSessionCriteria);
+        Assert.False(viewModel.HasAskSpeakerFilter);
+        Assert.False(viewModel.HasSessionFilters);
+        Assert.Equal("", viewModel.SessionQuery);
+        Assert.Null(viewModel.SelectedDay!.Day);
+        Assert.Equal("id", Assert.Single(viewModel.Sessions).Id);
+        Assert.True(Assert.Single(viewModel.Sessions).IsSaved);
+    }
+
+    [Fact]
+    public async Task HomeShowsCurrentOrNextSavedSessionButNotWithdrawnOrEndedTalks()
+    {
+        var original = Snapshot();
+        var now = new DateTimeOffset(2026, 11, 10, 12, 0, 0, TimeSpan.Zero);
+        var past = original.Document.Sessions[0] with
+        {
+            Id = "past", StartsAt = now.AddHours(-2), EndsAt = now.AddHours(-1)
+        };
+        var live = past with { Id = "live", StartsAt = now.AddMinutes(-10), EndsAt = now.AddMinutes(20) };
+        var future = past with { Id = "future", StartsAt = now.AddHours(1), EndsAt = now.AddHours(2) };
+        var withdrawn = past with { Id = "withdrawn", StartsAt = now, EndsAt = now.AddHours(3) };
+        var document = original.Document with { Sessions = [future, past, live], WithdrawnSessions = [withdrawn] };
+        var store = new TestScheduleStore();
+        store.SavedIds.Clear();
+        store.SavedIds.UnionWith(["past", "live", "future", "withdrawn"]);
+        var viewModel = await CreateInitializedAsync(new TestRepository(original with { Document = document }),
+            store, new TestConnectivity());
+
+        viewModel.RefreshSessionStatuses(now);
+        Assert.Equal("live", viewModel.NextSavedSession?.Id);
+        Assert.Equal("Happening now", viewModel.NextSavedStatus);
+        Assert.True(viewModel.NextSavedSession!.IsLive);
+        Assert.False(viewModel.SavedSessions.Single(session => session.Id == "withdrawn").IsLive);
+        viewModel.RefreshSessionStatuses(live.EndsAt);
+        Assert.Equal("future", viewModel.NextSavedSession?.Id);
+        Assert.Equal("Up next", viewModel.NextSavedStatus);
+        Assert.False(viewModel.SavedSessions.Single(session => session.Id == "live").IsLive);
+        viewModel.RefreshSessionStatuses(future.EndsAt);
+        Assert.Null(viewModel.NextSavedSession);
+        Assert.False(viewModel.HasNextSavedSession);
+    }
+
+    [Fact]
+    public async Task LiveStatusUpdatesUnsavedSessionsAndPublishedTimeChanges()
+    {
+        var original = Snapshot();
+        var start = new DateTimeOffset(2026, 11, 10, 12, 0, 0, TimeSpan.Zero);
+        var model = original.Document.Sessions[0] with { StartsAt = start, EndsAt = start.AddMinutes(30) };
+        var store = new TestScheduleStore();
+        store.SavedIds.Clear();
+        var viewModel = await CreateInitializedAsync(
+            new TestRepository(original with { Document = original.Document with { Sessions = [model] } }), store, new());
+        var session = Assert.Single(viewModel.Sessions);
+        var changed = new List<string?>();
+        session.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        viewModel.RefreshSessionStatuses(start.AddTicks(-1));
+        Assert.False(session.IsLive);
+        viewModel.RefreshSessionStatuses(start);
+        Assert.True(session.IsLive);
+        Assert.Contains("Live now", session.NavigationDescription);
+        Assert.Contains(nameof(session.IsLive), changed);
+        Assert.Contains(nameof(session.NavigationDescription), changed);
+        Assert.False(viewModel.HasNextSavedSession);
+        Assert.False(session.IsSaved);
+
+        session.Update(model with { StartsAt = start.AddHours(1), EndsAt = start.AddHours(2) }, []);
+        viewModel.RefreshSessionStatuses(start);
+        Assert.False(session.IsLive);
+        viewModel.RefreshSessionStatuses(start.AddHours(1));
+        Assert.True(session.IsLive);
+        session.IsWithdrawn = true;
+        viewModel.RefreshSessionStatuses(start.AddHours(1));
+        Assert.False(session.IsLive);
+    }
+
+    [Fact]
+    public async Task ScheduleRetryRepublishesHomeVisibilityAfterAnInterruptedNotification()
+    {
+        var snapshot = Snapshot();
+        var start = DateTimeOffset.UtcNow.AddDays(1);
+        var session = snapshot.Document.Sessions[0] with { StartsAt = start, EndsAt = start.AddHours(1) };
+        snapshot = snapshot with { Document = snapshot.Document with { Sessions = [session] } };
+        var store = new TestScheduleStore();
+        store.SavedIds.Clear();
+        var viewModel = await CreateInitializedAsync(new TestRepository(snapshot), store, new TestConnectivity());
+        var visibilityNotifications = 0;
+        void FailNext(object? _, System.ComponentModel.PropertyChangedEventArgs args)
+        {
+            if (args.PropertyName == nameof(viewModel.NextSavedSession))
+                throw new InvalidOperationException("Synthetic notification failure.");
+        }
+        void ObserveVisibility(object? _, System.ComponentModel.PropertyChangedEventArgs args)
+        {
+            if (args.PropertyName == nameof(viewModel.HasNextSavedSession))
+                visibilityNotifications++;
+        }
+        viewModel.PropertyChanged += FailNext;
+        viewModel.PropertyChanged += ObserveVisibility;
+
+        await Assert.ThrowsAsync<SchedulePresentationException>(() => viewModel.SaveAskSessionsAsync(["id"], default));
+        Assert.True(viewModel.HasNextSavedSession);
+        Assert.Equal(0, visibilityNotifications);
+        Assert.True(viewModel.HasRefreshError);
+        viewModel.PropertyChanged -= FailNext;
+        await viewModel.InitializeAsync();
+
+        Assert.True(visibilityNotifications > 0);
+        Assert.False(viewModel.HasRefreshError);
+    }
+
+    [Fact]
+    public async Task HomeTimerFailureShowsAnErrorAndRetryRepublishesVisibility()
+    {
+        var snapshot = Snapshot();
+        var start = DateTimeOffset.UtcNow.AddHours(-2);
+        var session = snapshot.Document.Sessions[0] with { StartsAt = start, EndsAt = start.AddHours(1) };
+        snapshot = snapshot with { Document = snapshot.Document with { Sessions = [session] } };
+        var viewModel = await CreateInitializedAsync(new TestRepository(snapshot), new TestScheduleStore(),
+            new TestConnectivity());
+        viewModel.RefreshSessionStatuses(start.AddMinutes(1));
+        Assert.True(viewModel.HasNextSavedSession);
+
+        var visibilityNotifications = 0;
+        void FailNext(object? _, System.ComponentModel.PropertyChangedEventArgs args)
+        {
+            if (args.PropertyName == nameof(viewModel.NextSavedSession))
+                throw new InvalidOperationException("Synthetic timer notification failure.");
+        }
+        void ObserveVisibility(object? _, System.ComponentModel.PropertyChangedEventArgs args)
+        {
+            if (args.PropertyName == nameof(viewModel.HasNextSavedSession))
+                visibilityNotifications++;
+        }
+        viewModel.PropertyChanged += FailNext;
+        viewModel.PropertyChanged += ObserveVisibility;
+
+        viewModel.RefreshSessionStatuses(session.EndsAt);
+
+        Assert.False(viewModel.HasNextSavedSession);
+        Assert.Equal(0, visibilityNotifications);
+        Assert.True(viewModel.HasRefreshError);
+        viewModel.PropertyChanged -= FailNext;
+        await viewModel.InitializeAsync();
+        Assert.True(visibilityNotifications > 0);
+        Assert.False(viewModel.HasRefreshError);
     }
 
     [Fact]
@@ -1518,6 +1696,12 @@ public sealed class ConferenceViewModelTests
         Assert.True(session.IsSaved);
         Assert.False(session.IsWatched);
         Assert.Equal("Mark as watched", session.WatchedActionLabel);
+        Assert.Equal("Mark as watched", session.WatchedButtonLabel);
+        Assert.Equal("Not watched. Mark as watched", session.WatchedDescription);
+        Assert.Equal(FluentIconsRegular.Circle24, session.WatchedGlyph);
+        Assert.Equal(FluentIconsRegular.FontFamily, session.WatchedFontFamily);
+        var changed = new List<string?>();
+        session.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
 
         await session.WatchRecordingCommand.ExecuteAsync(null);
         Assert.Equal("https://youtu.be/synthetic01", videoLauncher.OpenedUri?.ToString());
@@ -1530,6 +1714,14 @@ public sealed class ConferenceViewModelTests
         Assert.True(session.IsSaved);
         Assert.Equal("Watched", session.VideoStatusLabel);
         Assert.Equal("Mark as not watched", session.WatchedActionLabel);
+        Assert.Equal("Watched", session.WatchedButtonLabel);
+        Assert.Equal("Watched. Mark as not watched", session.WatchedDescription);
+        Assert.Equal(FluentIconsFilled.CheckmarkCircle24, session.WatchedGlyph);
+        Assert.Equal(FluentIconsFilled.FontFamily, session.WatchedFontFamily);
+        Assert.Contains(nameof(session.WatchedButtonLabel), changed);
+        Assert.Contains(nameof(session.WatchedDescription), changed);
+        Assert.Contains(nameof(session.WatchedGlyph), changed);
+        Assert.Contains(nameof(session.WatchedFontFamily), changed);
         Assert.Contains("Marked as watched", session.NavigationDescription);
         Assert.Equal("id", Assert.Single(watchedStore.SavedIds));
         Assert.Equal("id", Assert.Single(savedStore.SavedIds));
@@ -1540,6 +1732,9 @@ public sealed class ConferenceViewModelTests
         Assert.True(restored.IsSaved);
         await restored.ToggleWatchedCommand.ExecuteAsync(null);
         Assert.False(restored.IsWatched);
+        Assert.Equal("Mark as watched", restored.WatchedButtonLabel);
+        Assert.Equal("Not watched. Mark as watched", restored.WatchedDescription);
+        Assert.Equal(FluentIconsRegular.Circle24, restored.WatchedGlyph);
         Assert.True(restored.IsSaved);
         Assert.Empty(watchedStore.SavedIds);
         Assert.Equal("id", Assert.Single(savedStore.SavedIds));
@@ -1691,14 +1886,18 @@ public sealed class ConferenceViewModelTests
     }
 
     [Fact]
-    public async Task WatchedStatusSurvivesVideoRemovalAndCanStillBeReversed()
+    public async Task LiveViewedStatusDoesNotRequireAVideoAndSurvivesVideoChanges()
     {
         var original = Snapshot();
         var repository = new TestRepository(original);
         var viewModel = await CreateInitializedAsync(repository, new(), new());
         var session = Assert.Single(viewModel.Sessions);
-        Assert.False(session.HasWatchActions);
-        Assert.False(session.ToggleWatchedCommand.CanExecute(null));
+        Assert.True(session.HasWatchActions);
+        Assert.True(session.HasViewingGuidance);
+        Assert.True(session.ToggleWatchedCommand.CanExecute(null));
+        await session.ToggleWatchedCommand.ExecuteAsync(null);
+        Assert.True(session.IsWatched);
+        Assert.Equal("Mark as not watched", session.WatchedActionLabel);
 
         repository.Snapshot = original with { Document = original.Document with
         {
@@ -1706,7 +1905,6 @@ public sealed class ConferenceViewModelTests
         } };
         await viewModel.RefreshCommand.ExecuteAsync(null);
         Assert.True(session.HasWatchActions);
-        await session.ToggleWatchedCommand.ExecuteAsync(null);
         Assert.True(session.IsWatched);
 
         repository.Snapshot = original;
@@ -1718,7 +1916,11 @@ public sealed class ConferenceViewModelTests
         Assert.Equal("Watched", session.VideoStatusLabel);
         await session.ToggleWatchedCommand.ExecuteAsync(null);
         Assert.False(session.IsWatched);
+        Assert.True(session.HasWatchActions);
+        Assert.Equal("Mark as watched", session.WatchedActionLabel);
+        session.IsWithdrawn = true;
         Assert.False(session.HasWatchActions);
+        Assert.False(session.HasViewingGuidance);
     }
 
     [Fact]

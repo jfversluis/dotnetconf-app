@@ -55,6 +55,33 @@ public sealed class ScheduleLayoutTests
         Assert.Equal(expected, ScheduleLayout.ShouldStackTimelineLabels(width));
 
     [Theory]
+    [InlineData(132, 84, 0, true)]
+    [InlineData(131, 84, 0, false)]
+    [InlineData(160, 84, 28, true)]
+    [InlineData(159, 84, 28, false)]
+    [InlineData(500, 60, 34, true)]
+    public void DayHeaderPinsOnlyWhenAReadableCardFitsAboveTheBottomInset(
+        double viewportHeight, double headerHeight, double bottomInset, bool expected) =>
+        Assert.Equal(expected, ScheduleLayout.ShouldPinTimelineDayHeader(viewportHeight, headerHeight, bottomInset));
+
+    [Theory]
+    [InlineData(259, 900, 1, true)]
+    [InlineData(260, 600, 1, false)]
+    [InlineData(402, 874, 2, true)]
+    [InlineData(520, 1200, 2, false)]
+    [InlineData(852, 393, 1, true)]
+    public void ScheduleHeaderYieldsSpaceForLargeTextOrShortWindows(
+        double width, double height, double scale, bool expected) =>
+        Assert.Equal(expected, ScheduleLayout.ShouldUseCompactHeader(width, height, scale));
+
+    [Theory]
+    [InlineData(120, 320)]
+    [InlineData(320, 320)]
+    [InlineData(390, 390)]
+    public void TimelineCanScrollHorizontallyWhenLargeTextNarrowsTheViewport(double viewport, double expected) =>
+        Assert.Equal(expected, ScheduleLayout.TimelineContentWidth(viewport));
+
+    [Theory]
     [InlineData(867, 449, 1, false)]
     [InlineData(720, 600, 1, true)]
     [InlineData(719, 600, 1, false)]
@@ -85,6 +112,8 @@ public sealed class ScheduleLayoutTests
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => ScheduleLayout.ShouldWrapTopics(720, 600, scale));
         Assert.Throws<ArgumentOutOfRangeException>(() => ScheduleLayout.ShouldShowHeading(600, scale));
+        Assert.Throws<ArgumentOutOfRangeException>(() => ScheduleLayout.ShouldUseCompactHeader(400, 800, scale));
         Assert.Throws<ArgumentOutOfRangeException>(() => ScheduleLayout.ForDetails(default, 1000, scale));
+        Assert.Throws<ArgumentOutOfRangeException>(() => ScheduleLayout.TimelineContentWidth(scale));
     }
 }

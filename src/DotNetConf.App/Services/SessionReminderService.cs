@@ -14,6 +14,14 @@ public interface ISessionReminderUpdates
     Task<bool> RefreshAsync();
 }
 
+public enum ReminderState
+{
+    Off,
+    Enabled,
+    PermissionBlocked,
+    Error
+}
+
 public partial class SessionReminderService(
     [FromKeyedServices("agenda")] IConferenceDataSource dataSource, ScheduleService schedule, IPreferences preferences,
     INotificationService notifications, ILogger<SessionReminderService> logger) : ObservableObject, ISessionReminderUpdates
@@ -24,11 +32,21 @@ public partial class SessionReminderService(
     private readonly SemaphoreSlim gate = new(1, 1);
     public bool Enabled => preferences.Get(PreferenceKey, false);
     [ObservableProperty] public partial string Status { get; set; } = "Session reminders are optional.";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanEnable))]
+    [NotifyPropertyChangedFor(nameof(CanRetry))]
+    [NotifyPropertyChangedFor(nameof(PermissionBlocked))]
+    public partial ReminderState State { get; set; }
+    public bool CanEnable => !Enabled && State is not (ReminderState.PermissionBlocked or ReminderState.Error);
+    public bool CanRetry => State == ReminderState.Error;
+    public bool PermissionBlocked => State == ReminderState.PermissionBlocked;
+    public bool RetryEnabling { get; private set; }
 
     public async Task EnableAsync()
     {
         try
         {
+            RetryEnabling = false;
             var allowed = await notifications.RequestNotificationPermission(new NotificationPermission
             {
                 Apple = new AppleNotificationPermission
@@ -37,9 +55,10 @@ public partial class SessionReminderService(
                 }
             });
             preferences.Set(PreferenceKey, allowed);
-            OnPropertyChanged(nameof(Enabled));
+            NotifyEnabledChanged();
             if (!allowed)
             {
+                State = ReminderState.PermissionBlocked;
                 Status = "Notifications aren't allowed. Browse normally, or enable them in device settings.";
                 return;
             }
@@ -48,6 +67,8 @@ public partial class SessionReminderService(
         catch (Exception exception) when (IsExpectedFailure(exception))
         {
             logger.LogError(exception, "Could not enable session reminders.");
+            RetryEnabling = true;
+            State = ReminderState.Error;
             Status = "Couldn't enable reminders. Try again in Settings; browsing and saved sessions still work.";
         }
     }
@@ -55,8 +76,15 @@ public partial class SessionReminderService(
     public async Task DisableAsync()
     {
         preferences.Set(PreferenceKey, false);
-        OnPropertyChanged(nameof(Enabled));
+        NotifyEnabledChanged();
+        State = ReminderState.Off;
         await RefreshAsync();
+    }
+
+    private void NotifyEnabledChanged()
+    {
+        OnPropertyChanged(nameof(Enabled));
+        OnPropertyChanged(nameof(CanEnable));
     }
 
     public async Task<bool> RefreshAsync()
@@ -66,7 +94,9 @@ public partial class SessionReminderService(
         {
             var pending = await notifications.GetPendingNotificationList();
             var owned = pending.Where(request => request.ReturningData?.StartsWith(Prefix, StringComparison.Ordinal) == true).ToArray();
-            var allowed = Enabled && await notifications.AreNotificationsEnabled();
+            var permission = Enabled || PermissionBlocked
+                ? await notifications.AreNotificationsEnabled() : false;
+            var allowed = Enabled && permission;
             SessionReminder[] planned = [];
             ConferenceDocument? agenda = null;
             if (allowed)
@@ -101,8 +131,10 @@ public partial class SessionReminderService(
                 }))
                     throw new InvalidOperationException("The device could not schedule a session reminder.");
             }
-            Status = !Enabled ? "Session reminders are off."
-                : !allowed ? "Notifications are blocked in device settings. Your saved sessions are kept."
+            State = !Enabled && !(PermissionBlocked && !permission) ? ReminderState.Off
+                : !allowed ? ReminderState.PermissionBlocked : ReminderState.Enabled;
+            Status = State == ReminderState.Off ? "Session reminders are off."
+                : State == ReminderState.PermissionBlocked ? "Notifications are blocked in device settings. Your saved sessions are kept."
                 : planned.Length == 0 ? "Reminders enabled. Save a future session to be notified when it begins."
                 : planned.Length == SessionReminders.MaximumPending
                     ? $"Reminders enabled for your next {SessionReminders.MaximumPending} sessions. Reopen the app to refresh later reminders."
@@ -112,6 +144,8 @@ public partial class SessionReminderService(
         catch (Exception exception) when (IsExpectedFailure(exception))
         {
             logger.LogError(exception, "Could not synchronize session reminders.");
+            RetryEnabling = false;
+            State = ReminderState.Error;
             Status = "Couldn't update reminders. Your saved sessions are kept. Retry in Settings.";
             return false;
         }

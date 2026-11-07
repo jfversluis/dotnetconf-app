@@ -35,6 +35,7 @@ public partial class SessionViewModel : ObservableObject
     public string TopicLabel => string.Join(" / ", Model.Topics);
     public string NavigationDescription => $"{Title}. {DateLabel}, {TimeLabel}. {SpeakerNames}. {TopicLabel}"
         + (IsWithdrawn ? ". No longer in the published agenda." : "")
+        + (IsLive ? ". Live now." : "")
         + (HasRecording ? ". Video available." : "")
         + (IsWatched ? " Marked as watched." : "")
         + (HasConflict ? ". Overlaps another saved session." : ".");
@@ -48,10 +49,22 @@ public partial class SessionViewModel : ObservableObject
     public string ShareHint => owner.ShareSessionHint;
     public bool CanShare => !IsWithdrawn;
     public bool HasRecording => !IsWithdrawn && Model.RecordingUrl.Length > 0;
-    public bool HasWatchActions => HasRecording || IsWatched;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NavigationDescription))]
+    public partial bool IsLive { get; private set; }
+
+    public void RefreshLiveStatus(DateTimeOffset instant) =>
+        IsLive = !IsWithdrawn && Agenda.IsInProgress(Model, instant);
+
+    public bool HasWatchActions => !IsWithdrawn || IsWatched;
+    public bool HasViewingGuidance => !IsWithdrawn && !HasRecording;
     public bool HasVideoStatus => HasRecording || IsWatched;
     public string VideoStatusLabel => IsWatched ? "Watched" : "Video available";
     public string WatchedActionLabel => IsWatched ? "Mark as not watched" : "Mark as watched";
+    public string WatchedButtonLabel => IsWatched ? "Watched" : "Mark as watched";
+    public string WatchedDescription => $"{(IsWatched ? "Watched" : "Not watched")}. {WatchedActionLabel}";
+    public string WatchedGlyph => IsWatched ? FluentIconsFilled.CheckmarkCircle24 : FluentIconsRegular.Circle24;
+    public string WatchedFontFamily => IsWatched ? FluentIconsFilled.FontFamily : FluentIconsRegular.FontFamily;
     public IReadOnlyList<ConferenceLinkViewModel> Resources { get; private set; } = [];
     public bool HasResources => Resources.Count > 0 && !IsWithdrawn;
     public string ShareText => $"Check out this .NET Conf session:\n{Title}" +
@@ -64,8 +77,10 @@ public partial class SessionViewModel : ObservableObject
 
     partial void OnIsWithdrawnChanged(bool value)
     {
+        RefreshLiveStatus(DateTimeOffset.UtcNow);
         OnPropertyChanged(nameof(HasRecording));
         OnPropertyChanged(nameof(HasWatchActions));
+        OnPropertyChanged(nameof(HasViewingGuidance));
         OnPropertyChanged(nameof(HasVideoStatus));
         OnPropertyChanged(nameof(HasResources));
         OnPropertyChanged(nameof(CanShare));
@@ -101,6 +116,10 @@ public partial class SessionViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasVideoStatus))]
     [NotifyPropertyChangedFor(nameof(VideoStatusLabel))]
     [NotifyPropertyChangedFor(nameof(WatchedActionLabel))]
+    [NotifyPropertyChangedFor(nameof(WatchedButtonLabel))]
+    [NotifyPropertyChangedFor(nameof(WatchedDescription))]
+    [NotifyPropertyChangedFor(nameof(WatchedGlyph))]
+    [NotifyPropertyChangedFor(nameof(WatchedFontFamily))]
     public partial bool IsWatched { get; set; }
 
     partial void OnIsWatchedChanged(bool value) => ToggleWatchedCommand.NotifyCanExecuteChanged();

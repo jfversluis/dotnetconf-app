@@ -22,7 +22,8 @@ public sealed record PlannerTheme(
     Color Magenta,
     Color Lavender,
     Color Midnight,
-    Color Conflict)
+    Color Conflict,
+    Color Live)
 {
     // MAUI fonts are embedded as Avalonia resources under Assets/Fonts on every target.
     public static FontFamily BodyFont { get; } = new("avares://DotNetConf.App/Assets/Fonts#Open Sans");

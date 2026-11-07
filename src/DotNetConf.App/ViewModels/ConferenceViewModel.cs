@@ -86,9 +86,13 @@ public partial class ConferenceViewModel(
     public string AgendaEmptyMessage => IsInitialAgendaLoading
         ? "Getting the latest sessions and speakers."
         : "Connect to the internet, then pull down to refresh and download sessions and speakers. Once downloaded, they are available offline.";
-    public string SessionsEmptyTitle => HasAgenda ? "No sessions to show" : AgendaEmptyTitle;
+    private bool NoPublishedVideos => HasAgenda && RecordingsOnly &&
+        !document!.Sessions.Any(session => session.RecordingUrl.Length > 0);
+    public string SessionsEmptyTitle => !HasAgenda ? AgendaEmptyTitle
+        : NoPublishedVideos ? "No session videos linked yet" : "No sessions to show";
     public string SessionsEmptyMessage => HasAgenda
-        ? RecordingsOnly && HideWatched ? "No unwatched videos match these filters. Try changing your filters, search, or day."
+        ? NoPublishedVideos ? "The agenda doesn't have any session video links yet. Check back later or clear the video filter to browse sessions."
+            : RecordingsOnly && HideWatched ? "No unwatched videos match these filters. Try changing your filters, search, or day."
             : RecordingsOnly ? "No videos match these filters. Clear the video filter or try a different search, day, or topic."
             : HideWatched ? "No unwatched sessions match these filters. Try changing your filters, search, or day."
             : "Try a different search, day, or topic." : AgendaEmptyMessage;
@@ -117,14 +121,17 @@ public partial class ConferenceViewModel(
     [ObservableProperty] public partial string ConferenceDescription { get; set; } =
         "The .NET community comes together to celebrate, learn, and build what is next.";
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasActiveSessionCriteria))]
     public partial string SessionQuery { get; set; } = "";
     [ObservableProperty] public partial string SpeakerQuery { get; set; } = "";
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FilterSummary))]
     [NotifyPropertyChangedFor(nameof(FilterBadgeText))]
     [NotifyPropertyChangedFor(nameof(FilterToolbarLabel))]
+    [NotifyPropertyChangedFor(nameof(SessionsEmptyTitle))]
     [NotifyPropertyChangedFor(nameof(SessionsEmptyMessage))]
     [NotifyPropertyChangedFor(nameof(HasSessionFilters))]
+    [NotifyPropertyChangedFor(nameof(HasActiveSessionCriteria))]
     public partial bool RecordingsOnly { get; set; }
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FilterSummary))]
@@ -132,11 +139,13 @@ public partial class ConferenceViewModel(
     [NotifyPropertyChangedFor(nameof(FilterToolbarLabel))]
     [NotifyPropertyChangedFor(nameof(SessionsEmptyMessage))]
     [NotifyPropertyChangedFor(nameof(HasSessionFilters))]
+    [NotifyPropertyChangedFor(nameof(HasActiveSessionCriteria))]
     [NotifyPropertyChangedFor(nameof(CanUseWatchedFilter))]
     public partial bool HideWatched { get; set; }
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectedDayIndex))]
     [NotifyPropertyChangedFor(nameof(FilterResultsContext))]
+    [NotifyPropertyChangedFor(nameof(HasActiveSessionCriteria))]
     public partial DayFilter? SelectedDay { get; set; }
     [ObservableProperty] public partial string TimeZoneLabel { get; set; } = $"Times shown in {TimeZoneInfo.Local.DisplayName}";
     [ObservableProperty]
@@ -156,6 +165,7 @@ public partial class ConferenceViewModel(
 
     public string ScheduleSummary => !IsScheduleAvailable ? "Saved schedule unavailable"
         : SavedCount == 1 ? "1 saved session" : $"{SavedCount} saved sessions";
+    public string CompactTimeZoneLabel => $"Local: {timeZone.Id}";
     public string SchedulePlannerAction => SavedCount > 0 ? "Find talks for my gaps" : "Discover sessions for my schedule";
     public string SchedulePlannerHint => SavedCount > 0
         ? "Explore a mix of talks around your saved sessions, or use optional on-device AI. Review before adding."
@@ -173,6 +183,20 @@ public partial class ConferenceViewModel(
     public bool HasTopicFilters => AppliedFilterCount > 0;
     public bool HasAskSpeakerFilter => askSpeakerFilter is not null;
     public bool HasSessionFilters => HasTopicFilters || RecordingsOnly || HideWatched;
+    public bool HasActiveSessionCriteria => HasSessionFilters || HasAskSpeakerFilter ||
+        !string.IsNullOrWhiteSpace(SessionQuery) || SelectedDay?.Day is not null;
+    private SessionViewModel? nextSavedSession;
+    public SessionViewModel? NextSavedSession
+    {
+        get => nextSavedSession;
+        private set
+        {
+            if (SetProperty(ref nextSavedSession, value))
+                OnPropertyChanged(nameof(HasNextSavedSession));
+        }
+    }
+    public bool HasNextSavedSession => NextSavedSession is not null;
+    [ObservableProperty] public partial string NextSavedStatus { get; set; } = "";
     public string? FilterBadgeText
     {
         get
@@ -237,6 +261,7 @@ public partial class ConferenceViewModel(
     {
         askSpeakerFilter = speaker;
         OnPropertyChanged(nameof(HasAskSpeakerFilter));
+        OnPropertyChanged(nameof(HasActiveSessionCriteria));
         OnPropertyChanged(nameof(FilterSummary));
     }
 
@@ -797,6 +822,7 @@ public partial class ConferenceViewModel(
         OnPropertyChanged(nameof(AppliedFilterCount));
         OnPropertyChanged(nameof(HasTopicFilters));
         OnPropertyChanged(nameof(HasSessionFilters));
+        OnPropertyChanged(nameof(HasActiveSessionCriteria));
         OnPropertyChanged(nameof(FilterBadgeText));
         OnPropertyChanged(nameof(FilterSummary));
         OnPropertyChanged(nameof(FilterToolbarLabel));
@@ -815,6 +841,29 @@ public partial class ConferenceViewModel(
         RecordingsOnly = false;
         HideWatched = false;
         ClearTopicFilters();
+    }
+
+    [RelayCommand]
+    private void ClearAllSessionCriteria()
+    {
+        clearingTopics = true;
+        try
+        {
+            foreach (var topic in Topics)
+                topic.IsSelected = false;
+            RecordingsOnly = false;
+            HideWatched = false;
+            SessionQuery = "";
+            askSearchQuery = null;
+            askExactTitle = false;
+            SetAskSpeakerFilter(null);
+            SelectedDay = Days[0];
+        }
+        finally
+        {
+            clearingTopics = false;
+        }
+        OnTopicSelectionChanged();
     }
 
     partial void OnRecordingsOnlyChanged(bool value)
@@ -967,6 +1016,7 @@ public partial class ConferenceViewModel(
         TimeZoneLabel = $"Times shown in {timeZone.DisplayName}";
         if (republish)
             OnPropertyChanged(nameof(TimeZoneLabel));
+        OnPropertyChanged(nameof(CompactTimeZoneLabel));
         foreach (var session in allSessions)
             session.RefreshTime(timeZone, republish);
         var selectedDay = SelectedDay?.Day;
@@ -993,6 +1043,7 @@ public partial class ConferenceViewModel(
         }
         OnPropertyChanged(nameof(SelectedDayIndex));
         FilterSessions();
+        RefreshSessionStatusesCore(DateTimeOffset.UtcNow);
         if (republish)
         {
             sessionResults.Republish();
@@ -1014,10 +1065,17 @@ public partial class ConferenceViewModel(
 
     public void RefreshSavedState()
     {
+        var republish = schedulePresentationDirty;
         schedulePresentationDirty = true;
         foreach (var session in allSessions)
             session.IsSaved = schedule.IsSaved(session.Id);
         RefreshSchedule();
+        if (republish)
+        {
+            OnPropertyChanged(nameof(NextSavedSession));
+            OnPropertyChanged(nameof(HasNextSavedSession));
+            OnPropertyChanged(nameof(NextSavedStatus));
+        }
         if (deferredSnapshot is null && !localTimesDirty)
         {
             schedulePresentationDirty = false;
@@ -1142,7 +1200,26 @@ public partial class ConferenceViewModel(
         CollectionUpdates.Apply(SavedSessions, saved);
         SavedTimelineSessions = saved;
         SavedCount = schedule.SavedCount;
+        RefreshSessionStatusesCore(DateTimeOffset.UtcNow);
         ScheduleChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void RefreshSessionStatuses(DateTimeOffset now)
+    {
+        try { RefreshSessionStatusesCore(now); }
+        catch (Exception exception) when (IsNonFatalCallbackFailure(exception))
+        {
+            ReportSchedulePresentationFailure(exception);
+        }
+    }
+
+    private void RefreshSessionStatusesCore(DateTimeOffset now)
+    {
+        foreach (var session in allSessions)
+            session.RefreshLiveStatus(now);
+        var next = SavedSessions.FirstOrDefault(session => !session.IsWithdrawn && session.Model.EndsAt > now);
+        NextSavedSession = next;
+        NextSavedStatus = next is null ? "" : next.Model.StartsAt <= now ? "Happening now" : "Up next";
     }
 
     private void FilterSessions()

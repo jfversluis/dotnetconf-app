@@ -101,6 +101,7 @@ public sealed class SchedulePlannerHandler() : AvaloniaControlHandler<SchedulePl
             Magenta: Resource("Magenta"),
             Lavender: Resource("Lavender"),
             Midnight: Resource("Midnight"),
-            Conflict: Resource(dark ? "DarkError" : "LightError")));
+            Conflict: Resource(dark ? "DarkError" : "LightError"),
+            Live: Resource(dark ? "DarkLive" : "LightLive")));
     }
 }

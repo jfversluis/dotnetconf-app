@@ -49,7 +49,7 @@ public sealed class PlannerModelSetupTests
         Assert.True(vm.CanDownloadModel);
         Assert.True(vm.CanOfferModelSetup);
         Assert.True(vm.ShowModelSetup);
-        Assert.True(vm.ShowDiscoveryActions);
+        Assert.True(vm.CanExplore);
         Assert.True(vm.CanEdit);
         Assert.False(vm.CanGenerate);
         Assert.Contains("Download", vm.ModelStatus);
@@ -68,7 +68,7 @@ public sealed class PlannerModelSetupTests
         var download = vm.DownloadModelCommand.ExecuteAsync(null);
         Assert.True(vm.IsBusy);
         Assert.True(vm.IsDownloadingModel);
-        Assert.True(vm.CanExplore);
+        Assert.False(vm.CanExplore);
         Assert.True(vm.ShowModelSetup);
         Assert.False(vm.CanDownloadModel);
         Assert.False(vm.CanGenerate);
@@ -85,7 +85,7 @@ public sealed class PlannerModelSetupTests
         Assert.True(vm.IsReady);
         Assert.True(vm.CanGenerate);
         Assert.False(vm.ShowModelSetup);
-        Assert.False(vm.ShowDiscoveryActions);
+        Assert.True(vm.CanExplore);
         Assert.False(vm.IsBusy);
         Assert.False(vm.IsDownloadingModel);
         Assert.Equal(1, planner.Downloads);
@@ -96,7 +96,7 @@ public sealed class PlannerModelSetupTests
     }
 
     [Fact]
-    public async Task DownloadableModelKeepsRandomDiscoveryUntilSetupSucceeds()
+    public async Task DownloadableModelKeepsRandomDiscoveryAfterSetupSucceeds()
     {
         var start = DateTimeOffset.Parse("2026-11-10T09:00:00Z");
         var agenda = new ConferenceDocument
@@ -123,9 +123,13 @@ public sealed class PlannerModelSetupTests
         planner.Updates.Writer.Complete();
         await download;
 
+        Assert.False(vm.IsAiMode);
+        Assert.True(vm.CanExplore);
+        Assert.True(vm.CanSwitchToAi);
+        Assert.True(vm.HasProposal);
+        Assert.NotEmpty(vm.Sessions);
+        vm.UseAiModeCommand.Execute(null);
         Assert.True(vm.IsAiMode);
-        Assert.False(vm.CanExplore);
-        Assert.False(vm.HasProposal);
         Assert.Empty(vm.Sessions);
     }
 
@@ -194,10 +198,9 @@ public sealed class PlannerModelSetupTests
         var recheck = vm.CheckModelCommand.ExecuteAsync(null);
         Assert.True(vm.IsCheckingModel);
         Assert.True(vm.IsDownloadingModel);
-        Assert.False(vm.CanExplore);
+        Assert.True(vm.CanExplore);
         Assert.True(vm.ShowModelSetup);
-        Assert.True(vm.ShowDiscoveryActions);
-        Assert.Contains(nameof(PlannerViewModel.ShowDiscoveryActions), changes);
+        Assert.Contains(nameof(PlannerViewModel.CanExplore), changes);
         vm.Cancel();
         await recheck;
         Assert.True(vm.CanExplore);
@@ -231,7 +234,9 @@ public sealed class PlannerModelSetupTests
 
         await vm.CheckModelCommand.ExecuteAsync(null);
         Assert.True(vm.IsReady);
-        Assert.True(vm.IsAiMode);
+        Assert.False(vm.IsAiMode);
+        Assert.True(vm.CanSwitchToAi);
+        Assert.Equal(rows, vm.Sessions);
     }
 
     [Fact]
@@ -360,7 +365,7 @@ public sealed class PlannerModelSetupTests
     }
 
     [Fact]
-    public async Task ChangingModelsClearsAnUnsavedDiscoveryPreviewBeforeRechecking()
+    public async Task ChangingModelsKeepsAnUnsavedDiscoveryPreviewWhileRechecking()
     {
         var start = DateTimeOffset.Parse("2026-11-10T09:00:00Z");
         var agenda = new ConferenceDocument
@@ -376,7 +381,7 @@ public sealed class PlannerModelSetupTests
         var vm = Create(planner, agenda, selection);
         await vm.InitializeAsync();
         Assert.True(vm.HasProposal);
-        Assert.NotEmpty(vm.Sessions);
+        var existing = Assert.Single(vm.Sessions);
 
         vm.ToggleModelSelectionCommand.Execute(null);
         vm.SelectedModelIndex = 2;
@@ -384,8 +389,9 @@ public sealed class PlannerModelSetupTests
         planner.PendingCheck = pending.Task;
         var change = vm.UseSelectedModelCommand.ExecuteAsync(null);
 
-        Assert.False(vm.HasProposal);
-        Assert.Empty(vm.Sessions);
+        Assert.True(vm.HasProposal);
+        Assert.Same(existing, Assert.Single(vm.Sessions));
+        Assert.True(existing.IsSelected);
         Assert.True(vm.IsCheckingModel);
 
         pending.SetResult(DownloadRequired with { ModelId = "gemini-nano-preview-fast" });
@@ -521,7 +527,7 @@ public sealed class PlannerModelSetupTests
     }
 
     [Fact]
-    public async Task ASharedModelChangeClearsAnotherViewsUnsavedPreview()
+    public async Task ASharedModelChangeKeepsAnotherViewsUnsavedPreview()
     {
         var start = DateTimeOffset.Parse("2026-11-10T09:00:00Z");
         var agenda = new ConferenceDocument
@@ -545,8 +551,8 @@ public sealed class PlannerModelSetupTests
         first.SelectedModelIndex = 2;
         await first.UseSelectedModelCommand.ExecuteAsync(null);
 
-        Assert.False(second.HasProposal);
-        Assert.Empty(second.Sessions);
+        Assert.True(second.HasProposal);
+        Assert.True(Assert.Single(second.Sessions).IsSelected);
         Assert.True(second.CanRetryModel);
     }
 

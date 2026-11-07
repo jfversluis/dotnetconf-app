@@ -34,10 +34,16 @@ public partial class App : Application
     {
         var shell = services.GetRequiredService<AppShell>();
         var window = new Window(shell);
+        var conference = services.GetRequiredService<ViewModels.ConferenceViewModel>();
+        var sessionClock = window.Dispatcher.CreateTimer();
+        sessionClock.Interval = TimeSpan.FromSeconds(30);
+        sessionClock.Tick += (_, _) => conference.RefreshSessionStatuses(DateTimeOffset.UtcNow);
         services.GetRequiredService<Services.DetailNavigationService>().Attach(shell, window);
         shell.Loaded += (_, _) => shell.Dispatcher.Dispatch(() => ShowOnboardingAsync(shell));
         window.Activated += (_, _) =>
         {
+            conference.RefreshSessionStatuses(DateTimeOffset.UtcNow);
+            sessionClock.Start();
             if (shell.IsLoaded)
             {
                 shell.Dispatcher.Dispatch(() => ShowOnboardingAsync(shell));
@@ -45,8 +51,13 @@ public partial class App : Application
             }
         };
         window.StatusBarTheme = RequestedTheme == AppTheme.Dark ? StatusBarTheme.Dark : StatusBarTheme.Light;
-        window.Resumed += async (_, _) => await services.GetRequiredService<ViewModels.ConferenceViewModel>().ResumeAsync();
-        window.Stopped += (_, _) => services.GetRequiredService<ViewModels.ConferenceViewModel>().PauseRefresh();
+        window.Resumed += async (_, _) => await conference.ResumeAsync();
+        window.Stopped += (_, _) =>
+        {
+            sessionClock.Stop();
+            conference.PauseRefresh();
+        };
+        window.Destroying += (_, _) => sessionClock.Stop();
         return window;
     }
 

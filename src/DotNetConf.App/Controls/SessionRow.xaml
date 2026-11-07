@@ -27,8 +27,11 @@
                     </DataTrigger>
                 </VerticalStackLayout.Triggers>
                 <Label Text="{Binding DateLabel}" Style="{StaticResource Secondary}" FontSize="13" />
-                <Label Text="{Binding TimeLabel}" FontFamily="OpenSansSemibold" FontSize="14"
-                       TextColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                    <Label Text="{Binding TimeLabel}" FontFamily="OpenSansSemibold" FontSize="14"
+                           TextColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+                    <controls:LiveIndicator Grid.Column="1" IsVisible="{Binding IsLive}" />
+                </Grid>
                 <Label Text="{Binding Title}" FontFamily="OpenSansSemibold" FontSize="18"
                        TextColor="{AppThemeBinding Light={StaticResource Midnight}, Dark={StaticResource White}}" />
                 <Label Text="{Binding SpeakerNames}" Style="{StaticResource Secondary}" FontSize="14" />
@@ -49,14 +52,17 @@
                     <Label Text="{Binding Title}" FontFamily="OpenSansSemibold" FontSize="16"
                            MaxLines="2" LineBreakMode="TailTruncation"
                            TextColor="{AppThemeBinding Light={StaticResource Midnight}, Dark={StaticResource White}}" />
-                    <Label Style="{StaticResource Secondary}" FontSize="12">
-                        <Label.Text>
-                            <MultiBinding StringFormat="{}{0}  {1}">
-                                <Binding Path="DateLabel" />
-                                <Binding Path="TimeLabel" />
-                            </MultiBinding>
-                        </Label.Text>
-                    </Label>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <Label Style="{StaticResource Secondary}" FontSize="12">
+                            <Label.Text>
+                                <MultiBinding StringFormat="{}{0}  {1}">
+                                    <Binding Path="DateLabel" />
+                                    <Binding Path="TimeLabel" />
+                                </MultiBinding>
+                            </Label.Text>
+                        </Label>
+                        <controls:LiveIndicator Grid.Column="1" IsVisible="{Binding IsLive}" />
+                    </Grid>
                 </VerticalStackLayout>
                 <Button Command="{Binding OpenCommand}" BackgroundColor="Transparent" BorderWidth="0"
                         AutomationId="{Binding AutomationId}" SemanticProperties.Hint="Opens session details">
