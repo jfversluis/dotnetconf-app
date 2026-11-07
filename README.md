@@ -8,9 +8,9 @@ Your .NET Conf, in your pocket. A **companion app for iOS and Android**, built t
 
 ## Explore the conference
 
-- **Get to the event.** Home links to viewing information at [dot.net/conf](https://dot.net/conf) and registration. Community brings together #dotnetconf, the .NET YouTube channel and social channels, and a shareable conference invitation.
-- **Watch sessions.** As Microsoft publishes session YouTube links, normal agenda refreshes reveal Watch session on session details and an indicator in the lists. The device handles video links, which may open in an installed video app or a browser depending on its settings. Use the in-app Video available filter to find them. Mark a session as watched yourself, then use Hide watched to narrow the list; opening a video never marks it automatically. Watched status is stored separately from your schedule and can be reversed. No app update is needed for new video links. Published session resources and speaker links appear only when supplied by the feed. Share a session from its details; recipients get its public title, speakers, link, and hashtag, not your saved schedule. Experimental desktop/browser builds copy the invitation or session text instead of opening a native share sheet.
-- **Find your next idea.** Browse sessions and search by title, topic, or speaker. Switch between local days with scrolling day tabs, or narrow the agenda by topic.
+- **Get to the event.** Home links to [dot.net/conf](https://dot.net/conf) for event and viewing updates, and to registration. Community brings together #dotnetconf, the .NET YouTube channel and social channels, and a shareable conference invitation.
+- **Watch sessions.** As Microsoft publishes session YouTube links, normal agenda refreshes reveal Watch session on session details and an indicator in the lists. The device handles video links, which may open in an installed video app or a browser depending on its settings. Use the in-app Video available filter to find them; when no session videos are linked, the app says so. Mark any published session as watched, including one you watched live, then use Hide watched to narrow the list; opening a video never marks it automatically. Watched status is stored separately from your schedule and can be reversed. No app update is needed for new video links. Published session resources and speaker links appear only when supplied by the feed. Share a session from its details; recipients get its public title, speakers, link, and hashtag, not your saved schedule. Experimental desktop/browser builds copy the invitation or session text instead of opening a native share sheet.
+- **Find your next idea.** Browse sessions and search by title, topic, or speaker. Switch between local days with scrolling day tabs, or narrow the agenda by topic. Empty results offer a way to clear every search and filter at once.
 - **Meet the speakers.** Read their biographies and explore their talks, with easy navigation between speakers and sessions.
 - **Make room for details.** On wide windows, Sessions and Speakers keep the list on the left and details on the right. On supported foldables, an active division separates the panes; a horizontal division stacks them. Narrow windows or very large text retain native navigation, and resizing carries your selected details with you.
 - **Find your community.** Share an invitation, follow the official channels, or explore ways to organize a gathering. No community events ship with the app, and an official event feed is not connected yet. The overview says when no events are listed; browsing appears only when there are listings.
@@ -18,9 +18,10 @@ Your .NET Conf, in your pocket. A **companion app for iOS and Android**, built t
 - **Plan with on-device AI.** Describe your interests, must-see speakers, and available time to get a personal shortlist from the real agenda. Already have a schedule? Find talks that fit in the gaps.
 - **Ask, then get on with it.** On supported devices, the glowing Ask control on Home opens sessions or speakers, filters the agenda, or saves a talk from one request. No chat transcript. Removals always need your confirmation.
 - **See times that make sense to you.** Session times use your device's local time zone.
+- **See what's on now.** A red dot and Live label identify sessions during their published time slots on Home, session lists, details, and the schedule timeline. This follows the agenda, not a check that a broadcast is running. It updates every 30 seconds while the app is open and immediately when you return.
 - **Feel at home.** Follow your device's appearance or choose Light or Dark in Settings. The app supports larger text.
 
-The agenda opens immediately from the last downloaded update. No sessions or speaker profiles ship with the app: the first launch needs an internet connection to download them. The Microsoft agenda refreshes in the background without interrupting browsing. To check for updates yourself, pull down on Home, Sessions, Speakers, or the Schedule screen. A keyboard- and screen-reader-accessible alternative is available under Settings → About → Check for agenda updates. If an update fails, choose Retry. Downloaded data and your saved choices remain available offline.
+The agenda opens immediately from the last downloaded update. No sessions or speaker profiles ship with the app: the first launch needs an internet connection to download them. The Microsoft agenda refreshes in the background without interrupting browsing. To check for updates yourself, pull down on Home, Sessions, Speakers, or the Schedule screen. A keyboard- and screen-reader-accessible alternative is available under Settings → About → Check for agenda updates. If an update fails, choose Retry; in a compact view, open Details first. Downloaded data and your saved choices remain available offline.
 
 ## Plan with on-device AI
 
@@ -32,17 +33,18 @@ those same conference days without moving your existing choices.
 
 Open **My Schedule** and choose **Discover sessions for my schedule**, or **Find
 talks for my gaps** once you've saved sessions. Discovery is also available
-during setup, even without an AI model. When local AI isn't available, **Explore a mix / Shuffle suggestions**
+during setup, even without an AI model. **Explore a mix** or **Shuffle suggestions**
 picks up to six compatible talks with topic, speaker, and day variety from the
 downloaded agenda. This is random discovery, not personalized AI advice.
-Shuffle replaces the unsaved preview, never your saved schedule.
+Shuffle replaces the unsaved preview, never your saved schedule. If sessions are
+checked, confirm before replacing them; a failed refresh keeps the current preview.
 
-When a local model is ready, the planner instead opens the AI request form;
-mix/shuffle isn't shown. Make a specific request, then review the selected talks,
+When a local model is ready, the planner also offers the AI request form.
+Make a specific request, then review the selected talks,
 alternatives, and overlap warnings,
 confirm you've reviewed the sessions and times, then choose **Add N to My Schedule**. Nothing is saved just by checking a box or
-continuing setup. Setup asks before continuing without adding any sessions, and
-warns before continuing or skipping setup with checked, unsaved suggestions.
+continuing setup. Setup warns before leaving with checked,
+unsaved suggestions; continuing without choosing sessions needs no confirmation.
 There is no 12-session saving limit; ordinary AI suggestions still start with
 a manageable shortlist. If an "all sessions" request cannot fit, you can explicitly
 choose to review a subset instead.
@@ -77,8 +79,8 @@ Explore [what you can ask and how to get started](docs/AI-PLANNER.md).
 
 ### Ask for one app action
 
-When a ready local model supports tools, Home shows **Ask about the conference**
-instead of **Explore sessions**. Otherwise it keeps **Explore sessions**.
+When a ready local model supports tools, Home shows **Ask about the conference**.
+Otherwise it shows **Browse sessions**. The Sessions tab remains available regardless of AI readiness.
 On Android, Ask and the schedule planner both use Gemini Nano 4 Fast
 (`gemini-nano-preview-fast`), with no model picker. Readiness requires reported
 native tool-calling support. Checking readiness does not download the model or

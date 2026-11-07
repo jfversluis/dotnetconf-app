@@ -1,5 +1,6 @@
 using DotNetConf.App.ViewModels;
 using DotNetConf.App.Services;
+using System.ComponentModel;
 using IosPage = Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.Page;
 
 namespace DotNetConf.App.Pages;
@@ -7,10 +8,12 @@ namespace DotNetConf.App.Pages;
 public partial class SchedulePage : AdaptiveConferencePage
 {
     private bool timelineSelected = true;
+    private bool compactHeader;
 
     public SchedulePage(ConferenceViewModel conference, DetailNavigationService navigation) : base(conference)
     {
         InitializeComponent();
+        ToolbarItems.Remove(PlannerToolbar);
         ConfigureDetails(DetailKind.Session, navigation);
         ShowTimeline(true);
     }
@@ -18,6 +21,7 @@ public partial class SchedulePage : AdaptiveConferencePage
     protected override void OnAppearing()
     {
         Conference.ScheduleChanged += OnScheduleChanged;
+        Conference.PropertyChanged += OnConferencePropertyChanged;
         base.OnAppearing();
         UpdateBottomInset();
         UpdateHeader();
@@ -27,10 +31,21 @@ public partial class SchedulePage : AdaptiveConferencePage
     protected override void OnDisappearing()
     {
         Conference.ScheduleChanged -= OnScheduleChanged;
+        Conference.PropertyChanged -= OnConferencePropertyChanged;
         base.OnDisappearing();
     }
 
-    private void OnScheduleChanged(object? sender, EventArgs e) => UpdatePresentation();
+    private void OnScheduleChanged(object? sender, EventArgs e)
+    {
+        UpdateHeader();
+        UpdatePresentation();
+    }
+
+    private void OnConferencePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ConferenceViewModel.HasRefreshError))
+            UpdateStatusPresentation();
+    }
 
     protected override DetailLayout AdaptDetailLayout(DetailLayout layout, double width, double textScale)
     {
@@ -51,11 +66,29 @@ public partial class SchedulePage : AdaptiveConferencePage
 
     private void UpdateHeader()
     {
-        if (Height > 0 && TextScale is { } scale)
+        if (Width > 0 && Height > 0 && TextScale is { } scale)
         {
+            compactHeader = ScheduleLayout.ShouldUseCompactHeader(Width, Height, scale);
             ScheduleHeading.IsVisible = ScheduleLayout.ShouldShowHeading(Height, scale);
+            ScheduleTimeZone.IsVisible = !compactHeader;
+            CompactTimeZone.IsVisible = compactHeader;
+            PlannerAction.IsVisible = !compactHeader;
+            PlannerAction.Text = Conference.SchedulePlannerAction;
+            if (compactHeader && !ToolbarItems.Contains(PlannerToolbar))
+                ToolbarItems.Add(PlannerToolbar);
+            else if (!compactHeader)
+                ToolbarItems.Remove(PlannerToolbar);
             Planner.TextScale = scale;
         }
+        UpdateStatusPresentation();
+    }
+
+    private void UpdateStatusPresentation()
+    {
+        if (FullScheduleStatus is null || CompactScheduleStatus is null)
+            return;
+        FullScheduleStatus.IsVisible = !compactHeader && Conference.HasRefreshError;
+        CompactScheduleStatus.IsVisible = compactHeader && Conference.HasRefreshError;
     }
 
     // On iOS the timeline runs under the translucent tab bar; the page's safe area says how far.

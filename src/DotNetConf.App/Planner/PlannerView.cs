@@ -44,8 +44,7 @@ public sealed class PlannerView : UserControl
     private const double RulerWidth = 80;
     private const double MaxContentWidth = 860;
     private const double SideMargin = 16;
-    // The overview rail and a gap before it, kept clear on the right of the timeline.
-    private const double RailSpace = OverviewRail.RailWidth + 6;
+    private const double RailGap = 6;
     private const double TopPadding = 4;
     private const double BottomPadding = 16;
     private const double DayHeaderHeight = 44;
@@ -56,10 +55,9 @@ public sealed class PlannerView : UserControl
     // The gap a card keeps from the times it starts and ends.
     private const double CardInset = 2;
     private const double OverflowSliceMinutes = 15;
-    private const double OverflowStripWidth = 44;
+    private const double OverflowStripWidth = 48;
     // During the conference the timeline opens with the current time this far down the screen.
     private const double NowFromTop = 0.3;
-    private const double MaxTextScale = 1.6;
     private const int BackgroundLayoutThreshold = 5000;
     // Spare cards for zooming out: three times those on screen, within these bounds, built a batch at a time.
     private const int MinPoolSize = 150;
@@ -86,7 +84,7 @@ public sealed class PlannerView : UserControl
     private readonly Ellipse statusDot;
     private readonly StackPanel zoomButtons;
     private readonly Grid statusBar;
-    private readonly StackPanel state;
+    private readonly Grid state;
     private readonly RelayCommand zoomOutCommand;
     private readonly RelayCommand zoomInCommand;
     private readonly ScrollViewer scroller;
@@ -158,10 +156,10 @@ public sealed class PlannerView : UserControl
         ];
 
         chips = new WrapPanel { Margin = new Thickness(SideMargin, 16, SideMargin, 8) };
-        summary = new TextBlock { FontFamily = PlannerTheme.BodyFont, FontSize = 13, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+        summary = new TextBlock { FontFamily = PlannerTheme.BodyFont, FontSize = 13, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
         statusDot = new Ellipse { Width = 8, Height = 8, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
         statusDot.Classes.Add("live-dot");
-        status = new TextBlock { FontFamily = PlannerTheme.BodyFont, FontSize = 13, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center };
+        status = new TextBlock { FontFamily = PlannerTheme.BodyFont, FontSize = 13, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
         // A live region, so screen readers hear the status when it changes; see UpdateStatus.
         AutomationProperties.SetLiveSetting(status, AutomationLiveSetting.Polite);
         zoomButtons = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(10, 0, 0, 0) };
@@ -171,7 +169,13 @@ public sealed class PlannerView : UserControl
             ColumnDefinitions = [new ColumnDefinition(1, GridUnitType.Star), new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Auto)],
             Margin = new Thickness(SideMargin + 4, 0, SideMargin, 12),
         };
-        state = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Children = { statusDot, status } };
+        state = new Grid
+        {
+            ColumnDefinitions = [new ColumnDefinition(GridLength.Auto), new ColumnDefinition(1, GridUnitType.Star)],
+            VerticalAlignment = VerticalAlignment.Center,
+            Children = { statusDot, status }
+        };
+        Grid.SetColumn(status, 1);
         Grid.SetColumn(state, 1);
         Grid.SetColumn(zoomButtons, 2);
         statusBar.Children.AddRange([summary, state, zoomButtons]);
@@ -204,11 +208,19 @@ public sealed class PlannerView : UserControl
             HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden,
             VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
         };
-        root = new Grid { RowDefinitions = [new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Auto), new RowDefinition(1, GridUnitType.Star)] };
+        root = new Grid
+        {
+            RowDefinitions = [new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Auto), new RowDefinition(1, GridUnitType.Star)],
+            ColumnDefinitions = [new ColumnDefinition(1, GridUnitType.Star), new ColumnDefinition(GridLength.Auto)]
+        };
         Grid.SetRowSpan(brandGlow, 2);
+        Grid.SetColumnSpan(brandGlow, 2);
+        Grid.SetColumnSpan(chipScroller, 2);
         Grid.SetRow(statusBar, 1);
+        Grid.SetColumnSpan(statusBar, 2);
         Grid.SetRow(scroller, 2);
         Grid.SetRow(rail, 2);
+        Grid.SetColumn(rail, 1);
         root.Children.AddRange([brandGlow, chipScroller, statusBar, scroller, rail]);
         // Scales the whole planner, text and layout together, for larger system text sizes.
         textScaler = new LayoutTransformControl { Child = root };
@@ -257,6 +269,8 @@ public sealed class PlannerView : UserControl
         backdrop.SetTheme(theme);
         var zoomOut = new RoundButton("−", "Zoom out", theme) { Command = zoomOutCommand };
         var zoomIn = new RoundButton("+", "Zoom in", theme) { Command = zoomInCommand };
+        zoomOut.SetTextScale(textScale);
+        zoomIn.SetTextScale(textScale);
         AutomationProperties.SetHelpText(zoomOut, "Shows more of the day at once");
         AutomationProperties.SetHelpText(zoomIn, "Shows more detail for each session");
         zoomButtons.Children.Clear();
@@ -280,17 +294,19 @@ public sealed class PlannerView : UserControl
     }
 
     /// <summary>
-    /// Shares the native app's measured text scale, capped so the full timeline layout stays usable.
+    /// Shares the native app's measured text scale.
     /// </summary>
     public void SetTextScale(double value)
     {
         if (!double.IsFinite(value) || value <= 0)
             throw new ArgumentOutOfRangeException(nameof(value));
-        var scale = Math.Clamp(value, 1, MaxTextScale);
+        var scale = Math.Max(value, 1);
         if (scale == textScale)
             return;
         textScale = scale;
         textScaler.LayoutTransform = scale > 1 ? new ScaleTransform(scale, scale) : null;
+        foreach (var button in zoomButtons.Children.OfType<RoundButton>())
+            button.SetTextScale(scale);
         UpdateChromeLayout();
         SetBottomInset(bottomInset);
     }
@@ -378,14 +394,16 @@ public sealed class PlannerView : UserControl
 
     private void UpdateChromeLayout()
     {
+        chips.Margin = new Thickness(SideMargin / textScale, 16 / textScale, SideMargin / textScale, 8 / textScale);
+        statusBar.Margin = new Thickness((SideMargin + 4) / textScale, 0, SideMargin / textScale, 12 / textScale);
+        zoomButtons.Margin = new Thickness(10 / textScale, 0, 0, 0);
         chipScroller.HorizontalScrollBarVisibility = ScheduleLayout.ShouldWrapTopics(Bounds.Width, Bounds.Height, textScale)
             ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Hidden;
         var stacked = ScheduleLayout.ShouldStackTimelineLabels(Bounds.Width / textScale - 2 * SideMargin);
-        Grid.SetColumnSpan(summary, stacked ? 3 : 1);
+        Grid.SetColumnSpan(summary, stacked ? 2 : 1);
         Grid.SetRow(state, stacked ? 1 : 0);
         Grid.SetColumn(state, stacked ? 0 : 1);
-        Grid.SetColumnSpan(state, stacked ? 2 : 1);
-        Grid.SetRow(zoomButtons, stacked ? 1 : 0);
+        Grid.SetColumnSpan(state, stacked ? 3 : 1);
         statusBar.RowSpacing = stacked ? 4 : 0;
     }
 
@@ -603,17 +621,19 @@ public sealed class PlannerView : UserControl
     // Lays the days out at the current zoom and width.
     private void Relayout()
     {
-        var width = scroller.Bounds.Width;
-        if (width <= 0 || layout is not { } timeline)
+        var viewportWidth = scroller.Bounds.Width;
+        if (viewportWidth <= 0 || layout is not { } timeline)
             return;
+        var width = ScheduleLayout.TimelineContentWidth(viewportWidth);
+        scroller.HorizontalScrollBarVisibility = width > viewportWidth
+            ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
         var previousHeaderHeight = dayHeaderHeight;
         var previousOffset = scroller.Offset.Y;
         var anchorDay = dayTops.Length == timeline.Days.Count && dayTops.Length > 0
             ? Math.Min(FirstDayEndingAfter(previousOffset), dayTops.Length - 1) : -1;
         var previousDayTop = anchorDay >= 0 ? dayTops[anchorDay] : 0;
-        contentWidth = Math.Min(MaxContentWidth, width - SideMargin - RailSpace);
-        // Centered, unless that would put the timeline under the overview rail.
-        contentLeft = Math.Min((width - contentWidth) / 2, width - RailSpace - contentWidth);
+        contentWidth = Math.Min(MaxContentWidth, width - SideMargin - RailGap);
+        contentLeft = Math.Min((width - contentWidth) / 2, width - RailGap - contentWidth);
         cardsLeft = contentLeft + RulerWidth;
         cardsWidth = contentWidth - RulerWidth;
         dayHeaderHeight = ScheduleLayout.ShouldStackTimelineLabels(contentWidth) ? StackedDayHeaderHeight : DayHeaderHeight;
@@ -634,7 +654,7 @@ public sealed class PlannerView : UserControl
         {
             var headerShift = previousOffset >= previousDayTop + previousHeaderHeight
                 ? dayHeaderHeight - previousHeaderHeight : 0;
-            scroller.Offset = new Vector(0, Math.Max(0,
+            scroller.Offset = new Vector(scroller.Offset.X, Math.Max(0,
                 previousOffset + dayTops[anchorDay] - previousDayTop + headerShift));
         }
         Place(backdrop, 0, 0, width, canvas.Height);
@@ -681,8 +701,9 @@ public sealed class PlannerView : UserControl
         var timelineDay = timeline.Days[day];
         var top = DayTop(day);
         var scrollTop = scroller.Offset.Y;
-        // The day at the top of the screen keeps its header there until its last sessions push it up.
-        var pinned = scrollTop > dayTops[day] && (day + 1 == dayTops.Length || scrollTop < dayTops[day + 1]);
+        // A pinned header yields to the sessions when the visible viewport is too short for both.
+        var pinned = CanPinDayHeaders() && scrollTop > dayTops[day] &&
+            (day + 1 == dayTops.Length || scrollTop < dayTops[day + 1]);
         var pushedAt = top + timelineDay.Length * minuteHeight - dayHeaderHeight;
         var header = headers.Show(day, () => new DayHeader(timelineDay, theme), contentLeft,
             pinned ? Math.Min(scrollTop, pushedAt) : dayTops[day], contentWidth, dayHeaderHeight + DayHeader.FadeHeight);
@@ -885,15 +906,18 @@ public sealed class PlannerView : UserControl
             Realize();
     }
 
+    private bool CanPinDayHeaders() => ScheduleLayout.ShouldPinTimelineDayHeader(
+        scroller.Viewport.Height, dayHeaderHeight + DayHeader.FadeHeight, bottomInset / textScale);
+
     // Keyboard focus brings a card into view with room above for the pinned day header and below for a tab bar drawn
     // over the timeline, so the focused card is never left underneath either. Taps and screen readers keep the default.
     private void OnRequestBringIntoView(object? sender, RequestBringIntoViewEventArgs e)
     {
         if (!focusFromKeyboard || e.TargetObject is not InputElement { IsFocused: true })
             return;
-        var above = dayHeaderHeight + DayHeader.FadeHeight;
+        var above = CanPinDayHeaders() ? dayHeaderHeight + DayHeader.FadeHeight : 0;
         var rect = e.TargetRect;
-        e.TargetRect = new Rect(rect.X, rect.Y - above, rect.Width, rect.Height + above + bottomInset);
+        e.TargetRect = new Rect(rect.X, rect.Y - above, rect.Width, rect.Height + above + bottomInset / textScale);
     }
 
     private void OnPinch(object? sender, PinchEventArgs e)
@@ -972,7 +996,7 @@ public sealed class PlannerView : UserControl
         var minute = (y - DayTop(day)) / minuteHeight;
         minuteHeight = value;
         Relayout();
-        scroller.Offset = new Vector(0, Math.Max(0, DayTop(day) + minute * minuteHeight - anchor));
+        scroller.Offset = new Vector(scroller.Offset.X, Math.Max(0, DayTop(day) + minute * minuteHeight - anchor));
         zoomOutCommand.NotifyCanExecuteChanged();
         zoomInCommand.NotifyCanExecuteChanged();
     }
@@ -1063,7 +1087,7 @@ public sealed class PlannerView : UserControl
         if (scrolledToNow || nowIndicator is null || double.IsNaN(nowIndicator.Top) || scroller.Extent.Height <= scroller.Viewport.Height)
             return;
         scrolledToNow = true;
-        scroller.Offset = new Vector(0, Math.Max(0, nowIndicator.Top - scroller.Viewport.Height * NowFromTop));
+        scroller.Offset = new Vector(scroller.Offset.X, Math.Max(0, nowIndicator.Top - scroller.Viewport.Height * NowFromTop));
     }
 
     // The app refreshes the local time zone as its pages appear; days and hours follow when it changes.
@@ -1091,8 +1115,8 @@ public sealed class PlannerView : UserControl
         var live = layout?.AnyLive(instant) ?? false;
         var next = layout?.NextStart(instant);
         statusDot.IsVisible = live;
-        statusDot.Fill = new ImmutableSolidColorBrush(theme.Magenta);
-        status.Foreground = new ImmutableSolidColorBrush(live ? theme.Magenta : theme.Secondary);
+        statusDot.Fill = new ImmutableSolidColorBrush(theme.Live);
+        status.Foreground = new ImmutableSolidColorBrush(live ? theme.Live : theme.Secondary);
         var kind = layout is null ? StatusNone
             : live ? StatusLive
             : next is null ? StatusWrapped
@@ -1158,7 +1182,7 @@ public sealed class PlannerView : UserControl
     }
 
     private static (bool Live, bool Ended, double Elapsed) TimeState(Session session, DateTimeOffset instant) =>
-        (instant >= session.StartsAt && instant < session.EndsAt,
+        (Agenda.IsInProgress(session, instant),
             instant >= session.EndsAt,
             (instant - session.StartsAt) / (session.EndsAt - session.StartsAt));
 

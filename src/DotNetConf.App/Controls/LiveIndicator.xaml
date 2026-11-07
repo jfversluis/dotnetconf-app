@@ -1,0 +1,16 @@
+<HorizontalStackLayout x:Class="DotNetConf.App.Controls.LiveIndicator"
+                       xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+                       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+                       Spacing="8" VerticalOptions="Center">
+    <Ellipse WidthRequest="8" HeightRequest="8" VerticalOptions="Center"
+             Fill="{AppThemeBinding Light={StaticResource LightLive}, Dark={StaticResource DarkLive}}"
+             AutomationProperties.IsInAccessibleTree="False">
+        <Ellipse.Shadow>
+            <Shadow Brush="{AppThemeBinding Light={StaticResource LightLive}, Dark={StaticResource DarkLive}}"
+                    Offset="0,0" Radius="6" Opacity="0.35" />
+        </Ellipse.Shadow>
+    </Ellipse>
+    <Label Text="Live" FontFamily="OpenSansSemibold" FontSize="13"
+           TextColor="{AppThemeBinding Light={StaticResource LightLive}, Dark={StaticResource DarkLive}}"
+           SemanticProperties.Hint="Based on the published session time" />
+</HorizontalStackLayout>

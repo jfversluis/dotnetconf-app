@@ -5,6 +5,14 @@
                       xmlns:planner="clr-namespace:DotNetConf.App.Planner"
                       xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
                       x:DataType="vm:ConferenceViewModel" Title="My Schedule">
+    <ContentPage.ToolbarItems>
+        <ToolbarItem x:Name="PlannerToolbar" Text="{Binding SchedulePlannerAction}"
+                     IconImageSource="{StaticResource DiscoveryActionIcon}"
+                     Command="{Binding FillScheduleGapsCommand}" Order="Primary"
+                     SemanticProperties.Description="{Binding SchedulePlannerAction}"
+                     SemanticProperties.Hint="{Binding SchedulePlannerHint}"
+                     AutomationId="schedule-ai-planner-toolbar" />
+    </ContentPage.ToolbarItems>
     <Grid x:Name="ScheduleRoot" RowDefinitions="Auto,*" SafeAreaEdges="Container,None,Container,None">
         <VerticalStackLayout Padding="24,12,24,12" Spacing="8" AutomationId="schedule-header">
             <Label x:Name="ScheduleHeading" Text="Your conference, your way" Style="{StaticResource Subheading}"
@@ -24,14 +32,21 @@
                             SemanticProperties.Hint="Shows only your saved sessions as a list" />
                 </HorizontalStackLayout>
             </Grid>
-            <Label Text="{Binding TimeZoneLabel}" Style="{StaticResource Secondary}" FontSize="12"
+            <Label x:Name="ScheduleTimeZone" Text="{Binding TimeZoneLabel}" Style="{StaticResource Secondary}" FontSize="12"
                    AutomationId="schedule-timezone" />
-            <Button Text="{Binding SchedulePlannerAction}" Command="{Binding FillScheduleGapsCommand}"
+            <Label x:Name="CompactTimeZone" Text="{Binding CompactTimeZoneLabel}" Style="{StaticResource Secondary}"
+                   FontSize="12" IsVisible="False" SemanticProperties.Description="{Binding TimeZoneLabel}"
+                   AutomationId="schedule-timezone-compact" />
+            <Button x:Name="PlannerAction" Text="{Binding SchedulePlannerAction}" Command="{Binding FillScheduleGapsCommand}"
                     ImageSource="{StaticResource DiscoveryActionIcon}" ContentLayout="Left,10"
-                    HorizontalOptions="Fill" LineBreakMode="WordWrap" Margin="0,4,0,0"
-                    Style="{StaticResource QuietButton}" AutomationId="schedule-ai-planner"
+                    Style="{StaticResource ConferenceTextAction}" AutomationId="schedule-ai-planner"
+                    SemanticProperties.Description="{Binding SchedulePlannerAction}"
                     SemanticProperties.Hint="{Binding SchedulePlannerHint}" />
-            <controls:StatusBanner AutomationId="schedule-status" />
+            <ContentView x:Name="FullScheduleStatus" IsVisible="False">
+                <controls:StatusBanner AutomationId="schedule-status" />
+            </ContentView>
+            <controls:CompactSearchStatus x:Name="CompactScheduleStatus" IsVisible="False"
+                                          AutomationId="schedule-compact-status" />
         </VerticalStackLayout>
         <planner:SchedulePlanner x:Name="Planner" Grid.Row="1" Sessions="{Binding SavedTimelineSessions}"
                                  Topics="{Binding Topics}"

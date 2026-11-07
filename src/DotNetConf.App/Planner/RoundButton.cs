@@ -18,7 +18,10 @@ internal sealed class RoundButton : Button
 {
     private readonly PlannerTheme theme;
     private readonly Border circle;
+    private readonly Panel target;
+    private readonly TextBlock glyphView;
     private bool keyboardFocus;
+    private double textScale = 1;
 
     public RoundButton(string glyph, string name, PlannerTheme theme)
     {
@@ -28,25 +31,38 @@ internal sealed class RoundButton : Button
         FocusAdorner = null;
         RenderTransformOrigin = RelativePoint.Center;
         Transitions = [new TransformOperationsTransition { Property = RenderTransformProperty, Duration = TimeSpan.FromMilliseconds(140), Easing = new CubicEaseOut() }];
+        glyphView = new TextBlock
+        {
+            Text = glyph,
+            FontFamily = PlannerTheme.BodyFont,
+            FontSize = 18,
+            FontWeight = FontWeight.SemiBold,
+            Foreground = new ImmutableSolidColorBrush(theme.Accent),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
         circle = new Border
         {
             Width = 36,
             Height = 36,
             CornerRadius = new CornerRadius(18),
-            Child = new TextBlock
-            {
-                Text = glyph,
-                FontFamily = PlannerTheme.BodyFont,
-                FontSize = 18,
-                FontWeight = FontWeight.SemiBold,
-                Foreground = new ImmutableSolidColorBrush(theme.Accent),
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-            },
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = glyphView,
         };
-        Content = circle;
-        Margin = new Thickness(6, 0, 0, 0);
+        target = new Panel { Width = 48, Height = 48, Background = Brushes.Transparent, Children = { circle } };
+        Content = target;
         AutomationProperties.SetName(this, name);
+        Update();
+    }
+
+    public void SetTextScale(double value)
+    {
+        textScale = Math.Max(value, 1);
+        Width = Height = target.Width = target.Height = 48 / textScale;
+        circle.Width = circle.Height = 36 / textScale;
+        circle.CornerRadius = new CornerRadius(18 / textScale);
+        glyphView.FontSize = 18 / textScale;
         Update();
     }
 
@@ -75,7 +91,7 @@ internal sealed class RoundButton : Button
     {
         circle.Background = new ImmutableSolidColorBrush(theme.Surface);
         circle.BorderBrush = new ImmutableSolidColorBrush(keyboardFocus ? theme.Accent : theme.Outline);
-        circle.BorderThickness = new Thickness(keyboardFocus ? 2 : 1);
+        circle.BorderThickness = new Thickness((keyboardFocus ? 2 : 1) / textScale);
         Opacity = IsEffectivelyEnabled ? 1 : 0.4;
         var builder = TransformOperations.CreateBuilder(1);
         var scale = IsPressed ? 0.9 : 1;

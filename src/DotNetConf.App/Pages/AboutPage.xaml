@@ -8,10 +8,11 @@
         <VerticalStackLayout Padding="24" Spacing="24" MaximumWidthRequest="720" HorizontalOptions="Center" SafeAreaEdges="None">
             <Label Text="A celebration of .NET" Style="{StaticResource Heading}" />
             <Label Text="{Binding ConferenceDescription}" />
-            <Label Text="{Binding AgendaNotice}" Style="{StaticResource Secondary}" AutomationId="agenda-source-disclosure" />
+            <Label Text="Sessions and speaker details come from Microsoft's public .NET Conf agenda."
+                   Style="{StaticResource Secondary}" AutomationId="agenda-source-disclosure" />
             <VerticalStackLayout Spacing="8">
                 <Label Text="Refresh the agenda" Style="{StaticResource Subheading}" />
-                <Label Text="Pull down on Home, Sessions, Speakers, or the Schedule screen to check for updates. If an update fails, choose Retry. Downloaded sessions stay available offline."
+                <Label Text="Pull down on Home, Sessions, Speakers, or the List view in My Schedule to check for updates. If an update fails, choose Retry. Downloaded sessions stay available offline."
                        Style="{StaticResource Secondary}" AutomationId="refresh-help" />
                 <Button Text="Check for agenda updates" Command="{Binding RequestRefreshCommand}"
                         IsEnabled="{Binding CanRefresh}" Style="{StaticResource QuietButton}"
@@ -39,18 +40,14 @@
             <BoxView HeightRequest="1" />
             <VerticalStackLayout Spacing="12">
                 <Label Text="Your schedule stays here" Style="{StaticResource Subheading}" />
-                <Label Text="No account or app-managed cloud sync. Bookmarks and your appearance preference are stored on this device; operating-system backups may include app data. Opening the official website uses your browser and that site's privacy policy."
+                <Label Text="Your saved schedule, watched status, and preferences stay on this device. Your device's backup may include them. Links open in another app or browser, where its privacy policy applies."
                        Style="{StaticResource Secondary}" />
                 <Button Text="Privacy policy" Clicked="OnPrivacyClicked" Style="{StaticResource QuietButton}"
                         AutomationId="about-privacy" SemanticProperties.Hint="Read this version's policy offline." />
-                <Label Text="Development builds include local DevFlow inspection. The inspection agent is excluded from Release builds."
-                       Style="{StaticResource Secondary}" />
             </VerticalStackLayout>
             <VerticalStackLayout Spacing="12">
-                <Label Text="Built with .NET MAUI 11" Style="{StaticResource Subheading}" />
-                <Label Text="Native mobile UI, source-generated XAML, Fluent icons, and native maps with clustered custom pins. Reminders, local AI, and partner video integration are future additions."
-                       Style="{StaticResource Secondary}" />
-                <Label Text="Fluent UI System Icons and IconFont.Maui.FluentIcons are MIT licensed. Open Sans is Apache 2.0 licensed; Space Grotesk uses the SIL Open Font License. License notices are included with the app."
+                <Label Text="Acknowledgments" Style="{StaticResource Subheading}" />
+                <Label Text="This app includes open-source software, icons, and fonts. Their notices and licenses are available here."
                        Style="{StaticResource Secondary}" />
                 <Button Text="Third-party dependencies" ImageSource="{StaticResource AboutIcon}"
                         Style="{StaticResource QuietButton}" Clicked="OnDependenciesClicked"

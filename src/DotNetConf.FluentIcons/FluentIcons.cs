@@ -11,6 +11,7 @@ public static class FluentIconsRegular
     public const string ArrowUp24 = "\uf19c";
     public const string CalendarAgenda24 = "\uf214";
     public const string ChevronRight24 = "\uf2b1";
+    public const string Circle24 = "\uf2bc";
     public const string Dismiss24 = "\uf36a";
     public const string Filter24 = "\uf407";
     public const string Heart24 = "\uf47a";
@@ -31,6 +32,7 @@ public static class FluentIconsRegular
 public static class FluentIconsFilled
 {
     public const string FontFamily = "FluentIconsFilled";
+    public const string CheckmarkCircle24 = "\uf299";
     public const string Heart24 = "\uf47e";
     public const string Stop24 = "\uf743";
 }

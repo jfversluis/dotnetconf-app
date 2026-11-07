@@ -56,9 +56,10 @@ measured text-scale unit, without hiding mode controls, time-zone information,
 or update errors. Below 340 units of available timeline-label width, the saved
 count/status and day/date labels stack instead of clipping. These policies
 re-evaluate on resize and text-size changes. The same text-scale monitor drives the embedded planner
-immediately, capped at its existing 1.6 layout scale rather than polling
-platform font settings. Short saved agendas align to the top of the timeline
-viewport rather than leaving a centered blank strip above the first day.
+immediately rather than polling platform font settings. At large text sizes, the
+timeline keeps a readable minimum content width and scrolls horizontally; its
+overview rail remains outside the scrollable content. Short saved agendas align
+to the top of the timeline viewport rather than leaving a centered blank strip.
 
 My Schedule reuses adaptive native detail navigation. A usable vertical
 division places the timeline or saved list on the left and session/speaker
@@ -625,7 +626,7 @@ Agenda cache files live in MAUI `FileSystem.AppDataDirectory`. Portrait caching 
 
 BCL `System.Text.Json` source generation and atomic files provide persistence without a native database. All serialization supplies generated type metadata; keep the Core AOT/trim analyzers enabled.
 
-Reminders, local AI, and Avalonia-owned video integration remain deferred. PR build validation and manual Google Play internal-testing/TestFlight release lanes are described in [CI and release setup](docs/CI.md); production promotion remains manual and store credentials must be configured by the owner.
+Embedded partner video integration remains deferred. PR build validation and manual Google Play internal-testing/TestFlight release lanes are described in [CI and release setup](docs/CI.md); production promotion remains manual and store credentials must be configured by the owner.
 
 App-owned icons use [IconFont.Maui.FluentIcons](https://github.com/jfversluis/IconFont.Maui.FluentIcons). Website-matched Space Grotesk headings and Open Sans body fonts, gradients, Entry-based search, and heart save actions are documented in `DESIGN.md`. Adaptive pane grids protect the top and side container insets and draw through the bottom container inset, with keyboard avoidance applied as described above. On iOS, reading ScrollViews use native automatic insets and CollectionViews use an inset-aware footer so their last item remains reachable beneath the system tab material without fixed offsets. The speaker-detail root also respects the top container safe area so its header does not begin under the Duo's navigation chrome; its bottom remains edge-to-edge.
 

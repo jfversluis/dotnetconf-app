@@ -59,15 +59,24 @@
                 </VerticalStackLayout>
             </Grid>
             <VerticalStackLayout Padding="24,20,24,24" Spacing="20" SafeAreaEdges="None">
-                <VerticalStackLayout IsVisible="{Binding ShowDiscoveryActions}" Spacing="8" AutomationId="planner-discovery-actions">
-                    <VerticalStackLayout IsVisible="{Binding CanExplore}" Spacing="8">
-                        <Button Text="Explore a mix / Shuffle suggestions" Command="{Binding ExploreCommand}"
-                                IsEnabled="{Binding CanEdit}" ImageSource="{StaticResource DiscoveryActionIcon}"
-                                ContentLayout="Left,8" LineBreakMode="WordWrap" AutomationId="planner-explore" />
-                        <Label Text="Replaces this preview, not saved talks."
+                <VerticalStackLayout Spacing="8" AutomationId="planner-discovery-actions">
+                    <VerticalStackLayout Spacing="8">
+                        <Button Text="{Binding ExploreLabel}" Clicked="ExploreClicked"
+                                IsEnabled="{Binding CanExplore}" ImageSource="{StaticResource DiscoveryActionIcon}"
+                                ContentLayout="Left,8" LineBreakMode="WordWrap" AutomationId="planner-explore">
+                            <Button.Triggers>
+                                <DataTrigger TargetType="Button" Binding="{Binding IsAiMode}" Value="True">
+                                    <Setter Property="Style" Value="{StaticResource QuietButton}" />
+                                </DataTrigger>
+                            </Button.Triggers>
+                        </Button>
+                        <Label Text="New suggestions replace this preview, not saved talks."
                                IsVisible="{Binding HasProposal}" Style="{StaticResource Secondary}" FontSize="13"
-                               SemanticProperties.Description="Shuffle replaces this unsaved preview. Your saved schedule stays unchanged."
+                               SemanticProperties.Description="New suggestions replace this unsaved preview. Your saved schedule stays unchanged."
                                AutomationId="planner-shuffle-guidance" />
+                        <Button Text="Plan with AI" Clicked="UseAiClicked" IsVisible="{Binding CanSwitchToAi}"
+                                IsEnabled="{Binding CanEdit}" Style="{StaticResource QuietButton}"
+                                AutomationId="planner-use-ai" />
                     </VerticalStackLayout>
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                         <Button Text="Review shortlist" IsVisible="{Binding HasProposal}" IsEnabled="{Binding CanEdit}" Clicked="ReviewShortlistClicked"
@@ -163,9 +172,9 @@
                                Style="{StaticResource Secondary}" FontSize="13" />
                     </VerticalStackLayout>
                 </VerticalStackLayout>
-                <Button Text="{Binding GenerateLabel}" LineBreakMode="WordWrap" Command="{Binding GenerateCommand}" IsEnabled="{Binding CanGenerate}"
+                <Button Text="{Binding GenerateLabel}" LineBreakMode="WordWrap" IsEnabled="{Binding CanGenerate}"
                         Clicked="GenerateClicked" AutomationId="planner-generate" />
-                <Label Text="On-device with Essentials.AI on supported devices. No app account or cloud AI."
+                <Label Text="Your request stays on this device. AI suggestions can be inaccurate."
                        Style="{StaticResource Secondary}" FontSize="13" />
                 </VerticalStackLayout>
                 <VerticalStackLayout IsVisible="{Binding HasProposal}" Spacing="16" AutomationId="planner-preview">
@@ -173,6 +182,16 @@
                     <Label x:Name="ShortlistHeading" Text="Your shortlist" Style="{StaticResource Heading}" SemanticProperties.HeadingLevel="Level2"
                            AutomationId="planner-shortlist-heading" />
                     <Label Text="{Binding DiscoverySource}" Style="{StaticResource Secondary}" FontSize="14" />
+                    <VerticalStackLayout IsVisible="{Binding HasChangedCriteria}" Spacing="4">
+                        <Label Text="Your request changed. These suggestions are from your previous request."
+                               Style="{StaticResource Secondary}" AutomationId="planner-changed-request" />
+                        <Button Text="Restore previous request" Command="{Binding RestoreReviewedRequestCommand}"
+                                IsEnabled="{Binding CanEdit}" Style="{StaticResource ConferenceTextAction}"
+                                AutomationId="planner-restore-request" />
+                    </VerticalStackLayout>
+                    <Label Text="Refresh these suggestions before adding them."
+                           IsVisible="{Binding PreviewNeedsRefresh}" Style="{StaticResource Secondary}"
+                           AutomationId="planner-stale-preview" />
                     <Label Text="{Binding SelectionSummary}" AutomationId="planner-selection-summary" />
                     <Label Text="{Binding AvailabilityAssumption}" IsVisible="{Binding HasAvailabilityAssumption}"
                            Style="{StaticResource Secondary}" FontSize="14" AutomationId="planner-availability-assumption" />
@@ -192,6 +211,12 @@
                                         <Label Text="{Binding Warning}" IsVisible="{Binding HasWarning}"
                                                TextColor="{AppThemeBinding Light={StaticResource LightError}, Dark={StaticResource DarkError}}"
                                                AutomationId="{Binding WarningAutomationId}" FontFamily="OpenSansSemibold" />
+                                        <Button Text="{Binding DetailsAction}" Clicked="ToggleDescriptionClicked"
+                                                Style="{StaticResource ConferenceTextAction}" FontSize="14"
+                                                AutomationId="{Binding DetailsAutomationId}"
+                                                SemanticProperties.Description="{Binding DetailsActionDescription}" />
+                                        <Label Text="{Binding Description}" IsVisible="{Binding ShowDescription}"
+                                               AutomationId="{Binding Id, StringFormat='planner-description-{0}'}" />
                                     </VerticalStackLayout>
                                 </Grid>
                             </DataTemplate>
@@ -204,7 +229,7 @@
                     <VerticalStackLayout IsVisible="{Binding ShowMatchingDetails}" Spacing="8"
                                          AutomationId="planner-matching-details">
                         <Label Text="{Binding Constraints}" AutomationId="planner-constraints" />
-                        <Label Text="Focused topic matches favor titles and descriptions; agenda tags are a fallback. Ask for all topic sessions to include tag-only matches too."
+                        <Label Text="Suggestions favor sessions that directly mention your interests. Ask for all sessions on a topic to include more."
                                Style="{StaticResource Secondary}" FontSize="14" />
                         <Label Text="AI can misunderstand. If an interest, speaker or time is wrong, edit your request and try again."
                                Style="{StaticResource Secondary}" FontSize="14" />
@@ -230,12 +255,12 @@
                         BackgroundColor="{AppThemeBinding Light={StaticResource LightSurface}, Dark={StaticResource DarkSurface}}"
                         AutomationId="planner-model-setup">
                     <VerticalStackLayout Spacing="12">
-                        <Label Text="{Binding ModelSetupHeading}" Style="{StaticResource Subheading}"
+                        <Label x:Name="ModelSetupHeadingLabel" Text="{Binding ModelSetupHeading}" Style="{StaticResource Subheading}"
                                SemanticProperties.HeadingLevel="Level2" />
                         <Label Text="{Binding ModelStatus}" AutomationId="planner-model-status" />
                         <Label Text="{Binding ModelDownloadDisclosure}" IsVisible="{Binding CanOfferModelSetup}"
                                Style="{StaticResource Secondary}" FontSize="14" AutomationId="planner-download-disclosure" />
-                        <Label Text="Checking or setting up AI can replace this unsaved preview. Your saved talks stay as they are."
+                        <Label Text="Your current suggestions stay here while AI is set up."
                                IsVisible="{Binding HasProposal}" Style="{StaticResource Secondary}" FontSize="14" />
                         <Button Text="Download on-device model" Command="{Binding DownloadModelCommand}"
                                 IsVisible="{Binding CanDownloadModel}" IsEnabled="{Binding CanDownloadModel}"

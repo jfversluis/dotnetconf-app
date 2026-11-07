@@ -25,7 +25,8 @@
   <ItemGroup>
     <Using Include="Xunit" />
     <Compile Include="../../src/DotNetConf.App/FirstRunPlannerState.cs" Link="FirstRunPlannerState.cs" />
-    <Compile Include="../../src/DotNetConf.App/OnboardingScheduleConfirmation.cs" Link="OnboardingScheduleConfirmation.cs" />
+    <Compile Include="../../src/DotNetConf.App/OnboardingPlannerPreparation.cs" Link="OnboardingPlannerPreparation.cs" />
+    <Compile Include="../../src/DotNetConf.App/UnsavedSuggestionsConfirmation.cs" Link="UnsavedSuggestionsConfirmation.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerTools.cs" Link="PlannerTools.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/AskTools.cs" Link="AskTools.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/OnDeviceAsk.cs" Link="OnDeviceAsk.cs" />

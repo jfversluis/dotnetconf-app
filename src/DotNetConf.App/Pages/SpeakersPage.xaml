@@ -7,14 +7,12 @@
     <Grid x:Name="SearchLayout" RowDefinitions="Auto,*" SafeAreaEdges="Container,None,Container,None">
         <VerticalStackLayout Padding="24,16,24,8" Spacing="16">
             <Label x:Name="SpeakerHeading" Text="Meet the community" Style="{StaticResource Heading}" />
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                <controls:AgendaSearchField x:Name="SearchField" Text="{Binding SpeakerQuery}" ApplyQueryCommand="{Binding SearchSpeakersCommand}"
-                                            Placeholder="Find a speaker"
-                                            SearchDescription="Search speakers by name or expertise"
-                                            SearchAutomationId="speaker-search" ClearAutomationId="speaker-search-clear" />
-                <controls:CompactSearchStatus Grid.Column="1"
-                                              IsVisible="{Binding Source={x:Reference Page}, Path=IsCompactSearchActive, x:DataType=pages:AdaptiveConferencePage}" />
-            </Grid>
+            <controls:AgendaSearchField x:Name="SearchField" Text="{Binding SpeakerQuery}" ApplyQueryCommand="{Binding SearchSpeakersCommand}"
+                                        Placeholder="Find a speaker"
+                                        SearchDescription="Search speakers by name or expertise"
+                                        SearchAutomationId="speaker-search" ClearAutomationId="speaker-search-clear" />
+            <controls:CompactSearchStatus
+                IsVisible="{Binding Source={x:Reference Page}, Path=IsCompactSearchActive, x:DataType=pages:AdaptiveConferencePage}" />
         </VerticalStackLayout>
     <controls:SearchResultLayer Grid.Row="1" SafeAreaEdges="None">
     <controls:SearchResultLayer.Triggers>
