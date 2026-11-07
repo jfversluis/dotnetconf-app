@@ -17,22 +17,14 @@ env:
   DOTNET_NOLOGO: '1'
 
 jobs:
-  local-essentials-package:
-    uses: ./.github/workflows/local-essentials-package.yml
-
   core-tests:
     name: Core tests
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    needs: local-essentials-package
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: local-essentials-ai
-          path: artifacts/essentials-ai-feed
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           global-json-file: global.json
@@ -59,7 +51,6 @@ jobs:
     name: ${{ matrix.platform }} build
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
-    needs: local-essentials-package
     strategy:
       fail-fast: false
       matrix:
@@ -72,32 +63,12 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: local-essentials-ai
-          path: artifacts/essentials-ai-feed
       - uses: ./.github/actions/setup-mobile
         with:
           platform: ${{ matrix.platform }}
       - name: Android Release build
         if: matrix.platform == 'android'
         run: dotnet publish src/DotNetConf.App/DotNetConf.App.csproj -c Release -f net11.0-android -r android-arm64 -p:MobileTargetFramework=net11.0-android -p:AndroidPackageFormats=aab
-      - name: Reject a stale local Essentials.AI package
-        if: matrix.platform == 'android'
-        shell: bash
-        run: |
-          set -euo pipefail
-          project=src/DotNetConf.App/DotNetConf.App.csproj
-          version="$(dotnet msbuild "$project" -nologo -getProperty:EssentialsAIVersion -p:MobileTargetFramework=net11.0-android)"
-          stale="$RUNNER_TEMP/stale-essentials"
-          mkdir -p "$stale"
-          printf 'stale package' > "$stale/microsoft.maui.essentials.ai.$version.nupkg"
-          if dotnet msbuild "$project" -nologo -t:VerifyLocalEssentialsPackage -p:TargetFramework=net11.0-android \
-            -p:MobileTargetFramework=net11.0-android -p:PkgMicrosoft_Maui_Essentials_AI="$stale" > "$stale/output.log" 2>&1; then
-            echo "::error::A stale Essentials.AI package was accepted."; exit 1
-          fi
-          grep -F "The restored Essentials.AI package differs from the local feed" "$stale/output.log" \
-            || { cat "$stale/output.log"; exit 1; }
       - name: Verify Android R8 mapping
         if: matrix.platform == 'android'
         shell: bash

@@ -15,6 +15,7 @@ Versions are deliberately pinned:
 | .NET SDK | `11.0.100-rc.3.26522.148` |
 | Mobile workload set | `11.0.100-rc.3.26524.4` |
 | MAUI Controls | `11.0.0-rc.2.26505.5` |
+| Microsoft.Maui.Essentials.AI | `11.0.0-preview.8.26555.2` |
 | DevFlow CLI / agent | `0.1.0-preview.13.26512.5` |
 | Avalonia.Controls.Maui, Desktop, Essentials | `11.0.0-rc.2.26287.618` |
 | Avalonia.Browser | `12.1.4` |
@@ -31,7 +32,6 @@ Install the SDK selected by `global.json`, then:
 ```sh
 dotnet workload install maui-android maui-ios wasm-tools --version 11.0.100-rc.3.26524.4
 dotnet tool restore
-bash eng/build-local-essentials-ai.sh
 dotnet test tests/DotNetConf.Core.Tests
 dotnet test tests/DotNetConf.App.Tests -c Release -p:MobileTargetFramework=net11.0
 ```
@@ -39,36 +39,6 @@ dotnet test tests/DotNetConf.App.Tests -c Release -p:MobileTargetFramework=net11
 On Linux, omit `maui-ios`; the project drops the iOS target there.
 
 iOS builds require a Mac and Xcode 27.0, as required by the RC2 iOS 27 bindings retained in the pinned RC3 workload set. Android requires the workload's Android SDK dependencies, including API 37.0 tooling, and JDK 21. Deployment minimums are iOS 15 and Android API 26. These are different from the build SDK versions. See [MAUI release requirements](https://github.com/dotnet/maui/wiki/Release-Versions).
-
-### Temporary Essentials.AI source package
-
-Until the next official release is published, the app uses an **unofficial,
-locally built** `Microsoft.Maui.Essentials.AI` package from
-[dotnet/maui-labs@e616af94cc1642e782b1deac433eb6a582cdce92](https://github.com/dotnet/maui-labs/tree/e616af94cc1642e782b1deac433eb6a582cdce92).
-The script above fetches that exact, unmodified source and builds it with this
-repository's pinned SDK and workloads. It requires JDK 21 and Android SDK
-platform 36; on macOS it also builds the iOS native framework with Xcode.
-The output is an unsigned local package in `artifacts/essentials-ai-feed`,
-not a published NuGet.org version. Linux builds a separate version containing
-only the portable and Android assets. The source checkout and package are
-ignored by Git. CI builds the full package once and shares it between jobs.
-
-Run the script again after a clean checkout before restoring the app. It
-requires access to GitHub and the upstream project's NuGet and Gradle feeds.
-NuGet can reuse an older package with the same local version from its cache.
-The app build checks that the restored package matches the feed. If it does
-not, choose a new, empty package folder and restore without fallback folders:
-
-```sh
-export NUGET_PACKAGES="$PWD/artifacts/nuget-packages"
-dotnet restore src/DotNetConf.App --configfile NuGet.Config \
-  -p:RestoreFallbackFolders= -p:RestoreAdditionalProjectFallbackFolders=
-```
-
-Use a different path if that folder already exists. This may re-download other
-packages. Keep `NUGET_PACKAGES` set for subsequent builds.
-The local package, feed mapping, build script, and CI packaging job are
-temporary and should be removed when switching to the official release.
 
 The iOS head uses the scene lifecycle: `Info.plist` registers the single-window `SceneDelegate`, which inherits `MauiUISceneDelegate`. MAUI owns window creation through `App.CreateWindow`; `AppDelegate` only builds the app. Window sizing and safe areas use MAUI and platform controls, not fixed offsets.
 
