@@ -160,13 +160,12 @@ button because native swipe handlers are unavailable there.
 On iOS, revealing or closing a swipe consumes the touch instead of activating
 the row's detail button; ordinary taps and long-press actions remain separate.
 
-Shared session text leads with Microsoft's public HTTPS website link, which
-works without installing the app. A secondary **Open in the companion (requires
-the app)** link uses `dotnetconf://session/{sessionId}` for the installed native
-companion; it has no browser fallback when the app is absent.
-Feed IDs that cannot form a companion route retain the website-only fallback.
-The custom scheme is not a verified HTTPS/universal link and does not add a
-server or account. Universal Links on iOS and App Links on Android are deferred
+Shared session text includes only Microsoft's public HTTPS website link, alongside
+the session title, available speaker names, and conference hashtag. It works
+without installing the app; no companion link or app-install requirement is shared.
+The app still accepts `dotnetconf://session/{sessionId}` for direct app opens
+and reminder intake. The custom scheme is not a verified HTTPS/universal link
+and does not add a server or account. Universal Links on iOS and App Links on Android are deferred
 to a separate follow-up using a developer-controlled domain, platform association
 files, and a web fallback to the official session page. Microsoft's existing
 session URLs cannot be associated with this app without Microsoft's authorization.

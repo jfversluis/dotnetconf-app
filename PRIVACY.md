@@ -49,7 +49,7 @@ Session videos use your device's link handler, which may open a video app or
 browser depending on your settings. No video player or social tracking widget is
 embedded. When you choose to share
 a conference invitation or session, its public title, available speaker names,
-website link, companion session link, hashtag, and (for the invitation) event dates are passed to your device's share
+website link, hashtag, and (for the invitation) event dates are passed to your device's share
 sheet. Only the destination you choose receives that content, under its own
 privacy policy. On experimental desktop/browser targets, the equivalent action
 copies the text to your clipboard instead. If opening or sharing fails, you

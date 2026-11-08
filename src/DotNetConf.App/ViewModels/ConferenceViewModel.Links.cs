@@ -46,13 +46,6 @@ public partial class ConferenceViewModel
     [RelayCommand]
     private Task ShareConferenceAsync() => ShareTextAsync(".NET Conf", ConferenceShareText);
 
-    internal Task ShareSessionAsync(SessionViewModel session)
-    {
-        if (!SessionAppLinks.IsValidId(session.Id))
-            logger.LogWarning("The public session ID cannot form a companion route; sharing its website link only.");
-        return ShareTextAsync(session.Title, session.ShareText);
-    }
-
     public async Task<SessionViewModel?> ResolveLinkedSessionAsync(string id)
     {
         await InitializeAsync();

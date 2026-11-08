@@ -118,16 +118,15 @@ public sealed class ConferenceViewModelTests
     }
 
     [Fact]
-    public async Task SessionSharingLeadsWithThePublicWebsiteAndLabelsTheOptionalAppLink()
+    public async Task SessionSharingIncludesOnlyThePublicWebsiteLink()
     {
         var viewModel = await CreateInitializedAsync(new TestRepository(Snapshot()), new TestScheduleStore(), new TestConnectivity());
         var session = Assert.Single(viewModel.Sessions);
         var website = ConferenceLinks.SessionUrl(session.Id);
-        var companion = SessionAppLinks.Create(session.Id);
-        Assert.Contains($"\n\n{website}\n", session.ShareText);
-        Assert.Contains($"Open in the companion (requires the app): {companion}", session.ShareText);
-        Assert.True(session.ShareText.IndexOf(website, StringComparison.Ordinal) <
-            session.ShareText.IndexOf(companion, StringComparison.Ordinal));
+        Assert.Equal($"Check out this .NET Conf session:\n{session.Title}\n{session.SpeakerNames}" +
+            $"\n\n{website}\n{ConferenceLinks.Hashtag}", session.ShareText);
+        Assert.DoesNotContain($"{SessionAppLinks.Scheme}://", session.ShareText);
+        Assert.DoesNotContain("requires the app", session.ShareText);
     }
 
     [Theory]

@@ -19,7 +19,7 @@ public partial class SessionViewModel : ObservableObject
             () => HasRecording);
         ToggleWatchedCommand = new AsyncRelayCommand(() => owner.ToggleWatchedAsync(this),
             () => owner.IsWatchedAvailable && HasWatchActions);
-        ShareCommand = new AsyncRelayCommand(() => owner.ShareSessionAsync(this), () => !IsWithdrawn);
+        ShareCommand = new AsyncRelayCommand(() => owner.ShareTextAsync(Title, ShareText), () => !IsWithdrawn);
         QuickActionsCommand = new AsyncRelayCommand(() => owner.ShowSessionActionsAsync(this));
         UpdateResources();
         RefreshTime(TimeZoneInfo.Local);
@@ -84,9 +84,7 @@ public partial class SessionViewModel : ObservableObject
     public bool HasResources => Resources.Count > 0 && !IsWithdrawn;
     public string ShareText => $"Check out this .NET Conf session:\n{Title}" +
         (Speakers.Count > 0 ? $"\n{SpeakerNames}" : "") +
-        $"\n\n{ConferenceLinks.SessionUrl(Id)}" +
-        (SessionAppLinks.IsValidId(Id) ? $"\nOpen in the companion (requires the app): {SessionAppLinks.Create(Id)}" : "") +
-        $"\n{ConferenceLinks.Hashtag}";
+        $"\n\n{ConferenceLinks.SessionUrl(Id)}\n{ConferenceLinks.Hashtag}";
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NavigationDescription))]
     [NotifyPropertyChangedFor(nameof(SaveHint))]
