@@ -400,9 +400,11 @@ trim-safe at runtime.
 
 `tests/DotNetConf.DeviceTests` uses the SDK's iOS/Android test-template runner
 and MSTest inside a separate MAUI test app (`dev.jfversluis.dotnetconf.devicetests`).
-It links the actual safe-content control/handler, route
+It links the actual safe-content control/handler, pane-arrangement policy, route
 builder, and Back-label policy into that host. It never initializes the production
 app, downloads an agenda, reads its preferences, or writes its saved schedule.
+The map fixture uses native handlers without enabling user location. Android
+uses a deliberately unconfigured key: geometry, not map tiles, is being tested.
 
 Run one native target at a time on an explicitly selected, dedicated device:
 
@@ -417,8 +419,8 @@ dotnet test -f net11.0-android \
 The nested `global.json` opts only this host into Microsoft.Testing.Platform;
 its SDK/workload pins must match the repository root. The ordinary xUnit suites
 keep their VSTest runner. CI checks the pins and compiles the native host.
-Tests assert owning-page safe content, template parameter delivery, and
-Back-stack/label behavior. They do not
+Tests assert real native map bounds after hinge transitions, owning-page safe
+content, template parameter delivery, and Back-stack/label behavior. They do not
 replace end-to-end screenshots, native pointer interaction, physical folding,
 or signed Release execution. Run the ordinary Core and App tests as well.
 
@@ -608,7 +610,7 @@ Session timestamps retain their absolute instants. The Microsoft adapter interpr
 
 Session and speaker IDs are the published Microsoft feed IDs, unchanged. There are no numeric-ID conversions, alias tables or cross-source identity matching. Bookmarks identify sessions independently of mutable display fields, and unknown bookmarks remain untouched when agenda details are unavailable.
 
-`Resources/Raw/conference.json` holds only app-owned presentation metadata, including the published event start and end dates, never conference sessions, speaker profiles, community events or photo mappings. Both mock flags are false. `agendaNotice` explains the Microsoft source, first-download requirement and lack of an official community-event feed in About. `ConferenceMetadataDataSource` loads this metadata through `IConferenceDataSource`; the repository rejects metadata containing an agenda or event examples. Fictional agenda/community fixtures live only in `tests/DotNetConf.Core.Tests/Fixtures/conference.mock.json`, preserving search, overlap, topic, timezone and map-contract edge cases without shipping fictional content.
+`Resources/Raw/conference.json` holds only app-owned presentation metadata, including the published event start and end dates, never conference sessions, speaker profiles, community events or photo mappings. Both metadata mock flags are false. `agendaNotice` explains the Microsoft source, first-download requirement and lack of an official community-event feed in About. `ConferenceMetadataDataSource` loads this metadata through `IConferenceDataSource`; the repository rejects metadata containing an agenda or event examples. Fictional agenda/community fixtures in `tests/DotNetConf.Core.Tests/Fixtures/conference.mock.json` preserve search, overlap, topic, timezone and map-contract edge cases. Separately, `DemoCommunityEvents` is compiled only in Debug and supplies 100 synthetic map locations in 50 cities; the Debug ViewModel exposes these independently of agenda initialization and refresh. It never changes the repository document or cache. Release excludes the demo generator and uses only the document's community events. Keep the overview, map, list, and detail disclosures visible, and do not add fictional agenda or speaker data.
 
 Multiple speakers and overlapping sessions are supported. Bookmarks are stored by stable ID in private app storage, independently of the agenda. Invalid data or storage failures are shown rather than silently discarded; corrupt bookmark files are never overwritten.
 
@@ -694,6 +696,26 @@ clearance remains a release gate.
 
 ## Community maps
 
+Home, Community, and planner hero/body content use `DuoSafeAreaContent` to reserve
+only the overlap with the owning page's horizontal UIKit safe area on iPhone Duo
+(`iPhone19,4`). Decorative backgrounds remain full-width; other device types
+retain their existing safe-area behavior. Closed and open Duo screenshots and
+native bounds confirmed side-control clearance, and an ordinary iPhone retained
+zero additional padding. Recheck both content geometry and actual rendering after
+changing these wrappers or upgrading MAUI. The explorer explicitly invalidates
+measurement after changing pane geometry: grid definitions alone previously
+reported the correct 40-point division while the native map stayed in its old
+frame. Half-folded simulator rendering now confirms the map starts beyond that
+division. Physical-device clearance remains a release gate.
+
+The explorer was inspected on dedicated iPhone and iPhone Duo simulators,
+including accessibility-extra-large text on the phone. Duo open, active vertical half-fold
+(a reported 40-point gap), and closed transitions retained the selected event;
+the original inline preview remained in the map pane, and native details/back preserved the map.
+Phone portrait/landscape and light/dark icon contrast were checked. Horizontal
+tabletop sizing has unit coverage; physical Android folding, map gestures, and
+OEM inset behavior remain hardware validation gates.
+
 Community is the fifth Shell tab. Home's typed Fluent settings gear opens Settings,
 which contains System/Light/Dark appearance, device-time-zone information, and a
 link to the separate About page. Appearance persists in platform Preferences and
@@ -706,12 +728,26 @@ The Community overview explains gathering formats and links to the pushed
 `community-event` detail route hide the tab bar through `Shell.TabBarIsVisible`;
 native back restores the overview. Trim-safe `IQueryAttributable` handles route
 parameters. Event details return to the existing explorer, retaining its viewport,
-list mode, and selection. The edge-to-edge map has a labeled legend, Show all and
-Event list controls, and a compact dismissible preview. The legend sizes to its
-content and wraps at larger text sizes; the preview scrolls within viewport-relative
-bounds. Map actions occupy a separate, safe-area-aware bottom row, outside the
-native map viewport, so Google Maps zoom controls and provider attribution stay
-unobstructed on both platforms. Android pages retain keyboard avoidance without
+list mode, and selection. Expanded windows show the list left and the map right,
+using `FoldableViewport` and the shared `DetailLayout` hinge policy. Event selection
+now opens the same `SfBottomSheet` used for Ask rather than resizing the map with
+an inline preview. Dismissal and Back close the sheet while retaining selection;
+details navigation closes it before pushing the native page. The event list uses
+`SafeAreaFooter` with the current page's actual bottom inset. The repeated demo
+line is omitted in the explorer only; overview and details retain disclosure.
+Tabletop
+postures need at least 320 scaled units in both panes; narrower, shorter, large-text,
+or unconfigured-map windows retain compact browsing. The same native map and
+virtualized list remain attached through transitions; list selections focus the map
+and pin selections update the list without recentering. Mode switches are hidden
+when both panes are visible. Compact browsing uses a Map / List segmented header
+switch, with visible and spoken selection state; the switch moves below the
+location count at narrow widths or larger text sizes. The map has no bottom
+action panel. Its floating "Show all locations" expand control has a 48-unit touch
+target in the safe overlay below the content-sized legend, away from native
+bottom attribution and Google Maps zoom controls. Empty overlay space passes
+gestures through to the map. The legend wraps at larger text sizes; the selection
+sheet scrolls with safe-area-aware content. Android pages retain keyboard avoidance without
 adding another container inset on top of native Shell chrome.
 `Microsoft.Maui.Controls.Maps` is pinned to the same
 RC2 version as Controls. `UseMauiMaps()` enables native MapKit/Google Maps handlers.

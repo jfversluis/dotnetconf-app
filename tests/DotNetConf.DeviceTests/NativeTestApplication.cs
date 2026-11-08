@@ -9,7 +9,7 @@ public sealed class NativeTestApplication : Application
 
     internal static MauiApp CreateMauiApp()
     {
-        var builder = MauiApp.CreateBuilder().UseMauiApp<NativeTestApplication>();
+        var builder = MauiApp.CreateBuilder().UseMauiApp<NativeTestApplication>().UseMauiMaps();
 #if IOS
         builder.ConfigureMauiHandlers(handlers =>
             handlers.AddHandler<DuoSafeAreaContent, DotNetConf.App.Platforms.iOS.DuoSafeAreaContentHandler>());

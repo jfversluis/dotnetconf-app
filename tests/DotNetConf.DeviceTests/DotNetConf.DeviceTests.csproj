@@ -19,9 +19,12 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Maui.Controls" Version="11.0.0-rc.2.26505.5" />
+    <PackageReference Include="Microsoft.Maui.Controls.Maps" Version="11.0.0-rc.2.26505.5" />
     <PackageReference Include="MSTest" Version="4.3.2" />
     <ProjectReference Include="../../src/DotNetConf.Core/DotNetConf.Core.csproj" />
     <Compile Include="../../src/DotNetConf.App/Controls/DuoSafeAreaContent.cs" Link="App/DuoSafeAreaContent.cs" />
+    <Compile Include="../../src/DotNetConf.App/Services/DetailLayout.cs" Link="App/DetailLayout.cs" />
+    <Compile Include="../../src/DotNetConf.App/Services/CommunityPaneLayout.cs" Link="App/CommunityPaneLayout.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/SessionRoutes.cs" Link="App/SessionRoutes.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/BackNavigation.cs" Link="App/BackNavigation.cs" />
     <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />

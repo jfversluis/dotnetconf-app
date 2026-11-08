@@ -1,5 +1,7 @@
 using DotNetConf.App.Controls;
 using DotNetConf.App.Services;
+using Microsoft.Maui.Controls.Maps;
+using NativeMap = Microsoft.Maui.Controls.Maps.Map;
 
 namespace DotNetConf.DeviceTests;
 
@@ -53,6 +55,37 @@ public sealed class NativeRegressionTests
     }
 
     [TestMethod]
+    public async Task ActiveHingeRearrangesTheRealNativeMapAfterAnUnfoldedLayout()
+    {
+        await shell.Dispatcher.DispatchAsync(async () =>
+        {
+            var panes = new Grid
+            {
+                WidthRequest = 951, HeightRequest = 400, ColumnSpacing = 0, RowSpacing = 0,
+                ColumnDefinitions = [new(GridLength.Star), new(new GridLength(0)), new(new GridLength(0))],
+                RowDefinitions = [new(GridLength.Star), new(new GridLength(0)), new(new GridLength(0)), new(GridLength.Auto)]
+            };
+            var list = new ContentView { Content = new Label { Text = "Synthetic native-layout fixture" } };
+            var map = new NativeMap { IsShowingUser = false };
+            panes.Add(list);
+            panes.Add(map);
+            ((ContentPage)shell.CurrentPage).Content = new ScrollView { Orientation = ScrollOrientation.Horizontal, Content = panes };
+            CommunityPaneLayout.Apply(panes, list, map, DetailLayout.ForWindow(951, 669, Rect.Zero));
+            await WaitUntil(() => map.Handler?.PlatformView is not null && map.Width > 0);
+            var initial = NativeBounds(map);
+            Assert.AreEqual(951 * .42, initial.X, 1.5);
+            var hinge = new Rect(455.5, 0, 40, 669);
+            CommunityPaneLayout.Apply(panes, list, map, DetailLayout.ForWindow(951, 669, hinge));
+            await WaitUntil(() => Math.Abs(NativeBounds(map).X - 495.5) < 1.5);
+            var actual = NativeBounds(map);
+            Assert.AreEqual(495.5, actual.X, 1.5);
+            Assert.AreEqual(455.5, actual.Width, 1.5);
+            CommunityPaneLayout.Apply(panes, list, map, DetailLayout.ForWindow(951, 669, Rect.Zero));
+            await WaitUntil(() => Math.Abs(NativeBounds(map).X - initial.X) < 1.5);
+        });
+    }
+
+    [TestMethod]
     public async Task SafeContentUsesTheOwningNativePageAndDoesNotInsetOrdinaryPhones()
     {
         await shell.Dispatcher.DispatchAsync(async () =>
@@ -94,4 +127,15 @@ public sealed class NativeRegressionTests
         Assert.Fail("The native layout did not converge within six seconds.");
     }
 
+    private static Rect NativeBounds(View view)
+    {
+#if IOS
+        var frame = ((UIKit.UIView)view.Handler!.PlatformView!).Frame;
+        return new Rect(frame.X, frame.Y, frame.Width, frame.Height);
+#else
+        var native = (Android.Views.View)view.Handler!.PlatformView!;
+        var density = native.Resources!.DisplayMetrics!.Density;
+        return new Rect(native.Left / density, native.Top / density, native.Width / density, native.Height / density);
+#endif
+    }
 }

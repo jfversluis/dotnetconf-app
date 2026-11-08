@@ -1782,6 +1782,28 @@ public sealed class ConferenceViewModelTests
     }
 
     [Fact]
+#if DEBUG
+    public async Task DebugCommunityDemoIsAvailableWithoutAnAgendaAndSurvivesRefresh()
+    {
+        var repository = new TestRepository(Snapshot());
+        var viewModel = Create(repository, new(), new());
+        var events = viewModel.CommunityEvents;
+
+        Assert.Equal(100, events.Count);
+        Assert.True(viewModel.HasMockCommunityEvents);
+        Assert.False(viewModel.IsCommunityEventsEmpty);
+        Assert.Empty(repository.Snapshot.Document.CommunityEvents);
+
+        await viewModel.InitializeAsync();
+        await (viewModel.RefreshCommand.ExecutionTask ?? Task.CompletedTask);
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+
+        Assert.Same(events, viewModel.CommunityEvents);
+        Assert.True(viewModel.CommunityEventsAreMock);
+        Assert.Contains("100 fictional", viewModel.CommunityEventSummary);
+        Assert.Empty(repository.Snapshot.Document.CommunityEvents);
+    }
+#else
     public async Task CommunityOverviewDistinguishesUnloadedEmptyAndPopulatedEvents()
     {
         var original = Snapshot();
@@ -1815,6 +1837,8 @@ public sealed class ConferenceViewModelTests
         Assert.True(viewModel.HasMockCommunityEvents);
         Assert.Contains("fictional", viewModel.CommunityEventSummary);
     }
+#endif
+
     [Fact]
     public async Task ManualHeartHapticsFollowCommittedSavesAndSkipFailedWritesAndRestore()
     {

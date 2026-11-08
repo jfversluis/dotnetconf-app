@@ -38,7 +38,7 @@ The moving foreground is opaque so the action is uncovered only as the row
 slides away, never visible through its text or controls. Its background matches
 the selected surface only in lists that display that selection treatment.
 
-Successful heart actions show a short Community Toolkit Toast ("Added to My Schedule" / "Removed from My Schedule") after persistence and schedule refresh. Confirmations do not occupy inline space or shift the agenda. The heart and count remain the persistent, accessible state indicators. Blocking operation errors use explicitly dismissed native dialogs. Successful background agenda updates are invisible: no success card, timestamp, or progress panel. Home and the agenda, speaker and saved-session lists support native pull-to-refresh without refresh toolbar items. Only user-requested updates show the native refresh indicator. Offline/update/storage failures use a compact, unboxed inline message with a 48-unit Retry action. The existing agenda stays usable, including while refreshing. No community-event examples are bundled.
+Successful heart actions show a short Community Toolkit Toast ("Added to My Schedule" / "Removed from My Schedule") after persistence and schedule refresh. Confirmations do not occupy inline space or shift the agenda. The heart and count remain the persistent, accessible state indicators. Blocking operation errors use explicitly dismissed native dialogs. Successful background agenda updates are invisible: no success card, timestamp, or progress panel. Home and the agenda, speaker and saved-session lists support native pull-to-refresh without refresh toolbar items. Only user-requested updates show the native refresh indicator. Offline/update/storage failures use a compact, unboxed inline message with a 48-unit Retry action. The existing agenda stays usable, including while refreshing. Community-event examples are Debug-only.
 
 `AgendaSearchField` wraps a real Entry in a neutral outlined surface, with magnifier, live query binding, a 48-unit clear action, and a themed focus outline. Toolkit `UserStoppedTypingBehavior` applies the latest query after 300 ms of inactivity, including empty queries, with automatic keyboard dismissal disabled. Clear applies immediately and keeps focus; the Search keyboard action applies immediately then dismisses it. Filtered results reconcile observable collections by stable identity without clearing them; identical results cause no update. Existing session/speaker ViewModels and open details receive remote edits in place. Only the `SearchEntry` subclass has its native border removed through MAUI's handler customization. Android uses `EntryHandler2`: its Material wrapper outline, floating hint, padding, and background are disabled, and the inner native edit field owns the placeholder and its themed color. Android search accessibility uses that placeholder rather than `SemanticProperties.Description`, preserving TalkBack editing actions; iOS retains its descriptive label and existing border customization.
 
@@ -249,38 +249,70 @@ and links for registration and conference-site updates. It does not imply a live
 stream is available before a destination is published.
 Community's overview leads with a restrained branded introduction, sharing and
 registration, then YouTube and social channels. Meet locally states when no
-events are listed; a single Browse community events action appears only when
-there are listings and opens the list first. No community events or venues are
-bundled, and no official event feed is connected yet. An official-website link
+events are listed; Browse community events and Explore the world map appear only when
+there are listings. Release contains no community events or venues,
+and no official event feed is connected yet. Debug provides 100 explicitly synthetic
+locations across 50 cities, with two nearby venues per city to demonstrate clustering.
+The demo never enters the agenda document or cache. An official-website link
 and short guidance for starting a gathering remain available; there are no
 invented community statistics or organizer workflows.
-The map/list implementation remains available for a future official event source.
+The map/list implementation previews a future official event source in Debug.
 The pushed explorer hides tabs with MAUI Shell, retains native back navigation,
-and gives the map the full available width. A content-sized opaque legend
+and gives compact windows a full-width map. Expanded windows keep the virtualized
+list on the left and the map on the right. The
+existing fold-region policy reserves active hinges; a sufficiently tall horizontal
+division stacks the list above the map. Narrow, short, or large-text windows retain
+map/list switching. The compact preference, selection, and native map survive resizing.
+A compact branded heading and location count frame the canvas. The explorer
+omits the repeated demo-disclosure line to leave more room for the map; event
+names remain marked as demo and the overview and event details retain the explicit
+fictional-data disclosure. A content-sized opaque legend
 wraps its labeled pin types without
 a fixed-height scrolling panel. Gesture instructions remain available as the
-map's semantic hint. Show all / Event list occupy a separate bottom action row,
-not a floating overlay over provider zoom controls or attribution. The action
-surface fills the bottom edge while container insets keep its buttons above
-system gestures on both platforms. A separate safe-area-aware layer keeps
+map's semantic hint. A compact Map / List segmented switch shares the header
+with the location count, stacking below it at narrow widths or large text.
+Its selected state is both visible and spoken. The switch disappears when both
+panes are visible, and the decorative headline gives way in short or large-text
+windows. There is no bottom action panel: the map fills the remaining viewport.
+A 48-unit floating expand control, labeled "Show all locations" for assistive
+technology, sits below the content-sized legend at the safe trailing edge.
+This top placement keeps it away from native provider zoom controls and bottom
+attribution without covering either. A separate safe-area-aware layer keeps
 the legend, list, and preview clear of system chrome.
-Unused overlay space does not intercept map gestures. Native counted clusters
+Unused overlay space does not intercept map gestures. Native counted clusters with
+custom white/lavender-ringed purple count discs
 keep dense locations legible. White-outlined teardrop pins use typed Fluent video and
 presenter symbols to distinguish purple watch parties from deep-magenta in-person
 talks. A matching text legend explains both types without relying on color.
-Fictional map locations exist only in test fixtures, not the app. Available event
-locations would be framed initially; “Show all”
-restores that view. Pin taps select details without forced recentering, while
-list selections focus their location for a subsequent map switch. A themed,
-dismissible preview exposes the event name, kind, and city. Event details opens
+Fictional map locations exist only in Debug and test fixtures, never Release. Available event
+locations inform the initial global overview; “Show all locations”
+restores that view. Native map zoom limits can require panning to see every region.
+Pin taps select details without forced recentering, while
+list selections immediately focus their location, including when both panes are visible. The
+same Syncfusion bottom-sheet control used by Ask exposes the matching pin,
+city/country, event name, and kind. It has the same themed surface, rounded
+corners, grabber, reduced-motion behavior, and scroll-safe content. Dismissal or
+Back closes the sheet without clearing selection or shrinking the map. Event details opens
 a native reading page with the venue and website;
-back preserves the explorer's viewport and selection. Preview height
-is bounded relative to the viewport and scrolls for larger text. The list supplies
+back preserves the explorer's viewport and selection. The sheet
+scrolls for larger text. The list uses the shared actual-inset SafeAreaFooter so
+its final row clears the home indicator. The list supplies
 a non-map selection path, also directly reachable from the overview.
 Unconfigured Android builds omit the map switch and show an honest availability
 statement alongside the usable list, not API-key setup instructions.
 
-About discloses the Microsoft agenda source and links to the community overview. Both mock flags are false; no session, profile or community-event dataset ships in the app. Startup immediately displays a validated local cache, when available, then refreshes Microsoft's agenda without announcing success. A fresh install shows small first-download progress; without a connection it explains how to download the agenda and preserves saved choices. Inline notices appear when connectivity, updates or local storage need attention, including on Community and the filter page. Saved sessions withdrawn from the feed remain in My Schedule with an explicit explanation. Corrupt bookmarks are preserved, saving is disabled, and agenda browsing remains available.
+Home, Community, and the planner keep hero backgrounds full-width while their
+inner text and body content retain a bounded reading width. Horizontal safe
+insets belong to the content, not the decorative background. Onboarding already
+uses this full-width-background composition.
+On iPhone Duo only, `DuoSafeAreaContent` intersects the content's native frame
+with its owning page's UIKit safe-area layout frame. This keeps readable content
+clear of either side's system controls, updates during layout and posture changes,
+and does not add padding when the page has already inset the content. The
+background stays edge-to-edge. Other iPhones, Android foldables, and desktop
+targets retain their existing safe-area policies.
+
+About discloses the Microsoft agenda source and links to the community overview. Both metadata mock flags are false; no session or profile dataset ships in the app, and synthetic community data is Debug-only. Startup immediately displays a validated local cache, when available, then refreshes Microsoft's agenda without announcing success. A fresh install shows small first-download progress; without a connection it explains how to download the agenda and preserves saved choices. Inline notices appear when connectivity, updates or local storage need attention, including on Community and the filter page. Saved sessions withdrawn from the feed remain in My Schedule with an explicit explanation. Corrupt bookmarks are preserved, saving is disabled, and agenda browsing remains available.
 
 Speaker rows and detail pages show a feed-provided downloaded portrait or the exact bundled .NET Bot placeholder from the website. Speaker photographs are not packaged with the app; public URLs may include GitHub-hosted images. Unavailable or invalid images retain the placeholder, including on a first offline launch. Agenda and biographies come only from the public Microsoft feed, never private organizer enrichment. Unpublished bios retain the "Biography to be announced." state. Topic filters explain when no topics have been published. Loading, empty results, no bookmarks, and invalid IDs retain their content states. Overlaps are persistent session attributes, not notification banners or restrictions. Optional showcases must not replace these core affordances.
 

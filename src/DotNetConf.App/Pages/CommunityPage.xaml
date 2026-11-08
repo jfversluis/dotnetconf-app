@@ -70,6 +70,10 @@
                             Command="{Binding BrowseCommunityListCommand}" IsVisible="{Binding HasCommunityEvents}"
                             Style="{StaticResource ConferenceSecondaryAction}" AutomationId="community-browse-events"
                             SemanticProperties.Hint="Opens the event list, with a map when available" />
+                    <Button Text="Explore the world map" ImageSource="{StaticResource MapIcon}"
+                            Command="{Binding ExploreCommunityMapCommand}" IsVisible="{Binding HasCommunityEvents}"
+                            Style="{StaticResource ConferenceAction}" AutomationId="community-explore-map"
+                            SemanticProperties.Hint="Explore clustered locations. Debug builds show fictional demo events." />
                 </VerticalStackLayout>
                 <BoxView HeightRequest="1" />
                 <VerticalStackLayout Spacing="12">

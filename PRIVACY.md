@@ -37,8 +37,10 @@ These independent providers may process network logs under their own policies;
 the developer does not control their retention or processing locations.
 
 On supported native devices, maps use Apple Maps on iOS or Google Maps on
-Android when official event locations and the required configuration are
-available. Loading a map can send network/device metadata and the displayed
+Android when event locations and the required configuration are available.
+Debug builds include a clearly labeled map demo with 100 fictional event locations;
+Release builds exclude these examples. Demo locations are generated locally,
+not downloaded or stored in the agenda cache. Loading a map can send network/device metadata and the displayed
 map area to that provider. The app does not enable user-location tracking or
 send your saved schedule to the map provider. Maps are not needed to read the
 event list. Links you choose to open in your browser are subject to the
@@ -49,7 +51,7 @@ Session videos use your device's link handler, which may open a video app or
 browser depending on your settings. No video player or social tracking widget is
 embedded. When you choose to share
 a conference invitation or session, its public title, available speaker names,
-website link, hashtag, and (for the invitation) event dates are passed to your device's share
+website link, companion session link, hashtag, and (for the invitation) event dates are passed to your device's share
 sheet. Only the destination you choose receives that content, under its own
 privacy policy. On experimental desktop/browser targets, the equivalent action
 copies the text to your clipboard instead. If opening or sharing fails, you

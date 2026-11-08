@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application android:label=".NET Conf native tests" />
+    <application android:label=".NET Conf native tests">
+        <meta-data android:name="com.google.android.geo.API_KEY" android:value="NOT_CONFIGURED" />
+    </application>
     <uses-permission android:name="android.permission.INTERNET" />
 </manifest>

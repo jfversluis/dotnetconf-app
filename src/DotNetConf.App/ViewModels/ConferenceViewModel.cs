@@ -63,7 +63,12 @@ public partial class ConferenceViewModel(
     [NotifyPropertyChangedFor(nameof(HasCommunityEvents))]
     [NotifyPropertyChangedFor(nameof(IsCommunityEventsEmpty))]
     [NotifyPropertyChangedFor(nameof(HasMockCommunityEvents))]
-    public partial IReadOnlyList<CommunityEvent> CommunityEvents { get; set; } = [];
+    public partial IReadOnlyList<CommunityEvent> CommunityEvents { get; set; } =
+#if DEBUG
+        DemoCommunityEvents.Create();
+#else
+        [];
+#endif
     public bool HasCommunityEvents => CommunityEvents.Count > 0;
     public bool HasMockCommunityEvents => HasCommunityEvents && CommunityEventsAreMock;
     public bool IsCommunityEventsEmpty => document is not null && !HasCommunityEvents;
@@ -628,9 +633,14 @@ public partial class ConferenceViewModel(
         OnPropertyChanged(nameof(ConferenceDateContext));
         OnPropertyChanged(nameof(ConferenceShareText));
         IsMock = loaded.IsMock;
-        CommunityEventsAreMock = loaded.CommunityEventsAreMock;
         AgendaNotice = loaded.AgendaNotice;
+#if DEBUG
+        // The explorer demo is independent of downloads and never enters the validated cache.
+        CommunityEventsAreMock = true;
+#else
+        CommunityEventsAreMock = loaded.CommunityEventsAreMock;
         CommunityEvents = loaded.CommunityEvents;
+#endif
 
         var speakerIds = loaded.Speakers.Select(speaker => speaker.Id).ToHashSet(StringComparer.Ordinal);
         var savedWithdrawnSpeakerIds = loaded.WithdrawnSessions.Where(session => schedule.IsSaved(session.Id))
