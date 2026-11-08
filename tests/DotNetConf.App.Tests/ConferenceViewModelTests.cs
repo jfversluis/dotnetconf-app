@@ -118,12 +118,16 @@ public sealed class ConferenceViewModelTests
     }
 
     [Fact]
-    public async Task SessionSharingKeepsThePublicWebsiteFallbackAndAddsTheAppLink()
+    public async Task SessionSharingLeadsWithThePublicWebsiteAndLabelsTheOptionalAppLink()
     {
         var viewModel = await CreateInitializedAsync(new TestRepository(Snapshot()), new TestScheduleStore(), new TestConnectivity());
         var session = Assert.Single(viewModel.Sessions);
-        Assert.Contains(ConferenceLinks.SessionUrl(session.Id), session.ShareText);
-        Assert.Contains(SessionAppLinks.Create(session.Id), session.ShareText);
+        var website = ConferenceLinks.SessionUrl(session.Id);
+        var companion = SessionAppLinks.Create(session.Id);
+        Assert.Contains($"\n\n{website}\n", session.ShareText);
+        Assert.Contains($"Open in the companion (requires the app): {companion}", session.ShareText);
+        Assert.True(session.ShareText.IndexOf(website, StringComparison.Ordinal) <
+            session.ShareText.IndexOf(companion, StringComparison.Ordinal));
     }
 
     [Theory]
@@ -141,6 +145,7 @@ public sealed class ConferenceViewModelTests
         var session = Assert.Single(viewModel.Sessions);
         Assert.Contains(ConferenceLinks.SessionUrl(id), session.ShareText);
         Assert.DoesNotContain($"{SessionAppLinks.Scheme}://", session.ShareText);
+        Assert.DoesNotContain("Open in the companion", session.ShareText);
         await session.ShareCommand.ExecuteAsync(null);
     }
 

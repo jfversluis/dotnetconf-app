@@ -160,11 +160,17 @@ button because native swipe handlers are unavailable there.
 On iOS, revealing or closing a swipe consumes the touch instead of activating
 the row's detail button; ordinary taps and long-press actions remain separate.
 
-Shared session text includes Microsoft's public website link and
-`dotnetconf://session/{sessionId}` for opening the installed native companion.
+Shared session text leads with Microsoft's public HTTPS website link, which
+works without installing the app. A secondary **Open in the companion (requires
+the app)** link uses `dotnetconf://session/{sessionId}` for the installed native
+companion; it has no browser fallback when the app is absent.
 Feed IDs that cannot form a companion route retain the website-only fallback.
 The custom scheme is not a verified HTTPS/universal link and does not add a
-server or account. External links use MAUI 11 route templates, return to
+server or account. Universal Links on iOS and App Links on Android are deferred
+to a separate follow-up using a developer-controlled domain, platform association
+files, and a web fallback to the official session page. Microsoft's existing
+session URLs cannot be associated with this app without Microsoft's authorization.
+External companion links use MAUI 11 route templates, return to
 Sessions when navigating Back, and retain inline details on suitable wide windows.
 Ordinary in-app navigation still preserves its original list and back stack.
 An uncached linked session waits for the shared agenda download; a valid cached

@@ -85,7 +85,7 @@ public partial class SessionViewModel : ObservableObject
     public string ShareText => $"Check out this .NET Conf session:\n{Title}" +
         (Speakers.Count > 0 ? $"\n{SpeakerNames}" : "") +
         $"\n\n{ConferenceLinks.SessionUrl(Id)}" +
-        (SessionAppLinks.IsValidId(Id) ? $"\nOpen in the companion: {SessionAppLinks.Create(Id)}" : "") +
+        (SessionAppLinks.IsValidId(Id) ? $"\nOpen in the companion (requires the app): {SessionAppLinks.Create(Id)}" : "") +
         $"\n{ConferenceLinks.Hashtag}";
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NavigationDescription))]
