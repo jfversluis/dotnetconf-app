@@ -4,20 +4,25 @@
                       xmlns:controls="clr-namespace:DotNetConf.App.Controls"
                       xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
                       x:DataType="vm:ConferenceViewModel" Title="Community">
-    <Grid SafeAreaEdges="Container,None,Container,None">
-    <ScrollView SafeAreaEdges="Default" AutomationId="community-scroll">
-        <VerticalStackLayout Spacing="0" MaximumWidthRequest="720" HorizontalOptions="Center" SafeAreaEdges="None">
+    <Grid SafeAreaEdges="None">
+    <ScrollView SafeAreaEdges="None,None,None,Container" AutomationId="community-scroll">
+        <VerticalStackLayout Spacing="0" HorizontalOptions="Fill" SafeAreaEdges="None">
             <Grid Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}"
-                  SafeAreaEdges="None">
-                <VerticalStackLayout Padding="24,28,24,24" Spacing="12" SafeAreaEdges="None">
+                  SafeAreaEdges="None" AutomationId="community-hero">
+                <controls:DuoSafeAreaContent AutomationId="community-hero-safe-content">
+                <VerticalStackLayout Padding="24,28,24,24" Spacing="12" SafeAreaEdges="Container,None,Container,None"
+                                     MaximumWidthRequest="720" HorizontalOptions="Center">
                     <Label Text="Great ideas.&#10;Better together." FontFamily="SpaceGroteskBold" FontSize="34"
                            TextColor="{AppThemeBinding Light={StaticResource Midnight}, Dark={StaticResource White}}"
                            SemanticProperties.HeadingLevel="Level1" AutomationId="community-title" />
                     <Label Text="One conference. A worldwide community."
                            TextColor="{AppThemeBinding Light={StaticResource Midnight}, Dark={StaticResource LavenderLight}}" />
                 </VerticalStackLayout>
+                </controls:DuoSafeAreaContent>
             </Grid>
-            <VerticalStackLayout Padding="24,28,24,32" Spacing="28" SafeAreaEdges="None">
+            <controls:DuoSafeAreaContent AutomationId="community-body-safe-content">
+            <VerticalStackLayout Padding="24,28,24,32" Spacing="28" SafeAreaEdges="Container,None,Container,None"
+                                 MaximumWidthRequest="720" HorizontalOptions="Center">
                 <controls:StatusBanner />
                 <VerticalStackLayout Spacing="12">
                     <Label Text="Bring someone along" Style="{StaticResource Subheading}" />
@@ -77,6 +82,7 @@
                             SemanticProperties.Hint="Opens the official conference site in your browser" />
                 </VerticalStackLayout>
             </VerticalStackLayout>
+            </controls:DuoSafeAreaContent>
         </VerticalStackLayout>
     </ScrollView>
     </Grid>

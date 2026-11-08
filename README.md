@@ -140,6 +140,54 @@ and schedules reminders for up to your next 60 saved sessions. Your device's
 notification settings and background restrictions can affect delivery. You can
 turn reminders off in Settings; no account or push service is required.
 
+Tapping a reminder opens the matching session in the downloaded public agenda.
+Unknown or withdrawn sessions show an unavailable message rather than invented
+details. Links wait until first-run setup is dismissed.
+
+### Session shortcuts and companion links
+
+Touch and hold a session, or swipe left and tap **More**, to save/remove it,
+change its watched status, or share it. Native iOS and Android lists reveal
+compact, rounded More and watched-status actions when you swipe left.
+Continue a swipe right past 60% of the row width and release to
+save the session, or remove it if already saved; a short swipe cancels.
+The purple fill changes its caption from **Swipe to save/remove** to
+**Release to save/remove** at the execution threshold, with a brief heart
+pulse (unless Reduce Motion is enabled) and supported-device haptic feedback.
+The heart remains visible for one-tap saving; the detail-page watched and Share actions remain
+available without gestures. Linux and browser lists keep the visible **More**
+button because native swipe handlers are unavailable there.
+On iOS, revealing or closing a swipe consumes the touch instead of activating
+the row's detail button; ordinary taps and long-press actions remain separate.
+
+Shared session text includes Microsoft's public website link and
+`dotnetconf://session/{sessionId}` for opening the installed native companion.
+Feed IDs that cannot form a companion route retain the website-only fallback.
+The custom scheme is not a verified HTTPS/universal link and does not add a
+server or account. External links use MAUI 11 route templates, return to
+Sessions when navigating Back, and retain inline details on suitable wide windows.
+Ordinary in-app navigation still preserves its original list and back stack.
+An uncached linked session waits for the shared agenda download; a valid cached
+session can open without waiting for the network.
+
+To inspect app-link delivery on a running iOS simulator, use a session ID from
+the downloaded agenda, for example:
+
+```bash
+xcrun simctl openurl booted 'dotnetconf://session/BRK001'
+```
+
+Accept the system's **Open in .NET Conf?** confirmation if it appears. The app
+should show the matching published session, with Back returning to Sessions.
+Use the simulator UDID instead of `booted` when multiple simulators are running.
+To test a cold launch, terminate the app first, then run the same command.
+
+Android runtime testing found one unresolved accessibility limitation with the
+pinned packages: repeated custom-scheme activation can reset the native Back
+announcement to "Navigate up". Initial destination labels and the navigation
+stack pass the native regressions; label persistence after reactivation still
+needs investigation.
+
 ## Availability
 
 The app is **in development and not yet available in the App Store or Google Play**. We're aiming for a first release in November 2026.

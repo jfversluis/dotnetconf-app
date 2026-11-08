@@ -3,14 +3,99 @@
              xmlns:controls="clr-namespace:DotNetConf.App.Controls"
              xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
              x:DataType="vm:SessionViewModel">
-    <VerticalStackLayout Spacing="0" Padding="0,16,0,0">
+    <SwipeView x:Name="SessionSwipe" AutomationId="{Binding AutomationId, StringFormat='{0}-swipe'}">
+        <SwipeView.LeftItems>
+            <SwipeItems Mode="Execute" SwipeBehaviorOnInvoked="Close">
+                <SwipeItemView Command="{Binding ToggleSaveCommand}"
+                               AutomationId="{Binding AutomationId, StringFormat='{0}-save-swipe'}"
+                               SemanticProperties.Description="{Binding SaveHint}"
+                               BackgroundColor="{StaticResource Purple}">
+                    <Grid WidthRequest="{Binding Source={x:Reference SessionSwipe}, Path=Width, x:DataType=SwipeView}"
+                          Padding="16,12" BackgroundColor="{StaticResource Purple}"
+                          AutomationProperties.ExcludedWithChildren="True">
+                        <VerticalStackLayout Spacing="8" WidthRequest="144" HorizontalOptions="Start" VerticalOptions="Center">
+                            <Label x:Name="SaveSwipeIcon" Text="{Binding SaveGlyph}" FontFamily="{Binding SaveFontFamily}" FontSize="28"
+                                   HorizontalOptions="Center" HorizontalTextAlignment="Center"
+                                   TextColor="{StaticResource White}" />
+                            <Label Text="{Binding SaveSwipeInstruction}" FontFamily="OpenSansSemibold" FontSize="13"
+                                   AutomationId="{Binding AutomationId, StringFormat='{0}-save-swipe-instruction'}"
+                                   HorizontalTextAlignment="Center" LineBreakMode="WordWrap"
+                                   TextColor="{StaticResource White}">
+                                <Label.Triggers>
+                                    <DataTrigger TargetType="Label"
+                                                 Binding="{Binding Source={x:Reference DetailRowRoot}, Path=IsSaveSwipeReady, x:DataType=controls:SessionRow}"
+                                                 Value="True">
+                                        <Setter Property="Text" Value="{Binding SaveSwipeReleaseInstruction}" />
+                                    </DataTrigger>
+                                </Label.Triggers>
+                            </Label>
+                        </VerticalStackLayout>
+                    </Grid>
+                </SwipeItemView>
+            </SwipeItems>
+        </SwipeView.LeftItems>
+        <SwipeView.RightItems>
+            <SwipeItems Mode="Reveal" SwipeBehaviorOnInvoked="Close">
+                <SwipeItemView Command="{Binding QuickActionsCommand}"
+                               AutomationId="{Binding AutomationId, StringFormat='{0}-more-swipe'}"
+                               SemanticProperties.Description="{Binding QuickActionsDescription}"
+                               BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
+                    <Grid WidthRequest="96" Padding="8,12" AutomationProperties.ExcludedWithChildren="True">
+                        <Border Padding="8,12" MinimumHeightRequest="76" VerticalOptions="Center"
+                                StrokeThickness="0" StrokeShape="RoundRectangle 16"
+                                Background="{AppThemeBinding Light={StaticResource LightSelectedSurface}, Dark={StaticResource DarkSelectedSurface}}">
+                            <VerticalStackLayout Spacing="6" VerticalOptions="Center">
+                                <Image Source="{StaticResource MoreIcon}" WidthRequest="22" HeightRequest="22"
+                                       HorizontalOptions="Center" />
+                                <Label Text="More" FontFamily="OpenSansSemibold" FontSize="12"
+                                       HorizontalTextAlignment="Center" LineBreakMode="CharacterWrap"
+                                       TextColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </Grid>
+                </SwipeItemView>
+                <SwipeItemView Command="{Binding ToggleWatchedCommand}" IsVisible="{Binding HasWatchActions}"
+                               AutomationId="{Binding AutomationId, StringFormat='{0}-watched-swipe'}"
+                               SemanticProperties.Description="{Binding WatchedActionLabel}"
+                               BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
+                    <Grid WidthRequest="96" Padding="8,12" AutomationProperties.ExcludedWithChildren="True">
+                        <Border Padding="8,12" MinimumHeightRequest="76" VerticalOptions="Center"
+                                StrokeThickness="0" StrokeShape="RoundRectangle 16"
+                                Background="{AppThemeBinding Light={StaticResource LightSelectedSurface}, Dark={StaticResource DarkSelectedSurface}}">
+                            <VerticalStackLayout Spacing="6" VerticalOptions="Center">
+                                <Image WidthRequest="22" HeightRequest="22" HorizontalOptions="Center">
+                                    <Image.Source>
+                                        <FontImageSource Glyph="{Binding WatchedGlyph}" FontFamily="{Binding WatchedFontFamily}" Size="22"
+                                                         Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+                                    </Image.Source>
+                                </Image>
+                                <Label Text="{Binding WatchedSwipeLabel}" FontFamily="OpenSansSemibold" FontSize="12"
+                                       HorizontalTextAlignment="Center" LineBreakMode="CharacterWrap"
+                                       TextColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </Grid>
+                </SwipeItemView>
+            </SwipeItems>
+        </SwipeView.RightItems>
+    <VerticalStackLayout Spacing="0" Padding="0,16,0,0"
+                         AutomationId="{Binding AutomationId, StringFormat='{0}-foreground'}"
+                         BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
         <VerticalStackLayout.Triggers>
+            <MultiTrigger TargetType="VerticalStackLayout">
+                <MultiTrigger.Conditions>
+                    <BindingCondition Binding="{Binding Source={x:Reference DetailRowRoot}, Path=IsSelected, x:DataType=controls:SessionRow}" Value="True" />
+                    <BindingCondition Binding="{Binding Source={x:Reference DetailRowRoot}, Path=ShowsSelectionSurface, x:DataType=controls:SessionRow}" Value="True" />
+                </MultiTrigger.Conditions>
+                <Setter Property="BackgroundColor"
+                        Value="{AppThemeBinding Light={StaticResource LightSelectedSurface}, Dark={StaticResource DarkSelectedSurface}}" />
+            </MultiTrigger>
             <DataTrigger TargetType="VerticalStackLayout"
                          Binding="{Binding Source={x:Reference DetailRowRoot}, Path=IsCompactSearch, x:DataType=controls:SessionRow}" Value="True">
                 <Setter Property="Padding" Value="0,4,0,0" />
             </DataTrigger>
         </VerticalStackLayout.Triggers>
-        <Grid ColumnDefinitions="*,48" ColumnSpacing="8" Padding="0,0,0,20">
+        <Grid x:Name="RowActions" ColumnDefinitions="*,48,48" ColumnSpacing="4" Padding="0,0,0,20">
             <Grid.Triggers>
                 <DataTrigger TargetType="Grid"
                              Binding="{Binding Source={x:Reference DetailRowRoot}, Path=IsCompactSearch, x:DataType=controls:SessionRow}" Value="True">
@@ -65,7 +150,10 @@
                     </Grid>
                 </VerticalStackLayout>
                 <Button Command="{Binding OpenCommand}" BackgroundColor="Transparent" BorderWidth="0"
-                        AutomationId="{Binding AutomationId}" SemanticProperties.Hint="Opens session details">
+                        AutomationId="{Binding AutomationId}" SemanticProperties.Hint="Opens session details. Touch and hold for quick actions.">
+                    <Button.GestureRecognizers>
+                        <LongPressGestureRecognizer MinimumPressDuration="600" Command="{Binding QuickActionsCommand}" />
+                    </Button.GestureRecognizers>
                     <Button.Triggers>
                         <DataTrigger TargetType="Button"
                                      Binding="{Binding Source={x:Reference DetailRowRoot}, Path=IsCompactSearch, x:DataType=controls:DetailRow}" Value="True">
@@ -95,6 +183,19 @@
                                      Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
                 </ImageButton.Source>
             </ImageButton>
+            <ImageButton x:Name="MoreButton" Grid.Column="2" Command="{Binding QuickActionsCommand}" Source="{StaticResource MoreIcon}"
+                         Style="{StaticResource IconButton}" VerticalOptions="Start" Margin="0,22,0,0"
+                         AutomationId="{Binding AutomationId, StringFormat='{0}-actions'}"
+                         SemanticProperties.Description="{Binding QuickActionsDescription}"
+                         SemanticProperties.Hint="Save, change watched status, or share this session">
+                <ImageButton.Triggers>
+                    <DataTrigger TargetType="ImageButton"
+                                 Binding="{Binding Source={x:Reference DetailRowRoot}, Path=IsCompactSearch, x:DataType=controls:SessionRow}" Value="True">
+                        <Setter Property="Margin" Value="0" />
+                        <Setter Property="AutomationId" Value="{Binding AutomationId, StringFormat='compact-{0}-actions'}" />
+                    </DataTrigger>
+                </ImageButton.Triggers>
+            </ImageButton>
         </Grid>
         <BoxView HeightRequest="1">
             <BoxView.Triggers>
@@ -104,4 +205,5 @@
             </BoxView.Triggers>
         </BoxView>
     </VerticalStackLayout>
+    </SwipeView>
 </controls:DetailRow>

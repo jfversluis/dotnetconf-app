@@ -24,6 +24,25 @@ public sealed class DetailNavigationService(
     public Task OpenSpeakerAsync(string id) =>
         NavigateAsync(new(DetailKind.Speaker, id));
 
+    public async Task OpenLinkedSessionAsync(string id)
+    {
+        await navigationGate.WaitAsync();
+        try
+        {
+            var owner = CurrentShell;
+            var stack = owner.Navigation.NavigationStack;
+            if (owner.CurrentItem?.CurrentItem?.CurrentItem?.Route == "sessions" &&
+                stack.Count == 2 && GetDestination(stack[^1]) == new DetailDestination(DetailKind.Session, id))
+            {
+                await SynchronizeLayoutAsync();
+                return;
+            }
+            await CurrentShell.GoToAsync(SessionRoutes.ForSession(id));
+            await SynchronizeLayoutAsync();
+        }
+        finally { navigationGate.Release(); }
+    }
+
     public void Attach(Shell owner, Window window)
     {
         shell = owner;

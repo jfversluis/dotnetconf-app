@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
              xmlns:services="clr-namespace:DotNetConf.App.Services"
+             xmlns:controls="clr-namespace:DotNetConf.App.Controls"
              x:DataType="vm:PlannerViewModel" SafeAreaEdges="None">
     <ContentView.Resources>
         <Style x:Key="StartingPointButton" TargetType="Button" BasedOn="{StaticResource QuietButton}">
@@ -35,9 +36,11 @@
                 Style="{StaticResource QuietButton}" AutomationId="planner-cancel" />
     </VerticalStackLayout>
     <ScrollView x:Name="PlannerScroll" Grid.Row="1" SafeAreaEdges="Default" AutomationId="planner-scroll">
-        <VerticalStackLayout Spacing="0" MaximumWidthRequest="720" HorizontalOptions="Fill" SafeAreaEdges="None">
+        <VerticalStackLayout Spacing="0" HorizontalOptions="Fill" SafeAreaEdges="None">
             <Grid SafeAreaEdges="None" Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}">
-                <VerticalStackLayout x:Name="HeroContent" Padding="24,32,24,28" Spacing="24" SafeAreaEdges="None">
+                <controls:DuoSafeAreaContent AutomationId="planner-hero-safe-content">
+                <VerticalStackLayout x:Name="HeroContent" Padding="24,32,24,28" Spacing="24" SafeAreaEdges="None"
+                                     MaximumWidthRequest="720" HorizontalOptions="Center">
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                         <Image Source="{StaticResource DiscoveryIcon}" HeightRequest="48" WidthRequest="48"
                                HorizontalOptions="Start" InputTransparent="True"
@@ -57,8 +60,11 @@
                                FontSize="18" MaximumWidthRequest="520" HorizontalOptions="Start" />
                     </VerticalStackLayout>
                 </VerticalStackLayout>
+                </controls:DuoSafeAreaContent>
             </Grid>
-            <VerticalStackLayout Padding="24,20,24,24" Spacing="20" SafeAreaEdges="None">
+            <controls:DuoSafeAreaContent AutomationId="planner-body-safe-content">
+            <VerticalStackLayout Padding="24,20,24,24" Spacing="20" SafeAreaEdges="None"
+                                 MaximumWidthRequest="720" HorizontalOptions="Center">
                 <VerticalStackLayout Spacing="8" AutomationId="planner-discovery-actions">
                     <VerticalStackLayout Spacing="8">
                         <Button Text="{Binding ExploreLabel}" Clicked="ExploreClicked"
@@ -289,6 +295,7 @@
                 <Label Text="{Binding AgendaDisclosure}"
                        Style="{StaticResource Secondary}" FontSize="13" AutomationId="planner-agenda-disclosure" />
             </VerticalStackLayout>
+            </controls:DuoSafeAreaContent>
         </VerticalStackLayout>
     </ScrollView>
     </Grid>

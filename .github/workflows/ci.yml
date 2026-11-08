@@ -28,6 +28,10 @@ jobs:
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           global-json-file: global.json
+      - name: Check native test SDK and workload pins
+        run: |
+          jq -s -e '.[0].sdk == .[1].sdk and .[0].workload == .[1].workload' \
+            global.json tests/DotNetConf.DeviceTests/global.json
       - run: dotnet test tests/DotNetConf.Core.Tests/DotNetConf.Core.Tests.csproj -c Release --logger trx --results-directory TestResults
       - name: Source-generated Core serialization without JSON reflection
         run: dotnet test tests/DotNetConf.Core.Tests/DotNetConf.Core.Tests.csproj -c Release -p:JsonSerializerIsReflectionEnabledByDefault=false --filter 'Category!=AIAttributes' --logger "trx;LogFileName=core-no-reflection.trx" --results-directory TestResults
@@ -68,7 +72,10 @@ jobs:
           platform: ${{ matrix.platform }}
       - name: Android Release build
         if: matrix.platform == 'android'
-        run: dotnet publish src/DotNetConf.App/DotNetConf.App.csproj -c Release -f net11.0-android -r android-arm64 -p:MobileTargetFramework=net11.0-android -p:AndroidPackageFormats=aab
+        run: |
+          test "$(dotnet msbuild src/DotNetConf.App/DotNetConf.App.csproj -nologo \
+            -getProperty:PublishAot -p:TargetFramework=net11.0-android -p:Configuration=Release)" = false
+          dotnet publish src/DotNetConf.App/DotNetConf.App.csproj -c Release -f net11.0-android -r android-arm64 -p:MobileTargetFramework=net11.0-android -p:AndroidPackageFormats=aab
       - name: Verify Android R8 mapping
         if: matrix.platform == 'android'
         shell: bash
@@ -88,3 +95,9 @@ jobs:
       - name: iOS Release simulator build (no signing credentials)
         if: matrix.platform == 'ios'
         run: dotnet build src/DotNetConf.App/DotNetConf.App.csproj -c Release -f net11.0-ios -p:MobileTargetFramework=net11.0-ios -p:RuntimeIdentifier=iossimulator-arm64 -p:EnableCodeSigning=false
+      - name: Compile Android native regression host
+        if: matrix.platform == 'android'
+        run: dotnet build tests/DotNetConf.DeviceTests -f net11.0-android -p:MobileTargetFramework=net11.0-android
+      - name: Compile iOS native regression host
+        if: matrix.platform == 'ios'
+        run: dotnet build tests/DotNetConf.DeviceTests -f net11.0-ios -p:MobileTargetFramework=net11.0-ios -p:RuntimeIdentifier=iossimulator-arm64 -p:EnableCodeSigning=false

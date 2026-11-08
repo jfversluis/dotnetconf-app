@@ -19,7 +19,8 @@ public partial class SessionViewModel : ObservableObject
             () => HasRecording);
         ToggleWatchedCommand = new AsyncRelayCommand(() => owner.ToggleWatchedAsync(this),
             () => owner.IsWatchedAvailable && HasWatchActions);
-        ShareCommand = new AsyncRelayCommand(() => owner.ShareTextAsync(Title, ShareText), () => !IsWithdrawn);
+        ShareCommand = new AsyncRelayCommand(() => owner.ShareSessionAsync(this), () => !IsWithdrawn);
+        QuickActionsCommand = new AsyncRelayCommand(() => owner.ShowSessionActionsAsync(this));
         UpdateResources();
         RefreshTime(TimeZoneInfo.Local);
     }
@@ -45,6 +46,19 @@ public partial class SessionViewModel : ObservableObject
     public IAsyncRelayCommand WatchRecordingCommand { get; }
     public IAsyncRelayCommand ToggleWatchedCommand { get; }
     public IAsyncRelayCommand ShareCommand { get; }
+    public IAsyncRelayCommand QuickActionsCommand { get; }
+    public string QuickActionsDescription => $"More actions for {Title}";
+    internal IReadOnlyList<(string Label, IAsyncRelayCommand Command)> GetQuickActions()
+    {
+        List<(string Label, IAsyncRelayCommand Command)> actions = [];
+        if (ToggleSaveCommand.CanExecute(null))
+            actions.Add((SaveLabel, ToggleSaveCommand));
+        if (ToggleWatchedCommand.CanExecute(null))
+            actions.Add((WatchedActionLabel, ToggleWatchedCommand));
+        if (ShareCommand.CanExecute(null))
+            actions.Add((ShareLabel, ShareCommand));
+        return actions;
+    }
     public string ShareLabel => owner.ShareSessionLabel;
     public string ShareHint => owner.ShareSessionHint;
     public bool CanShare => !IsWithdrawn;
@@ -61,6 +75,7 @@ public partial class SessionViewModel : ObservableObject
     public bool HasVideoStatus => HasRecording || IsWatched;
     public string VideoStatusLabel => IsWatched ? "Watched" : "Video available";
     public string WatchedActionLabel => IsWatched ? "Mark as not watched" : "Mark as watched";
+    public string WatchedSwipeLabel => IsWatched ? "Unwatch" : "Watched";
     public string WatchedButtonLabel => IsWatched ? "Watched" : "Mark as watched";
     public string WatchedDescription => $"{(IsWatched ? "Watched" : "Not watched")}. {WatchedActionLabel}";
     public string WatchedGlyph => IsWatched ? FluentIconsFilled.CheckmarkCircle24 : FluentIconsRegular.Circle24;
@@ -69,7 +84,9 @@ public partial class SessionViewModel : ObservableObject
     public bool HasResources => Resources.Count > 0 && !IsWithdrawn;
     public string ShareText => $"Check out this .NET Conf session:\n{Title}" +
         (Speakers.Count > 0 ? $"\n{SpeakerNames}" : "") +
-        $"\n\n{ConferenceLinks.SessionUrl(Id)}\n{ConferenceLinks.Hashtag}";
+        $"\n\n{ConferenceLinks.SessionUrl(Id)}" +
+        (SessionAppLinks.IsValidId(Id) ? $"\nOpen in the companion: {SessionAppLinks.Create(Id)}" : "") +
+        $"\n{ConferenceLinks.Hashtag}";
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NavigationDescription))]
     [NotifyPropertyChangedFor(nameof(SaveHint))]
@@ -106,6 +123,8 @@ public partial class SessionViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SaveLabel))]
+    [NotifyPropertyChangedFor(nameof(SaveSwipeInstruction))]
+    [NotifyPropertyChangedFor(nameof(SaveSwipeReleaseInstruction))]
     [NotifyPropertyChangedFor(nameof(SaveHint))]
     [NotifyPropertyChangedFor(nameof(SaveGlyph))]
     [NotifyPropertyChangedFor(nameof(SaveFontFamily))]
@@ -116,6 +135,7 @@ public partial class SessionViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasVideoStatus))]
     [NotifyPropertyChangedFor(nameof(VideoStatusLabel))]
     [NotifyPropertyChangedFor(nameof(WatchedActionLabel))]
+    [NotifyPropertyChangedFor(nameof(WatchedSwipeLabel))]
     [NotifyPropertyChangedFor(nameof(WatchedButtonLabel))]
     [NotifyPropertyChangedFor(nameof(WatchedDescription))]
     [NotifyPropertyChangedFor(nameof(WatchedGlyph))]
@@ -140,6 +160,8 @@ public partial class SessionViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(NavigationDescription))]
     public partial string DateLabel { get; set; } = "";
     public string SaveLabel => IsSaved ? "Remove from schedule" : "Save to schedule";
+    public string SaveSwipeInstruction => IsSaved ? "Swipe to remove" : "Swipe to save";
+    public string SaveSwipeReleaseInstruction => IsSaved ? "Release to remove" : "Release to save";
     public string SaveHint => $"{(IsSaved ? "Saved. Remove from My Schedule" : "Not saved. Add to My Schedule")}: {Title}"
         + (IsWithdrawn ? ". No longer in the published agenda." : "");
     public string SaveGlyph => IsSaved ? FluentIconsFilled.Heart24 : FluentIconsRegular.Heart24;

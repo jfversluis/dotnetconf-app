@@ -715,7 +715,7 @@ public partial class ConferenceViewModel(
         var now = DateTimeOffset.UtcNow;
         if (document is not null && !IsRefreshing &&
             (restartCanceledRefresh || HasRefreshError || snapshot?.LastCheckedAt is not { } last || now < last || now - last > TimeSpan.FromMinutes(5)))
-            await RefreshAsync();
+            await RefreshCommand.ExecuteAsync(null);
     }
 
     internal void ReportPhotoFailure(string id, Exception exception) =>

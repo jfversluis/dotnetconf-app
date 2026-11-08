@@ -10,17 +10,22 @@ production distribution.
 dispatch. The required `Core tests` job runs both Core/helper and headless App
 ViewModel tests, using the pinned MAUI SDK for the ordinary desktop assembly.
 It does not initialize MAUI, install native Android SDK packages, or run an emulator.
-These tests stay separate from NativeAOT publication so restoring both app graphs
+These tests stay separate from mobile publication so restoring both app graphs
 does not exhaust a hosted runner's disk. The mobile jobs perform independent
-Android and iOS **Release** builds. Android publishes an ARM64 NativeAOT AAB;
+Android and iOS **Release** builds. Android publishes an ARM64 CoreCLR AAB;
 iOS builds an unsigned ARM64 simulator app. The Android job also checks
 private-member obfuscation and that the signed AAB embeds the generated R8 mapping.
-The Android publish explicitly selects `android-arm64`: the pinned preview's
-NativeAOT typemap generation fails without a concrete runtime identifier.
+The Android publish explicitly selects `android-arm64` and checks that
+`PublishAot=false`; experimental Android NativeAOT is not the shipping runtime.
 The manual internal-testing lane uses the same ARM64 architecture and RID-specific
 artifact directory; this lane does not produce an x86/x64 emulator package.
 Neither build needs store credentials. Fork PRs are supported without secrets.
 This is compilation validation, not a device/UI test or proof of store acceptance.
+
+The mobile jobs also compile the isolated native regression-test host. Run its
+in-process tests with an explicit dedicated simulator/emulator as documented in
+[CONTRIBUTING](../CONTRIBUTING.md#native-in-process-regression-tests). Hosted CI
+compilation does not prove that those device tests ran.
 
 The SDK and workload set come from `global.json`. Android SDK dependencies are
 installed by the workload's `InstallAndroidDependencies` target with JDK 21.

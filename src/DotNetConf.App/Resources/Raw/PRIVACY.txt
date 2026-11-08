@@ -1,6 +1,6 @@
 # .NET Conf companion privacy policy
 
-Last updated: November 6, 2026.
+Last updated: November 7, 2026.
 
 This policy describes the .NET Conf companion app maintained by Gerald
 Versluis. The app is in development and has not been released. This policy is
@@ -49,7 +49,7 @@ Session videos use your device's link handler, which may open a video app or
 browser depending on your settings. No video player or social tracking widget is
 embedded. When you choose to share
 a conference invitation or session, its public title, available speaker names,
-website link, hashtag, and (for the invitation) event dates are passed to your device's share
+website link, companion session link, hashtag, and (for the invitation) event dates are passed to your device's share
 sheet. Only the destination you choose receives that content, under its own
 privacy policy. On experimental desktop/browser targets, the equivalent action
 copies the text to your clipboard instead. If opening or sharing fails, you
@@ -104,6 +104,13 @@ session title, ID, and start time to schedule local reminders. The app does
 not send these as push notifications from an app-operated server. You can turn
 reminders off in Settings; your device's notification settings also control
 delivery.
+
+Tapping a reminder or opening a `dotnetconf://session/...` link passes a public
+session ID to the app. The app validates it against the downloaded public agenda
+and uses the existing Microsoft feed/cache; it does not fetch content from a URL
+supplied in the link, change your saved choices, or send the link to a developer
+service. Link requests wait in memory while setup or agenda loading completes
+and are not saved as browsing history.
 
 ## Data kept on your device
 

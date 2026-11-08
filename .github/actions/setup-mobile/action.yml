@@ -11,7 +11,7 @@ runs:
       if: inputs.platform == 'android'
       shell: bash
       run: |
-        # With the planner's Avalonia packages, the NativeAOT build for both Android ABIs fills the runner's disk.
+        # Mobile publishing with the planner's Avalonia packages needs additional runner disk space.
         # These toolchains aren't used by the build.
         sudo rm -rf /usr/local/.ghcup /usr/share/swift "$RUNNER_TOOL_CACHE/CodeQL"
         df -h /

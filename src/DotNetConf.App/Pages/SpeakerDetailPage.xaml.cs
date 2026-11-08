@@ -19,7 +19,6 @@ public partial class SpeakerDetailPage : ContentPage, IQueryAttributable
         this.conference = conference;
         viewport = new FoldableViewport(this, this, navigation.RequestLayoutSync, navigation.FoldableRegionSource);
         Detail.TextScaleMonitor.TextScaleChanged += (_, _) => navigation.RequestLayoutSync();
-        Shell.SetBackButtonBehavior(this, new BackButtonBehavior { AccessibilityLabel = "Back to previous page" });
     }
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)

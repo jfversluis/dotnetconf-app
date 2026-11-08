@@ -14,16 +14,18 @@
                          GrabberBackground="{AppThemeBinding Light={StaticResource LightSecondary}, Dark={StaticResource DarkSecondary}}"
                          SwipeFromHeaderOnly="True" StateChanged="AskStateChanged">
     <sheet:SfBottomSheet.Content>
-    <Grid SafeAreaEdges="Container,None,Container,None">
+    <Grid SafeAreaEdges="None">
     <RefreshView IsRefreshing="{Binding IsPullRefreshing, Mode=TwoWay}"
                  Command="{Binding RequestRefreshCommand}"
                  RefreshColor="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}"
                  AutomationId="home-refresh">
-    <ScrollView SafeAreaEdges="Default" AutomationId="home-scroll">
-        <VerticalStackLayout Spacing="0" MaximumWidthRequest="720" HorizontalOptions="Center" SafeAreaEdges="None">
+    <ScrollView SafeAreaEdges="None,None,None,Container" AutomationId="home-scroll">
+        <VerticalStackLayout Spacing="0" HorizontalOptions="Fill" SafeAreaEdges="None">
             <Grid Background="{AppThemeBinding Light={StaticResource HeroLightGradient}, Dark={StaticResource HeroDarkGradient}}"
-                  SafeAreaEdges="None">
-                <VerticalStackLayout Padding="24,32,24,28" Spacing="16" SafeAreaEdges="None">
+                  SafeAreaEdges="None" AutomationId="home-hero">
+                <controls:DuoSafeAreaContent AutomationId="home-hero-safe-content">
+                <VerticalStackLayout Padding="24,32,24,28" Spacing="16" SafeAreaEdges="Container,None,Container,None"
+                                     MaximumWidthRequest="720" HorizontalOptions="Center">
                     <Label Text="{Binding ConferenceName}" FontFamily="SpaceGroteskBold" FontSize="40"
                            TextColor="{AppThemeBinding Light={StaticResource Midnight}, Dark={StaticResource White}}"
                            SemanticProperties.HeadingLevel="Level1" AutomationId="home-title" />
@@ -47,8 +49,11 @@
                                 LineBreakMode="WordWrap" Padding="18,16" AutomationId="home-ask" />
                     </Border>
                 </VerticalStackLayout>
+                </controls:DuoSafeAreaContent>
             </Grid>
-            <VerticalStackLayout Padding="24,24,24,32" Spacing="28" SafeAreaEdges="None">
+            <controls:DuoSafeAreaContent AutomationId="home-body-safe-content">
+            <VerticalStackLayout Padding="24,24,24,32" Spacing="28" SafeAreaEdges="Container,None,Container,None"
+                                 MaximumWidthRequest="720" HorizontalOptions="Center">
             <controls:StatusBanner />
             <HorizontalStackLayout Spacing="12" IsVisible="{Binding IsInitialAgendaLoading}">
                 <ActivityIndicator IsRunning="{Binding IsInitialAgendaLoading}" WidthRequest="24"
@@ -110,6 +115,7 @@
                         Style="{StaticResource QuietButton}" ImageSource="{StaticResource CommunityIcon}" AutomationId="home-community" />
             </VerticalStackLayout>
             </VerticalStackLayout>
+            </controls:DuoSafeAreaContent>
         </VerticalStackLayout>
     </ScrollView>
     </RefreshView>

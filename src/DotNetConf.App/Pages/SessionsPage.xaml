@@ -87,7 +87,7 @@
                             IsVisible="{Binding Source={x:Reference Item}, Path=IsSelected, x:DataType=controls:SessionRow}" />
                     <BoxView Style="{StaticResource DetailSelectionMarker}"
                              IsVisible="{Binding Source={x:Reference Item}, Path=IsSelected, x:DataType=controls:SessionRow}" />
-                    <controls:SessionRow x:Name="Item" Padding="16,0"
+                    <controls:SessionRow x:Name="Item" Padding="16,0" ShowsSelectionSurface="True"
                                          SelectedId="{Binding Source={RelativeSource AncestorType={x:Type pages:AdaptiveConferencePage}}, Path=SelectedId}" />
                 </Grid>
             </DataTemplate>
@@ -125,7 +125,7 @@
                                 IsVisible="{Binding Source={x:Reference CompactItem}, Path=IsSelected, x:DataType=controls:SessionRow}" />
                         <BoxView Style="{StaticResource DetailSelectionMarker}"
                                  IsVisible="{Binding Source={x:Reference CompactItem}, Path=IsSelected, x:DataType=controls:SessionRow}" />
-                        <controls:SessionRow x:Name="CompactItem" Padding="16,0" IsCompactSearch="True"
+                        <controls:SessionRow x:Name="CompactItem" Padding="16,0" IsCompactSearch="True" ShowsSelectionSurface="True"
                                              SelectedId="{Binding Source={RelativeSource AncestorType={x:Type pages:AdaptiveConferencePage}}, Path=SelectedId}" />
                     </Grid>
                 </DataTemplate>
