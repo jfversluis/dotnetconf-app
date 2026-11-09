@@ -54,7 +54,7 @@
     <FontImageSource x:Key="ReminderIcon" Glyph="{x:Static icons:FluentIconsRegular.Alert24}"
                      FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="48"
                      Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
-    <FontImageSource x:Key="SpeakersIcon" Glyph="{x:Static icons:FluentIconsRegular.People24}"
+    <FontImageSource x:Key="SpeakersIcon" Glyph="{x:Static icons:FluentIconsRegular.Presenter24}"
                      FontFamily="{x:Static icons:FluentIconsRegular.FontFamily}" Size="24"
                      Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
     <FontImageSource x:Key="ScheduleIcon" Glyph="{x:Static icons:FluentIconsRegular.Heart24}"
