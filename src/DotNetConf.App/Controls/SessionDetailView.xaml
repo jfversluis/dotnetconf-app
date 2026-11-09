@@ -23,14 +23,8 @@
                                          AutomationId="session-inline-share" SemanticProperties.Description="{Binding ShareLabel}"
                                          SemanticProperties.Hint="{Binding ShareHint}" />
                         </ContentView>
-                        <ImageButton Grid.Column="2" Command="{Binding ToggleSaveCommand}"
-                                     Style="{StaticResource IconButton}" VerticalOptions="Start"
-                                     AutomationId="detail-save" SemanticProperties.Description="{Binding SaveHint}">
-                            <ImageButton.Source>
-                                <FontImageSource Glyph="{Binding SaveGlyph}" FontFamily="{Binding SaveFontFamily}" Size="24"
-                                                 Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
-                            </ImageButton.Source>
-                        </ImageButton>
+                        <controls:FavoriteButton Grid.Column="2" VerticalOptions="Start"
+                                                 ButtonAutomationId="detail-save" />
                     </Grid>
                     <Label Text="{Binding TopicLabel}" Style="{StaticResource Secondary}" />
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">

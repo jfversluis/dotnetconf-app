@@ -154,6 +154,12 @@ save the session, or remove it if already saved; a short swipe cancels.
 The purple fill changes its caption from **Swipe to save/remove** to
 **Release to save/remove** at the execution threshold, with a brief heart
 pulse (unless Reduce Motion is enabled) and supported-device haptic feedback.
+Saving gives the row and detail hearts a springy pop with a fading theme-aware
+halo; removing gives a smaller recoil. Reduced Motion keeps both instant.
+The animation does not run when saved rows first appear or are recycled.
+Save/remove and watched toggles give a subtle supported-device haptic confirmation
+after a successful change, not during loading, navigation, or failed writes.
+Android declares the normal `VIBRATE` permission; no runtime prompt is needed.
 The heart remains visible for one-tap saving; the detail-page watched and Share actions remain
 available without gestures. Linux and browser lists keep the visible **More**
 button because native swipe handlers are unavailable there.

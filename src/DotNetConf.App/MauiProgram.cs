@@ -128,6 +128,9 @@ public static class MauiProgram
 #endif
         builder.Services.AddSingleton<ISessionVideoLauncher, SessionVideoLauncher>();
         builder.Services.AddSingleton<IConferenceSharing, ConferenceSharing>();
+#if IOS || ANDROID
+        builder.Services.TryAddSingleton(HapticFeedback.Default);
+#endif
         builder.Services.AddSingleton<ConferenceViewModel>();
         builder.Services.AddSingleton<IAskApplication>(services => services.GetRequiredService<ConferenceViewModel>());
         builder.Services.AddTransient<IOnDeviceAsk, OnDeviceAsk>();

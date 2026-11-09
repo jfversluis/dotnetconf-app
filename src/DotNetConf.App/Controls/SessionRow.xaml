@@ -168,21 +168,17 @@
                     </Button.SemanticProperties.Description>
                 </Button>
             </Grid>
-            <ImageButton Grid.Column="1" Command="{Binding ToggleSaveCommand}" Style="{StaticResource IconButton}"
+            <controls:FavoriteButton Grid.Column="1"
                          VerticalOptions="Start" Margin="0,22,0,0"
-                         AutomationId="{Binding SaveAutomationId}" SemanticProperties.Description="{Binding SaveHint}">
-                <ImageButton.Triggers>
-                    <DataTrigger TargetType="ImageButton"
+                         ButtonAutomationId="{Binding SaveAutomationId}">
+                <controls:FavoriteButton.Triggers>
+                    <DataTrigger TargetType="controls:FavoriteButton"
                                  Binding="{Binding Source={x:Reference DetailRowRoot}, Path=IsCompactSearch, x:DataType=controls:SessionRow}" Value="True">
                         <Setter Property="Margin" Value="0" />
-                        <Setter Property="AutomationId" Value="{Binding SaveAutomationId, StringFormat='compact-{0}'}" />
+                        <Setter Property="ButtonAutomationId" Value="{Binding SaveAutomationId, StringFormat='compact-{0}'}" />
                     </DataTrigger>
-                </ImageButton.Triggers>
-                <ImageButton.Source>
-                    <FontImageSource Glyph="{Binding SaveGlyph}" FontFamily="{Binding SaveFontFamily}" Size="24"
-                                     Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
-                </ImageButton.Source>
-            </ImageButton>
+                </controls:FavoriteButton.Triggers>
+            </controls:FavoriteButton>
             <ImageButton x:Name="MoreButton" Grid.Column="2" Command="{Binding QuickActionsCommand}" Source="{StaticResource MoreIcon}"
                          Style="{StaticResource IconButton}" VerticalOptions="Start" Margin="0,22,0,0"
                          AutomationId="{Binding AutomationId, StringFormat='{0}-actions'}"

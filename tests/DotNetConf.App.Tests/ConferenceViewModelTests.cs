@@ -4,6 +4,7 @@ using DotNetConf.Core;
 using IconFont.Maui.FluentIcons;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Devices;
 using Microsoft.Maui.Networking;
 
 namespace DotNetConf.App.Tests;
@@ -1815,6 +1816,77 @@ public sealed class ConferenceViewModelTests
         Assert.Contains("fictional", viewModel.CommunityEventSummary);
     }
     [Fact]
+    public async Task ManualHeartHapticsFollowCommittedSavesAndSkipFailedWritesAndRestore()
+    {
+        var store = new TestScheduleStore();
+        var haptics = new TestHaptics();
+        var viewModel = await CreateInitializedAsync(new(Snapshot()), store, new(), haptics: haptics);
+        var session = Assert.Single(viewModel.Sessions);
+        var method = typeof(ConferenceViewModel).GetMethod("SetSavedWithUpdatesAsync",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        Task<bool> SetSaved(bool saved) =>
+            (Task<bool>)method.Invoke(viewModel, ["id", saved, CancellationToken.None])!;
+        Assert.Empty(haptics.Performed);
+
+        await SetSaved(false);
+        Assert.False(session.IsSaved);
+        Assert.Single(haptics.Performed);
+        store.WriteFailure = new IOException("Synthetic write failure");
+        await Assert.ThrowsAsync<IOException>(() => SetSaved(true));
+        Assert.False(session.IsSaved);
+        Assert.Single(haptics.Performed);
+
+        store.WriteFailure = null;
+        await SetSaved(true);
+        Assert.True(session.IsSaved);
+        Assert.Equal([HapticFeedbackType.Click, HapticFeedbackType.Click], haptics.Performed);
+        await viewModel.InitializeAsync();
+        Assert.Equal(2, haptics.Performed.Count);
+    }
+
+    [Fact]
+    public async Task HapticsConfirmOnlyCommittedWatchedChangesNotLoadingOrFailedWrites()
+    {
+        var watchedStore = new TestScheduleStore();
+        watchedStore.SavedIds.Clear();
+        var haptics = new TestHaptics();
+        var viewModel = await CreateInitializedAsync(new(Snapshot()), new(), new(),
+            watched: new(watchedStore), haptics: haptics);
+        var session = Assert.Single(viewModel.Sessions);
+        Assert.Empty(haptics.Performed);
+
+        watchedStore.WriteFailure = new IOException("Synthetic write failure");
+        await session.ToggleWatchedCommand.ExecuteAsync(null);
+        Assert.False(session.IsWatched);
+        Assert.Empty(haptics.Performed);
+
+        watchedStore.WriteFailure = null;
+        await session.ToggleWatchedCommand.ExecuteAsync(null);
+        Assert.True(session.IsWatched);
+        Assert.Equal([HapticFeedbackType.Click], haptics.Performed);
+        await session.ToggleWatchedCommand.ExecuteAsync(null);
+        Assert.False(session.IsWatched);
+        Assert.Equal([HapticFeedbackType.Click, HapticFeedbackType.Click], haptics.Performed);
+
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+        Assert.Equal(2, haptics.Performed.Count);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public async Task UnavailableHapticsDoNotUndoACommittedAction(bool supported, bool throws)
+    {
+        var haptics = new TestHaptics { IsSupported = supported, ThrowPermissionError = throws };
+        var viewModel = await CreateInitializedAsync(new(Snapshot()), new(), new(), haptics: haptics);
+        var session = Assert.Single(viewModel.Sessions);
+        await session.ToggleWatchedCommand.ExecuteAsync(null);
+        Assert.True(session.IsWatched);
+        Assert.False(viewModel.HasRefreshError);
+        Assert.Equal(supported ? 1 : 0, haptics.Performed.Count);
+    }
+
+    [Fact]
     public async Task WatchingIsExplicitSeparateFromSavingAndPersistsAcrossViewModels()
     {
         var original = Snapshot();
@@ -2175,10 +2247,11 @@ public sealed class ConferenceViewModelTests
 
     private static ConferenceViewModel Create(TestRepository repository, TestScheduleStore store, TestConnectivity connectivity,
         ScheduleService? schedule = null, ISessionReminderUpdates? reminders = null, IConferenceSharing? sharing = null,
-        WatchedSessionService? watched = null, IBrowser? browser = null, ISessionVideoLauncher? videoLauncher = null) =>
+        WatchedSessionService? watched = null, IBrowser? browser = null, ISessionVideoLauncher? videoLauncher = null,
+        IHapticFeedback? haptics = null) =>
         new(repository, schedule ?? new ScheduleService(store), watched ?? EmptyWatchedService(), new DetailNavigationService(),
             browser!, videoLauncher ?? new TestSessionVideoLauncher(), connectivity,
-            NullLogger<ConferenceViewModel>.Instance, reminders ?? new TestReminders(), sharing ?? new TestConferenceSharing());
+            NullLogger<ConferenceViewModel>.Instance, reminders ?? new TestReminders(), sharing ?? new TestConferenceSharing(), haptics);
 
     private static WatchedSessionService EmptyWatchedService()
     {
@@ -2190,10 +2263,11 @@ public sealed class ConferenceViewModelTests
     private static async Task<ConferenceViewModel> CreateInitializedAsync(
         TestRepository repository, TestScheduleStore store, TestConnectivity connectivity,
         ScheduleService? schedule = null, ISessionReminderUpdates? reminders = null,
-        WatchedSessionService? watched = null, IBrowser? browser = null, ISessionVideoLauncher? videoLauncher = null)
+        WatchedSessionService? watched = null, IBrowser? browser = null, ISessionVideoLauncher? videoLauncher = null,
+        IHapticFeedback? haptics = null)
     {
         var viewModel = Create(repository, store, connectivity, schedule, reminders, watched: watched, browser: browser,
-            videoLauncher: videoLauncher);
+            videoLauncher: videoLauncher, haptics: haptics);
         await viewModel.InitializeAsync();
         await (viewModel.RefreshCommand.ExecutionTask ?? Task.CompletedTask);
         return viewModel;
@@ -2236,6 +2310,19 @@ public sealed class ConferenceViewModelTests
         }],
         Speakers = [new() { Id = "old", Name = "Test speaker" }]
     }, null, null, true, []);
+
+    private sealed class TestHaptics : IHapticFeedback
+    {
+        public bool IsSupported { get; set; } = true;
+        public bool ThrowPermissionError { get; set; }
+        public List<HapticFeedbackType> Performed { get; } = [];
+        public void Perform(HapticFeedbackType type = HapticFeedbackType.Click)
+        {
+            Performed.Add(type);
+            if (ThrowPermissionError)
+                throw new PermissionException("Synthetic missing haptic permission.");
+        }
+    }
 
     private sealed class TestScheduleStore : IScheduleStore
     {

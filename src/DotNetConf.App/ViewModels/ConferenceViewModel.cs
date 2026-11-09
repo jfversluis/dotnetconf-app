@@ -20,7 +20,8 @@ public sealed record DayFilter(string Label, DateOnly? Day)
 public partial class ConferenceViewModel(
     IConferenceRepository repository, ScheduleService schedule, WatchedSessionService watched, DetailNavigationService navigation,
     IBrowser browser, ISessionVideoLauncher videoLauncher, IConnectivity connectivity,
-    ILogger<ConferenceViewModel> logger, ISessionReminderUpdates reminders, IConferenceSharing sharing) : ObservableObject, IPlannerScheduleUpdates, IAskApplication
+    ILogger<ConferenceViewModel> logger, ISessionReminderUpdates reminders, IConferenceSharing sharing,
+    IHapticFeedback? haptics = null) : ObservableObject, IPlannerScheduleUpdates, IAskApplication
 {
     private const string AgendaPresentationLoadError = "We couldn't display the agenda. Your saved choices are kept. Try again.";
     private readonly SemaphoreSlim loadGate = new(1, 1);
@@ -333,6 +334,7 @@ public partial class ConferenceViewModel(
         BeginScheduleMutation();
         await CompleteScheduleMutationAsync(() => schedule.SetSavedAsync(id, saved, token),
             result => result ? "The session was saved." : "The session was removed.");
+        ConfirmInteraction();
         return await RefreshRemindersAfterScheduleMutationAsync();
     }
 
@@ -997,10 +999,24 @@ public partial class ConferenceViewModel(
             RefreshWatchedState();
             watchedError = null;
             UpdateRefreshStatus();
+            ConfirmInteraction();
         }
         catch (Exception exception) when (IsNonFatalCallbackFailure(exception))
         {
             ReportWatchedPresentationFailure(exception);
+        }
+    }
+
+    private void ConfirmInteraction()
+    {
+        try
+        {
+            if (haptics?.IsSupported == true)
+                haptics.Perform(HapticFeedbackType.Click);
+        }
+        catch (Exception exception) when (exception is FeatureNotSupportedException or PermissionException)
+        {
+            logger.LogWarning(exception, "The session action completed, but haptic feedback is unavailable.");
         }
     }
 
