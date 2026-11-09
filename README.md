@@ -201,7 +201,7 @@ needs investigation.
 
 ## Availability
 
-The app is **in development and not yet available in the App Store or Google Play**. We're aiming for a first release in November 2026.
+Download the app for **iOS** from the [App Store](https://apps.apple.com/app/net-conf/id6820239033) or for **Android** from [Google Play](https://play.google.com/store/apps/details?id=dev.jfversluis.dotnetconf).
 
 **iOS and Android are the primary targets. Linux desktop and browser support is experimental**, with known feature gaps and less validation than the mobile apps. See the [platform limitations](CONTRIBUTING.md#linux-desktop-and-browser-experimental) before trying those builds.
 
