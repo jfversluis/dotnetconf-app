@@ -28,7 +28,7 @@ public partial class SessionReminderService(
 {
     public const string ChannelId = "session-reminders";
     private const string PreferenceKey = "session-reminders-enabled-v1";
-    private const string Prefix = "session-reminder:";
+    private const string Prefix = SessionAppLinks.ReminderPrefix;
     private readonly SemaphoreSlim gate = new(1, 1);
     public bool Enabled => preferences.Get(PreferenceKey, false);
     [ObservableProperty] public partial string Status { get; set; } = "Session reminders are optional.";

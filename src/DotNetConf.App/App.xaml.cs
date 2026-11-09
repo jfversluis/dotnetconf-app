@@ -20,6 +20,12 @@ public partial class App : Application
 #endif
         this.services = services;
         this.logger = logger;
+        var links = services.GetRequiredService<Services.SessionLinkService>();
+        services.GetRequiredService<Plugin.LocalNotification.INotificationService>().NotificationActionTapped += args =>
+        {
+            if (args.IsTapped)
+                links.ReceiveReminder(args.Request.ReturningData);
+        };
         onboarding = new(preferences.Get(FirstRunPlannerState.PreferenceKey, false),
             () => preferences.Set(FirstRunPlannerState.PreferenceKey, true));
         var savedTheme = preferences.Get("appearance", nameof(AppTheme.Unspecified));
@@ -33,6 +39,8 @@ public partial class App : Application
     protected override Window CreateWindow(IActivationState? activationState)
     {
         var shell = services.GetRequiredService<AppShell>();
+        var links = services.GetRequiredService<Services.SessionLinkService>();
+        ModalPopped += (_, _) => links.Resume();
         var window = new Window(shell);
         var conference = services.GetRequiredService<ViewModels.ConferenceViewModel>();
         var sessionClock = window.Dispatcher.CreateTimer();
@@ -40,6 +48,7 @@ public partial class App : Application
         sessionClock.Tick += (_, _) => conference.RefreshSessionStatuses(DateTimeOffset.UtcNow);
         services.GetRequiredService<Services.DetailNavigationService>().Attach(shell, window);
         shell.Loaded += (_, _) => shell.Dispatcher.Dispatch(() => ShowOnboardingAsync(shell));
+        links.Attach(shell);
         window.Activated += (_, _) =>
         {
             conference.RefreshSessionStatuses(DateTimeOffset.UtcNow);
@@ -49,6 +58,8 @@ public partial class App : Application
                 shell.Dispatcher.Dispatch(() => ShowOnboardingAsync(shell));
                 shell.Dispatcher.Dispatch(async () => await services.GetRequiredService<Services.SessionReminderService>().RefreshAsync());
             }
+            shell.Dispatcher.Dispatch(() => Services.BackNavigation.Update(shell));
+            links.Resume();
         };
         window.StatusBarTheme = RequestedTheme == AppTheme.Dark ? StatusBarTheme.Dark : StatusBarTheme.Light;
         window.Resumed += async (_, _) => await conference.ResumeAsync();
@@ -85,4 +96,7 @@ public partial class App : Application
         foreach (var window in Windows)
             window.StatusBarTheme = RequestedTheme == AppTheme.Dark ? StatusBarTheme.Dark : StatusBarTheme.Light;
     }
+
+    protected override void OnAppLinkRequestReceived(Uri uri) =>
+        services.GetRequiredService<Services.SessionLinkService>().Receive(uri.AbsoluteUri);
 }

@@ -23,12 +23,13 @@ public partial class SessionDetailPage : ContentPage, IQueryAttributable
         this.conference = conference;
         viewport = new FoldableViewport(this, this, navigation.RequestLayoutSync, navigation.FoldableRegionSource);
         Detail.TextScaleMonitor.TextScaleChanged += (_, _) => navigation.RequestLayoutSync();
-        Shell.SetBackButtonBehavior(this, new BackButtonBehavior { AccessibilityLabel = "Back to previous page" });
     }
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
     {
-        sessionId = query.TryGetValue("id", out var value) && value is string id ? Uri.UnescapeDataString(id) : null;
+        sessionId = query.TryGetValue("sessionId", out var captured) && captured is string pathId
+            ? pathId
+            : query.TryGetValue("id", out var value) && value is string id ? Uri.UnescapeDataString(id) : null;
         Detail.Show(conference, sessionId);
     }
 

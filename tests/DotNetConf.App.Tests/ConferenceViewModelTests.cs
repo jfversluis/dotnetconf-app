@@ -4,12 +4,151 @@ using DotNetConf.Core;
 using IconFont.Maui.FluentIcons;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Devices;
 using Microsoft.Maui.Networking;
 
 namespace DotNetConf.App.Tests;
 
 public sealed class ConferenceViewModelTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LinkedSessionLookupWaitsForTheSharedDownloadWithoutStartingAnotherRefresh(bool hasStaleCache)
+    {
+        var published = Snapshot();
+        var initial = published with
+        {
+            Document = published.Document with
+            {
+                Sessions = hasStaleCache ? [published.Document.Sessions[0] with { Id = "synthetic-cached" }] : []
+            }
+        };
+        var repository = new TestRepository(initial) { HoldFirstRequest = true };
+        var viewModel = Create(repository, new(), new());
+        await viewModel.InitializeAsync();
+        await repository.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var lookup = viewModel.ResolveLinkedSessionAsync("id");
+        var completedBeforeDownload = lookup.IsCompleted;
+        repository.Snapshot = published;
+        repository.Release.TrySetResult();
+        var result = await lookup.WaitAsync(TimeSpan.FromSeconds(5));
+        await viewModel.RefreshCommand.ExecutionTask!;
+        Assert.False(completedBeforeDownload);
+        Assert.Same(viewModel.FindSession("id"), result);
+        Assert.NotNull(result);
+        Assert.Equal(1, repository.RefreshCalls);
+    }
+
+    [Fact]
+    public async Task LinkedSessionLookupUsesAValidCachedSessionWithoutWaitingForNetwork()
+    {
+        var repository = new TestRepository(Snapshot()) { HoldFirstRequest = true };
+        var viewModel = Create(repository, new(), new());
+        await viewModel.InitializeAsync();
+        await repository.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var lookup = viewModel.ResolveLinkedSessionAsync("id");
+        var completedFromCache = lookup.IsCompleted;
+        repository.Release.TrySetResult();
+        var result = await lookup;
+        await viewModel.RefreshCommand.ExecutionTask!;
+        Assert.True(completedFromCache);
+        Assert.NotNull(result);
+        Assert.Equal(1, repository.RefreshCalls);
+    }
+
+    [Fact]
+    public async Task LinkedSessionLookupWaitsForAResumeTriggeredDownload()
+    {
+        var published = Snapshot();
+        var stale = published with { Document = published.Document with { Sessions = [] } };
+        var repository = new TestRepository(stale) { HoldRefreshCall = 2 };
+        var viewModel = await CreateInitializedAsync(repository, new(), new());
+        viewModel.PauseRefresh();
+        var resume = viewModel.ResumeAsync();
+        Assert.True(viewModel.IsRefreshing);
+        var lookup = viewModel.ResolveLinkedSessionAsync("id");
+        var completedBeforeDownload = lookup.IsCompleted;
+        repository.Snapshot = published;
+        repository.Release.TrySetResult();
+        await resume.WaitAsync(TimeSpan.FromSeconds(5));
+        var result = await lookup.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.False(completedBeforeDownload);
+        Assert.NotNull(result);
+        Assert.Equal(2, repository.RefreshCalls);
+    }
+
+    [Fact]
+    public async Task QuickActionsReuseTheVisibleCommandsAndCurrentState()
+    {
+        var viewModel = await CreateInitializedAsync(new TestRepository(Snapshot()), new TestScheduleStore(), new TestConnectivity());
+        var session = Assert.Single(viewModel.Sessions);
+        var actions = session.GetQuickActions();
+        Assert.Equal("Watched", session.WatchedSwipeLabel);
+        var originalSaveSwipeInstruction = session.IsSaved ? "Swipe to remove" : "Swipe to save";
+        Assert.Equal(originalSaveSwipeInstruction, session.SaveSwipeInstruction);
+        Assert.Equal(session.IsSaved ? "Release to remove" : "Release to save", session.SaveSwipeReleaseInstruction);
+        List<string?> changedProperties = [];
+        session.PropertyChanged += (_, args) => changedProperties.Add(args.PropertyName);
+        Assert.Contains(actions, action => action.Label == session.SaveLabel && action.Command == session.ToggleSaveCommand);
+        Assert.Contains(actions, action => action.Label == session.WatchedActionLabel && action.Command == session.ToggleWatchedCommand);
+        Assert.Contains(actions, action => action.Label == session.ShareLabel && action.Command == session.ShareCommand);
+        session.IsSaved = !session.IsSaved;
+        Assert.NotEqual(originalSaveSwipeInstruction, session.SaveSwipeInstruction);
+        Assert.Equal(session.IsSaved ? "Swipe to remove" : "Swipe to save", session.SaveSwipeInstruction);
+        Assert.Equal(session.IsSaved ? "Release to remove" : "Release to save", session.SaveSwipeReleaseInstruction);
+        Assert.Contains(nameof(SessionViewModel.SaveSwipeInstruction), changedProperties);
+        Assert.Contains(nameof(SessionViewModel.SaveSwipeReleaseInstruction), changedProperties);
+        session.IsWatched = !session.IsWatched;
+        Assert.Equal("Unwatch", session.WatchedSwipeLabel);
+        Assert.DoesNotContain(session.GetQuickActions(), action => action.Label == actions[0].Label);
+        Assert.Contains(session.GetQuickActions(), action => action.Label == session.WatchedActionLabel);
+    }
+
+    [Fact]
+    public async Task QuickActionsOmitUnavailableWatchedAndShareActions()
+    {
+        var viewModel = await CreateInitializedAsync(new TestRepository(Snapshot()), new TestScheduleStore(), new TestConnectivity());
+        var session = Assert.Single(viewModel.Sessions);
+        viewModel.IsWatchedAvailable = false;
+        Assert.DoesNotContain(session.GetQuickActions(), action => action.Command == session.ToggleWatchedCommand);
+        session.IsWithdrawn = true;
+        Assert.DoesNotContain(session.GetQuickActions(), action => action.Command == session.ShareCommand);
+        viewModel.IsScheduleAvailable = false;
+        Assert.Empty(session.GetQuickActions());
+    }
+
+    [Fact]
+    public async Task SessionSharingIncludesOnlyThePublicWebsiteLink()
+    {
+        var viewModel = await CreateInitializedAsync(new TestRepository(Snapshot()), new TestScheduleStore(), new TestConnectivity());
+        var session = Assert.Single(viewModel.Sessions);
+        var website = ConferenceLinks.SessionUrl(session.Id);
+        Assert.Equal($"Check out this .NET Conf session:\n{session.Title}\n{session.SpeakerNames}" +
+            $"\n\n{website}\n{ConferenceLinks.Hashtag}", session.ShareText);
+        Assert.DoesNotContain($"{SessionAppLinks.Scheme}://", session.ShareText);
+        Assert.DoesNotContain("requires the app", session.ShareText);
+    }
+
+    [Theory]
+    [InlineData("synthetic/id")]
+    [InlineData("synthetic%id")]
+    [InlineData("synthetic?id")]
+    public async Task SessionSharingPreservesWebsiteLinksForFeedIdsOutsideTheAppRouteContract(string id)
+    {
+        var original = Snapshot();
+        var snapshot = original with
+        {
+            Document = original.Document with { Sessions = [original.Document.Sessions[0] with { Id = id }] }
+        };
+        var viewModel = await CreateInitializedAsync(new TestRepository(snapshot), new TestScheduleStore(), new TestConnectivity());
+        var session = Assert.Single(viewModel.Sessions);
+        Assert.Contains(ConferenceLinks.SessionUrl(id), session.ShareText);
+        Assert.DoesNotContain($"{SessionAppLinks.Scheme}://", session.ShareText);
+        Assert.DoesNotContain("Open in the companion", session.ShareText);
+        await session.ShareCommand.ExecuteAsync(null);
+    }
+
     [Fact]
     public async Task AskBulkSavePublishesOneCompleteTimelineAndValidatesBeforeWriting()
     {
@@ -1676,6 +1815,76 @@ public sealed class ConferenceViewModelTests
         Assert.True(viewModel.HasMockCommunityEvents);
         Assert.Contains("fictional", viewModel.CommunityEventSummary);
     }
+    [Fact]
+    public async Task ManualHeartHapticsFollowCommittedSavesAndSkipFailedWritesAndRestore()
+    {
+        var store = new TestScheduleStore();
+        var haptics = new TestHaptics();
+        var viewModel = await CreateInitializedAsync(new(Snapshot()), store, new(), haptics: haptics);
+        var session = Assert.Single(viewModel.Sessions);
+        var method = typeof(ConferenceViewModel).GetMethod("SetSavedWithUpdatesAsync",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        Task<bool> SetSaved(bool saved) =>
+            (Task<bool>)method.Invoke(viewModel, ["id", saved, CancellationToken.None])!;
+        Assert.Empty(haptics.Performed);
+
+        await SetSaved(false);
+        Assert.False(session.IsSaved);
+        Assert.Single(haptics.Performed);
+        store.WriteFailure = new IOException("Synthetic write failure");
+        await Assert.ThrowsAsync<IOException>(() => SetSaved(true));
+        Assert.False(session.IsSaved);
+        Assert.Single(haptics.Performed);
+
+        store.WriteFailure = null;
+        await SetSaved(true);
+        Assert.True(session.IsSaved);
+        Assert.Equal([HapticFeedbackType.Click, HapticFeedbackType.Click], haptics.Performed);
+        await viewModel.InitializeAsync();
+        Assert.Equal(2, haptics.Performed.Count);
+    }
+
+    [Fact]
+    public async Task HapticsConfirmOnlyCommittedWatchedChangesNotLoadingOrFailedWrites()
+    {
+        var watchedStore = new TestScheduleStore();
+        watchedStore.SavedIds.Clear();
+        var haptics = new TestHaptics();
+        var viewModel = await CreateInitializedAsync(new(Snapshot()), new(), new(),
+            watched: new(watchedStore), haptics: haptics);
+        var session = Assert.Single(viewModel.Sessions);
+        Assert.Empty(haptics.Performed);
+
+        watchedStore.WriteFailure = new IOException("Synthetic write failure");
+        await session.ToggleWatchedCommand.ExecuteAsync(null);
+        Assert.False(session.IsWatched);
+        Assert.Empty(haptics.Performed);
+
+        watchedStore.WriteFailure = null;
+        await session.ToggleWatchedCommand.ExecuteAsync(null);
+        Assert.True(session.IsWatched);
+        Assert.Equal([HapticFeedbackType.Click], haptics.Performed);
+        await session.ToggleWatchedCommand.ExecuteAsync(null);
+        Assert.False(session.IsWatched);
+        Assert.Equal([HapticFeedbackType.Click, HapticFeedbackType.Click], haptics.Performed);
+
+        await viewModel.RefreshCommand.ExecuteAsync(null);
+        Assert.Equal(2, haptics.Performed.Count);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public async Task UnavailableHapticsDoNotUndoACommittedAction(bool supported, bool throws)
+    {
+        var haptics = new TestHaptics { IsSupported = supported, ThrowPermissionError = throws };
+        var viewModel = await CreateInitializedAsync(new(Snapshot()), new(), new(), haptics: haptics);
+        var session = Assert.Single(viewModel.Sessions);
+        await session.ToggleWatchedCommand.ExecuteAsync(null);
+        Assert.True(session.IsWatched);
+        Assert.False(viewModel.HasRefreshError);
+        Assert.Equal(supported ? 1 : 0, haptics.Performed.Count);
+    }
 
     [Fact]
     public async Task WatchingIsExplicitSeparateFromSavingAndPersistsAcrossViewModels()
@@ -2038,10 +2247,11 @@ public sealed class ConferenceViewModelTests
 
     private static ConferenceViewModel Create(TestRepository repository, TestScheduleStore store, TestConnectivity connectivity,
         ScheduleService? schedule = null, ISessionReminderUpdates? reminders = null, IConferenceSharing? sharing = null,
-        WatchedSessionService? watched = null, IBrowser? browser = null, ISessionVideoLauncher? videoLauncher = null) =>
+        WatchedSessionService? watched = null, IBrowser? browser = null, ISessionVideoLauncher? videoLauncher = null,
+        IHapticFeedback? haptics = null) =>
         new(repository, schedule ?? new ScheduleService(store), watched ?? EmptyWatchedService(), new DetailNavigationService(),
             browser!, videoLauncher ?? new TestSessionVideoLauncher(), connectivity,
-            NullLogger<ConferenceViewModel>.Instance, reminders ?? new TestReminders(), sharing ?? new TestConferenceSharing());
+            NullLogger<ConferenceViewModel>.Instance, reminders ?? new TestReminders(), sharing ?? new TestConferenceSharing(), haptics);
 
     private static WatchedSessionService EmptyWatchedService()
     {
@@ -2053,10 +2263,11 @@ public sealed class ConferenceViewModelTests
     private static async Task<ConferenceViewModel> CreateInitializedAsync(
         TestRepository repository, TestScheduleStore store, TestConnectivity connectivity,
         ScheduleService? schedule = null, ISessionReminderUpdates? reminders = null,
-        WatchedSessionService? watched = null, IBrowser? browser = null, ISessionVideoLauncher? videoLauncher = null)
+        WatchedSessionService? watched = null, IBrowser? browser = null, ISessionVideoLauncher? videoLauncher = null,
+        IHapticFeedback? haptics = null)
     {
         var viewModel = Create(repository, store, connectivity, schedule, reminders, watched: watched, browser: browser,
-            videoLauncher: videoLauncher);
+            videoLauncher: videoLauncher, haptics: haptics);
         await viewModel.InitializeAsync();
         await (viewModel.RefreshCommand.ExecutionTask ?? Task.CompletedTask);
         return viewModel;
@@ -2099,6 +2310,19 @@ public sealed class ConferenceViewModelTests
         }],
         Speakers = [new() { Id = "old", Name = "Test speaker" }]
     }, null, null, true, []);
+
+    private sealed class TestHaptics : IHapticFeedback
+    {
+        public bool IsSupported { get; set; } = true;
+        public bool ThrowPermissionError { get; set; }
+        public List<HapticFeedbackType> Performed { get; } = [];
+        public void Perform(HapticFeedbackType type = HapticFeedbackType.Click)
+        {
+            Performed.Add(type);
+            if (ThrowPermissionError)
+                throw new PermissionException("Synthetic missing haptic permission.");
+        }
+    }
 
     private sealed class TestScheduleStore : IScheduleStore
     {
@@ -2182,6 +2406,7 @@ public sealed class ConferenceViewModelTests
         private IProgress<ConferenceSnapshot>? progress;
         public ConferenceSnapshot Snapshot { get; set; } = snapshot;
         public bool HoldFirstRequest { get; init; }
+        public int HoldRefreshCall { get; init; }
         public int RefreshCalls { get; private set; }
         public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -2193,7 +2418,7 @@ public sealed class ConferenceViewModelTests
             this.progress = progress;
             RefreshCalls++;
             Started.TrySetResult();
-            if (HoldFirstRequest && RefreshCalls == 1)
+            if ((HoldFirstRequest && RefreshCalls == 1) || RefreshCalls == HoldRefreshCall)
                 await Release.Task;
             cancellationToken.ThrowIfCancellationRequested();
             return Snapshot;

@@ -19,6 +19,7 @@ public static class FluentIconsRegular
     public const string Info24 = "\uf4a4";
     public const string List24 = "\uf4ee";
     public const string Map24 = "\uf52e";
+    public const string MoreHorizontal24 = "\ue825";
     public const string Open24 = "\uf583";
     public const string People24 = "\uf5a9";
     public const string Presenter24 = "\uf622";

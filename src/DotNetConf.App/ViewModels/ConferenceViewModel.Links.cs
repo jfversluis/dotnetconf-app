@@ -46,6 +46,49 @@ public partial class ConferenceViewModel
     [RelayCommand]
     private Task ShareConferenceAsync() => ShareTextAsync(".NET Conf", ConferenceShareText);
 
+    public async Task<SessionViewModel?> ResolveLinkedSessionAsync(string id)
+    {
+        await InitializeAsync();
+        if (FindSession(id) is not { IsWithdrawn: false })
+        {
+            if (RefreshCommand.ExecutionTask is { IsCompleted: false } refresh)
+                await refresh;
+            else if (RefreshCommand.CanExecute(null))
+                await RefreshCommand.ExecuteAsync(null);
+        }
+        return FindSession(id);
+    }
+
+    internal async Task ShowSessionActionsAsync(SessionViewModel session)
+    {
+        var actions = session.GetQuickActions();
+        if (actions.Count == 0)
+        {
+            await ShowErrorAsync("Actions unavailable", "Try again after the agenda and local session choices finish loading.");
+            return;
+        }
+        string? choice;
+        try
+        {
+            var shell = Shell.Current ?? throw new InvalidOperationException("The session window is unavailable.");
+            choice = await shell.DisplayActionSheetAsync(session.Title, "Cancel", null,
+                actions.Select(action => action.Label).ToArray());
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or ArgumentException)
+        {
+            logger.LogWarning(exception, "Could not display session actions.");
+            await ShowErrorAsync("Actions unavailable", "Open the session details to save, change watched status, or share.");
+            return;
+        }
+        if (choice is null or "Cancel")
+            return;
+        var selected = session.GetQuickActions().FirstOrDefault(action => action.Label == choice);
+        if (selected.Command is not null && selected.Command.CanExecute(null))
+            await selected.Command.ExecuteAsync(null);
+        else
+            await ShowErrorAsync("Session changed", "That action is no longer available. Open More actions to see the current choices.");
+    }
+
     internal Task OpenLinkAsync(ConferenceLink link) => OpenLinkAsync(link, isSessionVideo: false);
 
     internal Task OpenSessionVideoAsync(string url) =>

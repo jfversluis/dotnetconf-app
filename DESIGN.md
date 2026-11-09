@@ -18,6 +18,26 @@ Session and speaker lists use full-width virtualized CollectionView, with 24-uni
 
 In a master/detail layout, the selected list row uses an inset, rounded themed surface with a slim leading marker. Its content stays aligned to the 24-unit header gutter, and its navigation button announces the selected state. Compact and embedded detail lists do not show this selection treatment.
 
+Native session swipe actions use custom `SwipeItemView` tiles: each revealed
+action occupies 96 units with a vertically centered, rounded action on the selected-surface
+token, a 22-unit Fluent glyph, and a short font-scaled caption. The accent
+stays inside the action rather than filling the row height. More actions,
+long press, and the detail page retain the same watched-state command.
+Swipe right executes Save/Remove when the full-swipe threshold is crossed and
+released. Its purple underlay spans the row width and fills the uncovered area.
+A white Fluent heart and font-scaled caption explain "Swipe to save/remove",
+then "Release to save/remove" at 60% of the row width, the explicit native
+execution threshold. Crossing that threshold gives a short heart-scale pulse
+and a supported-device haptic tick; reversing disarms it. The pulse respects
+the shared platform Reduce Motion check. A short swipe cannot execute it.
+Swipe left reveals More and the watched toggle. More opens the existing
+save/watched/share menu. Native rows keep only the heart visible,
+giving titles more room. Linux and browser rows retain their visible More
+button because they do not use native swipe handlers.
+The moving foreground is opaque so the action is uncovered only as the row
+slides away, never visible through its text or controls. Its background matches
+the selected surface only in lists that display that selection treatment.
+
 Successful heart actions show a short Community Toolkit Toast ("Added to My Schedule" / "Removed from My Schedule") after persistence and schedule refresh. Confirmations do not occupy inline space or shift the agenda. The heart and count remain the persistent, accessible state indicators. Blocking operation errors use explicitly dismissed native dialogs. Successful background agenda updates are invisible: no success card, timestamp, or progress panel. Home and the agenda, speaker and saved-session lists support native pull-to-refresh without refresh toolbar items. Only user-requested updates show the native refresh indicator. Offline/update/storage failures use a compact, unboxed inline message with a 48-unit Retry action. The existing agenda stays usable, including while refreshing. No community-event examples are bundled.
 
 `AgendaSearchField` wraps a real Entry in a neutral outlined surface, with magnifier, live query binding, a 48-unit clear action, and a themed focus outline. Toolkit `UserStoppedTypingBehavior` applies the latest query after 300 ms of inactivity, including empty queries, with automatic keyboard dismissal disabled. Clear applies immediately and keeps focus; the Search keyboard action applies immediately then dismisses it. Filtered results reconcile observable collections by stable identity without clearing them; identical results cause no update. Existing session/speaker ViewModels and open details receive remote edits in place. Only the `SearchEntry` subclass has its native border removed through MAUI's handler customization. Android uses `EntryHandler2`: its Material wrapper outline, floating hint, padding, and background are disabled, and the inner native edit field owns the placeholder and its themed color. Android search accessibility uses that placeholder rather than `SemanticProperties.Description`, preserving TalkBack editing actions; iOS retains its descriptive label and existing border customization.
@@ -56,6 +76,17 @@ clock refreshes the state every 30 seconds and immediately on activation; it sto
 in the background. The schedule timeline uses the same semantic live colors.
 
 My Schedule keeps the heading, view switch and timezone in a content-sized header. In short windows or at large text sizes, the timezone uses a concise local-zone label, the discovery action moves to the native toolbar, and errors use the compact Details/Retry treatment, leaving more room for the timeline; full descriptions remain accessible. Topic filters have a 16-unit top inset inside the planner gradient. Day headings scroll away instead of pinning when the unobscured timeline cannot also fit a readable session card. Native Shell owns safe areas; the embedded Avalonia host does not apply window insets again. The timeline fills its viewport, with 16 units of scroll-content padding plus the iOS page's bottom inset. Android's opaque tab bar needs no extra inset. Native-bar clearance stays in device points when text is scaled.
+
+Home, Community, and the planner keep hero backgrounds full-width while their
+inner text and body content retain a bounded reading width. Horizontal safe
+insets belong to the content, not the decorative background. Onboarding already
+uses this full-width-background composition.
+On iPhone Duo only, `DuoSafeAreaContent` intersects the content's native frame
+with its owning page's UIKit safe-area layout frame. This keeps readable content
+clear of either side's system controls, updates during layout and posture changes,
+and does not add padding when the page has already inset the content. The
+background stays edge-to-edge. Other iPhones, Android foldables, and desktop
+targets retain their existing safe-area policies.
 
 ## Icons and navigation
 

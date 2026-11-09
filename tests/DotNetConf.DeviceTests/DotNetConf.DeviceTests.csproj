@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net11.0-ios;net11.0-android</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('linux'))">net11.0-android</TargetFrameworks>
+    <TargetFrameworks Condition="'$(MobileTargetFramework)' != ''">$(MobileTargetFramework)</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <UseMaui>true</UseMaui>
+    <UseMaterial3>true</UseMaterial3>
+    <SingleProject>true</SingleProject>
+    <EnableMSTestRunner>true</EnableMSTestRunner>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ApplicationId>dev.jfversluis.dotnetconf.devicetests</ApplicationId>
+    <ApplicationTitle>.NET Conf native tests</ApplicationTitle>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">26.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="11.0.0-rc.2.26505.5" />
+    <PackageReference Include="MSTest" Version="4.3.2" />
+    <ProjectReference Include="../../src/DotNetConf.Core/DotNetConf.Core.csproj" />
+    <Compile Include="../../src/DotNetConf.App/Controls/DuoSafeAreaContent.cs" Link="App/DuoSafeAreaContent.cs" />
+    <Compile Include="../../src/DotNetConf.App/Services/SessionRoutes.cs" Link="App/SessionRoutes.cs" />
+    <Compile Include="../../src/DotNetConf.App/Services/BackNavigation.cs" Link="App/BackNavigation.cs" />
+    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
+  </ItemGroup>
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">
+    <Compile Include="../../src/DotNetConf.App/Platforms/iOS/DuoSafeAreaContentHandler.cs" Link="App/DuoSafeAreaContentHandler.cs" />
+  </ItemGroup>
+</Project>

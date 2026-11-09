@@ -1,5 +1,6 @@
 using DotNetConf.App.Pages;
 using DotNetConf.App.ViewModels;
+using DotNetConf.App.Services;
 
 namespace DotNetConf.App;
 
@@ -24,6 +25,7 @@ public partial class AppShell : Shell
         ScheduleTab.ContentTemplate = new DataTemplate(() => services.GetRequiredService<SchedulePage>());
         CommunityTab.ContentTemplate = new DataTemplate(() => services.GetRequiredService<CommunityPage>());
         Routing.RegisterRoute("session-detail", typeof(SessionDetailPage));
+        Routing.RegisterRoute(SessionRoutes.Template, typeof(SessionDetailPage));
         Routing.RegisterRoute("session-filters", typeof(SessionFiltersPage));
         Routing.RegisterRoute("speaker-detail", typeof(SpeakerDetailPage));
         Routing.RegisterRoute("about", typeof(AboutPage));
@@ -35,6 +37,7 @@ public partial class AppShell : Shell
         Routing.RegisterRoute("community-event", typeof(CommunityEventDetailPage));
         conference.ScheduleChanged += (_, _) =>
             ScheduleTab.BadgeText = conference.SavedCount == 0 ? null : conference.SavedCount.ToString();
+        Navigated += (_, _) => BackNavigation.Update(this);
     }
 
     private void RefreshTabIcons()

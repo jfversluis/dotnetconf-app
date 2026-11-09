@@ -271,7 +271,7 @@ safety measures, not foldable compatibility code.
 
 Run the Core and App tests from [Prerequisites](#prerequisites), then the
 relevant platform builds from [Run](#run) and Release publishes from
-[NativeAOT builds](#nativeaot-builds). Run builds/tests serially because targets
+[Release runtimes](#release-runtimes). Run builds/tests serially because targets
 share restore assets. A Release publish must restore Release dependencies;
 do not reuse Debug assets with `--no-restore`.
 
@@ -289,7 +289,7 @@ evidence outside the repository and identify the exact installed build.
 | Focused search during fold/rotation; show/dismiss keyboard; rapid blur/refocus and navigate before chrome restoration completes | Query, filters, and selection survive. Matching and empty results plus error/Retry remain usable above the keyboard. Android Back dismisses/unfocuses search, orphan keyboards do not cover the reopened screen, and all five tabs return when intended. Verify tabs are clickable, not merely present in the tree. |
 | Keyboard absent, zero-height iOS rotation notification, real keyboard visible, and a newer keyboard event during a pending refresh | Pane/list/detail scroll surfaces reach their intended bottom content edge without a blank strip, double inset, or keyboard overlap. Scroll to the true final item/link and visually verify it above native chrome; a correct outer Grid bound alone is not rendering proof. |
 | Ordinary phones, older iOS, wide tablet/desktop/browser windows, dark/light/system appearance, large and maximum accessibility text | Preserve compact native navigation on short/narrow windows and readable split/stacked panes when they fit. Preserve text-driven fallback, font scaling, selection semantics, and honest feed/cache error states. A hardware keyboard should not unnecessarily trigger software-keyboard chrome suppression. Check screen-reader focus and ensure inactive compact/full results are not announced twice. |
-| Clean Android and iOS Release NativeAOT artifacts and device execution | No duplicate Objective-C registrations, stale backport assembly, unguarded newer UIKit selector, DevFlow metadata/agent, or development-only logging. An unsigned iOS device publish is compile-only evidence, not physical-device execution. Rebuild and inspect the generated `Info.plist` if scene configuration changes. |
+| Clean Android CoreCLR and iOS NativeAOT Release artifacts and device execution | No duplicate Objective-C registrations, stale backport assembly, unguarded newer UIKit selector, DevFlow metadata/agent, or development-only logging. An unsigned iOS device publish is compile-only evidence, not physical-device execution. Rebuild and inspect the generated `Info.plist` if scene configuration changes. |
 
 The existing evidence is simulator/emulator evidence: Duo reported 40-point
 active regions and zero gap fully open; the Android emulator did not deliver
@@ -325,7 +325,7 @@ dotnet build src/DotNetConf.App -f net11.0
 dotnet build src/DotNetConf.App.Browser
 ```
 
-The app uses source-generated XAML with compiled bindings and Debug-only incremental XAML Hot Reload. Runtime selection is left to the SDK, with `PublishAot=true` in the project and no configuration-specific overrides. MAUI 11 RC2's Android Material 3 controls are explicitly enabled with `UseMaterial3=true`; scoped search and picker customizations use `EntryHandler2` and `PickerHandler2`, while iOS keeps its existing handlers. The pinned MAUI Controls package is updated with the workload. `dotnet watch --project src/DotNetConf.App -f net11.0-ios` uses the Debug-only no-linking setting; release linking is not disabled.
+The app uses source-generated XAML with compiled bindings and Debug-only incremental XAML Hot Reload. Android leaves `PublishAot=false` and uses the pinned SDK's standard CoreCLR runtime; iOS retains `PublishAot=true`. MAUI 11 RC2's Android Material 3 controls are explicitly enabled with `UseMaterial3=true`; scoped search and picker customizations use `EntryHandler2` and `PickerHandler2`, while iOS keeps its existing handlers. The pinned MAUI Controls package is updated with the workload. `dotnet watch --project src/DotNetConf.App -f net11.0-ios` uses the Debug-only no-linking setting; release linking is not disabled.
 
 If incremental XAML generation retains stale resource styles or reports `Style.Setters` as read-only after a style edit, use a targeted `dotnet clean src/DotNetConf.App -f net11.0-android -p:RuntimeIdentifier=android-arm64` (or the corresponding iOS target/RID), followed by the normal build. Do not disable incremental Hot Reload or edit generated sources to work around preview-tooling state.
 
@@ -344,14 +344,14 @@ results above the keyboard itself. Older iOS toolbars keep their reserved space.
 Recheck portrait/landscape search, keyboard dismissal, and split panes when
 upgrading MAUI's keyboard accessory implementation.
 
-### NativeAOT builds
+### Release runtimes
 
-The app enables `PublishAot=true` by default for both mobile targets, without
-conditioning it on configuration. `DotNetConf.Core` declares
+Android ships with CoreCLR, not experimental Android NativeAOT. iOS keeps
+`PublishAot=true`, without conditioning it on configuration. `DotNetConf.Core` declares
 `IsAotCompatible=true` to run its trimming and AOT analyzers independently;
 the unit-test project does not need that property.
 
-Use a Release publish to exercise native compilation and full trimming:
+Use a Release publish to exercise the actual shipping runtime and linking:
 
 ```sh
 dotnet publish src/DotNetConf.App -c Release -f net11.0-android \
@@ -371,8 +371,8 @@ It uses the local debug signing key unless release signing is configured.
 Android Release explicitly uses R8 to optimize and shrink Java bytecode and
 obfuscate private and package-private members, following the
 [MAUI Google Play guidance](https://learn.microsoft.com/dotnet/maui/android/deployment/publish-google-play#google-play-code-optimization-requirements).
-The pinned .NET 11 workload already selects these settings for the app's
-NativeAOT Release build; managed .NET assemblies are not obfuscated by R8.
+The project explicitly keeps these settings for its CoreCLR Release build;
+managed .NET assemblies are not obfuscated by R8.
 The signed AAB embeds the R8 mapping, and `mapping.txt` is also written next to
 the published artifacts for decoding Java stack traces.
 
@@ -386,17 +386,64 @@ substitute for a NativeAOT device publish. For compile-only validation without
 signing, add `-p:EnableCodeSigning=false -p:BuildIpa=false` to the device publish.
 That produces native device code but does not verify execution on a physical iPhone.
 
-The pinned Android workload requests NativeAOT runtime
-`11.0.0-rc.2.26504.105`, which is available on NuGet.org. `NuGet.Config` uses
-NuGet.org for all packages, including `Microsoft.NETCore.App.Runtime.NativeAOT.android-*`.
-Android NativeAOT is experimental in this workload (`XA1040`) and is not yet
-suitable for production use. Do not suppress compatibility warnings. A Debug
-build is not a substitute for a Release NativeAOT publish and runtime verification.
+Android NativeAOT remains an explicit local experiment (`-p:PublishAot=true`),
+not the shipping default. It is experimental in this workload (`XA1040`) and
+is not yet suitable for production use. Do not suppress compatibility warnings.
+A Debug build is not a substitute for a Release publish and runtime verification.
 The pinned Syncfusion toolkit also reports an iOS `IL2070` trim warning
 (`IL2104` in the default summary) in `SfHorizontalContent`'s reflective tap
 handling. Use `-p:TrimmerSingleWarn=false` to inspect it. Do not suppress the
 warning or treat a successful cross-publish as proof that vendor controls are
 trim-safe at runtime.
+
+### Native in-process regression tests
+
+`tests/DotNetConf.DeviceTests` uses the SDK's iOS/Android test-template runner
+and MSTest inside a separate MAUI test app (`dev.jfversluis.dotnetconf.devicetests`).
+It links the actual safe-content control/handler, route
+builder, and Back-label policy into that host. It never initializes the production
+app, downloads an agenda, reads its preferences, or writes its saved schedule.
+
+Run one native target at a time on an explicitly selected, dedicated device:
+
+```sh
+cd tests/DotNetConf.DeviceTests
+dotnet test -f net11.0-ios -r iossimulator-arm64 \
+  -p:MobileTargetFramework=net11.0-ios --device YOUR_SIMULATOR_UDID
+dotnet test -f net11.0-android \
+  -p:MobileTargetFramework=net11.0-android --device YOUR_DEDICATED_AVD_NAME
+```
+
+The nested `global.json` opts only this host into Microsoft.Testing.Platform;
+its SDK/workload pins must match the repository root. The ordinary xUnit suites
+keep their VSTest runner. CI checks the pins and compiles the native host.
+Tests assert owning-page safe content, template parameter delivery, and
+Back-stack/label behavior. They do not
+replace end-to-end screenshots, native pointer interaction, physical folding,
+or signed Release execution. Run the ordinary Core and App tests as well.
+
+The pinned iOS SDK omits the primary plist's contents from incremental manifest
+inputs. The app also registers that same file as a tracked `PartialAppManifest`
+so URL-scheme and scene edits reach the generated bundle without a manual clean.
+After changing platform metadata, inspect the generated `Info.plist`; compilation
+alone is not proof that iOS registered a scheme.
+
+Session shortcuts reuse `SessionViewModel`'s existing commands. The pinned RC2
+gesture API is `MinimumPressDuration` (milliseconds); do not copy newer documentation's
+property names without checking the pinned assembly. The native heart and
+long-press menu retain gesture-free/accessible actions; Avalonia also keeps a
+visible More button without a native swipe handler. A right swipe executes only
+on release past 60% of row width. The caption and reduced-motion-aware pulse
+use that same threshold, and reversal disarms the action. A left swipe reveals
+More and watched-status tiles without executing them automatically.
+
+Session URI intake and notification taps share `SessionLinkService`. Only
+validated IDs in the downloaded agenda can open. `session/{sessionId}` is an
+additive absolute route template rooted at `//sessions`; existing relative
+detail routes and adaptive navigation remain unchanged. Check cold start,
+resume, first-run setup, unavailable IDs, and Back on both compact and wide windows.
+Do not claim ownership of Microsoft's domain or configure universal/app links
+without a developer-controlled HTTPS association.
 
 ## Linux desktop and browser (experimental)
 
@@ -633,6 +680,17 @@ App-owned icons use [IconFont.Maui.FluentIcons](https://github.com/jfversluis/Ic
 Launcher and light/dark splash screens use the website's two-robots-on-a-rocket graphic, with redistribution permission confirmed by the project owner. Android's themed launcher uses a matching monochrome silhouette. Artwork provenance and font licenses/notices are bundled under `Resources/Raw`; the artwork permission is not a general open-source license. The app follows the system theme and preserves native navigation. Its Android package name and iOS bundle ID are both `dev.jfversluis.dotnetconf`.
 
 iOS caches launch-screen snapshots across same-version reinstalls. Increment `ApplicationVersion` when changing splash artwork; rebuilding or restarting the simulator alone may still show a cached image. Install the new build rather than deleting the app and its saved schedule.
+
+## Full-width heroes and Duo content
+
+Home, Community, and planner hero/body content use `DuoSafeAreaContent` to reserve
+only the overlap with the owning page's horizontal UIKit safe area on iPhone Duo
+(`iPhone19,4`). Decorative backgrounds remain full-width; other device types
+retain their existing safe-area behavior. Source-session closed and open Duo
+screenshots and native bounds confirmed side-control clearance, and an ordinary
+iPhone retained zero additional padding. Recheck content geometry and actual
+rendering after changing these wrappers or upgrading MAUI. Physical-device
+clearance remains a release gate.
 
 ## Community maps
 

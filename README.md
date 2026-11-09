@@ -140,6 +140,65 @@ and schedules reminders for up to your next 60 saved sessions. Your device's
 notification settings and background restrictions can affect delivery. You can
 turn reminders off in Settings; no account or push service is required.
 
+Tapping a reminder opens the matching session in the downloaded public agenda.
+Unknown or withdrawn sessions show an unavailable message rather than invented
+details. Links wait until first-run setup is dismissed.
+
+### Session shortcuts and companion links
+
+Touch and hold a session, or swipe left and tap **More**, to save/remove it,
+change its watched status, or share it. Native iOS and Android lists reveal
+compact, rounded More and watched-status actions when you swipe left.
+Continue a swipe right past 60% of the row width and release to
+save the session, or remove it if already saved; a short swipe cancels.
+The purple fill changes its caption from **Swipe to save/remove** to
+**Release to save/remove** at the execution threshold, with a brief heart
+pulse (unless Reduce Motion is enabled) and supported-device haptic feedback.
+Saving gives the row and detail hearts a springy pop with a fading theme-aware
+halo; removing gives a smaller recoil. Reduced Motion keeps both instant.
+The animation does not run when saved rows first appear or are recycled.
+Save/remove and watched toggles give a subtle supported-device haptic confirmation
+after a successful change, not during loading, navigation, or failed writes.
+Android declares the normal `VIBRATE` permission; no runtime prompt is needed.
+The heart remains visible for one-tap saving; the detail-page watched and Share actions remain
+available without gestures. Linux and browser lists keep the visible **More**
+button because native swipe handlers are unavailable there.
+On iOS, revealing or closing a swipe consumes the touch instead of activating
+the row's detail button; ordinary taps and long-press actions remain separate.
+
+Shared session text includes only Microsoft's public HTTPS website link, alongside
+the session title, available speaker names, and conference hashtag. It works
+without installing the app; no companion link or app-install requirement is shared.
+The app still accepts `dotnetconf://session/{sessionId}` for direct app opens
+and reminder intake. The custom scheme is not a verified HTTPS/universal link
+and does not add a server or account. Universal Links on iOS and App Links on Android are deferred
+to a separate follow-up using a developer-controlled domain, platform association
+files, and a web fallback to the official session page. Microsoft's existing
+session URLs cannot be associated with this app without Microsoft's authorization.
+External companion links use MAUI 11 route templates, return to
+Sessions when navigating Back, and retain inline details on suitable wide windows.
+Ordinary in-app navigation still preserves its original list and back stack.
+An uncached linked session waits for the shared agenda download; a valid cached
+session can open without waiting for the network.
+
+To inspect app-link delivery on a running iOS simulator, use a session ID from
+the downloaded agenda, for example:
+
+```bash
+xcrun simctl openurl booted 'dotnetconf://session/BRK001'
+```
+
+Accept the system's **Open in .NET Conf?** confirmation if it appears. The app
+should show the matching published session, with Back returning to Sessions.
+Use the simulator UDID instead of `booted` when multiple simulators are running.
+To test a cold launch, terminate the app first, then run the same command.
+
+Android runtime testing found one unresolved accessibility limitation with the
+pinned packages: repeated custom-scheme activation can reset the native Back
+announcement to "Navigate up". Initial destination labels and the navigation
+stack pass the native regressions; label persistence after reactivation still
+needs investigation.
+
 ## Availability
 
 The app is **in development and not yet available in the App Store or Google Play**. We're aiming for a first release in November 2026.
