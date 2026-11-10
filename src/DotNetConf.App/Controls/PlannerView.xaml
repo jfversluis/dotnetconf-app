@@ -109,12 +109,13 @@
                                    HorizontalOptions="Start" SemanticProperties.Description="Checking optional on-device AI" />
                 <VerticalStackLayout IsVisible="{Binding IsAiMode}" Spacing="16" AutomationId="planner-ai-actions">
                 <VerticalStackLayout Spacing="8" IsVisible="{Binding CanEdit}">
-                    <Label Text="Need a starting point?" Style="{StaticResource Secondary}" FontSize="14" />
+                    <Label Text="Need a starting point?" IsVisible="{Binding ShowStartingPoints}"
+                           Style="{StaticResource Secondary}" FontSize="14" AutomationId="planner-starting-points-heading" />
                     <ActivityIndicator IsRunning="{Binding IsLoadingStartingPoints}" IsVisible="{Binding IsLoadingStartingPoints}"
                                        HeightRequest="24" WidthRequest="24" HorizontalOptions="Start"
                                        SemanticProperties.Description="Preparing starting points"
                                        AutomationId="planner-starting-points-loading" />
-                    <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Never"
+                    <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Never" IsVisible="{Binding ShowStartingPoints}"
                                 AutomationId="planner-starting-points">
                         <HorizontalStackLayout BindableLayout.ItemsSource="{Binding StartingPoints}">
                             <BindableLayout.ItemTemplate>
