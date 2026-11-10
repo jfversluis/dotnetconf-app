@@ -36,15 +36,15 @@ public sealed class PlannerStartingPointLoadingTests
     }
 
     [Fact]
-    public void FallbackStartingPointsAreVisibleImmediately()
+    public void InitialStartingPointsShowOnlyTheLoadingState()
     {
         var vm = Create(Substitute.For<IConferenceDataSource>(), Substitute.For<IOnDevicePlanner>());
-        Assert.Equal(["Feed my AI + mobile curiosity", "Web, hold the boring bits", "Down the .NET rabbit hole"],
-            vm.StartingPoints.Select(point => point.Label));
+        Assert.True(vm.IsLoadingStartingPoints);
+        Assert.False(vm.ShowStartingPoints);
     }
 
     [Fact]
-    public async Task EditingTheRequestKeepsFallbacksVisibleAndDoesNotCancelBackgroundSuggestions()
+    public async Task EditingTheRequestKeepsStartingPointsHiddenUntilTheBackgroundLoadSucceeds()
     {
         var data = Substitute.For<IConferenceDataSource>();
         var pending = new TaskCompletionSource<IReadOnlyList<PlannerStartingPoint>>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -62,20 +62,21 @@ public sealed class PlannerStartingPointLoadingTests
         var finished = RefreshFinished(vm);
         await vm.InitializeAsync();
         Assert.True(vm.IsLoadingStartingPoints);
-        Assert.NotEmpty(vm.StartingPoints);
+        Assert.False(vm.ShowStartingPoints);
 
-        var request = vm.StartingPoints[0].Request;
-        vm.UseExampleCommand.Execute(request);
+        const string request = "Synthetic request typed while starting points load.";
+        vm.Request = request;
         Assert.False(token.IsCancellationRequested);
         pending.SetResult(suggestions);
         await finished;
         Assert.Same(suggestions, vm.StartingPoints);
         Assert.Equal(request, vm.Request);
-        Assert.NotEmpty(vm.StartingPoints);
+        Assert.True(vm.ShowStartingPoints);
+        Assert.False(vm.IsLoadingStartingPoints);
     }
 
     [Fact]
-    public async Task FailedSuggestionsKeepFallbacksAndLogTheFailureWithoutAPlanningError()
+    public async Task FailedSuggestionsRevealFallbacksAndLogTheFailureWithoutAPlanningError()
     {
         var data = Substitute.For<IConferenceDataSource>();
         data.LoadAsync(Arg.Any<CancellationToken>())
@@ -83,17 +84,19 @@ public sealed class PlannerStartingPointLoadingTests
         var logger = Substitute.For<ILogger<PlannerViewModel>>();
         var vm = Create(data, Substitute.For<IOnDevicePlanner>(), logger);
         var fallback = vm.StartingPoints;
+        Assert.False(vm.ShowStartingPoints);
         var finished = RefreshFinished(vm);
         await vm.InitializeAsync();
         await finished;
         Assert.Same(fallback, vm.StartingPoints);
+        Assert.True(vm.ShowStartingPoints);
         Assert.False(vm.HasStatus);
         Assert.Contains(logger.ReceivedCalls(), call => call.GetMethodInfo().Name == nameof(ILogger.Log)
             && Equals(call.GetArguments()[0], LogLevel.Warning));
     }
 
     [Fact]
-    public async Task LeavingRejectsLateSuggestionsAndKeepsFallbacks()
+    public async Task LeavingStopsTheSpinnerWithoutWaitingForANonCooperativeModel()
     {
         var data = Substitute.For<IConferenceDataSource>();
         var agenda = SyntheticAgenda;
@@ -106,10 +109,14 @@ public sealed class PlannerStartingPointLoadingTests
         var finished = RefreshFinished(vm);
         await vm.InitializeAsync();
         vm.Cancel();
-        pending.SetResult(PlannerStartingPoints.Ground(agenda, ["Synthetic AI", "Synthetic Web", "Synthetic Mobile"]));
         await finished;
         Assert.Same(fallback, vm.StartingPoints);
         Assert.False(vm.IsLoadingStartingPoints);
+        Assert.False(pending.Task.IsCompleted);
+
+        pending.SetResult(PlannerStartingPoints.Ground(agenda, ["Synthetic AI", "Synthetic Web", "Synthetic Mobile"]));
+        await Task.Yield();
+        Assert.Same(fallback, vm.StartingPoints);
     }
 
     [Fact]
@@ -128,5 +135,87 @@ public sealed class PlannerStartingPointLoadingTests
         await finished;
         Assert.Same(fallback, vm.StartingPoints);
         Assert.False(vm.HasStatus);
+        Assert.True(vm.ShowStartingPoints);
+    }
+
+    [Fact]
+    public async Task RefreshHidesExistingStartingPointsUntilReplacementFinishes()
+    {
+        var data = Substitute.For<IConferenceDataSource>();
+        var agenda = SyntheticAgenda;
+        data.LoadAsync(Arg.Any<CancellationToken>()).Returns(agenda);
+        var planner = Substitute.For<IOnDevicePlanner>();
+        var first = PlannerStartingPoints.Ground(agenda, ["Synthetic AI", "Synthetic Web", "Synthetic Mobile"]);
+        var replacement = new TaskCompletionSource<IReadOnlyList<PlannerStartingPoint>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        planner.SuggestStartingPointsAsync(agenda, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(first), replacement.Task);
+        var vm = Create(data, planner);
+        var firstFinished = RefreshFinished(vm);
+        await vm.InitializeAsync();
+        await firstFinished;
+        Assert.True(vm.ShowStartingPoints);
+        await vm.ExploreCommand.ExecuteAsync(null);
+
+        var refreshFinished = RefreshFinished(vm);
+        vm.UseAiModeCommand.Execute(null);
+
+        Assert.True(vm.IsLoadingStartingPoints);
+        Assert.False(vm.ShowStartingPoints);
+        var refreshed = PlannerStartingPoints.Ground(agenda, ["Synthetic Mobile", "Synthetic AI", "Synthetic Web"]);
+        replacement.SetResult(refreshed);
+        await refreshFinished;
+        Assert.True(vm.ShowStartingPoints);
+        Assert.Same(refreshed, vm.StartingPoints);
+    }
+
+    [Fact]
+    public async Task FailedRefreshAfterSuccessRevealsGenericFallbacksInsteadOfOldSuggestions()
+    {
+        var data = Substitute.For<IConferenceDataSource>();
+        var agenda = SyntheticAgenda;
+        data.LoadAsync(Arg.Any<CancellationToken>()).Returns(agenda);
+        var planner = Substitute.For<IOnDevicePlanner>();
+        var first = PlannerStartingPoints.Ground(agenda, ["Synthetic AI", "Synthetic Web", "Synthetic Mobile"]);
+        var replacement = new TaskCompletionSource<IReadOnlyList<PlannerStartingPoint>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        planner.SuggestStartingPointsAsync(agenda, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(first), replacement.Task);
+        var vm = Create(data, planner);
+        var fallback = vm.StartingPoints;
+        var firstFinished = RefreshFinished(vm);
+        await vm.InitializeAsync();
+        await firstFinished;
+        Assert.Same(first, vm.StartingPoints);
+        await vm.ExploreCommand.ExecuteAsync(null);
+
+        var refreshFinished = RefreshFinished(vm);
+        vm.UseAiModeCommand.Execute(null);
+        Assert.False(vm.ShowStartingPoints);
+        replacement.SetException(new IOException("Synthetic suggestion refresh failure"));
+        await refreshFinished;
+
+        Assert.False(vm.IsLoadingStartingPoints);
+        Assert.True(vm.ShowStartingPoints);
+        Assert.Same(fallback, vm.StartingPoints);
+    }
+
+    [Fact]
+    public async Task ReadinessFinishingAfterExplorationDoesNotLeaveAStartingPointSpinnerRunning()
+    {
+        var data = Substitute.For<IConferenceDataSource>();
+        data.LoadAsync(Arg.Any<CancellationToken>()).Returns(SyntheticAgenda);
+        var planner = Substitute.For<IOnDevicePlanner>();
+        var vm = Create(data, planner);
+        var readiness = new TaskCompletionSource<PlannerModelState>(TaskCreationOptions.RunContinuationsAsynchronously);
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(readiness.Task);
+        var initialization = vm.InitializeAsync();
+        Assert.True(vm.IsLoadingStartingPoints);
+
+        await vm.ExploreCommand.ExecuteAsync(null);
+        readiness.SetResult(new PlannerModelState(true, false, ""));
+        await initialization;
+
+        Assert.False(vm.IsLoadingStartingPoints);
+        Assert.False(vm.IsAiMode);
+        await planner.DidNotReceive().SuggestStartingPointsAsync(Arg.Any<ConferenceDocument>(), Arg.Any<CancellationToken>());
     }
 }
