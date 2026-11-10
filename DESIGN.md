@@ -133,9 +133,9 @@ Debug builds; retained Debug-only diagnostics contain no argument values.
 First-run onboarding is a separate full-screen modal carousel without a
 navigation bar: welcome, personal schedule introduction, and optional session
 reminders. Space Grotesk headings, typed Fluent icons and short explanatory
-copy focus each step on one task. Browse sessions is the primary welcome action;
-planning and reminders are optional entry points. Skip setup sits alongside each hero icon.
-The discovery view and local-model readiness check start only when planning is chosen;
+copy focus each step on one task. Next moves from welcome to session planning;
+Continue moves to reminders, and Done finishes setup. Skip setup sits alongside each hero icon.
+The discovery view and local-model readiness check start when entering the planning step;
 agenda-based discovery can run while the optional check is still in progress.
 A ready model offers the AI editor alongside random discovery; otherwise up to six
 compatible, varied sessions are selected from the downloaded agenda. Readiness changes
@@ -146,8 +146,11 @@ Review and AI setup shortcuts lead to the shortlist and optional model setup wit
 including while an existing model download is being checked.
 Shuffle guidance appears only alongside a preview. No cached agenda means an honest
 download state, never bundled session examples. Continue moves to reminders without
-saving or discarding suggestions. Leaving onboarding with checked suggestions requires
-a warning; an empty selection does not.
+saving suggestions. Checked, unsaved suggestions require a warning before continuing
+or leaving setup. Continue also asks whether proceeding without sessions is intentional
+if none have been added during setup; explicit Skip does not ask that question.
+After confirming continuation to
+reminders, Done does not repeat the same warning. Back returns to the preceding step.
 All three steps share a 34-unit heading, 48-unit Fluent icon, and the
 incumbent hero wash, with 24-unit gutters aligned to the builder.
 Random discovery uses the typed Fluent agenda glyph; AI mode uses a sparkle.
@@ -160,9 +163,9 @@ and the regular in-app builder retains native scroll insets.
 Supporting copy returns to the neutral reading surface. Skip setup sits beside
 each onboarding hero icon, directly on the gradient without a separate bar.
 The hero content follows the actual top safe-area inset. The footer is a
-single compact row: Browse sessions fills the welcome footer; later screens
-show quiet Back and a content-width Continue or Done action. The branching
-flow does not imply that its optional screens are required steps.
+single compact row: quiet Back, three centered progress dots with a step count,
+and a content-width Next, Continue, or Done action. Buttons advance the carousel;
+swiping is disabled so it cannot bypass the unsaved-selection warning.
 Idle reminder status is hidden; permission
 results and recovery remain visible. Labels wrap and content scrolls at larger
 text sizes without disabling font scaling.

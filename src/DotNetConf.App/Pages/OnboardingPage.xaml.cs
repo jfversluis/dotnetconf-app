@@ -22,11 +22,11 @@ public partial class OnboardingPage : ContentPage
     private readonly OnboardingPlannerPreparation schedulePreparation = new();
     private bool pageVisible;
     private bool observingReminders;
-    private int remindersReturnPosition;
     public bool PreparingScheduleStep { get; private set; }
     public IReadOnlyList<View> Slides { get; }
     public bool CanGoBack => Carousel.Position > 0;
-    public string NextText => Carousel.Position == 2 ? "Done" : Carousel.Position == 1 ? "Continue" : "Browse sessions";
+    public string ProgressText => $"{Carousel.Position + 1} of 3";
+    public string NextText => Carousel.Position == 2 ? "Done" : Carousel.Position == 1 ? "Continue" : "Next";
     public bool RequestingReminders => requestingReminders;
     public bool CanRequestReminders => !requestingReminders && (reminders.CanEnable || reminders.CanRetry);
     public bool ShowEnableReminders => reminders.CanEnable;
@@ -109,6 +109,7 @@ public partial class OnboardingPage : ContentPage
     {
         OnPropertyChanged(nameof(CanGoBack));
         OnPropertyChanged(nameof(NextText));
+        OnPropertyChanged(nameof(ProgressText));
         if (plannerView is not null)
             plannerView.IsActive = pageVisible && Carousel.Position == 1;
         if (args.PreviousPosition == 1)
@@ -123,14 +124,6 @@ public partial class OnboardingPage : ContentPage
         }
     }
 
-    private void OpenPlannerClicked(object? sender, EventArgs args)
-    {
-        if (!CanNavigate)
-            return;
-        Carousel.ScrollTo(1, animate: false);
-        ShowReadyPlanner();
-    }
-
     private async Task PrepareOrResumeScheduleStepAsync()
     {
         if (await schedulePreparation.EnterAsync(PrepareScheduleStepAsync,
@@ -139,25 +132,14 @@ public partial class OnboardingPage : ContentPage
             ShowReadyPlanner();
     }
 
-    private void OpenRemindersClicked(object? sender, EventArgs args)
-    {
-        if (!CanNavigate)
-            return;
-        remindersReturnPosition = 0;
-        Carousel.ScrollTo(2, animate: false);
-    }
-
     private async void NextClicked(object? sender, EventArgs args)
     {
         if (!CanNavigate)
             return;
-        if (Carousel.Position == 0)
-            await FinishAsync(browseSessions: true);
-        else if (Carousel.Position == 1)
-        {
-            remindersReturnPosition = 1;
-            Carousel.ScrollTo(2, animate: false);
-        }
+        if (Carousel.Position == 1 && !await ConfirmScheduleDepartureAsync(continuing: true))
+            return;
+        if (Carousel.Position < 2)
+            Carousel.ScrollTo(Carousel.Position + 1, animate: false);
         else
             await FinishAsync();
     }
@@ -165,7 +147,7 @@ public partial class OnboardingPage : ContentPage
     private void BackClicked(object? sender, EventArgs args)
     {
         if (CanNavigate && Carousel.Position > 0)
-            Carousel.ScrollTo(Carousel.Position == 2 ? remindersReturnPosition : 0, animate: false);
+            Carousel.ScrollTo(Carousel.Position - 1, animate: false);
     }
 
     private async void SkipClicked(object? sender, EventArgs args) => await FinishAsync();
@@ -173,17 +155,17 @@ public partial class OnboardingPage : ContentPage
     protected override bool OnBackButtonPressed()
     {
         if (CanGoBack && CanNavigate)
-            Carousel.ScrollTo(Carousel.Position == 2 ? remindersReturnPosition : 0, animate: false);
+            Carousel.ScrollTo(Carousel.Position - 1, animate: false);
         else if (CanNavigate)
             _ = FinishAsync();
         return true;
     }
 
-    private async Task FinishAsync(bool browseSessions = false)
+    private async Task FinishAsync()
     {
         if (!CanNavigate)
             return;
-        if (!await ConfirmScheduleDepartureAsync())
+        if (Carousel.Position != 2 && !await ConfirmScheduleDepartureAsync())
             return;
         leaving = true;
         OnPropertyChanged(nameof(CanNavigate));
@@ -191,22 +173,17 @@ public partial class OnboardingPage : ContentPage
             plannerView.IsActive = false;
         planner.Cancel();
         var host = Window?.Page;
-        var completed = false;
         try
         {
             if (state is null)
                 throw new InvalidOperationException("Onboarding was not configured.");
             await state.CompleteAfterDismissalAsync(async () => await Navigation.PopModalAsync());
-            completed = true;
-            if (browseSessions)
-                await Shell.Current.GoToAsync("//sessions");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException)
         {
-            logger.LogError(exception, completed ? "Could not open Sessions after onboarding." : "Could not finish onboarding.");
+            logger.LogError(exception, "Could not finish onboarding.");
             if (host is not null)
-                await host.DisplayAlertAsync(completed ? "Couldn't open Sessions" : "Couldn't finish setup",
-                    completed ? "Choose the Sessions tab to browse the agenda." : "Please try again. Your saved sessions are kept.", "OK");
+                await host.DisplayAlertAsync("Couldn't finish setup", "Please try again. Your saved sessions are kept.", "OK");
         }
         finally
         {
@@ -217,9 +194,10 @@ public partial class OnboardingPage : ContentPage
         }
     }
 
-    private async Task<bool> ConfirmScheduleDepartureAsync()
+    private async Task<bool> ConfirmScheduleDepartureAsync(bool continuing = false)
     {
-        var confirmation = UnsavedSuggestionsConfirmation.For(planner.SelectedCount > 0);
+        var confirmation = UnsavedSuggestionsConfirmation.ForOnboarding(
+            planner.SelectedCount > 0, planner.HasAddedSessions, continuing);
         if (confirmation is null)
             return true;
 

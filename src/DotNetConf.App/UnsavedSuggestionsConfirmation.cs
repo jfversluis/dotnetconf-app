@@ -4,6 +4,13 @@ public sealed record UnsavedSuggestionsConfirmation(string Title, string Message
 {
     public const string Cancel = "Keep choosing";
 
+    public static UnsavedSuggestionsConfirmation? ForOnboarding(bool hasSelections, bool hasAddedSessions, bool continuing) =>
+        For(hasSelections) ?? (continuing && !hasAddedSessions
+            ? new("Continue without sessions?",
+                "You haven't added any sessions during setup. Was that intentional? You can discover and save talks in My Schedule later.",
+                "Continue without sessions")
+            : null);
+
     public static UnsavedSuggestionsConfirmation? For(bool hasSelections)
     {
         if (hasSelections)

@@ -304,9 +304,12 @@ public partial class PlannerViewModel(
         new("Down the .NET rabbit hole", "I'm new to .NET. Suggest a varied introduction to the conference.")
     ];
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowStartingPoints))]
     public partial IReadOnlyList<PlannerStartingPoint> StartingPoints { get; set; } = DefaultStartingPoints;
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowStartingPoints))]
     public partial bool IsLoadingStartingPoints { get; set; } = true;
+    public bool ShowStartingPoints => !IsLoadingStartingPoints && StartingPoints.Count > 0;
     public bool CanGenerate => IsReady && !IsCheckingModel && CanEdit && !string.IsNullOrWhiteSpace(Request);
     public bool CanEdit => !IsBusy;
     public bool CanRetryModel => !IsReady && !IsCheckingModel && !IsBusy && planner.UnsupportedReason is null;
@@ -576,7 +579,8 @@ public partial class PlannerViewModel(
             OnPropertyChanged(nameof(CanRetryModel));
             OnPropertyChanged(nameof(ShowModelSetup));
             OnPropertyChanged(nameof(ShowAvailabilityStatus));
-            if (!IsReady)
+            if (!IsReady || stopped || revision != modelRevision || activityRevision != activityAtStart
+                || HasProposal || IsBusy)
                 IsLoadingStartingPoints = false;
         }
         if (stopped || revision != modelRevision)
@@ -727,14 +731,15 @@ public partial class PlannerViewModel(
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(20));
         startingPointsOperation = cancellation;
         IsLoadingStartingPoints = true;
+        StartingPoints = DefaultStartingPoints;
         try
         {
-            var agenda = await dataSource.LoadAsync(cancellation.Token);
+            var agenda = await dataSource.LoadAsync(cancellation.Token).WaitAsync(cancellation.Token);
             cancellation.Token.ThrowIfCancellationRequested();
             if (agenda.Sessions.Count == 0)
                 throw new InvalidDataException("Download the agenda before requesting suggestions.");
             cancellation.CancelAfter(TimeSpan.FromSeconds(20));
-            var suggestions = await planner.SuggestStartingPointsAsync(agenda, cancellation.Token);
+            var suggestions = await planner.SuggestStartingPointsAsync(agenda, cancellation.Token).WaitAsync(cancellation.Token);
             cancellation.Token.ThrowIfCancellationRequested();
             if (suggestions.Count == 0)
                 throw new InvalidDataException("The local model returned no starting points.");

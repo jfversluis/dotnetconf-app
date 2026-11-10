@@ -28,6 +28,8 @@ The agenda opens immediately from the last downloaded update. No sessions or spe
 Tell the app what you want to learn, who you don't want to miss, or when you're
 free, and discover a shortlist from the downloaded .NET Conf agenda. Need
 inspiration? Playful starting points can highlight topics and speakers from the agenda.
+Their area shows only a spinner while loading; generic starting points are
+shown if the initial load fails instead of appearing before the real suggestions.
 Once you've saved some talks, **Fill schedule gaps** helps you find more on
 those same conference days without moving your existing choices.
 
@@ -135,6 +137,15 @@ so a search cannot turn into an unsolicited save or detail navigation.
 ### Session reminders
 
 Don't miss a saved talk: opt in to local reminders during setup or in Settings.
+First-run setup has three steps: welcome, session planning, and reminders.
+Choose Next to reach planning, Continue to reach reminders, and Done to finish.
+Three progress dots and a step count show your position; Back returns to the
+previous step. Skip setup remains available. On a device with a ready local
+model, the planning step opens the AI request form; otherwise it offers
+agenda-based discovery. Checked, unsaved suggestions require confirmation before
+continuing or finishing setup. Previously completed setup stays dismissed.
+Continuing from planning without adding any sessions during setup asks whether
+that was intentional, with options to keep choosing or continue without sessions.
 The app asks for notification permission only when you choose to enable them
 and schedules reminders for up to your next 60 saved sessions. Your device's
 notification settings and background restrictions can affect delivery. You can
