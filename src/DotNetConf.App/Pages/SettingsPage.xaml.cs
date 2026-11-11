@@ -11,6 +11,7 @@ public partial class SettingsPage : ContentPage
     private bool initializing;
     private bool updatingReminders;
     public SessionReminderService Reminders { get; }
+    public bool CanChangeReminders => !updatingReminders;
 
     public IReadOnlyList<string> AppearanceChoices { get; } = ["System", "Light", "Dark"];
     public string TimeZoneLabel => TimeZoneInfo.Local.DisplayName;
@@ -67,6 +68,7 @@ public partial class SettingsPage : ContentPage
         if (updatingReminders)
             return;
         updatingReminders = true;
+        OnPropertyChanged(nameof(CanChangeReminders));
         try
         {
             await Reminders.EnableAsync();
@@ -74,6 +76,27 @@ public partial class SettingsPage : ContentPage
         finally
         {
             updatingReminders = false;
+            OnPropertyChanged(nameof(CanChangeReminders));
+        }
+    }
+
+    private async void RetryRemindersClicked(object? sender, EventArgs e)
+    {
+        if (updatingReminders)
+            return;
+        updatingReminders = true;
+        OnPropertyChanged(nameof(CanChangeReminders));
+        try
+        {
+            if (Reminders.RetryEnabling)
+                await Reminders.EnableAsync();
+            else
+                await Reminders.RefreshAsync();
+        }
+        finally
+        {
+            updatingReminders = false;
+            OnPropertyChanged(nameof(CanChangeReminders));
         }
     }
 
@@ -82,6 +105,7 @@ public partial class SettingsPage : ContentPage
         if (updatingReminders)
             return;
         updatingReminders = true;
+        OnPropertyChanged(nameof(CanChangeReminders));
         try
         {
             await Reminders.DisableAsync();
@@ -94,6 +118,7 @@ public partial class SettingsPage : ContentPage
         finally
         {
             updatingReminders = false;
+            OnPropertyChanged(nameof(CanChangeReminders));
         }
     }
 

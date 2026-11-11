@@ -1,0 +1,19 @@
+<Grid x:Class="DotNetConf.App.Controls.FavoriteButton"
+      x:Name="FavoriteRoot"
+      xmlns:controls="clr-namespace:DotNetConf.App.Controls"
+      xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
+      x:DataType="vm:SessionViewModel"
+      WidthRequest="48" HeightRequest="48">
+    <GraphicsView x:Name="Halo" WidthRequest="48" HeightRequest="48"
+                  HorizontalOptions="Center" VerticalOptions="Center"
+                  InputTransparent="True" AutomationProperties.ExcludedWithChildren="True" />
+    <ImageButton x:Name="Heart" Command="{Binding ToggleSaveCommand}"
+                 Style="{StaticResource IconButton}"
+                 AutomationId="{Binding Source={x:Reference FavoriteRoot}, Path=ButtonAutomationId, x:DataType=controls:FavoriteButton}"
+                 SemanticProperties.Description="{Binding SaveHint}">
+        <ImageButton.Source>
+            <FontImageSource Glyph="{Binding SaveGlyph}" FontFamily="{Binding SaveFontFamily}" Size="24"
+                             Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+        </ImageButton.Source>
+    </ImageButton>
+</Grid>

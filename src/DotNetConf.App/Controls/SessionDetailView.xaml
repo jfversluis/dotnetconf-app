@@ -1,4 +1,4 @@
-<ContentView x:Class="DotNetConf.App.Controls.SessionDetailView"
+<ContentView x:Class="DotNetConf.App.Controls.SessionDetailView" x:Name="DetailView"
              xmlns:controls="clr-namespace:DotNetConf.App.Controls"
              xmlns:vm="clr-namespace:DotNetConf.App.ViewModels"
              x:DataType="vm:SessionViewModel">
@@ -14,27 +14,61 @@
                            IsVisible="{Binding IsWithdrawn}"
                            TextColor="{AppThemeBinding Light={StaticResource LightError}, Dark={StaticResource DarkError}}"
                            AutomationId="session-withdrawn" />
-                    <Grid ColumnDefinitions="*,48" ColumnSpacing="12">
+                    <Grid ColumnDefinitions="*,Auto,48" ColumnSpacing="12">
                         <Label Text="{Binding Title}" Style="{StaticResource Heading}" AutomationId="session-detail-title" />
-                        <ImageButton Grid.Column="1" Command="{Binding ToggleSaveCommand}"
-                                     Style="{StaticResource IconButton}" VerticalOptions="Start"
-                                     AutomationId="detail-save" SemanticProperties.Description="{Binding SaveHint}">
-                            <ImageButton.Source>
-                                <FontImageSource Glyph="{Binding SaveGlyph}" FontFamily="{Binding SaveFontFamily}" Size="24"
-                                                 Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
-                            </ImageButton.Source>
-                        </ImageButton>
+                        <ContentView Grid.Column="1"
+                                     IsVisible="{Binding Source={x:Reference DetailView}, Path=ShowInlineShare, x:DataType=controls:SessionDetailView}">
+                            <ImageButton Command="{Binding ShareCommand}" Source="{StaticResource ShareIcon}"
+                                         IsVisible="{Binding CanShare}" Style="{StaticResource IconButton}" VerticalOptions="Start"
+                                         AutomationId="session-inline-share" SemanticProperties.Description="{Binding ShareLabel}"
+                                         SemanticProperties.Hint="{Binding ShareHint}" />
+                        </ContentView>
+                        <controls:FavoriteButton Grid.Column="2" VerticalOptions="Start"
+                                                 ButtonAutomationId="detail-save" />
                     </Grid>
                     <Label Text="{Binding TopicLabel}" Style="{StaticResource Secondary}" />
-                    <Label Text="{Binding DateLabel}" FontFamily="OpenSansSemibold" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <Label Text="{Binding DateLabel}" FontFamily="OpenSansSemibold" />
+                        <controls:LiveIndicator Grid.Column="1" IsVisible="{Binding IsLive}" AutomationId="session-live" />
+                    </Grid>
                     <Label Text="{Binding TimeLabel}" />
                     <Label x:Name="TimeZone" Style="{StaticResource Secondary}" FontSize="12" />
                     <Label Text="Overlaps another saved session" IsVisible="{Binding HasConflict}"
                            TextColor="{AppThemeBinding Light={StaticResource LightError}, Dark={StaticResource DarkError}}" />
                 </VerticalStackLayout>
+                <VerticalStackLayout Spacing="8" IsVisible="{Binding HasWatchActions}">
+                    <Label Text="Watch this session" Style="{StaticResource Subheading}" />
+                    <Button Text="Watch session" Command="{Binding WatchRecordingCommand}"
+                            Style="{StaticResource ConferenceAction}" ImageSource="{StaticResource PrimaryVideoIcon}"
+                            IsVisible="{Binding HasRecording}" AutomationId="session-watch-recording"
+                            SemanticProperties.Hint="Opens the published video in an app or browser" />
+                    <Label Text="A video hasn't been linked for this session yet."
+                           IsVisible="{Binding HasViewingGuidance}" Style="{StaticResource Secondary}"
+                           AutomationId="session-viewing-guidance" />
+                    <Button Text="{Binding WatchedButtonLabel}" Command="{Binding ToggleWatchedCommand}"
+                            Style="{StaticResource ConferenceSecondaryAction}" HorizontalOptions="Fill"
+                            AutomationId="session-toggle-watched"
+                            SemanticProperties.Description="{Binding WatchedDescription}"
+                            SemanticProperties.Hint="Updates your watched status on this device">
+                        <Button.ImageSource>
+                            <FontImageSource Glyph="{Binding WatchedGlyph}" FontFamily="{Binding WatchedFontFamily}" Size="20"
+                                             Color="{AppThemeBinding Light={StaticResource Purple}, Dark={StaticResource Lavender}}" />
+                        </Button.ImageSource>
+                    </Button>
+                </VerticalStackLayout>
                 <VerticalStackLayout Spacing="12">
                     <Label Text="About this session" Style="{StaticResource Subheading}" />
                     <Label Text="{Binding Description}" />
+                </VerticalStackLayout>
+                <VerticalStackLayout Spacing="8" IsVisible="{Binding HasResources}">
+                    <Label Text="Resources" Style="{StaticResource Subheading}" />
+                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding Resources}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ConferenceLinkViewModel">
+                                <controls:ConferenceLinkRow />
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
                 <VerticalStackLayout Spacing="8">
                     <Label Text="Speakers" Style="{StaticResource Subheading}" />

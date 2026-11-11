@@ -16,7 +16,8 @@
                        AutomationId="community-detail-disclosure" />
                 <Button Text="Visit event website" ImageSource="{StaticResource WebsiteIcon}" Style="{StaticResource QuietButton}"
                         Command="{Binding Conference.OpenCommunityWebsiteCommand}" CommandParameter="{Binding Event}"
-                        AutomationId="community-event-website">
+                        AutomationId="community-event-website"
+                        SemanticProperties.Hint="Opens the event website in your browser">
                     <Button.Triggers>
                         <DataTrigger TargetType="Button" Binding="{Binding Conference.CommunityEventsAreMock}" Value="True">
                             <Setter Property="Text" Value="Open example website" />

@@ -83,8 +83,8 @@ public sealed class SpeakerViewModelTests
 
     private static SpeakerViewModel Create(string url) => new(
         new Speaker { Id = "synthetic-speaker", ProfilePicture = url },
-        new ConferenceViewModel(null!, null!, null!, null!, null!,
-            NullLogger<ConferenceViewModel>.Instance, new TestReminders()));
+        new ConferenceViewModel(null!, null!, null!, null!, null!, null!, null!,
+            NullLogger<ConferenceViewModel>.Instance, new TestReminders(), null!));
 
     private static void AssertBot(SpeakerViewModel speaker) =>
         Assert.Equal("speaker_placeholder.png", Assert.IsType<FileImageSource>(speaker.ProfilePicture).File);

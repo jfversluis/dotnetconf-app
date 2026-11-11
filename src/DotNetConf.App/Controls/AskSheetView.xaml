@@ -20,19 +20,21 @@
                 <ImageButton Grid.Column="1" Source="{StaticResource ClearIcon}" Style="{StaticResource IconButton}"
                              Clicked="CloseClicked" AutomationId="ask-close" SemanticProperties.Description="Close Ask" />
             </Grid>
-            <Grid Grid.Row="1" MinimumHeightRequest="112">
-                <controls:AskGlow x:Name="Glow" IsWorking="{Binding IsBusy}" />
-                <Grid Margin="26,20" RowDefinitions="Auto,Auto" RowSpacing="4">
+            <AbsoluteLayout Grid.Row="1" MinimumHeightRequest="112" AutomationId="ask-composer">
+                <controls:AskGlow x:Name="Glow" IsWorking="{Binding IsBusy}"
+                                  AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All" />
+                <Grid Padding="26,20" RowDefinitions="Auto,Auto" RowSpacing="4"
+                      AbsoluteLayout.LayoutBounds="0,0,1,AutoSize" AbsoluteLayout.LayoutFlags="WidthProportional">
                     <controls:AskEditor x:Name="Input" MinimumHeightRequest="48" MaximumHeightRequest="140"
                             AutoSize="TextChanges" MaxLength="500" Text="{Binding Request, Mode=TwoWay}"
-                            Placeholder="What would you like to do?" IsEnabled="{Binding CanSubmit}"
+                            Placeholder="Ask about .NET Conf" IsEnabled="{Binding CanSubmit}"
                             TextColor="{AppThemeBinding Light={StaticResource LightText}, Dark={StaticResource DarkText}}"
                             PlaceholderColor="{AppThemeBinding Light={StaticResource LightSecondary}, Dark={StaticResource DarkSecondary}}"
                             BackgroundColor="Transparent" AutomationId="ask-input"
                             SemanticProperties.Description="Ask about conference sessions and your schedule"
                             Focused="InputFocused" Unfocused="InputUnfocused" Completed="InputCompleted" />
                     <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-                        <Label Text="On-device · One action at a time" Style="{StaticResource Secondary}"
+                        <Label Text="Using on-device AI" Style="{StaticResource Secondary}"
                                FontSize="12" VerticalOptions="Center" />
                         <ActivityIndicator Grid.Column="1" IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}"
                                            WidthRequest="20" HeightRequest="20" VerticalOptions="Center" AutomationId="ask-progress" />
@@ -50,7 +52,7 @@
                             <ImageButton x:Name="SendButton" Command="{Binding SubmitCommand}" Source="{StaticResource AskSendIcon}"
                                          Style="{StaticResource IconButton}" Padding="14"
                                          AutomationId="ask-submit" SemanticProperties.Description="Send request"
-                                         SemanticProperties.Hint="Asks the on-device model to find an app action">
+                                         SemanticProperties.Hint="Finds a conference action for your request">
                                 <ImageButton.Triggers>
                                     <DataTrigger TargetType="ImageButton" Binding="{Binding IsBusy}" Value="True">
                                         <Setter Property="Command" Value="{Binding StopCommand}" />
@@ -64,7 +66,7 @@
                         </Grid>
                     </Grid>
                 </Grid>
-            </Grid>
+            </AbsoluteLayout>
             <VerticalStackLayout Grid.Row="2" Spacing="16" Padding="12,16">
                 <Label Text="{Binding Message}" AutomationId="ask-message" />
                 <VerticalStackLayout BindableLayout.ItemsSource="{Binding Choices}" Spacing="8">
@@ -76,6 +78,7 @@
                                 <Button Grid.Column="1" Grid.RowSpan="2" Text="Choose"
                                         Style="{StaticResource QuietButton}" CommandParameter="{Binding .}"
                                         Clicked="ChoiceClicked" IsVisible="{Binding Source={RelativeSource AncestorType={x:Type vm:AskViewModel}}, Path=NeedsChoice}"
+                                        SemanticProperties.Description="{Binding Title, StringFormat='Choose {0}'}"
                                         AutomationId="ask-choice" />
                             </Grid>
                         </DataTemplate>

@@ -15,7 +15,7 @@ using DotNetConf.App.ViewModels;
 /// </summary>
 internal sealed class OverflowMarker : Button
 {
-    public const double MarkerHeight = 26;
+    public const double MarkerHeight = 48;
     private const double FullTextWidth = 64;
 
     private readonly PlannerTheme theme;

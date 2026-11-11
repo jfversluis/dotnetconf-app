@@ -7,16 +7,15 @@ shortlist is made up of real conference sessions.
 
 ## Tell it what you're looking for
 
-The app checks local AI availability and shows one discovery path, not a choice
-between two modes. Without a ready local model, **Explore a mix / Shuffle suggestions**
-offers up to six compatible sessions from the downloaded agenda, favoring a mix
+The app checks local AI availability. **Explore a mix** and **Shuffle suggestions**
+offer up to six compatible sessions from the downloaded agenda, favoring a mix
 of topics, speakers, and days. It excludes already-saved talks and respects
 saved commitments. These suggestions are random, not personalized. Shuffling
 replaces the unsaved preview; it never rearranges or removes saved talks.
 Without a downloaded agenda, connect and refresh Sessions first.
 
-When a local model is ready, the AI request form opens automatically instead;
-mix/shuffle isn't shown. Write a request in your own words, or tap a suggested
+When a local model is ready, the AI request form is also available.
+Write a request in your own words, or tap a suggested
 starting point and make it your own. Starting points can highlight agenda topics and speakers, with
 invitations like "Make me dangerous with [topic]" and "More [topic], less FOMO."
 Starting points are available straight away, even while the agenda downloads.
@@ -46,9 +45,12 @@ Explicit early or late limits still work: "before 6am" means midnight–06:00,
 not 07:00 through the following morning. "After 11:30pm" means
 23:30–midnight. Explicit ranges such as "from 10pm to 2am" and "anytime before
 11pm" override the defaults. The whole session must fit within your availability,
-not just its start time. Changing the defaults clears the old preview so you
-can review a fresh one. Talks outside your availability aren't offered as
-alternative choices in the shortlist. If an overnight default conflicts with a
+not just its start time. Changing the defaults keeps your checked suggestions
+visible but marks them as belonging to the previous request. Restore the previous
+request or generate and review a new shortlist before adding sessions. If the
+agenda or device time zone changes, checked suggestions stay visible but must
+be refreshed and reviewed again. Talks outside your availability aren't offered
+as alternative choices in the shortlist. If an overnight default conflicts with a
 single cutoff, or you want to exclude a block of time, state the hours you can
 watch explicitly instead. For phrases such as "afternoon" or "after work,"
 the model estimates the hours and shows them above the shortlist. Review them;
@@ -87,7 +89,7 @@ Try discovery in the welcome experience or open
 **My Schedule** and choose **Discover sessions for my schedule**. If you've already
 saved sessions, choose **Find talks for my gaps** instead. Find sessions, then
 review the shortlist and any warnings. Each talk shows its local start date
-and time, plus its duration, without repeating the end timestamp.
+and time, plus its duration, with its description available without leaving the shortlist.
 Open **Show matching
 details** to see how the planner understood your request.
 
@@ -100,9 +102,8 @@ previously saved sessions aren't removed.
 There is no 12-session saving limit. Selecting nothing asks you to select at
 least one session. If an "all" request has incompatible requirements, edit it
 or explicitly choose **Let me choose a subset instead**. Setup's Continue
-action does not save suggestions. If you haven't added any sessions during setup,
-it asks whether you meant to continue. Checked, unsaved suggestions get a separate
-warning before you continue or skip setup; choose **Keep choosing** to return and
+action does not save suggestions. Checked, unsaved suggestions get a
+warning before you leave setup; choose **Keep choosing** to return and
 use **Add N to My Schedule** to save them. Use the Back and Continue buttons to
 move between setup steps.
 

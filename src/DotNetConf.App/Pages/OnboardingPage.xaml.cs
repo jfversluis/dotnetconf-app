@@ -19,20 +19,22 @@ public partial class OnboardingPage : ContentPage
     private bool permissionAttempted;
     private readonly ContentView scheduleStep;
     private PlannerView? plannerView;
-    private Task? schedulePreparation;
+    private readonly OnboardingPlannerPreparation schedulePreparation = new();
     private bool pageVisible;
     private bool observingReminders;
-    public bool PreparingScheduleStep { get; private set; } = true;
+    public bool PreparingScheduleStep { get; private set; }
     public IReadOnlyList<View> Slides { get; }
     public bool CanGoBack => Carousel.Position > 0;
     public string ProgressText => $"{Carousel.Position + 1} of 3";
     public string NextText => Carousel.Position == 2 ? "Done" : Carousel.Position == 1 ? "Continue" : "Next";
     public bool RequestingReminders => requestingReminders;
-    public bool CanRequestReminders => !requestingReminders && !reminders.Enabled;
+    public bool CanRequestReminders => !requestingReminders && (reminders.CanEnable || reminders.CanRetry);
+    public bool ShowEnableReminders => reminders.CanEnable;
+    public bool ShowRetryReminders => reminders.CanRetry;
     public bool CanNavigate => !requestingReminders && !leaving && !confirmingSchedule && !planner.IsSaving;
     public string ReminderStatus => reminders.Status;
-    public bool ShowReminderStatus => permissionAttempted || reminders.Enabled;
-    public bool ShowNotificationSettings => permissionAttempted && !reminders.Enabled;
+    public bool ShowReminderStatus => permissionAttempted || reminders.Enabled || reminders.CanRetry || reminders.PermissionBlocked;
+    public bool ShowNotificationSettings => reminders.PermissionBlocked;
 
     public OnboardingPage(PlannerViewModel planner, SessionReminderService reminders, ILogger<OnboardingPage> logger)
     {
@@ -54,6 +56,8 @@ public partial class OnboardingPage : ContentPage
 
     private async Task PrepareScheduleStepAsync()
     {
+        PreparingScheduleStep = true;
+        OnPropertyChanged(nameof(PreparingScheduleStep));
         try
         {
             await planner.InitializeAsync();
@@ -67,7 +71,7 @@ public partial class OnboardingPage : ContentPage
 
     private void ShowReadyPlanner()
     {
-        if (!pageVisible || !planner.HasCheckedModel || plannerView is not null)
+        if (!pageVisible || Carousel.Position != 1 || plannerView is not null)
             return;
         plannerView = new PlannerView { BindingContext = planner };
         var skip = new Button
@@ -101,15 +105,31 @@ public partial class OnboardingPage : ContentPage
             OnPropertyChanged(nameof(CanNavigate));
     }
 
-    private void PositionChanged(object? sender, PositionChangedEventArgs args)
+    private async void PositionChanged(object? sender, PositionChangedEventArgs args)
     {
         OnPropertyChanged(nameof(CanGoBack));
         OnPropertyChanged(nameof(NextText));
         OnPropertyChanged(nameof(ProgressText));
         if (plannerView is not null)
             plannerView.IsActive = pageVisible && Carousel.Position == 1;
-        if (args.PreviousPosition == 1 && (plannerView is not null || !PreparingScheduleStep))
+        if (args.PreviousPosition == 1)
+        {
+            schedulePreparation.Leave();
             planner.Cancel();
+        }
+        if (args.CurrentPosition == 1)
+        {
+            ShowReadyPlanner();
+            await PrepareOrResumeScheduleStepAsync();
+        }
+    }
+
+    private async Task PrepareOrResumeScheduleStepAsync()
+    {
+        if (await schedulePreparation.EnterAsync(PrepareScheduleStepAsync,
+                () => planner.InitializeAsync(resumeWithPreview: true),
+                () => pageVisible && Carousel.Position == 1, () => planner.CancellationRevision))
+            ShowReadyPlanner();
     }
 
     private async void NextClicked(object? sender, EventArgs args)
@@ -145,7 +165,7 @@ public partial class OnboardingPage : ContentPage
     {
         if (!CanNavigate)
             return;
-        if (!await ConfirmScheduleDepartureAsync(continuing: false))
+        if (Carousel.Position != 2 && !await ConfirmScheduleDepartureAsync())
             return;
         leaving = true;
         OnPropertyChanged(nameof(CanNavigate));
@@ -174,9 +194,9 @@ public partial class OnboardingPage : ContentPage
         }
     }
 
-    private async Task<bool> ConfirmScheduleDepartureAsync(bool continuing)
+    private async Task<bool> ConfirmScheduleDepartureAsync(bool continuing = false)
     {
-        var confirmation = OnboardingScheduleConfirmation.For(
+        var confirmation = UnsavedSuggestionsConfirmation.ForOnboarding(
             planner.SelectedCount > 0, planner.HasAddedSessions, continuing);
         if (confirmation is null)
             return true;
@@ -185,8 +205,11 @@ public partial class OnboardingPage : ContentPage
         OnPropertyChanged(nameof(CanNavigate));
         try
         {
-            return await DisplayAlertAsync(confirmation.Title, confirmation.Message,
-                confirmation.Accept, OnboardingScheduleConfirmation.Cancel);
+            var leave = await DisplayAlertAsync(confirmation.Title, confirmation.Message,
+                confirmation.Accept, UnsavedSuggestionsConfirmation.Cancel);
+            if (!leave && Carousel.Position != 1 && plannerView is not null)
+                Carousel.ScrollTo(1, animate: false);
+            return leave;
         }
         finally
         {
@@ -195,7 +218,13 @@ public partial class OnboardingPage : ContentPage
         }
     }
 
-    private async void EnableRemindersClicked(object? sender, EventArgs args)
+    private async void EnableRemindersClicked(object? sender, EventArgs args) =>
+        await UpdateRemindersAsync(retry: false);
+
+    private async void RetryRemindersClicked(object? sender, EventArgs args) =>
+        await UpdateRemindersAsync(retry: true);
+
+    private async Task UpdateRemindersAsync(bool retry)
     {
         if (!CanRequestReminders)
             return;
@@ -203,7 +232,10 @@ public partial class OnboardingPage : ContentPage
         UpdatePermissionState();
         try
         {
-            await reminders.EnableAsync();
+            if (retry && !reminders.RetryEnabling)
+                await reminders.RefreshAsync();
+            else
+                await reminders.EnableAsync();
             permissionAttempted = true;
         }
         finally
@@ -217,6 +249,8 @@ public partial class OnboardingPage : ContentPage
     {
         OnPropertyChanged(nameof(RequestingReminders));
         OnPropertyChanged(nameof(CanRequestReminders));
+        OnPropertyChanged(nameof(ShowEnableReminders));
+        OnPropertyChanged(nameof(ShowRetryReminders));
         OnPropertyChanged(nameof(CanNavigate));
         OnPropertyChanged(nameof(ReminderStatus));
         OnPropertyChanged(nameof(ShowReminderStatus));
@@ -242,19 +276,14 @@ public partial class OnboardingPage : ContentPage
             await reminders.RefreshAsync();
             UpdatePermissionState();
         }
-        if (schedulePreparation is null)
-            await (schedulePreparation = PrepareScheduleStepAsync());
-        else
-        {
-            await schedulePreparation;
-            await planner.InitializeAsync();
-        }
-        ShowReadyPlanner();
+        if (schedulePreparation.HasStarted && Carousel.Position == 1)
+            await PrepareOrResumeScheduleStepAsync();
     }
 
     protected override void OnDisappearing()
     {
         pageVisible = false;
+        schedulePreparation.Leave();
         if (plannerView is not null)
             plannerView.IsActive = false;
         if (observingReminders)

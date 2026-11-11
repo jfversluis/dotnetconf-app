@@ -1,3 +1,4 @@
+using DotNetConf.App;
 using DotNetConf.App.Services;
 using DotNetConf.App.ViewModels;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -69,7 +70,7 @@ public sealed class PlannerDiscoveryLifecycleTests
         Assert.Equal(selected, store.Saved.Order().ToArray());
         Assert.True(vm.HasAddedSessions);
         Assert.True(selected.Length > 1);
-        Assert.Equal($"{selected.Length} selected sessions added to My Schedule. Your previous likes were kept.", vm.Status);
+        Assert.Equal($"{selected.Length} sessions added to My Schedule. Your other saved sessions are unchanged.", vm.Status);
         await planner.DidNotReceive().ProposeAsync(Arg.Any<ConferenceDocument>(), Arg.Any<string>(),
             Arg.Any<TimeZoneInfo>(), Arg.Any<string[]>(), Arg.Any<CancellationToken>(), Arg.Any<bool>(),
             Arg.Any<PlannerWatchingHours>());
@@ -99,47 +100,57 @@ public sealed class PlannerDiscoveryLifecycleTests
         var initialization = vm.InitializeAsync();
         Assert.True(vm.IsCheckingModel);
         Assert.False(vm.IsBusy);
-        Assert.False(vm.CanExplore);
+        Assert.True(vm.CanExplore);
         Assert.False(vm.IsAiMode);
         Assert.Empty(vm.Sessions);
         ready.SetResult(Ready);
         await initialization;
         Assert.True(vm.IsReady);
         Assert.True(vm.IsAiMode);
-        Assert.False(vm.CanExplore);
+        Assert.True(vm.CanExplore);
         Assert.Empty(vm.Sessions);
         Assert.False(vm.HasProposal);
     }
 
     [Fact]
-    public async Task ReadyAiCannotBeReplacedWithRandomSuggestions()
+    public async Task ReadyAiAlsoOffersRandomSuggestionsAndCanReturnToAi()
     {
         var (vm, _, store) = Create(true);
         await vm.InitializeAsync();
         await vm.ExploreCommand.ExecuteAsync(null);
+        Assert.False(vm.IsAiMode);
+        Assert.True(vm.CanExplore);
+        Assert.True(vm.CanSwitchToAi);
+        Assert.NotEmpty(vm.Sessions);
+        Assert.Empty(store.Saved);
+        vm.UseAiModeCommand.Execute(null);
         Assert.True(vm.IsAiMode);
-        Assert.False(vm.CanExplore);
         Assert.Empty(vm.Sessions);
         Assert.Empty(store.Saved);
     }
 
     [Fact]
-    public async Task SuccessfulRetrySwitchesFromRandomPreviewToAiOnly()
+    public async Task SuccessfulRetryKeepsTheReviewedRandomPreviewUntilAiIsChosen()
     {
         var (vm, planner, store) = Create(true);
         planner.CheckReadinessAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromException<PlannerModelState>(new NotSupportedException("Synthetic unavailable model")));
         await vm.InitializeAsync();
         Assert.True(vm.CanExplore);
-        Assert.NotEmpty(vm.Sessions);
+        var rows = vm.Sessions.ToArray();
+        Assert.NotEmpty(rows);
+        rows[0].IsSelected = false;
 
         planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(Ready);
         await vm.CheckModelCommand.ExecuteAsync(null);
 
-        Assert.True(vm.IsAiMode);
-        Assert.False(vm.CanExplore);
-        Assert.Empty(vm.Sessions);
-        Assert.False(vm.HasProposal);
+        Assert.True(vm.IsReady);
+        Assert.False(vm.IsAiMode);
+        Assert.True(vm.CanExplore);
+        Assert.True(vm.CanSwitchToAi);
+        Assert.Equal(rows, vm.Sessions);
+        Assert.False(rows[0].IsSelected);
+        Assert.True(vm.HasProposal);
         Assert.Empty(store.Saved);
     }
 
@@ -156,10 +167,9 @@ public sealed class PlannerDiscoveryLifecycleTests
         var pending = new TaskCompletionSource<PlannerModelState>(TaskCreationOptions.RunContinuationsAsynchronously);
         planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(pending.Task);
         var retry = vm.CheckModelCommand.ExecuteAsync(null);
-        Assert.False(vm.CanApply);
-        Assert.False(vm.CanEdit);
-        Assert.False(vm.CanExplore);
-        await vm.ApplyCommand.ExecuteAsync(null);
+        Assert.True(vm.CanApply);
+        Assert.True(vm.CanEdit);
+        Assert.True(vm.CanExplore);
         Assert.Empty(store.Saved);
         pending.SetException(new NotSupportedException("Synthetic unavailable model"));
         await retry;
@@ -169,6 +179,216 @@ public sealed class PlannerDiscoveryLifecycleTests
         Assert.True(vm.CanApply);
         Assert.Equal(ids, vm.Sessions.Select(session => session.Id));
         Assert.False(vm.Sessions[0].IsSelected);
+    }
+
+    [Fact]
+    public async Task RandomDiscoveryWorksWhileAiReadinessIsStillPending()
+    {
+        var (vm, planner, store) = Create(true);
+        var ready = new TaskCompletionSource<PlannerModelState>(TaskCreationOptions.RunContinuationsAsynchronously);
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(ready.Task);
+        var initialization = vm.InitializeAsync();
+        Assert.True(vm.IsCheckingModel);
+
+        await vm.ExploreCommand.ExecuteAsync(null);
+        var rows = vm.Sessions.ToArray();
+        Assert.NotEmpty(rows);
+        Assert.True(vm.CanApply);
+        Assert.Empty(store.Saved);
+
+        ready.SetResult(Ready);
+        await initialization;
+        Assert.True(vm.IsReady);
+        Assert.False(vm.IsAiMode);
+        Assert.True(vm.CanSwitchToAi);
+        Assert.Equal(rows, vm.Sessions);
+    }
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    public async Task LateReadinessDoesNotReplaceASaveOutcome(bool failSave, bool aiReady)
+    {
+        var (vm, planner, store) = Create(true);
+        var ready = new TaskCompletionSource<PlannerModelState>(TaskCreationOptions.RunContinuationsAsynchronously);
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(ready.Task);
+        var initialization = vm.InitializeAsync();
+        await vm.ExploreCommand.ExecuteAsync(null);
+        var rows = vm.Sessions.ToArray();
+        store.FailWrites = failSave;
+
+        await vm.ApplyCommand.ExecuteAsync(null);
+        var outcome = vm.Status;
+        ready.SetResult(aiReady ? Ready : new(false, false, "Synthetic model unavailable."));
+        await initialization;
+
+        Assert.Equal(outcome, vm.Status);
+        Assert.Equal(!failSave, vm.HasAddedSessions);
+        if (failSave)
+        {
+            Assert.Contains("Couldn't add", outcome);
+            Assert.Equal(rows, vm.Sessions);
+            Assert.Empty(store.Saved);
+        }
+        else
+        {
+            Assert.Contains("added to My Schedule", outcome);
+            Assert.Empty(vm.Sessions);
+            Assert.NotEmpty(store.Saved);
+        }
+    }
+
+    [Fact]
+    public async Task ReturningToAnExistingPreviewRestartsACancelledReadinessCheck()
+    {
+        var (vm, planner, _) = Create(true);
+        var pending = new TaskCompletionSource<PlannerModelState>(TaskCreationOptions.RunContinuationsAsynchronously);
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(pending.Task);
+        var initialization = vm.InitializeAsync();
+        await vm.ExploreCommand.ExecuteAsync(null);
+        var rows = vm.Sessions.ToArray();
+        vm.Cancel();
+        await initialization;
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(Ready);
+
+        await vm.InitializeAsync(resumeWithPreview: true);
+
+        Assert.True(vm.IsReady);
+        Assert.True(vm.CanSwitchToAi);
+        Assert.Equal(rows, vm.Sessions);
+        Assert.All(rows, row => Assert.True(row.IsSelected));
+    }
+
+    [Fact]
+    public async Task StoppingTheInitialDownloadWaitDoesNotRestartItUntilARealReentry()
+    {
+        var (vm, planner, _) = Create(true);
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(
+            new PlannerModelState(false, false, "Synthetic download in progress")
+            {
+                Setup = PlannerModelSetup.Downloading
+            });
+        var step = new OnboardingPlannerPreparation();
+
+        var firstVisit = step.EnterAsync(() => vm.InitializeAsync(),
+            () => vm.InitializeAsync(resumeWithPreview: true), () => true, () => vm.CancellationRevision);
+        Assert.True(vm.IsDownloadingModel);
+        vm.Cancel();
+        Assert.True(await firstVisit.WaitAsync(TimeSpan.FromSeconds(5)));
+
+        await planner.Received(1).CheckReadinessAsync(Arg.Any<CancellationToken>());
+        Assert.False(vm.IsCheckingModel);
+        Assert.False(vm.IsDownloadingModel);
+        Assert.Contains("Stopped waiting", vm.ModelStatus);
+
+        step.Leave();
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(Ready);
+        Assert.True(await step.EnterAsync(() => vm.InitializeAsync(),
+            () => vm.InitializeAsync(resumeWithPreview: true), () => true, () => vm.CancellationRevision));
+        await planner.Received(2).CheckReadinessAsync(Arg.Any<CancellationToken>());
+        Assert.True(vm.IsReady);
+    }
+
+    [Fact]
+    public async Task ReenteringWhileInitialPreparationFinishesResumesWithoutLosingThePreview()
+    {
+        var (vm, planner, _) = Create(true);
+        var pending = new TaskCompletionSource<PlannerModelState>(TaskCreationOptions.RunContinuationsAsynchronously);
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(pending.Task);
+        var step = new OnboardingPlannerPreparation();
+        var active = true;
+        Task<bool> Enter() => step.EnterAsync(() => vm.InitializeAsync(),
+            () => vm.InitializeAsync(resumeWithPreview: true), () => active, () => vm.CancellationRevision);
+        var firstVisit = Enter();
+        await vm.ExploreCommand.ExecuteAsync(null);
+        var rows = vm.Sessions.ToArray();
+        rows[0].IsSelected = false;
+
+        active = false;
+        step.Leave();
+        vm.Cancel();
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(Ready);
+        active = true;
+        var secondVisit = Enter();
+
+        Assert.False(await firstVisit.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.True(await secondVisit.WaitAsync(TimeSpan.FromSeconds(5)));
+        await planner.Received(2).CheckReadinessAsync(Arg.Any<CancellationToken>());
+        Assert.True(vm.IsReady);
+        Assert.Equal(rows, vm.Sessions);
+        Assert.False(rows[0].IsSelected);
+    }
+
+    [Fact]
+    public async Task StoppingDuringReentryDoesNotResumeTheEarlierPendingPreparation()
+    {
+        var (vm, planner, _) = Create(true);
+        planner.CheckReadinessAsync(Arg.Any<CancellationToken>()).Returns(
+            new PlannerModelState(false, false, "Synthetic download in progress")
+            {
+                Setup = PlannerModelSetup.Downloading
+            });
+        var releasePreparation = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        async Task Prepare()
+        {
+            await vm.InitializeAsync();
+            await releasePreparation.Task;
+        }
+        var step = new OnboardingPlannerPreparation();
+        Task<bool> Enter() => step.EnterAsync(Prepare, () => vm.InitializeAsync(resumeWithPreview: true),
+            () => true, () => vm.CancellationRevision);
+        var firstVisit = Enter();
+        Assert.True(vm.IsDownloadingModel);
+        step.Leave();
+        vm.Cancel();
+        var secondVisit = Enter();
+        vm.Cancel();
+        releasePreparation.SetResult();
+
+        Assert.False(await firstVisit.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.True(await secondVisit.WaitAsync(TimeSpan.FromSeconds(5)));
+        await planner.Received(1).CheckReadinessAsync(Arg.Any<CancellationToken>());
+        Assert.False(vm.IsCheckingModel);
+        Assert.False(vm.IsDownloadingModel);
+    }
+
+    [Fact]
+    public async Task OnlyTheLatestOnboardingVisitResumesAfterSharedPreparation()
+    {
+        var preparation = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var step = new OnboardingPlannerPreparation();
+        var resumes = 0;
+        Task<bool> Enter() => step.EnterAsync(() => preparation.Task, () =>
+        {
+            resumes++;
+            return Task.CompletedTask;
+        }, () => true, () => 0);
+
+        var first = Enter();
+        step.Leave();
+        var second = Enter();
+        step.Leave();
+        var third = Enter();
+        preparation.SetResult();
+
+        Assert.False(await first);
+        Assert.False(await second);
+        Assert.True(await third);
+        Assert.Equal(1, resumes);
+    }
+
+    [Fact]
+    public async Task GapDiscoveryExplainsThatSavedSessionsAreRequired()
+    {
+        var (vm, _, store) = Create();
+        vm.EnableGapMode();
+        await vm.InitializeAsync();
+
+        Assert.Contains("Save a session first", vm.Status);
+        Assert.Empty(vm.Sessions);
+        Assert.Empty(store.Saved);
     }
 
     [Fact]
@@ -189,7 +409,7 @@ public sealed class PlannerDiscoveryLifecycleTests
     }
 
     [Fact]
-    public async Task LostModelReadinessReplacesAiPreviewWithRandomDiscovery()
+    public async Task LostModelReadinessKeepsTheReviewedAiPreview()
     {
         var (vm, planner, store) = Create(true);
         planner.ProposeAsync(Arg.Any<ConferenceDocument>(), Arg.Any<string>(), Arg.Any<TimeZoneInfo>(),
@@ -205,10 +425,11 @@ public sealed class PlannerDiscoveryLifecycleTests
 
         await vm.CheckModelCommand.ExecuteAsync(null);
 
-        Assert.False(vm.IsAiMode);
+        Assert.True(vm.IsAiMode);
+        Assert.False(vm.IsReady);
         Assert.True(vm.CanExplore);
-        Assert.InRange(vm.Sessions.Count, 2, 6);
-        Assert.Contains("no AI", vm.DiscoverySource);
+        Assert.Equal("synthetic-0", Assert.Single(vm.Sessions).Id);
+        Assert.True(vm.Sessions[0].IsSelected);
         Assert.Empty(store.Saved);
     }
 
@@ -244,7 +465,7 @@ public sealed class PlannerDiscoveryLifecycleTests
 
         Assert.True(vm.IsReady);
         Assert.True(vm.IsAiMode);
-        Assert.False(vm.CanExplore);
+        Assert.True(vm.CanExplore);
         Assert.Empty(vm.Sessions);
     }
 
@@ -263,6 +484,22 @@ public sealed class PlannerDiscoveryLifecycleTests
         Assert.NotEmpty(vm.Sessions);
         Assert.Empty(store.Saved);
         Assert.All(vm.Sessions, session => Assert.Contains(Agenda.Sessions, item => item.Id == session.Id));
+    }
+
+    [Fact]
+    public async Task ReadingASuggestionDoesNotChangeTheShortlist()
+    {
+        var (vm, _, store) = Create();
+        await vm.InitializeAsync();
+        var row = vm.Sessions[0];
+        var selected = row.IsSelected;
+        var count = vm.SelectedCount;
+        row.ShowDescription = true;
+        Assert.Equal("Hide description", row.DetailsAction);
+        Assert.Contains(row.Title, row.DetailsActionDescription);
+        Assert.Equal(selected, row.IsSelected);
+        Assert.Equal(count, vm.SelectedCount);
+        Assert.Empty(store.Saved);
     }
 
     [Fact]
@@ -288,10 +525,13 @@ public sealed class PlannerDiscoveryLifecycleTests
     private sealed class MemoryStore : IScheduleStore
     {
         public string[] Saved { get; private set; } = [];
+        public bool FailWrites { get; set; }
         public Task<IReadOnlyCollection<string>> ReadAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyCollection<string>>(Saved);
         public Task WriteAsync(IReadOnlyCollection<string> sessionIds, CancellationToken cancellationToken = default)
         {
+            if (FailWrites)
+                throw new IOException("Synthetic storage failure.");
             Saved = sessionIds.ToArray();
             return Task.CompletedTask;
         }

@@ -20,6 +20,9 @@ public sealed class ReminderLifecycleTests
         await service.EnableAsync();
         Assert.False(service.Enabled);
         Assert.Contains("aren't allowed", service.Status);
+        Assert.Equal(ReminderState.PermissionBlocked, service.State);
+        Assert.True(service.PermissionBlocked);
+        Assert.False(service.CanEnable);
         await notifications.DidNotReceive().Show(Arg.Any<NotificationRequest>());
         Assert.Equal(["future"], await store.ReadAsync());
     }
@@ -39,6 +42,9 @@ public sealed class ReminderLifecycleTests
         await notifications.Received(1).Show(Arg.Is<NotificationRequest>(request =>
             request.ReturningData == "session-reminder:future" && request.Title == "Demo session reminder"));
         Assert.Contains("1 saved session", service.Status);
+        Assert.Equal(ReminderState.Enabled, service.State);
+        Assert.False(service.CanEnable);
+        Assert.False(service.CanRetry);
     }
 
     [Fact]
@@ -49,6 +55,9 @@ public sealed class ReminderLifecycleTests
         notifications.Show(Arg.Any<NotificationRequest>()).Returns(false, true);
         Assert.False(await service.RefreshAsync());
         Assert.Contains("Couldn't update", service.Status);
+        Assert.Equal(ReminderState.Error, service.State);
+        Assert.True(service.CanRetry);
+        Assert.False(service.RetryEnabling);
         Assert.True(await service.RefreshAsync().WaitAsync(TimeSpan.FromSeconds(2)));
         Assert.Contains("1 saved session", service.Status);
     }
@@ -98,9 +107,44 @@ public sealed class ReminderLifecycleTests
         Assert.False(await service.RefreshAsync());
         Assert.True(service.Enabled);
         Assert.Contains("blocked", service.Status);
+        Assert.Equal(ReminderState.PermissionBlocked, service.State);
         notifications.Received(1).Cancel(Arg.Is<int[]>(ids => ids.SequenceEqual(new[] { 42 })));
         Assert.Equal(["future"], await store.ReadAsync());
         await notifications.DidNotReceive().Show(Arg.Any<NotificationRequest>());
+    }
+
+    [Fact]
+    public async Task TurningOffBlockedRemindersKeepsThemOffAndHidesPermissionRecovery()
+    {
+        var (service, notifications, preferences, _) = Create();
+        preferences.Set(Key, true);
+        notifications.AreNotificationsEnabled(Arg.Any<NotificationPermission>()).Returns(false);
+        Assert.False(await service.RefreshAsync());
+
+        await service.DisableAsync();
+
+        Assert.False(service.Enabled);
+        Assert.Equal(ReminderState.Off, service.State);
+        Assert.True(service.CanEnable);
+        Assert.False(service.PermissionBlocked);
+    }
+
+    [Fact]
+    public async Task EnablingFailureAndReconciliationFailureHaveDifferentRetryIntents()
+    {
+        var (service, notifications, _, _) = Create();
+        notifications.RequestNotificationPermission(Arg.Any<NotificationPermission>())
+            .ThrowsAsync(new InvalidOperationException("Synthetic permission failure"));
+        await service.EnableAsync();
+        Assert.Equal(ReminderState.Error, service.State);
+        Assert.True(service.RetryEnabling);
+
+        notifications.GetPendingNotificationList().ThrowsAsync(new IOException("Synthetic cancellation failure"));
+        await service.DisableAsync();
+        Assert.False(service.Enabled);
+        Assert.Equal(ReminderState.Error, service.State);
+        Assert.False(service.RetryEnabling);
+        Assert.True(service.CanRetry);
     }
 
     [Fact]

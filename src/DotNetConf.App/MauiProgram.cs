@@ -10,12 +10,12 @@ using Plugin.LocalNotification;
 using Syncfusion.Maui.Toolkit.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.AI;
+using Microsoft.Maui.LifecycleEvents;
 #if IOS || ANDROID
 using Microsoft.Maui.Essentials.AI;
 #endif
 #if ANDROID
 using Microsoft.Maui.Platform;
-using Microsoft.Maui.LifecycleEvents;
 using DotNetConf.App.Platforms.Android;
 #else
 using Microsoft.Maui.Foldable;
@@ -64,6 +64,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<IFoldableRegionSource>(services =>
             services.GetRequiredService<AndroidFoldableRegionSource>());
         builder.ConfigureLifecycleEvents(events => events.AddAndroid(android => android
+            .OnCreate((activity, _) => ReceiveSessionLink(activity.Intent?.DataString))
+            .OnNewIntent((activity, intent) => ReceiveSessionLink(intent?.DataString))
             .OnStart(activity => GetFoldableRegionSource().Start(activity))
             .OnStop(activity => GetFoldableRegionSource().Stop(activity))));
         DotNetConf.App.Platforms.Android.ShellToolbarAppearance.Register();
@@ -81,6 +83,10 @@ public static class MauiProgram
                 Description = "Reminders when sessions in My Schedule begin"
             })));
         builder.Services.AddSingleton<SessionReminderService>();
+#if IOS
+        builder.ConfigureMauiHandlers(handlers => handlers.AddHandler<DuoSafeAreaContent,
+            DotNetConf.App.Platforms.iOS.DuoSafeAreaContentHandler>());
+#endif
         builder.Services.AddSingleton<ISessionReminderUpdates>(services => services.GetRequiredService<SessionReminderService>());
         builder.Services.AddTransient<OnboardingPage>();
         builder.Services.AddSingleton<IConferenceDataSource, ConferenceMetadataDataSource>();
@@ -96,8 +102,35 @@ public static class MauiProgram
         builder.Services.TryAddSingleton<IScheduleStore>(_ =>
             new JsonScheduleStore(Path.Combine(FileSystem.AppDataDirectory, "schedule.json")));
         builder.Services.AddSingleton<ScheduleService>();
+        builder.Services.TryAddSingleton(_ => new WatchedSessionService(
+            new JsonScheduleStore(Path.Combine(FileSystem.AppDataDirectory, "watched.json"))));
         builder.Services.AddSingleton<DetailNavigationService>();
+        builder.Services.AddSingleton<SessionLinkService>();
+#if IOS
+        builder.ConfigureLifecycleEvents(events => events.AddiOS(ios => ios
+            .OpenUrl((_, url, _) => ReceiveSessionLink(url.AbsoluteString))
+            .SceneOpenUrl((_, contexts) =>
+            {
+                foreach (var context in contexts)
+                    ReceiveSessionLink(context.Url.AbsoluteString);
+                return true;
+            })
+            .SceneWillConnect((_, _, options) =>
+            {
+                if (options.UrlContexts is { } contexts)
+                    foreach (var context in contexts)
+                        ReceiveSessionLink(context.Url.AbsoluteString);
+            })));
+#endif
         builder.Services.TryAddSingleton(Browser.Default);
+#if !AVALONIA
+        builder.Services.TryAddSingleton(Launcher.Default);
+#endif
+        builder.Services.AddSingleton<ISessionVideoLauncher, SessionVideoLauncher>();
+        builder.Services.AddSingleton<IConferenceSharing, ConferenceSharing>();
+#if IOS || ANDROID
+        builder.Services.TryAddSingleton(HapticFeedback.Default);
+#endif
         builder.Services.AddSingleton<ConferenceViewModel>();
         builder.Services.AddSingleton<IAskApplication>(services => services.GetRequiredService<ConferenceViewModel>());
         builder.Services.AddTransient<IOnDeviceAsk, OnDeviceAsk>();
@@ -159,6 +192,16 @@ public static class MauiProgram
 #endif
 #endif
         return builder.Build();
+    }
+
+    private static bool ReceiveSessionLink(string? uri)
+    {
+        if (uri is null)
+            return false;
+        var services = IPlatformApplication.Current?.Services
+            ?? throw new InvalidOperationException("The application is unavailable for session links.");
+        services.GetRequiredService<SessionLinkService>().Receive(uri);
+        return true;
     }
 
 #if ANDROID

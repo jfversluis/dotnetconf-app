@@ -10,6 +10,7 @@ public sealed record ConferenceDocument
     public string Description { get; init; } = "";
     public string WebsiteUrl { get; init; } = "";
     public DateOnly? StartDate { get; init; }
+    public DateOnly? EndDate { get; init; }
     public List<Speaker> Speakers { get; init; } = [];
     /// <summary>Profiles retained only to resolve withdrawn saved talks, not current directory entries.</summary>
     public List<Speaker> WithdrawnSpeakers { get; init; } = [];
@@ -49,6 +50,7 @@ public sealed record Speaker
     public string Tagline { get; init; } = "";
     public string Bio { get; init; } = "";
     public string ProfilePicture { get; init; } = "";
+    public List<ConferenceLink> SocialLinks { get; init; } = [];
 }
 
 public sealed record Session
@@ -60,6 +62,8 @@ public sealed record Session
     public DateTimeOffset EndsAt { get; init; }
     public List<string> SpeakerIds { get; init; } = [];
     public List<string> Topics { get; init; } = [];
+    public string RecordingUrl { get; init; } = "";
+    public List<ConferenceLink> ResourceLinks { get; init; } = [];
 }
 
 public interface IConferenceDataSource

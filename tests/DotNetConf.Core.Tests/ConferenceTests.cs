@@ -13,6 +13,48 @@ public sealed class ConferenceTests
         return await ConferenceJson.ReadAsync(stream);
     }
 
+    [Theory]
+    [InlineData(-1, false)]
+    [InlineData(0, true)]
+    [InlineData(1799, true)]
+    [InlineData(1800, false)]
+    public async Task InProgressUsesStartInclusiveAndEndExclusiveInstants(int seconds, bool expected)
+    {
+        var original = (await LoadAsync()).Sessions[0];
+        var start = new DateTimeOffset(2026, 11, 10, 17, 0, 0, TimeSpan.FromHours(1));
+        var session = original with { StartsAt = start, EndsAt = start.AddMinutes(30) };
+
+        Assert.Equal(expected, Agenda.IsInProgress(session, start.ToUniversalTime().AddSeconds(seconds)));
+    }
+
+    [Fact]
+    public async Task BundledMetadataUsesTheCanonicalConferenceLinkWithoutBundlingAgendaData()
+    {
+        await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "conference.json"));
+        var document = await ConferenceJson.ReadAsync(stream);
+
+        Assert.Equal("https://dot.net/conf", document.WebsiteUrl);
+        Assert.Equal(new DateOnly(2026, 11, 10), document.StartDate);
+        Assert.Equal(new DateOnly(2026, 11, 13), document.EndDate);
+        Assert.Contains(ConferenceRepository.MicrosoftUrl, document.AgendaNotice);
+        Assert.Empty(document.Sessions);
+        Assert.Empty(document.Speakers);
+        Assert.Empty(document.CommunityEvents);
+        Assert.False(document.IsMock);
+    }
+
+    [Fact]
+    public async Task ConferenceEndDateRequiresAnOrderedStartDate()
+    {
+        var document = await LoadAsync();
+        ConferenceJson.Validate(document with { StartDate = new(2026, 11, 10), EndDate = new(2026, 11, 13) });
+        ConferenceJson.Validate(document with { StartDate = new(2026, 11, 10), EndDate = null });
+        Assert.Throws<InvalidDataException>(() =>
+            ConferenceJson.Validate(document with { StartDate = null, EndDate = new(2026, 11, 13) }));
+        Assert.Throws<InvalidDataException>(() =>
+            ConferenceJson.Validate(document with { StartDate = new(2026, 11, 10), EndDate = new(2026, 11, 9) }));
+    }
+
     [Fact]
     public async Task FictionalTestFixtureIsValidAndClearlyMarked()
     {

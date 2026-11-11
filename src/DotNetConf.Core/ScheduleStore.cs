@@ -31,9 +31,9 @@ public sealed class JsonScheduleStore(string path) : IScheduleStore
     internal static IReadOnlyCollection<string> Validate(string[]? ids)
     {
         if (ids is null)
-            throw new InvalidDataException("The saved schedule is empty or invalid.");
+            throw new InvalidDataException("The stored session list is empty or invalid.");
         if (ids.Any(string.IsNullOrWhiteSpace))
-            throw new InvalidDataException("The saved schedule contains invalid session IDs.");
+            throw new InvalidDataException("The stored session list contains invalid session IDs.");
         return ids.Distinct(StringComparer.Ordinal).ToArray();
     }
 

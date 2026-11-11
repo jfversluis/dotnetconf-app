@@ -15,6 +15,7 @@ public sealed partial class SpeakerViewModel : ObservableObject
         this.owner = owner;
         ProfilePicture = CreateProfilePicture(model);
         OpenCommand = new AsyncRelayCommand(() => owner.OpenSpeakerAsync(Id));
+        UpdateLinks();
     }
 
     private readonly ConferenceViewModel owner;
@@ -27,6 +28,8 @@ public sealed partial class SpeakerViewModel : ObservableObject
     [ObservableProperty] public partial ImageSource ProfilePicture { get; set; }
     public ObservableCollection<SessionViewModel> Sessions { get; } = [];
     public IAsyncRelayCommand OpenCommand { get; }
+    public IReadOnlyList<ConferenceLinkViewModel> Links { get; private set; } = [];
+    public bool HasLinks => Links.Count > 0;
 
     public void Update(Speaker model)
     {
@@ -36,8 +39,12 @@ public sealed partial class SpeakerViewModel : ObservableObject
         if (Model == model)
             return;
         Model = model;
+        UpdateLinks();
         OnPropertyChanged(string.Empty);
     }
+
+    private void UpdateLinks() =>
+        Links = Model.SocialLinks.Select(link => new ConferenceLinkViewModel(link, owner)).ToArray();
 
     public void UpdateSessions(IEnumerable<SessionViewModel> sessions)
     {

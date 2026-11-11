@@ -11,7 +11,8 @@
     <UseMaui>true</UseMaui>
     <UseMaterial3>true</UseMaterial3>
     <SingleProject>true</SingleProject>
-    <PublishAot>true</PublishAot>
+    <PublishAot>false</PublishAot>
+    <PublishAot Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">true</PublishAot>
     <!-- AI Attributes preview 14 uses the default JSON resolver for its generated schemas and bindings. -->
     <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -25,9 +26,6 @@
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
     <!-- The native Gemini Nano library requires API 26. -->
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">26.0</SupportedOSPlatformVersion>
-    <!-- Temporary source build; replace with the official Essentials.AI release when available. -->
-    <EssentialsAIVersion>11.0.0-local.e616af94</EssentialsAIVersion>
-    <EssentialsAIVersion Condition="$([MSBuild]::IsOSPlatform('linux'))">11.0.0-local.e616af94.linux</EssentialsAIVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(TargetFramework)' == 'net11.0' or '$(TargetFramework)' == 'net11.0-browser'">
     <UseAvalonia>true</UseAvalonia>
@@ -67,6 +65,9 @@
     <MauiImage Include="Resources/Images/*" />
     <MauiFont Include="Resources/Fonts/*" />
     <MauiAsset Include="Resources/Raw/**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+    <!-- The pinned iOS SDK tracks partial plists, but not edits to its primary plist, as incremental inputs. -->
+    <PartialAppManifest Include="Platforms/iOS/Info.plist"
+                        Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" />
     <ProjectReference Include="../DotNetConf.Core/DotNetConf.Core.csproj" />
     <PackageReference Include="Microsoft.Maui.Controls" Version="11.0.0-rc.2.26505.5" />
     <PackageReference Include="Microsoft.Maui.Controls.Maps" Version="11.0.0-rc.2.26505.5" />
@@ -82,7 +83,7 @@
     <PackageReference Include="Syncfusion.Maui.Toolkit" Version="1.0.11" />
     <!-- Draws the schedule planner on every target; Android and iOS embed it in their native UI. -->
     <PackageReference Include="Avalonia.Controls.Maui" Version="11.0.0-rc.2.26287.618" />
-    <PackageReference Include="Microsoft.Maui.Essentials.AI" Version="[$(EssentialsAIVersion)]" GeneratePathProperty="true" />
+    <PackageReference Include="Microsoft.Maui.Essentials.AI" Version="11.0.0-preview.8.26555.2" />
     <PackageReference Include="Microsoft.Maui.AI.Attributes" Version="0.1.0-preview.14.26531.2" />
     <PackageReference Include="Microsoft.Extensions.AI" Version="10.4.1" />
     <PackageReference Include="Plugin.LocalNotification" Version="14.0.0" />
@@ -120,24 +121,5 @@
   <Target Name="RejectDebugDevFlowAssetsInRelease" BeforeTargets="CoreCompile"
           Condition="'$(Configuration)' != 'Debug' and '$(_MauiDevFlowPortFile)' != ''">
     <Error Text="Release cannot use Debug-restored DevFlow assets. Restore for Release before building or publishing." />
-  </Target>
-  <Target Name="VerifyLocalEssentialsPackage" BeforeTargets="ResolveReferences"
-          Condition="'$(DesignTimeBuild)' != 'true'">
-    <PropertyGroup>
-      <_EssentialsFeedPackage>$(MSBuildProjectDirectory)/../../artifacts/essentials-ai-feed/Microsoft.Maui.Essentials.AI.$(EssentialsAIVersion).nupkg</_EssentialsFeedPackage>
-      <_EssentialsCachedPackage>$(PkgMicrosoft_Maui_Essentials_AI)/microsoft.maui.essentials.ai.$(EssentialsAIVersion).nupkg</_EssentialsCachedPackage>
-    </PropertyGroup>
-    <Error Condition="!Exists('$(_EssentialsFeedPackage)')"
-           Text="The local Essentials.AI package is missing. Run bash eng/build-local-essentials-ai.sh before restoring the app." />
-    <Error Condition="'$(PkgMicrosoft_Maui_Essentials_AI)' == '' or !Exists('$(_EssentialsCachedPackage)')"
-           Text="The local Essentials.AI package has not been restored. Restore the app and try again." />
-    <GetFileHash Files="$(_EssentialsFeedPackage)" Algorithm="SHA256">
-      <Output TaskParameter="Items" ItemName="_EssentialsFeedHash" />
-    </GetFileHash>
-    <GetFileHash Files="$(_EssentialsCachedPackage)" Algorithm="SHA256">
-      <Output TaskParameter="Items" ItemName="_EssentialsCachedHash" />
-    </GetFileHash>
-    <Error Condition="'@(_EssentialsFeedHash->'%(FileHash)')' != '@(_EssentialsCachedHash->'%(FileHash)')'"
-           Text="The restored Essentials.AI package differs from the local feed. Restore with a fresh package folder and no stale fallback folders; see CONTRIBUTING.md." />
   </Target>
 </Project>

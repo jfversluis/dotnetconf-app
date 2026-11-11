@@ -1,6 +1,6 @@
 # Contributing to the .NET Conf companion
 
-An **unofficial**, native .NET MAUI app for iOS and Android. The same project also has **experimental Linux desktop and browser targets**, where [Avalonia.Controls.Maui](https://github.com/AvaloniaUI/Avalonia.Controls.Maui) draws the controls. The app provides five Shell tabs, session/speaker details, search and day/topic filters, local-time agenda display, persistent My Schedule bookmarks, overlap warnings, optional [on-device AI planning](docs/AI-PLANNER.md) and session reminders, a community overview, and website links. Native maps and event details are implemented but need an official event source before they can display gatherings.
+A native .NET MAUI app for iOS and Android. The same project also has **experimental Linux desktop and browser targets**, where [Avalonia.Controls.Maui](https://github.com/AvaloniaUI/Avalonia.Controls.Maui) draws the controls. The app provides five Shell tabs, session/speaker details, search and day/topic filters, local-time agenda display, persistent My Schedule bookmarks, overlap warnings, optional [on-device AI planning](docs/AI-PLANNER.md) and session reminders, a community overview, and website links. Native maps and event details are implemented but need an official event source before they can display gatherings.
 
 **Conference sessions and speaker profiles are remote-only**, downloaded from the public Microsoft conference feed and cached for offline use. None ship in the app. A first install needs an internet connection; private organizer enrichment is not used. Public photo URLs come only from that feed, without image-host restrictions. Branding and the Bot placeholder remain local. No community-event examples are bundled; the event list stays empty until an official source is connected. The app is in development and has not been released.
 
@@ -15,6 +15,7 @@ Versions are deliberately pinned:
 | .NET SDK | `11.0.100-rc.3.26522.148` |
 | Mobile workload set | `11.0.100-rc.3.26524.4` |
 | MAUI Controls | `11.0.0-rc.2.26505.5` |
+| Microsoft.Maui.Essentials.AI | `11.0.0-preview.8.26555.2` |
 | DevFlow CLI / agent | `0.1.0-preview.13.26512.5` |
 | Avalonia.Controls.Maui, Desktop, Essentials | `11.0.0-rc.2.26287.618` |
 | Avalonia.Browser | `12.1.4` |
@@ -31,7 +32,6 @@ Install the SDK selected by `global.json`, then:
 ```sh
 dotnet workload install maui-android maui-ios wasm-tools --version 11.0.100-rc.3.26524.4
 dotnet tool restore
-bash eng/build-local-essentials-ai.sh
 dotnet test tests/DotNetConf.Core.Tests
 dotnet test tests/DotNetConf.App.Tests -c Release -p:MobileTargetFramework=net11.0
 ```
@@ -39,36 +39,6 @@ dotnet test tests/DotNetConf.App.Tests -c Release -p:MobileTargetFramework=net11
 On Linux, omit `maui-ios`; the project drops the iOS target there.
 
 iOS builds require a Mac and Xcode 27.1, matching the pinned CI toolchain. The pinned RC3 workload set retains the RC2 iOS 27 bindings. Android requires the workload's Android SDK dependencies, including API 37.0 tooling, and JDK 21. Deployment minimums are iOS 15 and Android API 26. These are different from the build SDK versions. See [MAUI release requirements](https://github.com/dotnet/maui/wiki/Release-Versions).
-
-### Temporary Essentials.AI source package
-
-Until the next official release is published, the app uses an **unofficial,
-locally built** `Microsoft.Maui.Essentials.AI` package from
-[dotnet/maui-labs@e616af94cc1642e782b1deac433eb6a582cdce92](https://github.com/dotnet/maui-labs/tree/e616af94cc1642e782b1deac433eb6a582cdce92).
-The script above fetches that exact, unmodified source and builds it with this
-repository's pinned SDK and workloads. It requires JDK 21 and Android SDK
-platform 36; on macOS it also builds the iOS native framework with Xcode.
-The output is an unsigned local package in `artifacts/essentials-ai-feed`,
-not a published NuGet.org version. Linux builds a separate version containing
-only the portable and Android assets. The source checkout and package are
-ignored by Git. CI builds the full package once and shares it between jobs.
-
-Run the script again after a clean checkout before restoring the app. It
-requires access to GitHub and the upstream project's NuGet and Gradle feeds.
-NuGet can reuse an older package with the same local version from its cache.
-The app build checks that the restored package matches the feed. If it does
-not, choose a new, empty package folder and restore without fallback folders:
-
-```sh
-export NUGET_PACKAGES="$PWD/artifacts/nuget-packages"
-dotnet restore src/DotNetConf.App --configfile NuGet.Config \
-  -p:RestoreFallbackFolders= -p:RestoreAdditionalProjectFallbackFolders=
-```
-
-Use a different path if that folder already exists. This may re-download other
-packages. Keep `NUGET_PACKAGES` set for subsequent builds.
-The local package, feed mapping, build script, and CI packaging job are
-temporary and should be removed when switching to the official release.
 
 The iOS head uses the scene lifecycle: `Info.plist` registers the single-window `SceneDelegate`, which inherits `MauiUISceneDelegate`. MAUI owns window creation through `App.CreateWindow`; `AppDelegate` only builds the app. Window sizing and safe areas use MAUI and platform controls, not fixed offsets.
 
@@ -86,9 +56,10 @@ measured text-scale unit, without hiding mode controls, time-zone information,
 or update errors. Below 340 units of available timeline-label width, the saved
 count/status and day/date labels stack instead of clipping. These policies
 re-evaluate on resize and text-size changes. The same text-scale monitor drives the embedded planner
-immediately, capped at its existing 1.6 layout scale rather than polling
-platform font settings. Short saved agendas align to the top of the timeline
-viewport rather than leaving a centered blank strip above the first day.
+immediately rather than polling platform font settings. At large text sizes, the
+timeline keeps a readable minimum content width and scrolls horizontally; its
+overview rail remains outside the scrollable content. Short saved agendas align
+to the top of the timeline viewport rather than leaving a centered blank strip.
 
 My Schedule reuses adaptive native detail navigation. A usable vertical
 division places the timeline or saved list on the left and session/speaker
@@ -300,7 +271,7 @@ safety measures, not foldable compatibility code.
 
 Run the Core and App tests from [Prerequisites](#prerequisites), then the
 relevant platform builds from [Run](#run) and Release publishes from
-[NativeAOT builds](#nativeaot-builds). Run builds/tests serially because targets
+[Release runtimes](#release-runtimes). Run builds/tests serially because targets
 share restore assets. A Release publish must restore Release dependencies;
 do not reuse Debug assets with `--no-restore`.
 
@@ -318,7 +289,7 @@ evidence outside the repository and identify the exact installed build.
 | Focused search during fold/rotation; show/dismiss keyboard; rapid blur/refocus and navigate before chrome restoration completes | Query, filters, and selection survive. Matching and empty results plus error/Retry remain usable above the keyboard. Android Back dismisses/unfocuses search, orphan keyboards do not cover the reopened screen, and all five tabs return when intended. Verify tabs are clickable, not merely present in the tree. |
 | Keyboard absent, zero-height iOS rotation notification, real keyboard visible, and a newer keyboard event during a pending refresh | Pane/list/detail scroll surfaces reach their intended bottom content edge without a blank strip, double inset, or keyboard overlap. Scroll to the true final item/link and visually verify it above native chrome; a correct outer Grid bound alone is not rendering proof. |
 | Ordinary phones, older iOS, wide tablet/desktop/browser windows, dark/light/system appearance, large and maximum accessibility text | Preserve compact native navigation on short/narrow windows and readable split/stacked panes when they fit. Preserve text-driven fallback, font scaling, selection semantics, and honest feed/cache error states. A hardware keyboard should not unnecessarily trigger software-keyboard chrome suppression. Check screen-reader focus and ensure inactive compact/full results are not announced twice. |
-| Clean Android and iOS Release NativeAOT artifacts and device execution | No duplicate Objective-C registrations, stale backport assembly, unguarded newer UIKit selector, DevFlow metadata/agent, or development-only logging. An unsigned iOS device publish is compile-only evidence, not physical-device execution. Rebuild and inspect the generated `Info.plist` if scene configuration changes. |
+| Clean Android CoreCLR and iOS NativeAOT Release artifacts and device execution | No duplicate Objective-C registrations, stale backport assembly, unguarded newer UIKit selector, DevFlow metadata/agent, or development-only logging. An unsigned iOS device publish is compile-only evidence, not physical-device execution. Rebuild and inspect the generated `Info.plist` if scene configuration changes. |
 
 The existing evidence is simulator/emulator evidence: Duo reported 40-point
 active regions and zero gap fully open; the Android emulator did not deliver
@@ -354,7 +325,7 @@ dotnet build src/DotNetConf.App -f net11.0
 dotnet build src/DotNetConf.App.Browser
 ```
 
-The app uses source-generated XAML with compiled bindings and Debug-only incremental XAML Hot Reload. Runtime selection is left to the SDK, with `PublishAot=true` in the project and no configuration-specific overrides. MAUI 11 RC2's Android Material 3 controls are explicitly enabled with `UseMaterial3=true`; scoped search and picker customizations use `EntryHandler2` and `PickerHandler2`, while iOS keeps its existing handlers. The pinned MAUI Controls package is updated with the workload. `dotnet watch --project src/DotNetConf.App -f net11.0-ios` uses the Debug-only no-linking setting; release linking is not disabled.
+The app uses source-generated XAML with compiled bindings and Debug-only incremental XAML Hot Reload. Android leaves `PublishAot=false` and uses the pinned SDK's standard CoreCLR runtime; iOS retains `PublishAot=true`. MAUI 11 RC2's Android Material 3 controls are explicitly enabled with `UseMaterial3=true`; scoped search and picker customizations use `EntryHandler2` and `PickerHandler2`, while iOS keeps its existing handlers. The pinned MAUI Controls package is updated with the workload. `dotnet watch --project src/DotNetConf.App -f net11.0-ios` uses the Debug-only no-linking setting; release linking is not disabled.
 
 If incremental XAML generation retains stale resource styles or reports `Style.Setters` as read-only after a style edit, use a targeted `dotnet clean src/DotNetConf.App -f net11.0-android -p:RuntimeIdentifier=android-arm64` (or the corresponding iOS target/RID), followed by the normal build. Do not disable incremental Hot Reload or edit generated sources to work around preview-tooling state.
 
@@ -373,14 +344,14 @@ results above the keyboard itself. Older iOS toolbars keep their reserved space.
 Recheck portrait/landscape search, keyboard dismissal, and split panes when
 upgrading MAUI's keyboard accessory implementation.
 
-### NativeAOT builds
+### Release runtimes
 
-The app enables `PublishAot=true` by default for both mobile targets, without
-conditioning it on configuration. `DotNetConf.Core` declares
+Android ships with CoreCLR, not experimental Android NativeAOT. iOS keeps
+`PublishAot=true`, without conditioning it on configuration. `DotNetConf.Core` declares
 `IsAotCompatible=true` to run its trimming and AOT analyzers independently;
 the unit-test project does not need that property.
 
-Use a Release publish to exercise native compilation and full trimming:
+Use a Release publish to exercise the actual shipping runtime and linking:
 
 ```sh
 dotnet publish src/DotNetConf.App -c Release -f net11.0-android \
@@ -400,8 +371,8 @@ It uses the local debug signing key unless release signing is configured.
 Android Release explicitly uses R8 to optimize and shrink Java bytecode and
 obfuscate private and package-private members, following the
 [MAUI Google Play guidance](https://learn.microsoft.com/dotnet/maui/android/deployment/publish-google-play#google-play-code-optimization-requirements).
-The pinned .NET 11 workload already selects these settings for the app's
-NativeAOT Release build; managed .NET assemblies are not obfuscated by R8.
+The project explicitly keeps these settings for its CoreCLR Release build;
+managed .NET assemblies are not obfuscated by R8.
 The signed AAB embeds the R8 mapping, and `mapping.txt` is also written next to
 the published artifacts for decoding Java stack traces.
 
@@ -415,17 +386,64 @@ substitute for a NativeAOT device publish. For compile-only validation without
 signing, add `-p:EnableCodeSigning=false -p:BuildIpa=false` to the device publish.
 That produces native device code but does not verify execution on a physical iPhone.
 
-The pinned Android workload requests NativeAOT runtime
-`11.0.0-rc.2.26504.105`, which is available on NuGet.org. `NuGet.Config` uses
-NuGet.org for all packages, including `Microsoft.NETCore.App.Runtime.NativeAOT.android-*`.
-Android NativeAOT is experimental in this workload (`XA1040`) and is not yet
-suitable for production use. Do not suppress compatibility warnings. A Debug
-build is not a substitute for a Release NativeAOT publish and runtime verification.
+Android NativeAOT remains an explicit local experiment (`-p:PublishAot=true`),
+not the shipping default. It is experimental in this workload (`XA1040`) and
+is not yet suitable for production use. Do not suppress compatibility warnings.
+A Debug build is not a substitute for a Release publish and runtime verification.
 The pinned Syncfusion toolkit also reports an iOS `IL2070` trim warning
 (`IL2104` in the default summary) in `SfHorizontalContent`'s reflective tap
 handling. Use `-p:TrimmerSingleWarn=false` to inspect it. Do not suppress the
 warning or treat a successful cross-publish as proof that vendor controls are
 trim-safe at runtime.
+
+### Native in-process regression tests
+
+`tests/DotNetConf.DeviceTests` uses the SDK's iOS/Android test-template runner
+and MSTest inside a separate MAUI test app (`dev.jfversluis.dotnetconf.devicetests`).
+It links the actual safe-content control/handler, route
+builder, and Back-label policy into that host. It never initializes the production
+app, downloads an agenda, reads its preferences, or writes its saved schedule.
+
+Run one native target at a time on an explicitly selected, dedicated device:
+
+```sh
+cd tests/DotNetConf.DeviceTests
+dotnet test -f net11.0-ios -r iossimulator-arm64 \
+  -p:MobileTargetFramework=net11.0-ios --device YOUR_SIMULATOR_UDID
+dotnet test -f net11.0-android \
+  -p:MobileTargetFramework=net11.0-android --device YOUR_DEDICATED_AVD_NAME
+```
+
+The nested `global.json` opts only this host into Microsoft.Testing.Platform;
+its SDK/workload pins must match the repository root. The ordinary xUnit suites
+keep their VSTest runner. CI checks the pins and compiles the native host.
+Tests assert owning-page safe content, template parameter delivery, and
+Back-stack/label behavior. They do not
+replace end-to-end screenshots, native pointer interaction, physical folding,
+or signed Release execution. Run the ordinary Core and App tests as well.
+
+The pinned iOS SDK omits the primary plist's contents from incremental manifest
+inputs. The app also registers that same file as a tracked `PartialAppManifest`
+so URL-scheme and scene edits reach the generated bundle without a manual clean.
+After changing platform metadata, inspect the generated `Info.plist`; compilation
+alone is not proof that iOS registered a scheme.
+
+Session shortcuts reuse `SessionViewModel`'s existing commands. The pinned RC2
+gesture API is `MinimumPressDuration` (milliseconds); do not copy newer documentation's
+property names without checking the pinned assembly. The native heart and
+long-press menu retain gesture-free/accessible actions; Avalonia also keeps a
+visible More button without a native swipe handler. A right swipe executes only
+on release past 60% of row width. The caption and reduced-motion-aware pulse
+use that same threshold, and reversal disarms the action. A left swipe reveals
+More and watched-status tiles without executing them automatically.
+
+Session URI intake and notification taps share `SessionLinkService`. Only
+validated IDs in the downloaded agenda can open. `session/{sessionId}` is an
+additive absolute route template rooted at `//sessions`; existing relative
+detail routes and adaptive navigation remain unchanged. Check cold start,
+resume, first-run setup, unavailable IDs, and Back on both compact and wide windows.
+Do not claim ownership of Microsoft's domain or configure universal/app links
+without a developer-controlled HTTPS association.
 
 ## Linux desktop and browser (experimental)
 
@@ -590,7 +608,7 @@ Session timestamps retain their absolute instants. The Microsoft adapter interpr
 
 Session and speaker IDs are the published Microsoft feed IDs, unchanged. There are no numeric-ID conversions, alias tables or cross-source identity matching. Bookmarks identify sessions independently of mutable display fields, and unknown bookmarks remain untouched when agenda details are unavailable.
 
-`Resources/Raw/conference.json` holds only app-owned presentation metadata, never conference sessions, speaker profiles, community events or photo mappings. Both mock flags are false. `agendaNotice` explains the Microsoft source, first-download requirement and lack of an official community-event feed in About. `ConferenceMetadataDataSource` loads this metadata through `IConferenceDataSource`; the repository rejects metadata containing an agenda or event examples. Fictional agenda/community fixtures live only in `tests/DotNetConf.Core.Tests/Fixtures/conference.mock.json`, preserving search, overlap, topic, timezone and map-contract edge cases without shipping fictional content.
+`Resources/Raw/conference.json` holds only app-owned presentation metadata, including the published event start and end dates, never conference sessions, speaker profiles, community events or photo mappings. Both mock flags are false. `agendaNotice` explains the Microsoft source, first-download requirement and lack of an official community-event feed in About. `ConferenceMetadataDataSource` loads this metadata through `IConferenceDataSource`; the repository rejects metadata containing an agenda or event examples. Fictional agenda/community fixtures live only in `tests/DotNetConf.Core.Tests/Fixtures/conference.mock.json`, preserving search, overlap, topic, timezone and map-contract edge cases without shipping fictional content.
 
 Multiple speakers and overlapping sessions are supported. Bookmarks are stored by stable ID in private app storage, independently of the agenda. Invalid data or storage failures are shown rather than silently discarded; corrupt bookmark files are never overwritten.
 
@@ -614,10 +632,11 @@ DI-created native page sharing `ConferenceViewModel`. Choices apply immediately;
 native back and Show N sessions keep them. Native CheckBoxes bind to typed topic
 view models, and whole-row taps toggle the same state. Core search matches any
 selected topic, then intersects the selected local day and search terms. The
-same topics apply to every day tab and All days. Clear (also available beside the
-main summary) removes all topics but preserves search and day. The main toolbar
+same topics apply to every day tab and All days. Video available and Hide watched
+compose with topics, search, and day. Clear (also available beside the
+main summary) removes topic and video/watched filters but preserves search and day. The main toolbar
 binds MAUI 11 `BadgeText`, `BadgeColor`, and `BadgeTextColor`. The count is the
-number of selected topics, not days, matching sessions or query terms; zero maps
+number of selected topics plus active video/watched filters, not days, matching sessions or query terms; zero maps
 to null. The page recreates the empty filter toolbar entry using shared MAUI
 collection APIs to prevent iOS retaining a stale native badge; do not map
 zero to an empty string, which means an indicator badge. iOS renders toolbar badges
@@ -632,9 +651,13 @@ older iOS.
 
 The Microsoft adapter preserves source session/speaker IDs. Its day numbers and clock times are interpreted against the explicit start-date metadata in America/Los_Angeles. The adapter rejects invalid references and filters explicit placeholders; incomplete biographies and abstracts retain useful cached source data. Avatar URLs are passed through to the UI without rewriting or profile fallback.
 
-Agenda cache schema 9 stores only the validated Microsoft agenda, its withdrawn records and remote provenance, with a migration from schema 8. The cache envelope rejects unsupported schemas and unrecognized fields; there is no multi-source import or session-ID translation. Rejected caches show a visible issue and an empty download state until a valid Microsoft response replaces them. Bookmarks remain untouched. Bundled metadata cannot contain sessions, profiles or community events. An agenda that has never downloaded is genuinely empty. The repository's cached startup makes no HTTP requests and reads bundled event metadata once; visible portraits load independently through framework image services. Start-date metadata changes rebase Microsoft's published clock times. Invalid metadata corrections preserve the last-good cache with a visible issue. Cache persistence failures surface a storage issue without changing bookmarks.
+Agenda cache schema 10 stores only the validated Microsoft agenda, its withdrawn records and remote provenance, including published recording, resource, and speaker links. Schemas 8 and 9 migrate without losing the offline agenda; the next successful refresh reparses the feed once, even if its payload hash has not changed, to discover previously omitted links. The cache envelope rejects unsupported schemas and unrecognized fields; there is no multi-source import or session-ID translation. Rejected caches show a visible issue and an empty download state until a valid Microsoft response replaces them. Bookmarks remain untouched. Bundled metadata cannot contain sessions, profiles or community events. An agenda that has never downloaded is genuinely empty. The repository's cached startup makes no HTTP requests and reads bundled event metadata once; visible portraits load independently through framework image services. Start-date metadata changes rebase Microsoft's published clock times. Invalid metadata corrections preserve the last-good cache with a visible issue. Cache persistence failures surface a storage issue without changing bookmarks.
 
-Agenda/profile data is read-only cached reference data. Bookmarks and appearance remain separate local user state and are never uploaded. Public conference data needs no secret or database encryption; if sensitive data is added later, encrypt it and protect keys with `SecureStorage`. Never embed organizer/GitHub credentials.
+The adapter accepts optional `youtubeLink` video URLs and plain/Markdown `sessionLinks`, `primarySocials`, and `additionalSocials` as strings or string arrays where applicable. Empty fields and explicit unpublished placeholders do not create controls. Links require absolute HTTPS destinations without credentials; session videos additionally require a supported YouTube video URL. Invalid values reject the update with the existing visible validation error, preserving last-good data. A successful response removes links no longer published; only biography/abstract prose has cached fallback. Video changes reconcile existing detail ViewModels, list indicators, and the in-app video filter without an app update or restart. Session sharing is available in the native detail toolbar and the inline detail pane, using neutral public session details without broadcast times. Mobile uses the native share sheet; experimental desktop/browser targets use Avalonia's clipboard instead.
+
+Watched status requires an explicit action and is independent of saved sessions. `WatchedSessionService` reuses the atomic session-ID store with a separate `watched.json` on native/desktop and the `dotnetconf.watched.` local-storage prefix in the browser. IDs survive agenda and video changes; a previously marked session can be unmarked even if its video link disappears. Read failures disable marking and enabling Hide watched without blocking browsing; Retry rereads local state even offline. Write or presentation failures are visible, and the saved schedule is never altered.
+
+Agenda/profile data is read-only cached reference data. Bookmarks, watched status, and appearance remain separate local user state and are never uploaded. Public conference data needs no secret or database encryption; if sensitive data is added later, encrypt it and protect keys with `SecureStorage`. Never embed organizer/GitHub credentials.
 
 Cache writes use temporary files and atomic replacement. Valid remote data remains browsable in memory if persistence fails, with a visible storage warning; the preceding file is not replaced. Bad JSON, empty feeds, duplicate IDs, broken references and invalid dates cannot replace the last-good data, hash, validators or check/update timestamps. A drop of more than 25% requires two identical complete validated responses; the pending confirmation survives restart, preventing both transient truncation and indefinite rejection of legitimate changes. Exactly 25% removal is accepted immediately. A first download has no packaged count baseline. Removals are archived separately, so saved withdrawn sessions remain understandable without keeping their profiles in the current directory or deleting bookmarks. A corrupt bookmark file disables saving with a visible error but does not block agenda browsing or overwrite that file. Retry rereads unavailable local schedule data even offline and reconciles existing session save flags after recovery.
 
@@ -650,13 +673,24 @@ Agenda cache files live in MAUI `FileSystem.AppDataDirectory`. Portrait caching 
 
 BCL `System.Text.Json` source generation and atomic files provide persistence without a native database. All serialization supplies generated type metadata; keep the Core AOT/trim analyzers enabled.
 
-Reminders, local AI, and Avalonia-owned video integration remain deferred. PR build validation and manual Google Play internal-testing/TestFlight release lanes are described in [CI and release setup](docs/CI.md); production promotion remains manual and store credentials must be configured by the owner.
+Embedded partner video integration remains deferred. PR build validation and manual Google Play internal-testing/TestFlight release lanes are described in [CI and release setup](docs/CI.md); production promotion remains manual and store credentials must be configured by the owner.
 
 App-owned icons use [IconFont.Maui.FluentIcons](https://github.com/jfversluis/IconFont.Maui.FluentIcons). Website-matched Space Grotesk headings and Open Sans body fonts, gradients, Entry-based search, and heart save actions are documented in `DESIGN.md`. Adaptive pane grids protect the top and side container insets and draw through the bottom container inset, with keyboard avoidance applied as described above. On iOS, reading ScrollViews use native automatic insets and CollectionViews use an inset-aware footer so their last item remains reachable beneath the system tab material without fixed offsets. The speaker-detail root also respects the top container safe area so its header does not begin under the Duo's navigation chrome; its bottom remains edge-to-edge.
 
 Launcher and light/dark splash screens use the website's two-robots-on-a-rocket graphic, with redistribution permission confirmed by the project owner. Android's themed launcher uses a matching monochrome silhouette. Artwork provenance and font licenses/notices are bundled under `Resources/Raw`; the artwork permission is not a general open-source license. The app follows the system theme and preserves native navigation. Its Android package name and iOS bundle ID are both `dev.jfversluis.dotnetconf`.
 
 iOS caches launch-screen snapshots across same-version reinstalls. Increment `ApplicationVersion` when changing splash artwork; rebuilding or restarting the simulator alone may still show a cached image. Install the new build rather than deleting the app and its saved schedule.
+
+## Full-width heroes and Duo content
+
+Home, Community, and planner hero/body content use `DuoSafeAreaContent` to reserve
+only the overlap with the owning page's horizontal UIKit safe area on iPhone Duo
+(`iPhone19,4`). Decorative backgrounds remain full-width; other device types
+retain their existing safe-area behavior. Source-session closed and open Duo
+screenshots and native bounds confirmed side-control clearance, and an ordinary
+iPhone retained zero additional padding. Recheck content geometry and actual
+rendering after changing these wrappers or upgrading MAUI. Physical-device
+clearance remains a release gate.
 
 ## Community maps
 

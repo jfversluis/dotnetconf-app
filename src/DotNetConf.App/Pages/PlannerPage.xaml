@@ -19,7 +19,7 @@
                 </OnPlatform>
             </Grid.SafeAreaEdges>
             <Button Text="View My Schedule" Margin="24,8,24,16" LineBreakMode="WordWrap"
-                    Clicked="ViewScheduleClicked" AutomationId="planner-view-schedule" />
+                    IsEnabled="{Binding CanEdit}" Clicked="ViewScheduleClicked" AutomationId="planner-view-schedule" />
         </Grid>
     </Grid>
 </ContentPage>

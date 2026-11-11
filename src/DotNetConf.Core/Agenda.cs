@@ -257,4 +257,7 @@ public static class Agenda
 
     public static bool Overlaps(Session first, Session second) =>
         first.Id != second.Id && first.StartsAt < second.EndsAt && second.StartsAt < first.EndsAt;
+
+    public static bool IsInProgress(Session session, DateTimeOffset instant) =>
+        session.StartsAt <= instant && instant < session.EndsAt;
 }

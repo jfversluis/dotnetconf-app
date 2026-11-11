@@ -72,11 +72,55 @@ public partial class PlannerView : ContentView
         StatusScrollHint.IsVisible = StatusLabel.Height > StatusScroll.MaximumHeightRequest + 1;
     }
 
-    private async void ReviewShortlistClicked(object? sender, EventArgs args) =>
+    private async void ReviewShortlistClicked(object? sender, EventArgs args)
+    {
         await PlannerScroll.ScrollToAsync(ShortlistHeading, ScrollToPosition.Start, false);
+        ShortlistHeading.SetSemanticFocus();
+    }
 
-    private async void ShowModelSetupClicked(object? sender, EventArgs args) =>
+    private async void ShowModelSetupClicked(object? sender, EventArgs args)
+    {
         await PlannerScroll.ScrollToAsync(ModelSetup, ScrollToPosition.Start, false);
+        ModelSetupHeadingLabel.SetSemanticFocus();
+    }
 
-    private void GenerateClicked(object? sender, EventArgs args) => RequestEditor.Unfocus();
+    private async void ExploreClicked(object? sender, EventArgs args)
+    {
+        if (viewModel is null || !await ConfirmReplacingPreviewAsync())
+            return;
+        await viewModel.ExploreCommand.ExecuteAsync(null);
+    }
+
+    private async void UseAiClicked(object? sender, EventArgs args)
+    {
+        if (viewModel is null || !await ConfirmReplacingPreviewAsync())
+            return;
+        viewModel.UseAiModeCommand.Execute(null);
+    }
+
+    private async Task<bool> ConfirmReplacingPreviewAsync()
+    {
+        if (viewModel is null || !viewModel.HasProposal || viewModel.SelectedCount == 0)
+            return true;
+        var page = Navigation.ModalStack.LastOrDefault() ?? Shell.Current?.CurrentPage;
+        if (page is null)
+            return false;
+        return await page.DisplayAlertAsync("Replace these suggestions?",
+            "Your checked suggestions haven't been added to My Schedule. Add them first, or replace this preview.",
+            "Replace suggestions", "Keep choosing");
+    }
+
+    private void ToggleDescriptionClicked(object? sender, EventArgs args)
+    {
+        if (sender is Button { BindingContext: ProposedSessionViewModel session })
+            session.ShowDescription = !session.ShowDescription;
+    }
+
+    private async void GenerateClicked(object? sender, EventArgs args)
+    {
+        if (viewModel is null || !await ConfirmReplacingPreviewAsync())
+            return;
+        RequestEditor.Unfocus();
+        await viewModel.GenerateCommand.ExecuteAsync(null);
+    }
 }

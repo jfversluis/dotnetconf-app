@@ -12,17 +12,37 @@ The app defaults to system appearance; Settings offers a persisted System/Light/
 
 ## Typography and layout
 
-Use the website's actual fonts: bundled SIL-OFL Space Grotesk Bold for display/heading roles and Apache-licensed Open Sans Regular/Semibold for body, controls, and session titles. Roles in `Styles.xaml`: body 16, section heading 21, heading 28; Home display 44. All text scales. Compact metadata uses 12-14. Page padding is 24; reading pages have a 720-unit maximum content width. Sections use generous space and separators rather than card grids.
+Use the website's actual fonts: bundled SIL-OFL Space Grotesk Bold for display/heading roles and Apache-licensed Open Sans Regular/Semibold for body, controls, and session titles. Roles in `Styles.xaml`: body 16, section heading 21, heading 28; Home display 40. All text scales. Compact metadata uses 12-14. Page padding is 24; reading pages have a 720-unit maximum content width. Sections use generous space and separators rather than card grids.
 
 Session and speaker lists use full-width virtualized CollectionView, with 24-unit gutters inside headers and item templates rather than margins on the scroll viewport. Native scroll indicators therefore sit at the screen edge without moving the content or overriding platform indicator insets. Heading, search, day tabs, and the topic summary remain outside the result list when space permits. In short windows, stacked panes, or at larger text sizes with constrained heights, the decorative heading gives way to the list and the session day/topic controls move into its collection header; metadata always scrolls with the sessions. Search stays pinned outside the virtualized collection so it remains focused while results change. Entire session/speaker content regions are native accessible navigation buttons with descriptive semantics; there are no separate Details buttons. Session titles have no floating chevron competing with the heart or narrowing wrapped titles; the compact speaker directory retains its trailing chevron. Session hearts occupy a separate, non-overlapping 48-unit target. Outline means not saved; filled means saved. Spoken descriptions include state and action; persistence commits before the icon changes.
 
 In a master/detail layout, the selected list row uses an inset, rounded themed surface with a slim leading marker. Its content stays aligned to the 24-unit header gutter, and its navigation button announces the selected state. Compact and embedded detail lists do not show this selection treatment.
 
+Native session swipe actions use custom `SwipeItemView` tiles: each revealed
+action occupies 96 units with a vertically centered, rounded action on the selected-surface
+token, a 22-unit Fluent glyph, and a short font-scaled caption. The accent
+stays inside the action rather than filling the row height. More actions,
+long press, and the detail page retain the same watched-state command.
+Swipe right executes Save/Remove when the full-swipe threshold is crossed and
+released. Its purple underlay spans the row width and fills the uncovered area.
+A white Fluent heart and font-scaled caption explain "Swipe to save/remove",
+then "Release to save/remove" at 60% of the row width, the explicit native
+execution threshold. Crossing that threshold gives a short heart-scale pulse
+and a supported-device haptic tick; reversing disarms it. The pulse respects
+the shared platform Reduce Motion check. A short swipe cannot execute it.
+Swipe left reveals More and the watched toggle. More opens the existing
+save/watched/share menu. Native rows keep only the heart visible,
+giving titles more room. Linux and browser rows retain their visible More
+button because they do not use native swipe handlers.
+The moving foreground is opaque so the action is uncovered only as the row
+slides away, never visible through its text or controls. Its background matches
+the selected surface only in lists that display that selection treatment.
+
 Successful heart actions show a short Community Toolkit Toast ("Added to My Schedule" / "Removed from My Schedule") after persistence and schedule refresh. Confirmations do not occupy inline space or shift the agenda. The heart and count remain the persistent, accessible state indicators. Blocking operation errors use explicitly dismissed native dialogs. Successful background agenda updates are invisible: no success card, timestamp, or progress panel. Home and the agenda, speaker and saved-session lists support native pull-to-refresh without refresh toolbar items. Only user-requested updates show the native refresh indicator. Offline/update/storage failures use a compact, unboxed inline message with a 48-unit Retry action. The existing agenda stays usable, including while refreshing. No community-event examples are bundled.
 
 `AgendaSearchField` wraps a real Entry in a neutral outlined surface, with magnifier, live query binding, a 48-unit clear action, and a themed focus outline. Toolkit `UserStoppedTypingBehavior` applies the latest query after 300 ms of inactivity, including empty queries, with automatic keyboard dismissal disabled. Clear applies immediately and keeps focus; the Search keyboard action applies immediately then dismisses it. Filtered results reconcile observable collections by stable identity without clearing them; identical results cause no update. Existing session/speaker ViewModels and open details receive remote edits in place. Only the `SearchEntry` subclass has its native border removed through MAUI's handler customization. Android uses `EntryHandler2`: its Material wrapper outline, floating hint, padding, and background are disabled, and the inner native edit field owns the placeholder and its themed color. Android search accessibility uses that placeholder rather than `SemanticProperties.Description`, preserving TalkBack editing actions; iOS retains its descriptive label and existing border customization.
 
-When a focused landscape search would leave less than 120 units for results, a compact, headerless result list and a shorter error/Retry indicator take priority over navigation chrome and decorative headings. On Android, short landscape windows prepare this layout and hide both navigation and tab bars before the software keyboard opens, avoiding a transient loss of focus; their prior visibility is restored after search. Android Back dismisses the keyboard and restores the normal layout. The Android search field requests an inline keyboard while retaining its Search action, although individual keyboards may ignore that request. Session rows show the title and time; search, saving, selection, and honest empty states remain available. Day/topic controls return when search loses focus, while their selections stay applied. A reported hardware keyboard that leaves enough result space retains the normal layout.
+When a focused landscape search would leave less than 120 units for results, a compact, headerless result list and a short error with Details and Retry take priority over navigation chrome and decorative headings. On Android, short landscape windows prepare this layout and hide both navigation and tab bars before the software keyboard opens, avoiding a transient loss of focus; their prior visibility is restored after search. Android Back dismisses the keyboard and restores the normal layout. The Android search field requests an inline keyboard while retaining its Search action, although individual keyboards may ignore that request. Session rows show the title and time; search, saving, selection, and honest empty states remain available. Day/topic controls return when search loses focus, while their selections stay applied. A reported hardware keyboard that leaves enough result space retains the normal layout.
 
 Day navigation uses the MIT-licensed Syncfusion Toolkit `SfTabView`: All days followed by device-local dates, with equal-width `SfTabItem` headers when they fit and scrolling headers when they do not. Each header has two centered lines (weekday / month and date, or All / days), Open Sans Semibold, and a purple/lavender underline. Bar height follows MAUI's measured, font-scaled label height rather than clipping larger text. Tabs combine with the topic filter and remain available except during the constrained compact search described above. Native detail/back navigation preserves the chosen local date.
 
@@ -30,23 +50,43 @@ Sessions' native Fluent filter toolbar item opens a pushed Filters page, outside
 the result list. Topic choices are full-width, multi-select rows with native
 checkboxes and a subtle selected surface. Sessions matching any chosen topic
 appear on every day, including All days; day selection lives only in the tabs.
-No topic selection means all topics. Changes apply immediately,
+No topic selection means all topics. Video available and Hide watched combine
+with topics and other search criteria. Changes apply immediately,
 and Show N sessions returns to the same Sessions page. Native back keeps the
-chosen filters too. Clear removes all topic choices without changing the selected
+chosen filters too. Clear removes topic, video, and watched filters without changing the selected
 day or search. A small, borderless Clear action beside the persistent compact
 summary beneath the day tabs exposes a one-tap reset without reopening Filters.
 The summary exposes current
 choices without repeating a picker in the scrolling agenda.
 
 The toolbar uses MAUI 11's native `ToolbarItem.BadgeText`, counting selected
-topics, not days, search terms, or results. Zero hides the badge. Its semantic
+topics and active video/watched filters, not days, search terms, or results. Zero hides the badge. Its semantic
 hint identifies the filter action; the visible summary is also available on
 pre-iOS-26 devices where native toolbar badges are unsupported. Badge colors
 use purple/white in light appearance and lavender/midnight in dark appearance.
 
 On iOS, pages use `SafeAreaEdges=None` and scrolling reading pages retain `ScrollView.SafeAreaEdges=Default` (native automatic content insets). Agenda screens consume horizontal container edges once at their root layout (`Container,None,Container,None`), keeping notices and content clear of the Duo's trailing native tab chrome without hard-coded widths or changing vertical scrolling. The adaptive pane grids protect their top and side container insets and draw through the bottom container inset. On iOS their bottom edge requests `SoftInput` so the panes resize above the keyboard. Shell's tab background is transparent so the platform-owned material can show scrolling content beneath it. The pinned MAUI iOS CollectionView explicitly disables automatic content insets in `ItemsViewController2.ViewDidLoad`; `SafeAreaFooter` therefore uses the public MAUI page `SafeAreaInsets.Bottom`, observing inset changes, to keep the last item reachable. There is no bottom viewport margin, fixed tab-bar padding, negative margin, or custom renderer. Android pages use `SafeAreaEdges=SoftInput` and resize input mode for keyboard avoidance; the adaptive pane grids use `None` at the bottom to avoid applying that keyboard inset a second time. When compact search hides Shell chrome, the panes add only any remaining measured IME overlap and clear it when search ends. Android retains an opaque native tab surface and a zero-height collection footer. System gesture protection is retained where controls meet the screen edge, not as a blank inset around every page.
 
-My Schedule keeps the heading, view switch and timezone in a content-sized header. Topic filters have a 16-unit top inset inside the planner gradient. Native Shell owns safe areas; the embedded Avalonia host does not apply window insets again. The timeline fills its viewport, with 16 units of scroll-content padding plus the iOS page's bottom inset. Android's opaque tab bar needs no extra inset. Native-bar clearance stays in device points when text is scaled.
+Home, session rows and details show a red dot and a text Live indicator during a
+published session's time slot, never as proof of stream availability. The
+indicator shares a row with the schedule heading or session date/time rather
+than adding a dedicated row. The dot has
+a static soft glow, with no blinking or continuous animation. A shared foreground
+clock refreshes the state every 30 seconds and immediately on activation; it stops
+in the background. The schedule timeline uses the same semantic live colors.
+
+My Schedule keeps the heading, view switch and timezone in a content-sized header. In short windows or at large text sizes, the timezone uses a concise local-zone label, the discovery action moves to the native toolbar, and errors use the compact Details/Retry treatment, leaving more room for the timeline; full descriptions remain accessible. Topic filters have a 16-unit top inset inside the planner gradient. Day headings scroll away instead of pinning when the unobscured timeline cannot also fit a readable session card. Native Shell owns safe areas; the embedded Avalonia host does not apply window insets again. The timeline fills its viewport, with 16 units of scroll-content padding plus the iOS page's bottom inset. Android's opaque tab bar needs no extra inset. Native-bar clearance stays in device points when text is scaled.
+
+Home, Community, and the planner keep hero backgrounds full-width while their
+inner text and body content retain a bounded reading width. Horizontal safe
+insets belong to the content, not the decorative background. Onboarding already
+uses this full-width-background composition.
+On iPhone Duo only, `DuoSafeAreaContent` intersects the content's native frame
+with its owning page's UIKit safe-area layout frame. This keeps readable content
+clear of either side's system controls, updates during layout and posture changes,
+and does not add padding when the page has already inset the content. The
+background stays edge-to-edge. Other iPhones, Android foldables, and desktop
+targets retain their existing safe-area policies.
 
 ## Icons and navigation
 
@@ -56,11 +96,15 @@ Five Shell destinations: Home, Sessions, Speakers, My Schedule, Community. Andro
 
 ## Content and states
 
-Home's Ask launcher appears only for a ready, tool-capable on-device model,
-replacing Explore sessions; without that capability, Explore sessions remains.
+Home shows a prominent Ask launcher for a ready, tool-capable on-device model,
+or Browse sessions in its place when Ask is unavailable. The Sessions tab
+remains available in either case.
 It expands the existing Syncfusion Toolkit bottom sheet, not a chat transcript.
 A native editor retains text selection and accessibility; a decorative
 purple-magenta GraphicsView halo is static at rest and under reduced motion.
+The content determines the composer's height; its proportional decorative
+background does not participate in measurement. Multiline requests and scaled
+text grow the content naturally, within the editor's scrolling height limit.
 The composer reserves a footer inside the halo for its on-device caption and
 a compact 36-unit purple/lavender send disc inside a 48-unit touch target,
 with a 20-unit up-arrow glyph. While working, that same action becomes
@@ -89,20 +133,24 @@ Debug builds; retained Debug-only diagnostics contain no argument values.
 First-run onboarding is a separate full-screen modal carousel without a
 navigation bar: welcome, personal schedule introduction, and optional session
 reminders. Space Grotesk headings, typed Fluent icons and short explanatory
-copy focus each step on one task. Swipe and persistent Next/Back controls move
-between steps; Skip setup sits alongside each hero icon.
-The middle step mounts the shared discovery view immediately and checks local-model
-readiness before showing either discovery path. A ready model opens the AI editor,
-without mix/shuffle controls. Otherwise it offers up to six compatible, varied random
-sessions from the downloaded agenda, without AI controls. A failed readiness retry
-preserves the reviewed random preview; a successful retry switches to AI only.
+copy focus each step on one task. Next moves from welcome to session planning;
+Continue moves to reminders, and Done finishes setup. Skip setup sits alongside each hero icon.
+The discovery view and local-model readiness check start when entering the planning step;
+agenda-based discovery can run while the optional check is still in progress.
+A ready model offers the AI editor alongside random discovery; otherwise up to six
+compatible, varied sessions are selected from the downloaded agenda. Readiness changes
+preserve an existing preview, and replacing checked suggestions requires confirmation.
 Status feedback stays visible above the scrolling planner; long messages scroll independently,
 with a compact scroll cue beside them. The status area gives the request editor more room while editing.
 Review and AI setup shortcuts lead to the shortlist and optional model setup without switching models,
 including while an existing model download is being checked.
 Shuffle guidance appears only alongside a preview. No cached agenda means an honest
-download state, never bundled session examples. Continue does not save:
-advancing prompts if nothing was added or checked suggestions remain unsaved.
+download state, never bundled session examples. Continue moves to reminders without
+saving suggestions. Checked, unsaved suggestions require a warning before continuing
+or leaving setup. Continue also asks whether proceeding without sessions is intentional
+if none have been added during setup; explicit Skip does not ask that question.
+After confirming continuation to
+reminders, Done does not repeat the same warning. Back returns to the preceding step.
 All three steps share a 34-unit heading, 48-unit Fluent icon, and the
 incumbent hero wash, with 24-unit gutters aligned to the builder.
 Random discovery uses the typed Fluent agenda glyph; AI mode uses a sparkle.
@@ -115,11 +163,9 @@ and the regular in-app builder retains native scroll insets.
 Supporting copy returns to the neutral reading surface. Skip setup sits beside
 each onboarding hero icon, directly on the gradient without a separate bar.
 The hero content follows the actual top safe-area inset. The footer is a
-single compact row: quiet Back, progress dots/count, and a content-width Next
-button (Done on the final step). There is no full-width Continue action.
-Action columns size to their text so large fonts do not split short labels.
-Both action slots reserve matching widths, keeping progress centered even when
-Back is hidden on the first slide.
+single compact row: quiet Back, three centered progress dots with a step count,
+and a content-width Next, Continue, or Done action. Buttons advance the carousel;
+swiping is disabled so it cannot bypass the unsaved-selection warning.
 Idle reminder status is hidden; permission
 results and recovery remain visible. Labels wrap and content scrolls at larger
 text sizes without disabling font scaling.
@@ -128,7 +174,7 @@ failed dismissal leaves setup retryable, while an interrupted launch remains
 eligible. Reminder subscriptions attach/detach with page visibility.
 Android back moves to the previous step or dismisses from welcome.
 My Schedule opens the regular native planner, which shares the builder view
-but has no onboarding Skip or explore actions.
+without the onboarding Skip action.
 Horizontally scrolling example chips above the input fill the editor without
 generating or saving. A small spinner replaces the strip during loading, and an
 atomic list replacement reveals the whole batch together. The local model
@@ -148,12 +194,16 @@ checkbox is required. Matching details are collapsed behind a text action, not a
 AI-debug section ahead of the sessions. Warnings and blocking validation stay
 visible; successful validation and idle-ready boilerplate do not compete with
 the task. Shortlist rows keep title and speaker prominent, followed by one
-compact line of local start date/time and duration, without per-talk matching
-explanations. The accessible checkbox description retains the end date/time.
+compact line of local start date/time and duration, with an expandable session
+description that preserves the checked selection. The accessible checkbox description retains the end date/time.
 Watching hours sit in a single summary row with a Change action; native clock
 pickers and guidance expand only when needed. Any assumed time boundary stays
 visible above the shortlist as a short factual note. Users review the selected
-sessions and times before confirming.
+sessions and times before confirming. Editing a request preserves the existing
+selection but disables adding it until the prior request is restored or a new
+shortlist is generated. Replacing or leaving checked suggestions requires confirmation.
+If the agenda or time zone changes, checked suggestions remain visible but
+cannot be added until a fresh shortlist has been reviewed.
 After saving, View My Schedule provides the next step. The same semantic theme
 tokens, scalable text, 48-unit actions, and typed Fluent icons apply throughout.
 The planner editor has an explicit iOS accessibility label; Android uses matching
@@ -167,8 +217,9 @@ reminder step. Saving freezes the shortlist and confirmation, persists a snapsho
 of the confirmed selection, and reports a reminder-refresh failure separately
 from a failed save.
 
-My Schedule's quiet, full-width Fluent agenda action sits after the timezone
-and beside the existing Timeline/List workflow. Empty schedules open the personal
+My Schedule's quiet Fluent agenda action sits after the timezone
+and beside the existing Timeline/List workflow, or in the native toolbar when
+space is constrained. Empty schedules open the personal
 builder; saved schedules open gap planning with "Make room for discovery."
 The existing scrollable builder, shortlist and confirmation controls are reused.
 Free time is bounded by the real agenda on saved-session days, not assumed office
@@ -188,19 +239,24 @@ requests. A nearest-60 budget stays below Apple's pending-notification limit;
 OS policy still controls delivery. Fictional content remains labeled in alerts.
 
 Sessions keeps search clearing in the Entry and topic clearing beside the summary
-and in Filters. Clearing topics leaves day selection and search unchanged.
+and in Filters. Clearing topics leaves day selection and search unchanged. Empty
+results also offer a separate action that clears search, day, speaker and all filters.
 Neither changes saved sessions. A zero-match result keeps search reachable; day
 tabs and the toolbar filter action return after a constrained compact search.
 
 Community is a Shell tab; Home's Fluent settings gear opens Settings.
 Settings includes appearance, device-time-zone information, and an About action
 preserving access to disclosure and app information through native back navigation.
-Community's overview leads with a restrained branded introduction, gathering
-formats, and an official-website link. No community events or venues are bundled,
-and no official event feed is connected yet. The primary action says Browse
-community events and opens an honest empty list with an official-website action,
-not an empty map. Editorial sections explain how to start a local
-gathering; there are no invented community statistics or organizer workflows.
+Home shows the published date range, the next current or upcoming saved session,
+and links for registration and conference-site updates. It does not imply a live
+stream is available before a destination is published.
+Community's overview leads with a restrained branded introduction, sharing and
+registration, then YouTube and social channels. Meet locally states when no
+events are listed; a single Browse community events action appears only when
+there are listings and opens the list first. No community events or venues are
+bundled, and no official event feed is connected yet. An official-website link
+and short guidance for starting a gathering remain available; there are no
+invented community statistics or organizer workflows.
 The map/list implementation remains available for a future official event source.
 The pushed explorer hides tabs with MAUI Shell, retains native back navigation,
 and gives the map the full available width. A content-sized opaque legend
@@ -227,9 +283,19 @@ a non-map selection path, also directly reachable from the overview.
 Unconfigured Android builds omit the map switch and show an honest availability
 statement alongside the usable list, not API-key setup instructions.
 
-About discloses the Microsoft agenda source and lack of an official community-event feed through `AgendaNotice`. Both mock flags are false; no session, profile or community-event dataset ships in the app. Startup immediately displays a validated local cache, when available, then refreshes Microsoft's agenda without announcing success. A fresh install shows small first-download progress; without a connection it explains how to download the agenda and preserves saved choices. Inline notices appear only when connectivity, updates or local storage need attention; unrelated About and Community screens carry no agenda status. Saved sessions withdrawn from the feed remain in My Schedule with an explicit explanation. Corrupt bookmarks are preserved, saving is disabled, and agenda browsing remains available.
+About discloses the Microsoft agenda source and links to the community overview. Both mock flags are false; no session, profile or community-event dataset ships in the app. Startup immediately displays a validated local cache, when available, then refreshes Microsoft's agenda without announcing success. A fresh install shows small first-download progress; without a connection it explains how to download the agenda and preserves saved choices. Inline notices appear when connectivity, updates or local storage need attention, including on Community and the filter page. Saved sessions withdrawn from the feed remain in My Schedule with an explicit explanation. Corrupt bookmarks are preserved, saving is disabled, and agenda browsing remains available.
 
-Speaker rows and detail pages show an approved downloaded cached portrait or the exact bundled .NET Bot placeholder from the website. Speaker photographs are not packaged with the app; GitHub-hosted photos are rejected, including redirects and cached references. Bounded background downloads replace portraits in place; unavailable or invalid images retain the placeholder, including on a first offline launch. Agenda and biographies come only from the public Microsoft feed, never private organizer enrichment. Unpublished bios retain the "Biography to be announced." state. Topic filters explain when no topics have been published. Loading, empty results, no bookmarks, and invalid IDs retain their content states. Overlaps are persistent session attributes, not notification banners or restrictions. Optional showcases must not replace these core affordances.
+Speaker rows and detail pages show a feed-provided downloaded portrait or the exact bundled .NET Bot placeholder from the website. Speaker photographs are not packaged with the app; public URLs may include GitHub-hosted images. Unavailable or invalid images retain the placeholder, including on a first offline launch. Agenda and biographies come only from the public Microsoft feed, never private organizer enrichment. Unpublished bios retain the "Biography to be announced." state. Topic filters explain when no topics have been published. Loading, empty results, no bookmarks, and invalid IDs retain their content states. Overlaps are persistent session attributes, not notification banners or restrictions. Optional showcases must not replace these core affordances.
+
+Session details show Watch session only for a published video link; otherwise
+they explain that a video has not been linked yet. Any published session has
+an explicit Mark as watched action, including sessions watched live. The device handles video links, so a supported
+video app may open; otherwise the link opens in a browser. Opening the link does
+not change watched status. A full-width watched control pairs its label with an
+empty or checked circle and announces both its current state and action. Watched
+rows say Watched, and the action remains available to undo that choice if a video
+link disappears. Watched state is local and separate from the
+heart; storage failures remain visible without blocking agenda browsing.
 
 About's Third-party dependencies page uses simple, full-width reading rows with
 names and license/version details. Tapping a row opens a bundled, offline license;

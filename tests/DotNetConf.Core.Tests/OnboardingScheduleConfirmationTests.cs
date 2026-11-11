@@ -2,41 +2,55 @@ using DotNetConf.App;
 
 namespace DotNetConf.Core.Tests;
 
-public sealed class OnboardingScheduleConfirmationTests
+public sealed class UnsavedSuggestionsConfirmationTests
 {
-    [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public void CheckedSuggestionsAlwaysRequireExplicitDeparture(bool hasAddedSessions, bool continuing)
+    [Fact]
+    public void CheckedSuggestionsAlwaysRequireExplicitDeparture()
     {
-        var prompt = OnboardingScheduleConfirmation.For(true, hasAddedSessions, continuing);
+        var prompt = UnsavedSuggestionsConfirmation.For(true);
 
         Assert.NotNull(prompt);
         Assert.Equal("Leave without adding?", prompt.Title);
         Assert.Contains("haven't been added", prompt.Message);
         Assert.Equal("Leave without adding", prompt.Accept);
-        Assert.Equal("Keep choosing", OnboardingScheduleConfirmation.Cancel);
+        Assert.Equal("Keep choosing", UnsavedSuggestionsConfirmation.Cancel);
     }
 
     [Fact]
-    public void ContinuingWithoutAddingAnythingAsksWhetherThatWasIntentional()
+    public void NoCheckedSuggestionsNeedNoDeparturePrompt()
     {
-        var prompt = OnboardingScheduleConfirmation.For(false, false, true);
+        Assert.Null(UnsavedSuggestionsConfirmation.For(false));
+    }
+
+    [Fact]
+    public void OnboardingContinueWithoutAddingSessionsRequiresConfirmation()
+    {
+        var prompt = UnsavedSuggestionsConfirmation.ForOnboarding(false, false, true);
 
         Assert.NotNull(prompt);
         Assert.Equal("Continue without sessions?", prompt.Title);
         Assert.Contains("Was that intentional?", prompt.Message);
         Assert.Equal("Continue without sessions", prompt.Accept);
+        Assert.Equal("Keep choosing", UnsavedSuggestionsConfirmation.Cancel);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void OnboardingCheckedSuggestionsTakePriorityOverTheEmptyScheduleWarning(bool hasAddedSessions, bool continuing)
+    {
+        Assert.Equal(UnsavedSuggestionsConfirmation.For(true),
+            UnsavedSuggestionsConfirmation.ForOnboarding(true, hasAddedSessions, continuing));
     }
 
     [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public void SavedSessionsOrExplicitSkipNeedNoEmptySchedulePrompt(bool hasAddedSessions, bool continuing)
+    public void OnboardingExplicitSkipOrPreviouslyAddedSessionsNeedNoEmptyScheduleWarning(bool hasAddedSessions, bool continuing)
     {
-        Assert.Null(OnboardingScheduleConfirmation.For(false, hasAddedSessions, continuing));
+        Assert.Null(UnsavedSuggestionsConfirmation.ForOnboarding(false, hasAddedSessions, continuing));
     }
 }

@@ -27,6 +27,16 @@
                                Style="{StaticResource Secondary}" VerticalOptions="Start" />
                     </Grid>
                     <Label Text="{Binding Bio}" />
+                    <VerticalStackLayout Spacing="8" IsVisible="{Binding HasLinks}">
+                        <Label Text="Links" Style="{StaticResource Subheading}" />
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Links}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ConferenceLinkViewModel">
+                                    <controls:ConferenceLinkRow />
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </VerticalStackLayout>
                     <Label Text="Sessions" Style="{StaticResource Subheading}" />
                 </VerticalStackLayout>
             </CollectionView.Header>

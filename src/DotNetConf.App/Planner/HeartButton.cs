@@ -39,13 +39,13 @@ internal sealed class HeartButton : Button
         };
         focusRing = new Border
         {
-            CornerRadius = new CornerRadius(22),
+            CornerRadius = new CornerRadius(24),
             BorderThickness = new Thickness(2),
             BorderBrush = new ImmutableSolidColorBrush(theme.Accent),
             IsVisible = false,
         };
-        // A transparent background makes the whole 44 × 44 square tappable.
-        Content = new Panel { Width = 44, Height = 44, Background = Brushes.Transparent, Children = { focusRing, heart } };
+        // A transparent background makes the whole 48 × 48 square tappable.
+        Content = new Panel { Width = 48, Height = 48, Background = Brushes.Transparent, Children = { focusRing, heart } };
     }
 
     public void Bind(SessionViewModel value) => session = value;

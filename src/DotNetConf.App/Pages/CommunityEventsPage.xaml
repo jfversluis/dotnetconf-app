@@ -47,7 +47,7 @@
                         <VerticalStackLayout Padding="24" Spacing="12">
                             <Label Text="No community events are listed here yet. Visit the official website for current gatherings."
                                    Style="{StaticResource Secondary}" AutomationId="community-events-empty" />
-                            <Button Text="Visit dotnetconf.net" Command="{Binding Conference.OpenWebsiteCommand}"
+                            <Button Text="Visit dot.net/conf" Command="{Binding Conference.OpenWebsiteCommand}"
                                     Style="{StaticResource QuietButton}" ImageSource="{StaticResource WebsiteIcon}"
                                     AutomationId="community-events-website" />
                         </VerticalStackLayout>

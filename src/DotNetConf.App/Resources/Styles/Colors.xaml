@@ -18,6 +18,8 @@
     <Color x:Key="DarkOutline">#474747</Color>
     <Color x:Key="LightError">#9E202E</Color>
     <Color x:Key="DarkError">#FFB4BD</Color>
+    <Color x:Key="LightLive">#B42332</Color>
+    <Color x:Key="DarkLive">#FF8F9D</Color>
     <Color x:Key="White">#FFFFFF</Color>
     <LinearGradientBrush x:Key="ConferenceGradient" StartPoint="0,0" EndPoint="1,1">
         <GradientStop Color="#512BD4" Offset="0" />
