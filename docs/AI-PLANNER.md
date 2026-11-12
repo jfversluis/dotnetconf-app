@@ -171,7 +171,7 @@ Ask cannot
 restrict searches, opening, or saves to sessions already in your schedule,
 including requests for "my", "saved", or "bookmarked" sessions; use My Schedule to
 review those.
-There is no chat history or cloud fallback. See [Ask for one app action](../README.md#ask-for-one-app-action).
+There is no chat history or cloud fallback.
 The planner below remains separate: its tools are read-only and its proposed
 schedule still requires confirmation before saving.
 
