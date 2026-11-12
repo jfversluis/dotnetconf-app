@@ -44,7 +44,7 @@ namespace Microsoft.Maui.Foldable
 			add { _onLayoutChangedEventManager.AddEventHandler(value); }
 			remove { _onLayoutChangedEventManager.RemoveEventHandler(value); }
 		}
-		public event EventHandler<FoldableHingeAngleChangedEventArgs> HingeAngleChanged
+		public event EventHandler<FoldableHingeAngleChangedEventArgsCompat> HingeAngleChanged
 		{
 			add { _hingeAngleChangedEventManager.AddEventHandler(value); }
 			remove { _hingeAngleChangedEventManager.RemoveEventHandler(value); }

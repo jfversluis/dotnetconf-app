@@ -30,10 +30,10 @@ compilation does not prove that those device tests ran.
 The SDK and workload set come from `global.json`. Android SDK dependencies are
 installed by the workload's `InstallAndroidDependencies` target with JDK 21.
 iOS CI and TestFlight jobs use the public-preview `xcode-27` ARM64 runner and
-explicitly select Xcode 27.1. The pinned RC3 workload set still retains the RC2
-iOS bindings; changing the CI Xcode pin does not establish official workload
-support for that pairing. Both workflows read the SDK and workload-set pins from
-`global.json`.
+explicitly select Xcode 27.2, as required by the iOS `27.2.11039` bindings in
+workload set `11.0.100.1`. Both workflows read the .NET 11 GA SDK and workload-set
+pins from `global.json`; the native regression host's nested `global.json` must
+match them. Xcode version validation remains enabled.
 When updating the pins, review the JDK, Xcode, runner,
 and target frameworks in the workflows/local setup action together.
 
@@ -192,5 +192,6 @@ accessibility, minimum-OS, or iPhone Duo geometry release gates in
 `CONTRIBUTING.md`. Keep the Microsoft source and first-download disclosures
 visible. Do not bundle an agenda, speaker profiles or photographs, or fictional
 community events. Review Apple's
-current accepted Xcode/SDK requirements before production submission, especially
-while this app uses a preview .NET toolchain.
+current accepted Xcode/SDK requirements before production submission. The .NET
+SDK and MAUI packages are stable, but optional AI integrations and the
+experimental Avalonia targets still use preview dependencies.

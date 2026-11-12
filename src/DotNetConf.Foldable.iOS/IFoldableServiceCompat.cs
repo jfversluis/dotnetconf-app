@@ -8,7 +8,7 @@ namespace Microsoft.Maui.Foldable
     internal interface IFoldableServiceCompat
     {
         event EventHandler OnScreenChanged;
-        event EventHandler<FoldableHingeAngleChangedEventArgs> HingeAngleChanged;
+        event EventHandler<FoldableHingeAngleChangedEventArgsCompat> HingeAngleChanged;
         bool IsSpanned { get; }
         bool IsLandscape { get; }
         Rect GetHinge();
@@ -23,9 +23,9 @@ namespace Microsoft.Maui.Foldable
         event EventHandler<FoldEventArgs> OnLayoutChanged;
     }
 
-    internal sealed class FoldableHingeAngleChangedEventArgs : EventArgs
+    internal sealed class FoldableHingeAngleChangedEventArgsCompat : EventArgs
     {
-        public FoldableHingeAngleChangedEventArgs(double hingeAngleInDegrees) =>
+        public FoldableHingeAngleChangedEventArgsCompat(double hingeAngleInDegrees) =>
             HingeAngleInDegrees = hingeAngleInDegrees;
 
         public double HingeAngleInDegrees { get; }

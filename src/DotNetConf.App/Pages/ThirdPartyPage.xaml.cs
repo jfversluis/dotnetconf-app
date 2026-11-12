@@ -9,12 +9,12 @@ public partial class ThirdPartyPage : ContentPage
 {
     public IReadOnlyList<DependencyNotice> Dependencies { get; } =
     [
-        new(".NET MAUI", "Controls, Maps, Core, Essentials & Graphics · 11.0.0-rc.2.26505.5 · MIT", "LICENSE-DotNetFoundation.txt"),
+        new(".NET MAUI", "Controls, Maps, Core, Essentials & Graphics · 11.0.10 · MIT", "LICENSE-DotNetFoundation.txt"),
 #if IOS
         new("MAUI Foldable iOS backport", "Adapted from dotnet/maui · MIT", "LICENSE-DotNetFoundation.txt"),
         new(".NET iOS UIKit bindings", "Adapted from dotnet/macios · MIT", "LICENSE-MaciOS.txt"),
 #elif AVALONIA
-        new(".NET MAUI Foldable", "11.0.0-rc.2.26505.5 · MIT", "LICENSE-DotNetFoundation.txt"),
+        new(".NET MAUI Foldable", "11.0.10 · MIT", "LICENSE-DotNetFoundation.txt"),
 #endif
         new("MAUI Essentials AI", "11.0.0-preview.8.26555.2 · MIT", "LICENSE-DotNetFoundation.txt"),
         new("MAUI AI Attributes", "0.1.0-preview.14.26531.2 · MIT", "LICENSE-DotNetFoundation.txt"),
@@ -45,7 +45,7 @@ public partial class ThirdPartyPage : ContentPage
         new("Avalonia.Controls.Maui", "Controls, Essentials & Desktop packages · 11.0.0-rc.1.26252.343 · MIT", "LICENSE-AvaloniaMaui.txt"),
         new("Avalonia.Controls.Maui third-party components", "ASP.NET Core MIME mappings · Apache 2.0", "NOTICE-AvaloniaMaui.txt"),
         new("Avalonia.Controls.WebView", "12.0.0 · MIT", "LICENSE-Avalonia.txt"),
-        new("Microsoft.Maui.Graphics.Skia", "11.0.0-rc.1.26451.6 · MIT", "LICENSE-DotNetFoundation.txt"),
+        new("Microsoft.Maui.Graphics.Skia", "11.0.10 · MIT", "LICENSE-DotNetFoundation.txt"),
         new("Avalonia ANGLE", "Windows native dependency of the desktop graph · 2.1.27548.20260419 · BSD 3-Clause", "LICENSE-AvaloniaAngle.txt"),
         new("Inter", "Avalonia fallback font · SIL Open Font License 1.1", "LICENSE-Inter.txt"),
         new("SkiaSharp & HarfBuzzSharp", "4.151.0 & 14.2.1.102 · MIT", "LICENSE-SkiaSharp.txt"),
@@ -55,7 +55,7 @@ public partial class ThirdPartyPage : ContentPage
 #endif
 #if DEBUG
         new("MAUI DevFlow", "Development builds only · 0.1.0-preview.13.26512.5 · MIT", "LICENSE-DotNetFoundation.txt"),
-        new("Microsoft.Extensions.Logging.Debug", "Development builds only · 11.0.0-rc.3.26522.148 · MIT", "LICENSE-DotNetFoundation.txt"),
+        new("Microsoft.Extensions.Logging.Debug", "Development builds only · 11.0.0 · MIT", "LICENSE-DotNetFoundation.txt"),
 #endif
     ];
 

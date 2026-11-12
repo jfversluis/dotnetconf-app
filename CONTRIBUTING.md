@@ -12,9 +12,10 @@ Versions are deliberately pinned:
 
 | Component | Version |
 |---|---|
-| .NET SDK | `11.0.100-rc.3.26522.148` |
-| Mobile workload set | `11.0.100-rc.3.26524.4` |
-| MAUI Controls | `11.0.0-rc.2.26505.5` |
+| .NET SDK | `11.0.100` |
+| Mobile workload set | `11.0.100.1` |
+| MAUI Controls, Maps, Foldable, Core, Essentials, Graphics.Skia | `11.0.10` |
+| Xcode | `27.2` |
 | Microsoft.Maui.Essentials.AI | `11.0.0-preview.8.26555.2` |
 | DevFlow CLI / agent | `0.1.0-preview.13.26512.5` |
 | Avalonia.Controls.Maui, Desktop, Essentials | `11.0.0-rc.2.26287.618` |
@@ -22,15 +23,19 @@ Versions are deliberately pinned:
 | IconFont.Maui.FluentIcons | `1.1.1` |
 | Syncfusion.Maui.Toolkit | `1.0.11` |
 
-The [RC3 security release](https://github.com/dotnet/core/blob/main/release-notes/11.0/preview/rc3/11.0.0-rc.3.md)
-updates the SDK and runtime. Its workload set updates the Mono/WebAssembly
-toolchains but retains the RC2 MAUI, Android, and iOS manifests. MAUI package pins,
-platform prerequisites, and existing MAUI workarounds therefore remain unchanged.
+The [.NET 11 GA release](https://github.com/dotnet/core/blob/main/release-notes/11.0/11.0.0/11.0.0.md)
+provides the SDK and runtime. Workload set `11.0.100.1` includes iOS
+`27.2.11039`, Android `37.2.31`, and the MAUI `11.0.0` build tooling.
+The app explicitly references the newer [MAUI `11.0.10` packages](https://github.com/dotnet/maui/releases/tag/11.0.10).
+`Microsoft.Maui.Graphics.Skia` is pinned explicitly so Avalonia's dependency does
+not retain the older MAUI preview renderer.
+Avalonia and the optional AI/DevFlow integrations retain their existing preview pins;
+upgrading the SDK does not make those dependencies stable.
 
 Install the SDK selected by `global.json`, then:
 
 ```sh
-dotnet workload install maui-android maui-ios wasm-tools --version 11.0.100-rc.3.26524.4
+dotnet workload install maui-android maui-ios wasm-tools --version 11.0.100.1
 dotnet tool restore
 dotnet test tests/DotNetConf.Core.Tests
 dotnet test tests/DotNetConf.App.Tests -c Release -p:MobileTargetFramework=net11.0
@@ -38,13 +43,16 @@ dotnet test tests/DotNetConf.App.Tests -c Release -p:MobileTargetFramework=net11
 
 On Linux, omit `maui-ios`; the project drops the iOS target there.
 
-iOS builds require a Mac and Xcode 27.1, matching the pinned CI toolchain. The pinned RC3 workload set retains the RC2 iOS 27 bindings. Android requires the workload's Android SDK dependencies, including API 37.0 tooling, and JDK 21. Deployment minimums are iOS 15 and Android API 26. These are different from the build SDK versions. See [MAUI release requirements](https://github.com/dotnet/maui/wiki/Release-Versions).
+iOS builds require a Mac and Xcode 27.2, matching the pinned workload and CI toolchain. Android requires the workload's Android SDK dependencies, including API 37.0 tooling, and JDK 21. Deployment minimums are iOS 15 and Android API 26. These are different from the build SDK versions. See [MAUI release requirements](https://github.com/dotnet/maui/wiki/Release-Versions).
 
 The iOS head uses the scene lifecycle: `Info.plist` registers the single-window `SceneDelegate`, which inherits `MauiUISceneDelegate`. MAUI owns window creation through `App.CreateWindow`; `AppDelegate` only builds the app. Window sizing and safe areas use MAUI and platform controls, not fixed offsets.
 
-The Xcode 27.1 CI pin does not change the retained RC2 iOS bindings or establish official workload support for that pairing. The scene-forwarding paths for App Actions, authentication URL returns, and user activities still need validation with this workload before adding deep links or authentication.
+Do not bypass Xcode version validation: the GA workload and Xcode 27.2 are paired.
+The scene-forwarding paths for App Actions, authentication URL returns, and user
+activities still need validation with this workload before adding deep links or
+authentication beyond the existing session links.
 
-The previous RC2 build was inspected on iPhone and iPhone Duo simulators. Settings and detail/document pages respect system chrome through shared safe-area controls, not fixed offsets. Local validation used installed Xcode 27.1 with `-p:ValidateXcodeVersion=false`, bypassing the workload-version check; this is not the workload's supported pairing or release certification. Physical-device execution and folding transitions remain release gates.
+The previous RC2 build was inspected on iPhone and iPhone Duo simulators. Settings and detail/document pages respect system chrome through shared safe-area controls, not fixed offsets. That historical inspection used Xcode 27.1 with a workload-version-check bypass; it is not GA runtime validation or release certification. Physical-device execution and folding transitions remain release gates.
 
 ### Adaptive schedule timeline
 
@@ -130,7 +138,7 @@ handler. On Android, `SearchResultLayerHandler` keeps each input-transparent
 layer's native container in place so switching search modes does not reparent a
 RecyclerView while its items are animating.
 
-On iOS, the pinned MAUI RC2 can treat a zero-size keyboard notification during
+On iOS, MAUI RC2 could treat a zero-size keyboard notification during
 rotation as a visible keyboard, restoring an unwanted bottom inset. A
 page-scoped workaround refreshes the affected soft-input policies only for
 that empty frame and cancels a pending refresh when a newer keyboard event
@@ -158,14 +166,14 @@ directly while the activity is started and converts window coordinates to pane
 coordinates. The listener uses the platform-owned main-thread executor because
 its callbacks can outlive activity stop.
 
-Avalonia uses `Microsoft.Maui.Controls.Foldable` pinned to MAUI RC2. That
-package does not yet include iPhone Duo division-region support. Until a
-compatible release is available, iOS builds use the source backport in
+Avalonia uses `Microsoft.Maui.Controls.Foldable` pinned to MAUI `11.0.10`.
+The existing iOS source backport is retained pending validation of the official
+Foldable replacement contract below. iOS builds use the source backport in
 `src/DotNetConf.Foldable.iOS`, based on
 [dotnet/maui@a561eaec4aacbe962416c64491aa5ffbc6bde9ae](https://github.com/dotnet/maui/tree/a561eaec4aacbe962416c64491aa5ffbc6bde9ae)
-and adapted to `IFoldableServiceCompat` because the pinned MAUI Core lacks the
-newer interface. `src/DotNetConf.Foldable.iOS.Bindings` contains the small
-public UIKit bindings needed by the pinned workload, adapted from
+and adapted to `IFoldableServiceCompat` because MAUI RC2 lacked the
+newer interface. `src/DotNetConf.Foldable.iOS.Bindings` retains the small
+public UIKit bindings used by that backport, adapted from
 [dotnet/macios@eb45b2d9f615586fdcd19c90be6ce78aeb9004b3](https://github.com/dotnet/macios/tree/eb45b2d9f615586fdcd19c90be6ce78aeb9004b3).
 The selectors are bound as `NSObject`/`UIView` extensions and the UIKit class
 factories are resolved at runtime; binding those system classes directly would
@@ -325,7 +333,7 @@ dotnet build src/DotNetConf.App -f net11.0
 dotnet build src/DotNetConf.App.Browser
 ```
 
-The app uses source-generated XAML with compiled bindings and Debug-only incremental XAML Hot Reload. Android leaves `PublishAot=false` and uses the pinned SDK's standard CoreCLR runtime; iOS retains `PublishAot=true`. MAUI 11 RC2's Android Material 3 controls are explicitly enabled with `UseMaterial3=true`; scoped search and picker customizations use `EntryHandler2` and `PickerHandler2`, while iOS keeps its existing handlers. The pinned MAUI Controls package is updated with the workload. `dotnet watch --project src/DotNetConf.App -f net11.0-ios` uses the Debug-only no-linking setting; release linking is not disabled.
+The app uses source-generated XAML with compiled bindings and Debug-only incremental XAML Hot Reload. Android leaves `PublishAot=false` and uses the pinned SDK's standard CoreCLR runtime; iOS retains `PublishAot=true`. MAUI 11's Android Material 3 controls are explicitly enabled with `UseMaterial3=true`; scoped search and picker customizations use `EntryHandler2` and `PickerHandler2`, while iOS keeps its existing handlers. The pinned MAUI Controls package is updated with the workload. `dotnet watch --project src/DotNetConf.App -f net11.0-ios` uses the Debug-only no-linking setting; release linking is not disabled.
 
 If incremental XAML generation retains stale resource styles or reports `Style.Setters` as read-only after a style edit, use a targeted `dotnet clean src/DotNetConf.App -f net11.0-android -p:RuntimeIdentifier=android-arm64` (or the corresponding iOS target/RID), followed by the normal build. Do not disable incremental Hot Reload or edit generated sources to work around preview-tooling state.
 
@@ -428,7 +436,7 @@ so URL-scheme and scene edits reach the generated bundle without a manual clean.
 After changing platform metadata, inspect the generated `Info.plist`; compilation
 alone is not proof that iOS registered a scheme.
 
-Session shortcuts reuse `SessionViewModel`'s existing commands. The pinned RC2
+Session shortcuts reuse `SessionViewModel`'s existing commands. The
 gesture API is `MinimumPressDuration` (milliseconds); do not copy newer documentation's
 property names without checking the pinned assembly. The native heart and
 long-press menu retain gesture-free/accessible actions; Avalonia also keeps a
@@ -714,7 +722,7 @@ native map viewport, so Google Maps zoom controls and provider attribution stay
 unobstructed on both platforms. Android pages retain keyboard avoidance without
 adding another container inset on top of native Shell chrome.
 `Microsoft.Maui.Controls.Maps` is pinned to the same
-RC2 version as Controls. `UseMauiMaps()` enables native MapKit/Google Maps handlers.
+version as Controls. `UseMauiMaps()` enables native MapKit/Google Maps handlers.
 MAUI 11's `IsClusteringEnabled` and `Pin.ImageSource` APIs supply native clustering,
 default cluster-tap zoom, and custom pin images; no custom map handler or
 third-party clustering implementation is used. MAUI's `MapSpan.FromLocations`
