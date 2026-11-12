@@ -13,6 +13,7 @@ using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Platform;
 using ObjCRuntime;
 using UIKit;
+using UIHingeInteractionUpdateHandler = DotNetConf.Foldable.iOS.Bindings.UIHingeInteractionUpdateHandler;
 
 namespace Microsoft.Maui.Foldable
 {
@@ -44,7 +45,7 @@ namespace Microsoft.Maui.Foldable
 			remove => _onLayoutChangedEventManager.RemoveEventHandler(value);
 		}
 
-		public event EventHandler<FoldableHingeAngleChangedEventArgs> HingeAngleChanged
+		public event EventHandler<FoldableHingeAngleChangedEventArgsCompat> HingeAngleChanged
 		{
 			add => _hingeAngleChangedEventManager.AddEventHandler(value);
 			remove => _hingeAngleChangedEventManager.RemoveEventHandler(value);
@@ -263,7 +264,7 @@ namespace Microsoft.Maui.Foldable
 			{
 				_hingeAngleChangedEventManager.HandleEvent(
 					this,
-					new FoldableHingeAngleChangedEventArgs(newAngle),
+					new FoldableHingeAngleChangedEventArgsCompat(newAngle),
 					nameof(HingeAngleChanged));
 			}
 

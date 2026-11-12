@@ -1,9 +1,9 @@
-Microsoft.Maui.Controls, Controls.Maps, Core, Essentials, Graphics 11.0.0-rc.2.26505.5
+Microsoft.Maui.Controls, Controls.Maps, Core, Essentials, Graphics 11.0.10
 Copyright (c) .NET Foundation and Contributors
 https://github.com/dotnet/maui
 MIT license: LICENSE-DotNetFoundation.txt
 
-Microsoft.Maui.Controls.Foldable (Avalonia: 11.0.0-rc.2.26505.5;
+Microsoft.Maui.Controls.Foldable (Avalonia: 11.0.10;
 iOS: local backport from dotnet/maui commit a561eaec4aacbe962416c64491aa5ffbc6bde9ae)
 Copyright (c) .NET Foundation and Contributors
 https://github.com/dotnet/maui
@@ -50,7 +50,7 @@ Copyright (c) .NET Foundation and Contributors
 https://github.com/dotnet/maui-labs
 MIT license: LICENSE-DotNetFoundation.txt
 
-Microsoft.Extensions.Logging.Debug 11.0.0-rc.3.26522.148 (Debug builds only)
+Microsoft.Extensions.Logging.Debug 11.0.0 (Debug builds only)
 Copyright (c) .NET Foundation and Contributors
 https://github.com/dotnet/runtime
 MIT license: LICENSE-DotNetFoundation.txt
@@ -143,7 +143,7 @@ Linux is the supported experimental desktop platform. The RID-less desktop
 dependency graph also includes Windows and macOS native libraries; their
 inclusion here does not claim support for those platforms.
 
-Microsoft.Maui.Graphics.Skia 11.0.0-rc.1.26451.6
+Microsoft.Maui.Graphics.Skia 11.0.10
 Copyright (c) .NET Foundation and Contributors
 https://github.com/dotnet/maui
 MIT license: LICENSE-DotNetFoundation.txt

@@ -308,7 +308,7 @@ namespace Microsoft.Maui.Foldable
 			_hingeAngleSubscriptionService?.HingeAngleChanged += OnHingeAngleChanged;
 		}
 
-		void OnHingeAngleChanged(object sender, FoldableHingeAngleChangedEventArgs e)
+		void OnHingeAngleChanged(object sender, FoldableHingeAngleChangedEventArgsCompat e)
 		{
 			_hingeAngleChanged?.Invoke(this, new HingeAngleChangedEventArgs(e.HingeAngleInDegrees));
 		}

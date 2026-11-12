@@ -12,8 +12,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.AI" Version="10.4.1" />
     <PackageReference Include="Microsoft.Maui.AI.Attributes" Version="0.1.0-preview.14.26531.2" />
-    <PackageReference Include="Microsoft.Maui.Core" Version="11.0.0-rc.2.26505.5" />
-    <PackageReference Include="Microsoft.Maui.Essentials" Version="11.0.0-rc.2.26505.5" />
+    <PackageReference Include="Microsoft.Maui.Core" Version="11.0.10" />
+    <PackageReference Include="Microsoft.Maui.Essentials" Version="11.0.10" />
     <ProjectReference Include="../../src/DotNetConf.Core/DotNetConf.Core.csproj" />
     <Compile Include="../../src/DotNetConf.App/Services/PlannerTools.cs" Link="PlannerTools.cs" />
     <Compile Include="../../src/DotNetConf.App/Services/AskTools.cs" Link="AskTools.cs" />

@@ -1,5 +1,5 @@
 #if ANDROID
-using PlatformPicker = Microsoft.Maui.Platform.MauiMaterialPicker;
+using PlatformPicker = Microsoft.Maui.Platform.MauiMaterialPickerTextInputLayout;
 using BasePickerHandler = Microsoft.Maui.Handlers.PickerHandler2;
 #elif IOS
 using PlatformPicker = Microsoft.Maui.Platform.MauiPicker;
@@ -14,9 +14,10 @@ public class AgendaPickerHandler : BasePickerHandler
     {
         base.ConnectHandler(platformView);
 #if ANDROID
-        platformView.BackgroundTintList = Android.Content.Res.ColorStateList.ValueOf(Android.Graphics.Color.Transparent);
+        platformView.BoxBackgroundMode = Google.Android.Material.TextField.TextInputLayout.BoxBackgroundNone;
+        platformView.Picker.BackgroundTintList = Android.Content.Res.ColorStateList.ValueOf(Android.Graphics.Color.Transparent);
         // Preserve PickerManager's touch policy: the first tap activates, keyboard focus remains available.
-        platformView.FocusableInTouchMode = false;
+        platformView.Picker.FocusableInTouchMode = false;
 #elif IOS
         platformView.BorderStyle = UIKit.UITextBorderStyle.None;
 #endif
