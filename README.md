@@ -6,6 +6,17 @@ Source code for a [.NET Conf](https://dot.net/conf) companion app for iOS and An
 
 Open session videos when available, or use [on-device AI planning](docs/AI-PLANNER.md) on supported devices.
 
+## Featured at .NET Conf 2026
+
+- [What's New in .NET MAUI in .NET 11](https://www.youtube.com/watch?v=fh0c-EBCifU) | [Slides](https://github.com/dotnetConf/2026/tree/main/Technical/BRK006)
+- [Beyond Code Generation: Give AI Eyes and Hands for .NET MAUI](https://www.youtube.com/watch?v=-3ClD7BHbLU) | [Slides](https://github.com/dotnetConf/2026/tree/main/Technical/BRK026)
+- [Less Chat, More Action: AI-Powered .NET MAUI Apps](https://www.youtube.com/watch?v=FYGBT08-N48) | [Slides](https://github.com/dotnetConf/2026/tree/main/Technical/BRK033)
+
+Related .NET MAUI sessions:
+
+- [Bringing dotnet run, test, and watch to .NET MAUI](https://dotnet.microsoft.com/en-us/conf/2026/agenda/brk016) | [Slides](https://github.com/dotnetConf/2026/tree/main/Technical/BRK016)
+- [How We Brought CoreCLR to .NET MAUI and Mobile](https://www.youtube.com/watch?v=fa_rzHLYU_E) | [Slides](https://github.com/dotnetConf/2026/tree/main/Technical/BRK034)
+
 ## Your data
 
 The current source downloads sessions and speaker profiles from [Microsoft's public conference feed](https://dotnet.microsoft.com/blob-assets/json/conf/conference-2026.json) and caches them for offline use. Speaker photos load from URLs in the feed. A fresh install built from this source needs an internet connection; no agenda, speaker profiles, speaker photos, or community events are bundled.
