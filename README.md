@@ -14,7 +14,7 @@ Open session videos when available, or use [on-device AI planning](docs/AI-PLANN
 
 Related .NET MAUI sessions:
 
-- [Bringing dotnet run, test, and watch to .NET MAUI](https://dotnet.microsoft.com/en-us/conf/2026/agenda/brk016) | [Slides](https://github.com/dotnetConf/2026/tree/main/Technical/BRK016)
+- [Bringing dotnet run, test, and watch to .NET MAUI](https://www.youtube.com/watch?v=Lw7nN8sBZn0) | [Slides](https://github.com/dotnetConf/2026/tree/main/Technical/BRK016)
 - [How We Brought CoreCLR to .NET MAUI and Mobile](https://www.youtube.com/watch?v=fa_rzHLYU_E) | [Slides](https://github.com/dotnetConf/2026/tree/main/Technical/BRK034)
 
 ## Your data
