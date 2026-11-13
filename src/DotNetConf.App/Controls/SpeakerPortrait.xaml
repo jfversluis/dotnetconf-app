@@ -6,7 +6,7 @@
     <Image Source="speaker_placeholder.png" Aspect="AspectFill"
            AutomationId="{Binding Id, StringFormat='speaker-placeholder-{0}'}"
            AutomationProperties.IsInAccessibleTree="False" />
-    <controls:PortraitImage Source="{Binding ProfilePicture}" Aspect="AspectFill"
+    <controls:PortraitImage PortraitSource="{Binding ProfilePicture}" Aspect="AspectFill"
                             AutomationId="{Binding Id, StringFormat='speaker-photo-{0}'}"
                             AutomationProperties.IsInAccessibleTree="False" />
 </Grid>

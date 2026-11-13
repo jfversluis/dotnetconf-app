@@ -1,3 +1,4 @@
+using DotNetConf.App.Controls;
 using DotNetConf.App.ViewModels;
 using DotNetConf.Core;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -79,6 +80,45 @@ public sealed class SpeakerViewModelTests
             Assert.IsType<UriImageSource>(speaker.ProfilePicture).Uri.AbsoluteUri);
         speaker.Update(speaker.Model with { ProfilePicture = "" });
         AssertBot(speaker);
+    }
+
+    [Fact]
+    public void SimultaneousPortraitsHaveIndependentLoadingStateAndRetainCacheSettings()
+    {
+        var speaker = Create("https://example.com/synthetic-photo.jpg");
+        var shared = Assert.IsType<UriImageSource>(speaker.ProfilePicture);
+        shared.CachingEnabled = false;
+        shared.CacheValidity = TimeSpan.FromHours(3);
+
+        var first = CreatePortrait(speaker);
+        var second = CreatePortrait(speaker);
+        var firstSource = Assert.IsType<UriImageSource>(first.Source);
+        var secondSource = Assert.IsType<UriImageSource>(second.Source);
+
+        Assert.NotSame(shared, firstSource);
+        Assert.NotSame(shared, secondSource);
+        Assert.NotSame(firstSource, secondSource);
+        foreach (var source in new[] { firstSource, secondSource })
+        {
+            Assert.Equal(shared.Uri, source.Uri);
+            Assert.Equal(shared.CachingEnabled, source.CachingEnabled);
+            Assert.Equal(shared.CacheValidity, source.CacheValidity);
+        }
+
+        var next = Create("https://example.com/synthetic-next-photo.jpg");
+        first.Parent.BindingContext = next;
+        Assert.Equal(next.Model.ProfilePicture, Assert.IsType<UriImageSource>(first.Source).Uri.AbsoluteUri);
+        Assert.Same(secondSource, second.Source);
+        first.Parent.BindingContext = Create("");
+        Assert.Equal("speaker_placeholder.png", Assert.IsType<FileImageSource>(first.Source).File);
+        first.Parent.BindingContext = null;
+        Assert.Null(first.Source);
+    }
+
+    private static PortraitImage CreatePortrait(SpeakerViewModel speaker)
+    {
+        var portrait = new SpeakerPortrait { BindingContext = speaker };
+        return Assert.Single(portrait.Children.OfType<PortraitImage>());
     }
 
     private static SpeakerViewModel Create(string url) => new(
