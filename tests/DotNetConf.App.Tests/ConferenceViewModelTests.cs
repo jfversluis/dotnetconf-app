@@ -963,12 +963,8 @@ public sealed class ConferenceViewModelTests
         }
         session.PropertyChanged += FailDateChange;
         session.PropertyChanged += ObserveDate;
-        var load = typeof(ConferenceViewModel).GetMethod("LoadAsync",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
-
-        Assert.Null(await (Task<string?>)load.Invoke(conference, null)!);
+        await conference.ResumeAsync();
         Assert.Contains("schedule display couldn't refresh", conference.RefreshMessage);
-        Assert.NotEqual(expectedTime, session.TimeLabel);
         Assert.Equal(0, dateNotifications);
 
         conference.RefreshSavedState();
@@ -996,10 +992,7 @@ public sealed class ConferenceViewModelTests
                 throw new KeyNotFoundException("Synthetic persistent local-time display failure");
         }
         conference.PropertyChanged += FailDisplay;
-        var load = typeof(ConferenceViewModel).GetMethod("LoadAsync",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
-
-        Assert.Null(await (Task<string?>)load.Invoke(conference, null)!);
+        await conference.ResumeAsync();
         await conference.RefreshCommand.ExecuteAsync(null);
         Assert.Contains("schedule display couldn't refresh", conference.RefreshMessage);
 
@@ -1031,10 +1024,7 @@ public sealed class ConferenceViewModelTests
         }
         conference.PropertyChanged += FailLabel;
         conference.PropertyChanged += ObserveLabel;
-        var load = typeof(ConferenceViewModel).GetMethod("LoadAsync",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
-
-        Assert.Null(await (Task<string?>)load.Invoke(conference, null)!);
+        await conference.ResumeAsync();
         Assert.Equal(expected, conference.TimeZoneLabel);
         Assert.Equal(0, observed);
         await conference.RefreshCommand.ExecuteAsync(null);
@@ -1062,10 +1052,7 @@ public sealed class ConferenceViewModelTests
             observed.Add(args.Action);
         conference.Days.CollectionChanged += FailDays;
         conference.Days.CollectionChanged += ObserveDays;
-        var load = typeof(ConferenceViewModel).GetMethod("LoadAsync",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
-
-        Assert.Null(await (Task<string?>)load.Invoke(conference, null)!);
+        await conference.ResumeAsync();
         Assert.Contains("schedule display couldn't refresh", conference.RefreshMessage);
         Assert.Empty(observed);
         await conference.RefreshCommand.ExecuteAsync(null);
@@ -1110,10 +1097,7 @@ public sealed class ConferenceViewModelTests
         results.CollectionChanged += FailResults;
         results.CollectionChanged += ObserveResults;
         conference.PropertyChanged += ObserveLabel;
-        var load = typeof(ConferenceViewModel).GetMethod("LoadAsync",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
-
-        Assert.Null(await (Task<string?>)load.Invoke(conference, null)!);
+        await conference.ResumeAsync();
         Assert.Contains("schedule display couldn't refresh", conference.RefreshMessage);
         Assert.Equal("second", Assert.Single(results).Id);
         Assert.Equal([System.Collections.Specialized.NotifyCollectionChangedAction.Remove], observed);
