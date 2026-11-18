@@ -107,21 +107,23 @@ public sealed class SessionHeaderScrollStateTests
     {
         var criteria = new SessionCriteriaSnapshot();
         var day = new DateOnly(2026, 11, 11);
-        Assert.False(criteria.Update(day, "", "All topics"));
-        Assert.False(criteria.Update(day, "", "All topics"));
-        Assert.False(criteria.Update(day, null, "All topics"));
+        Assert.False(criteria.Update(day, "", "text", "All topics"));
+        Assert.False(criteria.Update(day, "", "text", "All topics"));
+        Assert.False(criteria.Update(day, null, "text", "All topics"));
     }
 
     [Theory]
-    [InlineData(null, "", "All topics")]
-    [InlineData("2026-11-11", "maui", "All topics")]
-    [InlineData("2026-11-11", "", "1 topic")]
-    [InlineData("2026-11-11", "", "All topics\nAI")]
-    public void CriteriaSnapshotReportsActualChanges(string? day, string query, string filters)
+    [InlineData(null, "", "text", "All topics")]
+    [InlineData("2026-11-11", "maui", "text", "All topics")]
+    [InlineData("2026-11-11", "", "ask", "All topics")]
+    [InlineData("2026-11-11", "", "text", "1 topic")]
+    [InlineData("2026-11-11", "", "text", "All topics\nAI")]
+    public void CriteriaSnapshotReportsActualChanges(string? day, string query, string matchMode, string filters)
     {
         var criteria = new SessionCriteriaSnapshot();
-        criteria.Update(new DateOnly(2026, 11, 11), "", "All topics");
-        Assert.True(criteria.Update(day is null ? null : DateOnly.ParseExact(day, "yyyy-MM-dd"), query, filters));
-        Assert.False(criteria.Update(day is null ? null : DateOnly.ParseExact(day, "yyyy-MM-dd"), query, filters));
+        criteria.Update(new DateOnly(2026, 11, 11), "", "text", "All topics");
+        var date = day is null ? (DateOnly?)null : DateOnly.ParseExact(day, "yyyy-MM-dd");
+        Assert.True(criteria.Update(date, query, matchMode, filters));
+        Assert.False(criteria.Update(date, query, matchMode, filters));
     }
 }

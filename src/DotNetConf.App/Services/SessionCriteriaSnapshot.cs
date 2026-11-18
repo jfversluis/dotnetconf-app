@@ -6,13 +6,13 @@ namespace DotNetConf.App.Services;
 /// </summary>
 public sealed class SessionCriteriaSnapshot
 {
-    private (DateOnly? Day, string Query, string Filters)? applied;
+    private (DateOnly? Day, string Query, string MatchMode, string Filters)? applied;
 
     /// <summary>Records the criteria and reports whether they differ from the previous record.</summary>
     /// <remarks>The first record initializes the snapshot and is not reported as a change.</remarks>
-    public bool Update(DateOnly? day, string? query, string? filters)
+    public bool Update(DateOnly? day, string? query, string? matchMode, string? filters)
     {
-        var current = (day, query ?? "", filters ?? "");
+        var current = (day, query ?? "", matchMode ?? "", filters ?? "");
         var changed = applied is { } previous && previous != current;
         applied = current;
         return changed;

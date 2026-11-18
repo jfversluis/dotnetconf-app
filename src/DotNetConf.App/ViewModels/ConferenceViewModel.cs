@@ -216,6 +216,9 @@ public partial class ConferenceViewModel(
     public string FilterSummary => (askSpeakerFilter is null ? TopicFilterSummary
         : $"{TopicFilterSummary} · Speaker: {askSpeakerFilter}") + (RecordingsOnly ? " · Video available" : "") +
         (HideWatched ? " · Hide watched" : "");
+    private bool UsesAskSearch => askSearchQuery is not null && SessionQuery.Equals(askSearchQuery, StringComparison.Ordinal);
+    /// <summary>How <see cref="SessionQuery"/> is matched; an Ask search can reuse typed text with stricter matching.</summary>
+    public string SessionMatchMode => !UsesAskSearch ? "text" : askExactTitle ? "ask-title" : "ask";
     public string FilterResultsContext => $"Results for {SelectedDay?.Label ?? Days[0].Label}. Your search still applies.";
     public string ShowFilteredSessionsLabel => Sessions.Count == 1
         ? "Show 1 session" : $"Show {Sessions.Count} sessions";
@@ -1247,7 +1250,7 @@ public partial class ConferenceViewModel(
         var speakers = askSpeakerFilter is null ? null
             : AskRequest.FindSpeakers(document, askSpeakerFilter).Select(speaker => speaker.Id).ToHashSet(StringComparer.Ordinal);
         var topics = Topics.Where(topic => topic.IsSelected).Select(topic => topic.Name).ToArray();
-        var usingAskSearch = askSearchQuery is not null && SessionQuery.Equals(askSearchQuery, StringComparison.Ordinal);
+        var usingAskSearch = UsesAskSearch;
         var matches = usingAskSearch
             ? AskRequest.Search(document, SessionQuery, SelectedDay?.Day, topics, timeZone,
                 includeSpeakerNames: askSpeakerFilter is null)

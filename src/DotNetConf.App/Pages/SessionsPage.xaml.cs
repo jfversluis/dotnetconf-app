@@ -275,7 +275,7 @@ public partial class SessionsPage : AdaptiveConferencePage
         // FilterSummary abbreviates three or more topics to a count, so include the selected topic names.
         var filters = string.Join('\n', Conference.Topics.Where(topic => topic.IsSelected)
             .Select(topic => topic.Name).Prepend(Conference.FilterSummary));
-        if (!criteria.Update(Conference.SelectedDay?.Day, Conference.SessionQuery, filters))
+        if (!criteria.Update(Conference.SelectedDay?.Day, Conference.SessionQuery, Conference.SessionMatchMode, filters))
             return;
         headerScroll.Expand();
         UpdateHeaderVisibility(animate: true);

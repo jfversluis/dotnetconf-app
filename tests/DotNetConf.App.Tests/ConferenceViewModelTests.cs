@@ -400,6 +400,25 @@ public sealed class ConferenceViewModelTests
     }
 
     [Fact]
+    public async Task AskSearchReusingTypedTextPublishesItsStricterMatchMode()
+    {
+        var viewModel = await CreateInitializedAsync(new TestRepository(Snapshot()), new TestScheduleStore(), new TestConnectivity());
+        viewModel.SessionQuery = "AI";
+        Assert.Equal("text", viewModel.SessionMatchMode);
+        var publishedModes = new List<string>();
+        viewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ConferenceViewModel.FilterSummary))
+                publishedModes.Add(viewModel.SessionMatchMode);
+        };
+
+        viewModel.ApplyAskSearch(new(AskAction.FindSessions, "AI", "", ""));
+
+        Assert.Equal("ask", viewModel.SessionMatchMode);
+        Assert.Contains("ask", publishedModes);
+    }
+
+    [Fact]
     public async Task AskExactTitleSearchStaysExactUntilTheUserEditsIt()
     {
         var original = Snapshot();
