@@ -18,7 +18,9 @@ public partial class SessionsPage : AdaptiveConferencePage
     private bool focusSearchAfterExpansion;
     private double lastScrollOffset;
     private int headerAnimationGeneration;
+    private long headerLayoutSettlesAt;
     private const string HeaderAnimation = "SessionHeader";
+    private const uint HeaderAnimationLength = 200;
     private readonly SessionHeaderScrollState headerScroll = new();
     private readonly SessionCriteriaSnapshot criteria = new();
 
@@ -87,7 +89,7 @@ public partial class SessionsPage : AdaptiveConferencePage
 
         lastScrollOffset = e.VerticalOffset;
         headerScroll.Update(lastScrollOffset, SearchResults.Height, headerScrolls || SearchField.IsSearchFocused,
-            rebase: this.AnimationIsRunning(HeaderAnimation));
+            rebase: this.AnimationIsRunning(HeaderAnimation) || Environment.TickCount64 < headerLayoutSettlesAt);
         UpdateHeaderVisibility(animate: true);
     }
 
@@ -112,7 +114,7 @@ public partial class SessionsPage : AdaptiveConferencePage
         if (collapsed)
         {
             if (!ToolbarItems.Contains(SearchToolbar))
-                ToolbarItems.Insert(0, SearchToolbar);
+                InsertSearchToolbar();
         }
         else
             ToolbarItems.Remove(SearchToolbar);
@@ -120,6 +122,7 @@ public partial class SessionsPage : AdaptiveConferencePage
         if (animate && collapsed == headerTargetCollapsed)
             return;
 
+        var changed = collapsed != headerTargetCollapsed;
         headerTargetCollapsed = collapsed;
         var generation = ++headerAnimationGeneration;
         this.AbortAnimation(HeaderAnimation);
@@ -130,6 +133,10 @@ public partial class SessionsPage : AdaptiveConferencePage
 #endif
         if (!animate || !IsLoaded || CollapsibleHeader.Width <= 0)
         {
+            // An instant resize can clamp or re-anchor the list on the next layout pass. Treat those
+            // scroll events like the animated path does, rather than as a gesture that toggles back.
+            if (changed)
+                headerLayoutSettlesAt = Environment.TickCount64 + HeaderAnimationLength + 50;
             ApplyHeaderVisibility();
             return;
         }
@@ -154,7 +161,7 @@ public partial class SessionsPage : AdaptiveConferencePage
             CollapsibleHeader.HeightRequest = startHeight + (endHeight - startHeight) * progress;
             CollapsibleHeader.Opacity = startOpacity + (endOpacity - startOpacity) * progress;
             CollapsibleContent.TranslationY = startTranslation + (endTranslation - startTranslation) * progress;
-        }).Commit(this, HeaderAnimation, length: 200, easing: Easing.CubicInOut,
+        }).Commit(this, HeaderAnimation, length: HeaderAnimationLength, easing: Easing.CubicInOut,
             finished: (_, _) =>
             {
                 // A disabled system ticker reports cancellation without a newer animation; still settle then.
@@ -286,6 +293,18 @@ public partial class SessionsPage : AdaptiveConferencePage
             return;
         headerScroll.Expand();
         UpdateHeaderVisibility(animate: true);
+    }
+
+    private void InsertSearchToolbar()
+    {
+        // Android reuses native menu items by position and refreshes badges only for badged items, so a
+        // badge-less item inserted ahead of Filter would inherit Filter's badge. Recreate Filter after it.
+        var filterIndex = OperatingSystem.IsAndroid() ? ToolbarItems.IndexOf(FilterToolbar) : -1;
+        if (filterIndex >= 0)
+            ToolbarItems.RemoveAt(filterIndex);
+        ToolbarItems.Insert(0, SearchToolbar);
+        if (filterIndex >= 0)
+            ToolbarItems.Insert(filterIndex + 1, FilterToolbar);
     }
 
     private void ClearNativeFilterBadge()
