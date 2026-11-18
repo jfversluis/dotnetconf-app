@@ -17,6 +17,7 @@ public partial class SessionsPage : AdaptiveConferencePage
     private bool headerTargetCollapsed;
     private bool focusSearchAfterExpansion;
     private double lastScrollOffset;
+    private int headerAnimationGeneration;
     private const string HeaderAnimation = "SessionHeader";
     private readonly SessionHeaderScrollState headerScroll = new();
     private readonly SessionCriteriaSnapshot criteria = new();
@@ -39,6 +40,7 @@ public partial class SessionsPage : AdaptiveConferencePage
         Conference.PropertyChanged += OnConferencePropertyChanged;
         RebuildDayTabs();
         ClearNativeFilterBadge();
+        // Android Shell unloads this page under pushed pages, so changes made there arrive while unsubscribed.
         RevealIfCriteriaChanged();
     }
 
@@ -119,9 +121,12 @@ public partial class SessionsPage : AdaptiveConferencePage
             return;
 
         headerTargetCollapsed = collapsed;
+        var generation = ++headerAnimationGeneration;
         this.AbortAnimation(HeaderAnimation);
 #if IOS
         animate &= !UIKit.UIAccessibility.IsReduceMotionEnabled;
+#elif ANDROID
+        animate &= Android.Animation.ValueAnimator.AreAnimatorsEnabled();
 #endif
         if (!animate || !IsLoaded || CollapsibleHeader.Width <= 0)
         {
@@ -150,9 +155,10 @@ public partial class SessionsPage : AdaptiveConferencePage
             CollapsibleHeader.Opacity = startOpacity + (endOpacity - startOpacity) * progress;
             CollapsibleContent.TranslationY = startTranslation + (endTranslation - startTranslation) * progress;
         }).Commit(this, HeaderAnimation, length: 200, easing: Easing.CubicInOut,
-            finished: (_, cancelled) =>
+            finished: (_, _) =>
             {
-                if (!cancelled)
+                // A disabled system ticker reports cancellation without a newer animation; still settle then.
+                if (generation == headerAnimationGeneration)
                     ApplyHeaderVisibility();
             });
     }
@@ -160,6 +166,7 @@ public partial class SessionsPage : AdaptiveConferencePage
     private void SettleHeader()
     {
         focusSearchAfterExpansion = false;
+        headerAnimationGeneration++;
         this.AbortAnimation(HeaderAnimation);
         ApplyHeaderVisibility();
     }
