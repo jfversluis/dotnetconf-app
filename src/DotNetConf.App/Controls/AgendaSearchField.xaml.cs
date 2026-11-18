@@ -49,10 +49,11 @@ public partial class AgendaSearchField : ContentView
     internal bool HasActiveInputConnection => SearchInput.HasActiveInputConnection;
     internal Task<bool> HideKeyboardAsync() => SearchInput.HideSoftInputAsync(CancellationToken.None);
 #endif
+    internal void FocusSearch() => SearchInput.Focus();
     internal void UnfocusSearch() => SearchInput.Unfocus();
     public event EventHandler<FocusEventArgs>? SearchFocusChanged;
 
-    private void OnFieldTapped(object? sender, TappedEventArgs e) => SearchInput.Focus();
+    private void OnFieldTapped(object? sender, TappedEventArgs e) => FocusSearch();
 
     private void OnClearClicked(object? sender, EventArgs e)
     {

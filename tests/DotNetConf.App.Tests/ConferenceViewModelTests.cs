@@ -400,6 +400,25 @@ public sealed class ConferenceViewModelTests
     }
 
     [Fact]
+    public async Task AskSearchReusingTypedTextPublishesItsStricterMatchMode()
+    {
+        var viewModel = await CreateInitializedAsync(new TestRepository(Snapshot()), new TestScheduleStore(), new TestConnectivity());
+        viewModel.SessionQuery = "AI";
+        Assert.Equal("text", viewModel.SessionMatchMode);
+        var publishedModes = new List<string>();
+        viewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ConferenceViewModel.FilterSummary))
+                publishedModes.Add(viewModel.SessionMatchMode);
+        };
+
+        viewModel.ApplyAskSearch(new(AskAction.FindSessions, "AI", "", ""));
+
+        Assert.Equal("ask", viewModel.SessionMatchMode);
+        Assert.Contains("ask", publishedModes);
+    }
+
+    [Fact]
     public async Task AskExactTitleSearchStaysExactUntilTheUserEditsIt()
     {
         var original = Snapshot();
@@ -963,12 +982,8 @@ public sealed class ConferenceViewModelTests
         }
         session.PropertyChanged += FailDateChange;
         session.PropertyChanged += ObserveDate;
-        var load = typeof(ConferenceViewModel).GetMethod("LoadAsync",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
-
-        Assert.Null(await (Task<string?>)load.Invoke(conference, null)!);
+        await conference.ResumeAsync();
         Assert.Contains("schedule display couldn't refresh", conference.RefreshMessage);
-        Assert.NotEqual(expectedTime, session.TimeLabel);
         Assert.Equal(0, dateNotifications);
 
         conference.RefreshSavedState();
@@ -996,10 +1011,7 @@ public sealed class ConferenceViewModelTests
                 throw new KeyNotFoundException("Synthetic persistent local-time display failure");
         }
         conference.PropertyChanged += FailDisplay;
-        var load = typeof(ConferenceViewModel).GetMethod("LoadAsync",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
-
-        Assert.Null(await (Task<string?>)load.Invoke(conference, null)!);
+        await conference.ResumeAsync();
         await conference.RefreshCommand.ExecuteAsync(null);
         Assert.Contains("schedule display couldn't refresh", conference.RefreshMessage);
 
@@ -1031,10 +1043,7 @@ public sealed class ConferenceViewModelTests
         }
         conference.PropertyChanged += FailLabel;
         conference.PropertyChanged += ObserveLabel;
-        var load = typeof(ConferenceViewModel).GetMethod("LoadAsync",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
-
-        Assert.Null(await (Task<string?>)load.Invoke(conference, null)!);
+        await conference.ResumeAsync();
         Assert.Equal(expected, conference.TimeZoneLabel);
         Assert.Equal(0, observed);
         await conference.RefreshCommand.ExecuteAsync(null);
@@ -1062,10 +1071,7 @@ public sealed class ConferenceViewModelTests
             observed.Add(args.Action);
         conference.Days.CollectionChanged += FailDays;
         conference.Days.CollectionChanged += ObserveDays;
-        var load = typeof(ConferenceViewModel).GetMethod("LoadAsync",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
-
-        Assert.Null(await (Task<string?>)load.Invoke(conference, null)!);
+        await conference.ResumeAsync();
         Assert.Contains("schedule display couldn't refresh", conference.RefreshMessage);
         Assert.Empty(observed);
         await conference.RefreshCommand.ExecuteAsync(null);
@@ -1110,10 +1116,7 @@ public sealed class ConferenceViewModelTests
         results.CollectionChanged += FailResults;
         results.CollectionChanged += ObserveResults;
         conference.PropertyChanged += ObserveLabel;
-        var load = typeof(ConferenceViewModel).GetMethod("LoadAsync",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
-
-        Assert.Null(await (Task<string?>)load.Invoke(conference, null)!);
+        await conference.ResumeAsync();
         Assert.Contains("schedule display couldn't refresh", conference.RefreshMessage);
         Assert.Equal("second", Assert.Single(results).Id);
         Assert.Equal([System.Collections.Specialized.NotifyCollectionChangedAction.Remove], observed);
@@ -1245,6 +1248,57 @@ public sealed class ConferenceViewModelTests
         Assert.Equal(removing ? 1 : 0, viewModel.SavedCount);
         repository.Release.SetResult();
         await refresh.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task RevisitingLoadedAgendaPreservesFiltersWithoutRebuildingLocalDays()
+    {
+        var repository = new TestRepository(Snapshot());
+        var viewModel = Create(repository, new TestScheduleStore(), new TestConnectivity());
+        await viewModel.InitializeAsync();
+        await (viewModel.RefreshCommand.ExecutionTask ?? Task.CompletedTask);
+        viewModel.SelectedDay = viewModel.Days[1];
+        viewModel.SessionQuery = "Synthetic unmatched search";
+        viewModel.SearchSessionsCommand.Execute(null);
+        var selectedDay = viewModel.SelectedDay;
+        var selectionNotifications = 0;
+        viewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(ConferenceViewModel.SelectedDayIndex))
+                selectionNotifications++;
+        };
+
+        await viewModel.InitializeAsync();
+        await viewModel.InitializeAsync();
+
+        Assert.Same(selectedDay, viewModel.SelectedDay);
+        Assert.Empty(viewModel.Sessions);
+        Assert.Equal(0, selectionNotifications);
+        Assert.Equal(1, repository.LoadCalls);
+        Assert.Equal(1, repository.RefreshCalls);
+    }
+
+    [Fact]
+    public async Task ResumeRefreshesLocalTimesEvenWithoutAnAgendaDownload()
+    {
+        var snapshot = Snapshot() with { LastCheckedAt = DateTimeOffset.UtcNow };
+        var repository = new TestRepository(snapshot);
+        var viewModel = Create(repository, new TestScheduleStore(), new TestConnectivity());
+        await viewModel.InitializeAsync();
+        await (viewModel.RefreshCommand.ExecutionTask ?? Task.CompletedTask);
+        var session = Assert.Single(viewModel.Sessions);
+        var date = session.DateLabel;
+        var time = session.TimeLabel;
+        session.DateLabel = "Synthetic stale date";
+        session.TimeLabel = "Synthetic stale time";
+        viewModel.PauseRefresh();
+
+        await viewModel.ResumeAsync();
+
+        Assert.Equal(date, session.DateLabel);
+        Assert.Equal(time, session.TimeLabel);
+        Assert.Equal(1, repository.RefreshCalls);
+        Assert.Same(session, Assert.Single(viewModel.Sessions));
     }
 
     [Fact]
@@ -2407,11 +2461,16 @@ public sealed class ConferenceViewModelTests
         public ConferenceSnapshot Snapshot { get; set; } = snapshot;
         public bool HoldFirstRequest { get; init; }
         public int HoldRefreshCall { get; init; }
+        public int LoadCalls { get; private set; }
         public int RefreshCalls { get; private set; }
         public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public void ReportProgress(ConferenceSnapshot value) => progress!.Report(value);
-        public Task<ConferenceSnapshot> LoadAsync(CancellationToken cancellationToken = default) => Task.FromResult(Snapshot);
+        public Task<ConferenceSnapshot> LoadAsync(CancellationToken cancellationToken = default)
+        {
+            LoadCalls++;
+            return Task.FromResult(Snapshot);
+        }
         public async Task<ConferenceSnapshot> RefreshAsync(CancellationToken cancellationToken = default,
             IProgress<ConferenceSnapshot>? progress = null)
         {

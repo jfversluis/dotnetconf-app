@@ -13,12 +13,26 @@ public partial class SessionsPage : AdaptiveConferencePage
     private bool rebuildQueued;
     private bool headerScrolls;
     private bool headerIsStacked;
+    private DayFilter[] renderedDays = [];
+    private bool headerTargetCollapsed;
+    private bool focusSearchAfterExpansion;
+    private double lastScrollOffset;
+    private int headerAnimationGeneration;
+    private long headerLayoutSettlesAt;
+    private const string HeaderAnimation = "SessionHeader";
+    private const uint HeaderAnimationLength = 200;
+    private readonly SessionHeaderScrollState headerScroll = new();
+    private readonly SessionCriteriaSnapshot criteria = new();
 
     public SessionsPage(ConferenceViewModel conference, DetailNavigationService navigation) : base(conference)
     {
         InitializeComponent();
+        ToolbarItems.Remove(SearchToolbar);
         ConfigureDetails(DetailKind.Session, navigation);
         ConfigureSearchViewport(SearchField, SearchLayout, SearchResults);
+        SearchResults.SizeChanged += OnResultsSizeChanged;
+        SearchResults.HandlerChanged += OnResultsHandlerChanged;
+        SearchField.SearchFocusChanged += OnSearchFocusChanged;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
     }
@@ -29,20 +43,28 @@ public partial class SessionsPage : AdaptiveConferencePage
         Conference.PropertyChanged += OnConferencePropertyChanged;
         RebuildDayTabs();
         ClearNativeFilterBadge();
+        // Android Shell unloads this page under pushed pages, so changes made there arrive while unsubscribed.
+        RevealIfCriteriaChanged();
     }
 
     private void OnUnloaded(object? sender, EventArgs e)
     {
+        SettleHeader();
         Conference.Days.CollectionChanged -= OnDaysChanged;
         Conference.PropertyChanged -= OnConferencePropertyChanged;
     }
 
+    protected override void OnDisappearing()
+    {
+        SettleHeader();
+        base.OnDisappearing();
+    }
+
     protected override void OnListLayoutChanged(bool scrollHeader, bool stacked)
     {
-        SessionHeading.IsVisible = !scrollHeader;
         if (headerIsStacked != stacked)
         {
-            SessionHeader.Spacing = stacked ? 8 : 16;
+            CollapsibleContent.Spacing = stacked ? 8 : 16;
             SessionHeader.Padding = new Thickness(24, stacked ? 8 : 16, 24, stacked ? 4 : 8);
             SessionStatus.Spacing = stacked ? 8 : 16;
             SessionStatus.Padding = new Thickness(24, stacked ? 8 : 16, 24, stacked ? 4 : 8);
@@ -55,6 +77,144 @@ public partial class SessionsPage : AdaptiveConferencePage
             MoveListHeader(PinnedHeader, ScrollingHeader, scrollHeader);
             headerScrolls = scrollHeader;
         }
+        if (scrollHeader)
+            headerScroll.Expand();
+        CollapsibleContent.Padding = new Thickness(0, 0, 0, scrollHeader ? 0 : stacked ? 8 : 16);
+        UpdateHeaderVisibility();
+    }
+
+    private void OnSessionsScrolled(object? sender, ItemsViewScrolledEventArgs e)
+    {
+        if ((!OperatingSystem.IsIOS() && !OperatingSystem.IsAndroid()) || SearchResults.Height <= 0)
+            return;
+
+        lastScrollOffset = e.VerticalOffset;
+        headerScroll.Update(lastScrollOffset, SearchResults.Height, headerScrolls || SearchField.IsSearchFocused,
+            rebase: this.AnimationIsRunning(HeaderAnimation) || Environment.TickCount64 < headerLayoutSettlesAt);
+        UpdateHeaderVisibility(animate: true);
+    }
+
+    private void OnResultsSizeChanged(object? sender, EventArgs e)
+    {
+        if (SearchResults.Height > 0)
+            headerScroll.Update(lastScrollOffset, SearchResults.Height, rebase: true);
+    }
+
+    private void OnResultsHandlerChanged(object? sender, EventArgs e)
+    {
+        // Android recreates native views for this retained page with a new activity; the new list starts at the top.
+        if (SearchResults.Handler is null || !headerScroll.IsCollapsed)
+            return;
+        lastScrollOffset = 0;
+        headerScroll.Expand();
+        UpdateHeaderVisibility();
+    }
+
+    private void OnSearchFocusChanged(object? sender, FocusEventArgs e)
+    {
+        if (e.IsFocused)
+        {
+            headerScroll.Expand();
+            UpdateHeaderVisibility();
+        }
+    }
+
+    private void UpdateHeaderVisibility(bool animate = false)
+    {
+        var collapsed = headerScroll.IsCollapsed;
+        if (collapsed)
+        {
+            if (!ToolbarItems.Contains(SearchToolbar))
+                InsertSearchToolbar();
+        }
+        else
+            ToolbarItems.Remove(SearchToolbar);
+
+        if (animate && collapsed == headerTargetCollapsed)
+            return;
+
+        var changed = collapsed != headerTargetCollapsed;
+        headerTargetCollapsed = collapsed;
+        var generation = ++headerAnimationGeneration;
+        this.AbortAnimation(HeaderAnimation);
+#if IOS
+        animate &= !UIKit.UIAccessibility.IsReduceMotionEnabled;
+#elif ANDROID
+        animate &= Android.Animation.ValueAnimator.AreAnimatorsEnabled();
+#endif
+        if (!animate || !IsLoaded || CollapsibleHeader.Width <= 0)
+        {
+            // An instant resize can clamp or re-anchor the list on the next layout pass. Treat those
+            // scroll events like the animated path does, rather than as a gesture that toggles back.
+            if (changed)
+                headerLayoutSettlesAt = Environment.TickCount64 + HeaderAnimationLength + 50;
+            ApplyHeaderVisibility();
+            return;
+        }
+
+        var startHeight = CollapsibleHeader.IsVisible
+            ? Math.Max(0, CollapsibleHeader.HeightRequest >= 0
+                ? CollapsibleHeader.HeightRequest : CollapsibleHeader.Height)
+            : 0;
+        var startOpacity = CollapsibleHeader.Opacity;
+        var startTranslation = CollapsibleContent.TranslationY;
+        SessionHeading.IsVisible = !headerScrolls;
+        CollapsibleHeader.IsVisible = true;
+        CollapsibleHeader.InputTransparent = collapsed;
+        AutomationProperties.SetExcludedWithChildren(CollapsibleHeader, collapsed);
+        var endHeight = collapsed ? 0 :
+            CollapsibleContent.Measure(CollapsibleHeader.Width, double.PositiveInfinity).Height;
+        var endOpacity = collapsed ? 0 : 1;
+        var endTranslation = collapsed ? -12 : 0;
+        CollapsibleHeader.HeightRequest = startHeight;
+        new Animation(progress =>
+        {
+            CollapsibleHeader.HeightRequest = startHeight + (endHeight - startHeight) * progress;
+            CollapsibleHeader.Opacity = startOpacity + (endOpacity - startOpacity) * progress;
+            CollapsibleContent.TranslationY = startTranslation + (endTranslation - startTranslation) * progress;
+        }).Commit(this, HeaderAnimation, length: HeaderAnimationLength, easing: Easing.CubicInOut,
+            finished: (_, _) =>
+            {
+                // A disabled system ticker reports cancellation without a newer animation; still settle then.
+                if (generation == headerAnimationGeneration)
+                    ApplyHeaderVisibility();
+            });
+    }
+
+    private void SettleHeader()
+    {
+        focusSearchAfterExpansion = false;
+        headerAnimationGeneration++;
+        this.AbortAnimation(HeaderAnimation);
+        ApplyHeaderVisibility();
+    }
+
+    private void ApplyHeaderVisibility()
+    {
+        var collapsed = headerTargetCollapsed;
+        CollapsibleHeader.IsVisible = !collapsed;
+        CollapsibleHeader.HeightRequest = -1;
+        CollapsibleHeader.Opacity = collapsed ? 0 : 1;
+        CollapsibleHeader.InputTransparent = collapsed;
+        AutomationProperties.SetExcludedWithChildren(CollapsibleHeader, collapsed);
+        CollapsibleContent.TranslationY = collapsed ? -12 : 0;
+        SessionHeading.IsVisible = !headerScrolls;
+        if (!collapsed && focusSearchAfterExpansion)
+        {
+            focusSearchAfterExpansion = false;
+            Dispatcher.Dispatch(() =>
+            {
+                if (IsLoaded && !headerTargetCollapsed)
+                    SearchField.FocusSearch();
+            });
+        }
+    }
+
+    private void OnRevealSearchClicked(object? sender, EventArgs e)
+    {
+        headerScroll.Expand();
+        focusSearchAfterExpansion = true;
+        UpdateHeaderVisibility(animate: true);
     }
 
     private void OnDaysChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -74,6 +234,11 @@ public partial class SessionsPage : AdaptiveConferencePage
         rebuildingDays = true;
         try
         {
+            if (renderedDays.SequenceEqual(Conference.Days))
+            {
+                DayTabs.SelectedIndex = Conference.SelectedDayIndex;
+                return;
+            }
             DayTabs.Items.Clear();
             foreach (var day in Conference.Days)
             {
@@ -109,6 +274,7 @@ public partial class SessionsPage : AdaptiveConferencePage
                 header.SizeChanged += OnDayHeaderSizeChanged;
                 DayTabs.Items.Add(new SfTabItem { Header = day.Label, HeaderContent = header });
             }
+            renderedDays = Conference.Days.ToArray();
             DayTabs.SelectedIndex = Conference.SelectedDayIndex;
         }
         finally
@@ -123,13 +289,43 @@ public partial class SessionsPage : AdaptiveConferencePage
             DayTabs.SelectedIndex = Conference.SelectedDayIndex;
         if (e.PropertyName == nameof(ConferenceViewModel.FilterBadgeText))
             Dispatcher.Dispatch(ClearNativeFilterBadge);
+        if (e.PropertyName is nameof(ConferenceViewModel.SelectedDayIndex) or
+            nameof(ConferenceViewModel.SessionQuery) or nameof(ConferenceViewModel.FilterSummary))
+            RevealIfCriteriaChanged();
+    }
+
+    private void RevealIfCriteriaChanged()
+    {
+        // Resume and time-zone refreshes republish unchanged criteria; only a real change reveals the header.
+        // FilterSummary abbreviates three or more topics to a count, so include the selected topic names.
+        var filters = string.Join('\n', Conference.Topics.Where(topic => topic.IsSelected)
+            .Select(topic => topic.Name).Prepend(Conference.FilterSummary));
+        if (!criteria.Update(Conference.SelectedDay?.Day, Conference.SessionQuery, Conference.SessionMatchMode, filters))
+            return;
+        headerScroll.Expand();
+        UpdateHeaderVisibility(animate: true);
+    }
+
+    private void InsertSearchToolbar()
+    {
+        // Android reuses native menu items by position and refreshes badges only for badged items, so a
+        // badge-less item inserted ahead of Filter would inherit Filter's badge. Recreate Filter after it.
+        var filterIndex = OperatingSystem.IsAndroid() ? ToolbarItems.IndexOf(FilterToolbar) : -1;
+        if (filterIndex >= 0)
+            ToolbarItems.RemoveAt(filterIndex);
+        ToolbarItems.Insert(0, SearchToolbar);
+        if (filterIndex >= 0)
+            ToolbarItems.Insert(filterIndex + 1, FilterToolbar);
     }
 
     private void ClearNativeFilterBadge()
     {
-        // iOS can retain the native badge after BadgeText becomes null; recreate its toolbar entry.
-        if (!Conference.HasTopicFilters && ToolbarItems.Remove(FilterToolbar))
-            ToolbarItems.Insert(0, FilterToolbar);
+        // iOS can retain the native badge after BadgeText becomes null; recreate its toolbar entry in place.
+        var index = ToolbarItems.IndexOf(FilterToolbar);
+        if (Conference.HasTopicFilters || index < 0)
+            return;
+        ToolbarItems.RemoveAt(index);
+        ToolbarItems.Insert(index, FilterToolbar);
     }
 
     private void OnDaySelectionChanged(object? sender, TabSelectionChangedEventArgs e)
