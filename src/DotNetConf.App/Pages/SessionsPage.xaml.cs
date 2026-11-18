@@ -31,6 +31,7 @@ public partial class SessionsPage : AdaptiveConferencePage
         ConfigureDetails(DetailKind.Session, navigation);
         ConfigureSearchViewport(SearchField, SearchLayout, SearchResults);
         SearchResults.SizeChanged += OnResultsSizeChanged;
+        SearchResults.HandlerChanged += OnResultsHandlerChanged;
         SearchField.SearchFocusChanged += OnSearchFocusChanged;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
@@ -97,6 +98,16 @@ public partial class SessionsPage : AdaptiveConferencePage
     {
         if (SearchResults.Height > 0)
             headerScroll.Update(lastScrollOffset, SearchResults.Height, rebase: true);
+    }
+
+    private void OnResultsHandlerChanged(object? sender, EventArgs e)
+    {
+        // Android recreates native views for this retained page with a new activity; the new list starts at the top.
+        if (SearchResults.Handler is null || !headerScroll.IsCollapsed)
+            return;
+        lastScrollOffset = 0;
+        headerScroll.Expand();
+        UpdateHeaderVisibility();
     }
 
     private void OnSearchFocusChanged(object? sender, FocusEventArgs e)
