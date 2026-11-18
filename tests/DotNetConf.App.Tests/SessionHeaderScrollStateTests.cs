@@ -101,4 +101,27 @@ public sealed class SessionHeaderScrollStateTests
         state.Update(212, 500);
         Assert.True(state.IsCollapsed);
     }
+
+    [Fact]
+    public void CriteriaSnapshotIgnoresInitialAndRepublishedCriteria()
+    {
+        var criteria = new SessionCriteriaSnapshot();
+        var day = new DateOnly(2026, 11, 11);
+        Assert.False(criteria.Update(day, "", "All topics"));
+        Assert.False(criteria.Update(day, "", "All topics"));
+        Assert.False(criteria.Update(day, null, "All topics"));
+    }
+
+    [Theory]
+    [InlineData(null, "", "All topics")]
+    [InlineData("2026-11-11", "maui", "All topics")]
+    [InlineData("2026-11-11", "", "1 topic")]
+    [InlineData("2026-11-11", "", "All topics\nAI")]
+    public void CriteriaSnapshotReportsActualChanges(string? day, string query, string filters)
+    {
+        var criteria = new SessionCriteriaSnapshot();
+        criteria.Update(new DateOnly(2026, 11, 11), "", "All topics");
+        Assert.True(criteria.Update(day is null ? null : DateOnly.ParseExact(day, "yyyy-MM-dd"), query, filters));
+        Assert.False(criteria.Update(day is null ? null : DateOnly.ParseExact(day, "yyyy-MM-dd"), query, filters));
+    }
 }

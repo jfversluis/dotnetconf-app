@@ -19,6 +19,7 @@ public partial class SessionsPage : AdaptiveConferencePage
     private double lastScrollOffset;
     private const string HeaderAnimation = "SessionHeader";
     private readonly SessionHeaderScrollState headerScroll = new();
+    private readonly SessionCriteriaSnapshot criteria = new();
 
     public SessionsPage(ConferenceViewModel conference, DetailNavigationService navigation) : base(conference)
     {
@@ -38,6 +39,7 @@ public partial class SessionsPage : AdaptiveConferencePage
         Conference.PropertyChanged += OnConferencePropertyChanged;
         RebuildDayTabs();
         ClearNativeFilterBadge();
+        RevealIfCriteriaChanged();
     }
 
     private void OnUnloaded(object? sender, EventArgs e)
@@ -264,17 +266,29 @@ public partial class SessionsPage : AdaptiveConferencePage
             Dispatcher.Dispatch(ClearNativeFilterBadge);
         if (e.PropertyName is nameof(ConferenceViewModel.SelectedDayIndex) or
             nameof(ConferenceViewModel.SessionQuery) or nameof(ConferenceViewModel.FilterSummary))
-        {
-            headerScroll.Expand();
-            UpdateHeaderVisibility(animate: true);
-        }
+            RevealIfCriteriaChanged();
+    }
+
+    private void RevealIfCriteriaChanged()
+    {
+        // Resume and time-zone refreshes republish unchanged criteria; only a real change reveals the header.
+        // FilterSummary abbreviates three or more topics to a count, so include the selected topic names.
+        var filters = string.Join('\n', Conference.Topics.Where(topic => topic.IsSelected)
+            .Select(topic => topic.Name).Prepend(Conference.FilterSummary));
+        if (!criteria.Update(Conference.SelectedDay?.Day, Conference.SessionQuery, filters))
+            return;
+        headerScroll.Expand();
+        UpdateHeaderVisibility(animate: true);
     }
 
     private void ClearNativeFilterBadge()
     {
-        // iOS can retain the native badge after BadgeText becomes null; recreate its toolbar entry.
-        if (!Conference.HasTopicFilters && ToolbarItems.Remove(FilterToolbar))
-            ToolbarItems.Insert(0, FilterToolbar);
+        // iOS can retain the native badge after BadgeText becomes null; recreate its toolbar entry in place.
+        var index = ToolbarItems.IndexOf(FilterToolbar);
+        if (Conference.HasTopicFilters || index < 0)
+            return;
+        ToolbarItems.RemoveAt(index);
+        ToolbarItems.Insert(index, FilterToolbar);
     }
 
     private void OnDaySelectionChanged(object? sender, TabSelectionChangedEventArgs e)
